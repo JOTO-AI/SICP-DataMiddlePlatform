@@ -1,0 +1,6986 @@
+{
+  "evidence": [
+    "source_samples/20260917_170631/profiles.json",
+    "source_samples/full_audit_20260918_155758/audit_results.json",
+    "MOCK_DATA_GENERATION_PLAN.md",
+    "sicp-api-design.md",
+    "latest_api_docs/README.md",
+    "source_samples/live_type_recheck_20260920_101854.json"
+  ],
+  "notes": [
+    "Only aggregate metadata is copied; no person values.",
+    "First-sample and full-audit denominators are separate.",
+    "document_type preserves the original source-page declaration; current_document_type follows the revised local document.",
+    "pg_storage_type: verified JSON number=JSON; otherwise retain page declaration (String=TEXT, LocalDateTime=TIMESTAMP WITHOUT TIME ZONE).",
+    "normal_types describe observed JSON responses; wire types can differ from original page declarations.",
+    "Normal mock rows must contain all document-required fields with nonempty values; optional fields may be absent.",
+    "Observed omissions of required fields are compatibility cases only, not permission to omit them in normal snapshots.",
+    "required_but_missing describes historical observations, not a validation exemption; never fill required fields with null."
+  ],
+  "tables": {
+    "dwd_grtxfszlb": {
+      "primary_key": "JGH",
+      "document": "latest_api_docs/教职工个人通讯方式子类表.md",
+      "sample_rows": 100,
+      "full_audit_rows": 2656,
+      "sample_row_field_counts": {
+        "2": 96,
+        "4": 3,
+        "3": 1
+      },
+      "full_row_field_counts": {
+        "2": 1298,
+        "4": 1051,
+        "3": 307
+      },
+      "fields": {
+        "JGH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2656,
+            "type:str": 2656,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "YDDH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 4,
+            "missing": 96,
+            "types": {
+              "string": 4
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1249,
+            "type:str": 1249,
+            "missing": 1407
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "DZXX": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 3,
+            "missing": 97,
+            "types": {
+              "string": 3
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1160,
+            "type:str": 1160,
+            "missing": 1496
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "ETL_TIME": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2656,
+            "type:str": 2656,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    },
+    "dwd_jzgjcsjzlb": {
+      "primary_key": "JGH",
+      "document": "latest_api_docs/教职工基础数据子类表.md",
+      "sample_rows": 100,
+      "full_audit_rows": 2600,
+      "sample_row_field_counts": {
+        "10": 96,
+        "15": 1,
+        "21": 2,
+        "22": 1
+      },
+      "full_row_field_counts": {
+        "10": 837,
+        "15": 100,
+        "21": 125,
+        "22": 153,
+        "12": 306,
+        "13": 180,
+        "14": 111,
+        "11": 394,
+        "24": 46,
+        "17": 55,
+        "18": 59,
+        "25": 19,
+        "23": 78,
+        "16": 43,
+        "20": 27,
+        "19": 37,
+        "26": 8,
+        "27": 4,
+        "9": 10,
+        "8": 7,
+        "29": 1
+      },
+      "fields": {
+        "JGH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2600,
+            "type:str": 2600,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "DWH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2568,
+            "type:str": 2568,
+            "missing": 32
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2600,
+            "type:str": 2600,
+            "surrounding_whitespace": 4,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "YWXM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 25,
+            "type:str": 25,
+            "missing": 2575
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XMPY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 829,
+            "type:str": 829,
+            "missing": 1771
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "CYM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 16,
+            "type:str": 16,
+            "missing": 2584
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2590,
+            "type:str": 2590,
+            "missing": 10
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "CSRQ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 3,
+            "missing": 97,
+            "types": {
+              "string": 3
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 608,
+            "type:str": 608,
+            "missing": 1992
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "CSDM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "MZM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 3,
+            "missing": 97,
+            "types": {
+              "string": 3
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 959,
+            "type:str": 959,
+            "missing": 1641
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "GJDQM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "SFZJLXM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2494,
+            "type:str": 2494,
+            "missing": 106
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SFZJH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2598,
+            "type:str": 2598,
+            "surrounding_whitespace": 1,
+            "missing": 2
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "HYZKM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2033,
+            "type:str": 2033,
+            "missing": 567
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "GATQWM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "ZZMMM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 3,
+            "missing": 97,
+            "types": {
+              "string": 3
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 620,
+            "type:str": 620,
+            "missing": 1980
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "JKZKM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 2,
+            "missing": 98,
+            "types": {
+              "string": 2
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 234,
+            "type:str": 234,
+            "missing": 2366
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XYZJM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "XXM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "SFZJYXQ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "XQH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "ZGXLM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 3,
+            "missing": 97,
+            "types": {
+              "string": 3
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 639,
+            "type:str": 639,
+            "missing": 1961
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "WHCDM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "CJGZNY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "LXRQ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 3,
+            "missing": 97,
+            "types": {
+              "string": 3
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 633,
+            "type:str": 633,
+            "missing": 1967
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "QXRQ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "CJNY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 3,
+            "missing": 97,
+            "types": {
+              "string": 3
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 484,
+            "type:str": 484,
+            "missing": 2116
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "BZLBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34,
+            "type:str": 34,
+            "missing": 2566
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "JZGLBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 11,
+            "type:str": 11,
+            "missing": 2589
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "RKZKM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "DABH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "DAWB": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "DQZTM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2600,
+            "type:str": 2600,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "TC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "XKLBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "YJXKM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "EJXKM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "YJFX": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "ZGZCM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2,
+            "type:str": 2,
+            "missing": 2598
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "ZGXWM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 3,
+            "missing": 97,
+            "types": {
+              "string": 3
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 627,
+            "type:str": 627,
+            "missing": 1973
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "GWMCM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 411,
+            "type:str": 411,
+            "missing": 2189
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "GWDJM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "GCCRCLXM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "HTQDQKM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "ZGZYZG": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "SFSJT": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 4,
+            "missing": 96,
+            "types": {
+              "string": 4
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 889,
+            "type:str": 889,
+            "missing": 1711
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SFSSX": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 4,
+            "missing": 96,
+            "types": {
+              "string": 4
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 736,
+            "type:str": 736,
+            "missing": 1864
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XYJGM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "XZSSZYH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "JGM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "YRFSM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "YHKH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 4,
+            "missing": 96,
+            "types": {
+              "string": 4
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1237,
+            "type:str": 1237,
+            "surrounding_whitespace": 2,
+            "missing": 1363
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SFZB": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "SFSFS": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": false
+        },
+        "WPJS": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 4,
+            "missing": 96,
+            "types": {
+              "string": 4
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1276,
+            "type:str": 1276,
+            "missing": 1324
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "JZBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2600,
+            "type:str": 2600,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "ETL_TIME": {
+          "document_type": "LocalDateTime",
+          "current_document_type": "LocalDateTime",
+          "document_required": false,
+          "pg_storage_type": "TIMESTAMP WITHOUT TIME ZONE",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2600,
+            "type:str": 2600,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    },
+    "dwd_bzkszyxxsjzlb": {
+      "primary_key": "ZYH",
+      "document": "latest_api_docs/本专科生专业信息数据子类表.md",
+      "sample_rows": 100,
+      "full_audit_rows": 307,
+      "sample_row_field_counts": {
+        "11": 2,
+        "12": 1,
+        "10": 97
+      },
+      "full_row_field_counts": {
+        "11": 3,
+        "12": 1,
+        "10": 303
+      },
+      "fields": {
+        "ZYH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 307,
+            "type:str": 307,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "ZYJC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 3,
+            "missing": 97,
+            "types": {
+              "string": 3
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 4,
+            "type:str": 4,
+            "missing": 303
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "ZYMC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 307,
+            "type:str": 307,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "BZKZYM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "XKMLM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 1,
+            "missing": 99,
+            "types": {
+              "string": 1
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1,
+            "type:str": 1,
+            "missing": 306
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "SSZYHDL": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "ZYFLM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 307,
+            "type:str": 307,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "DWH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 307,
+            "type:str": 307,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "ZYCCM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "QSXQM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "ZYYWMC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "XZ": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "integer": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 307,
+            "type:number": 307,
+            "missing": 0
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false,
+          "normal_number_form": "integer_value"
+        },
+        "JLNY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "PZSZNY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "SCZSNY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "SYXWLBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "SSZYQH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "PYFSM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 307,
+            "type:str": 307,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SFSFLZY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "SFZZZY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "FZRJGH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "ZSZTM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "YXZTM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 307,
+            "type:str": 307,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XSLBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 307,
+            "type:str": 307,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "PYCCM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 307,
+            "type:str": 307,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "ETL_TIME": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 307,
+            "type:str": 307,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    },
+    "dwd_bzksgrtxsjzlb": {
+      "primary_key": "XH",
+      "document": "latest_api_docs/本专科生个人通讯数据子类表.md",
+      "sample_rows": 100,
+      "full_audit_rows": 34882,
+      "sample_row_field_counts": {
+        "4": 77,
+        "2": 7,
+        "3": 16
+      },
+      "full_row_field_counts": {
+        "4": 14640,
+        "2": 1072,
+        "3": 19170
+      },
+      "fields": {
+        "XH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34882,
+            "type:str": 34882,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "YDDH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 92,
+            "missing": 8,
+            "types": {
+              "string": 92
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 33801,
+            "type:str": 33801,
+            "surrounding_whitespace": 3,
+            "missing": 1081
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "DZXX": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 78,
+            "missing": 22,
+            "types": {
+              "string": 78
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 3
+          },
+          "full_audit": {
+            "present": 14649,
+            "type:str": 14649,
+            "surrounding_whitespace": 99,
+            "missing": 20233
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "ETL_TIME": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34882,
+            "type:str": 34882,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    },
+    "dwd_bzksjbsjzlb": {
+      "primary_key": "XH",
+      "document": "latest_api_docs/本专科生基本数据子类表.md",
+      "sample_rows": 100,
+      "full_audit_rows": 34608,
+      "sample_row_field_counts": {
+        "11": 100
+      },
+      "full_row_field_counts": {
+        "11": 20454,
+        "12": 7197,
+        "10": 90,
+        "8": 62,
+        "9": 3302,
+        "13": 3482,
+        "14": 8,
+        "7": 13
+      },
+      "fields": {
+        "XH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34608,
+            "type:str": 34608,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34608,
+            "type:str": 34608,
+            "surrounding_whitespace": 1,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "YWXM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "XMPY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 6679,
+            "type:str": 6679,
+            "surrounding_whitespace": 1,
+            "missing": 27929
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "HYZKM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "CYM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 14,
+            "type:str": 14,
+            "missing": 34594
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "XBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34608,
+            "type:str": 34608,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SFDSZN": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "GJDQM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "JGM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 10757,
+            "type:str": 10757,
+            "missing": 23851
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "CCQJ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "SFZJYXQ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "TC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "AH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "YHKH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "CSRQ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34593,
+            "type:str": 34593,
+            "missing": 15
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "CSDM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "SFZJH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34606,
+            "type:str": 34606,
+            "missing": 2
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SFZJLXM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34607,
+            "type:str": 34607,
+            "missing": 1
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "GATQWM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "JKZKM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "ZZMMM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 31111,
+            "type:str": 31111,
+            "missing": 3497
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XXM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "MZM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 31192,
+            "type:str": 31192,
+            "missing": 3416
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XYZJM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "RLSPL": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 100,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34608,
+            "type:str": 34608,
+            "literal_null": 34608,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SYDM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 97
+          },
+          "full_audit": {
+            "present": 31342,
+            "type:str": 31342,
+            "surrounding_whitespace": 8630,
+            "missing": 3266
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "ETL_TIME": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34608,
+            "type:str": 34608,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    },
+    "dwd_bzksxjjbsjzlb": {
+      "primary_key": "XH",
+      "document": "latest_api_docs/本专科生学籍基本数据子类表.md",
+      "sample_rows": 100,
+      "full_audit_rows": 34607,
+      "sample_row_field_counts": {
+        "16": 100
+      },
+      "full_row_field_counts": {
+        "16": 32284,
+        "14": 11,
+        "15": 2300,
+        "17": 1,
+        "13": 11
+      },
+      "fields": {
+        "XH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34607,
+            "type:str": 34607,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SZNJ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34607,
+            "type:str": 34607,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SZBH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34606,
+            "type:str": 34606,
+            "missing": 1
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "HDXLFSM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "XKMLM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "RXNY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34582,
+            "type:str": 34582,
+            "missing": 25
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SSXQH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34607,
+            "type:str": 34607,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XZ": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "integer": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34607,
+            "type:number": 34607,
+            "missing": 0
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false,
+          "normal_number_form": "integer_value"
+        },
+        "SFXFZ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "ZCXDNX": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "YXSH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34607,
+            "type:str": 34607,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "PYFSM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1,
+            "type:str": 1,
+            "missing": 34606
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "YJBYRQ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34503,
+            "type:str": 34503,
+            "missing": 104
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "KSH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "PYCCM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34607,
+            "type:str": 34607,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XSLBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34607,
+            "type:str": 34607,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XSDQZTM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34607,
+            "type:str": 34607,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XJZTM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34607,
+            "type:str": 34607,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "LDFS": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "ZYH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34607,
+            "type:str": 34607,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SFQRZ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "SFZX": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34607,
+            "type:str": 34607,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XXXSM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 32382,
+            "type:str": 32382,
+            "missing": 2225
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "ETL_TIME": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 34607,
+            "type:str": 34607,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    },
+    "dwd_bzksnjzysjzlb": {
+      "primary_key": "NJZYDM",
+      "document": "latest_api_docs/本专科生年级专业数据子类表.md",
+      "sample_rows": 100,
+      "full_audit_rows": 562,
+      "sample_row_field_counts": {
+        "11": 100
+      },
+      "full_row_field_counts": {
+        "11": 562
+      },
+      "fields": {
+        "NJZYDM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 562,
+            "type:str": 562,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "NJZYMC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 562,
+            "type:str": 562,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "NJ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 562,
+            "type:str": 562,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "DWH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 562,
+            "type:str": 562,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XQH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 562,
+            "type:str": 562,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "ZYH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 562,
+            "type:str": 562,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "ZYMC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 562,
+            "type:str": 562,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XSLBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 562,
+            "type:str": 562,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "PYCCM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 562,
+            "type:str": 562,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XZ": {
+          "document_type": "Integer",
+          "current_document_type": "JSON number",
+          "document_required": false,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "integer": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 562,
+            "type:number": 562,
+            "missing": 0
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false,
+          "normal_number_form": "integer_value"
+        },
+        "ETL_TIME": {
+          "document_type": "LocalDateTime",
+          "current_document_type": "LocalDateTime",
+          "document_required": false,
+          "pg_storage_type": "TIMESTAMP WITHOUT TIME ZONE",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 562,
+            "type:str": 562,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    },
+    "dwd_bzkscjzlb": {
+      "primary_key": "ID",
+      "document": "latest_api_docs/本专科生成绩子类表.md",
+      "sample_rows": 100,
+      "full_audit_rows": 1439486,
+      "sample_row_field_counts": {
+        "9": 100
+      },
+      "full_row_field_counts": {
+        "9": 1439486
+      },
+      "fields": {
+        "ID": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1439486,
+            "type:str": 1439486,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1439486,
+            "type:str": 1439486,
+            "surrounding_whitespace": 1,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XN": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1439486,
+            "type:str": 1439486,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XQM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1439486,
+            "type:str": 1439486,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "KCH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1439486,
+            "type:str": 1439486,
+            "literal_null": 5441,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XF": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "number": 5,
+              "integer": 95
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1439486,
+            "type:number": 1439486,
+            "missing": 0
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "JD": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "number": 89,
+              "integer": 11
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1439486,
+            "type:number": 1439486,
+            "missing": 0
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "KCCJ": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "integer": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1439486,
+            "type:number": 1439486,
+            "missing": 0
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "ETL_TIME": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 1439486,
+            "type:str": 1439486,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    },
+    "dwd_bzkspksjzlb": {
+      "primary_key": "PKH",
+      "document": "latest_api_docs/本专科生排课数据子类表.md",
+      "sample_rows": 100,
+      "full_audit_rows": 541850,
+      "sample_row_field_counts": {
+        "27": 83,
+        "13": 17
+      },
+      "full_row_field_counts": {
+        "27": 427080,
+        "13": 68074,
+        "26": 20204,
+        "22": 20538,
+        "8": 1322,
+        "25": 52,
+        "12": 3432,
+        "21": 37,
+        "20": 32,
+        "11": 1069,
+        "10": 10
+      },
+      "fields": {
+        "JHKCH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 540771,
+            "type:str": 540771,
+            "missing": 1079
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "PKH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 541850,
+            "type:str": 541850,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "KCXZM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "string": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 467943,
+            "type:str": 467943,
+            "missing": 73907
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "SKRQ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 541808,
+            "type:str": 541808,
+            "missing": 42
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SKSJ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "JXZY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "KRL": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "integer": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 519921,
+            "type:number": 519921,
+            "missing": 21929
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false,
+          "normal_number_form": "integer_value"
+        },
+        "ZC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 541850,
+            "type:str": 541850,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XQJ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 541850,
+            "type:str": 541850,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SKJC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 541850,
+            "type:str": 541850,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "JXTZ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "XKNJ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "string": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 454680,
+            "type:str": 454680,
+            "missing": 87170
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "SKBJH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "string": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 467943,
+            "type:str": 467943,
+            "missing": 73907
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "SKJSH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 519921,
+            "type:str": 519921,
+            "missing": 21929
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "KKXND": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "string": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 467943,
+            "type:str": 467943,
+            "missing": 73907
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "KKXQM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "string": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 467943,
+            "type:str": 467943,
+            "missing": 73907
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "JSJGH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "string": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 467943,
+            "type:str": 467943,
+            "missing": 73907
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "JSXM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "string": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 467943,
+            "type:str": 467943,
+            "surrounding_whitespace": 26,
+            "missing": 73907
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "RKJSM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "XKRSXD": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "integer": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 467943,
+            "type:number": 467943,
+            "missing": 73907
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true,
+          "normal_number_form": "integer_value"
+        },
+        "XDRS": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "integer": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 540771,
+            "type:number": 540771,
+            "missing": 1079
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false,
+          "normal_number_form": "integer_value"
+        },
+        "JXBH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "string": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 467943,
+            "type:str": 467943,
+            "missing": 73907
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "JXBMC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "string": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 467943,
+            "type:str": 467943,
+            "surrounding_whitespace": 204,
+            "missing": 73907
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "QSZ": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "integer": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 467943,
+            "type:number": 467943,
+            "missing": 73907
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true,
+          "normal_number_form": "integer_value"
+        },
+        "ZZZ": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "integer": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 467943,
+            "type:number": 467943,
+            "missing": 73907
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true,
+          "normal_number_form": "integer_value"
+        },
+        "KKSM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "PKYQ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "JSSZXQH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 509375,
+            "type:str": 509375,
+            "missing": 32475
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XKXQH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "string": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 467943,
+            "type:str": 467943,
+            "missing": 73907
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "KCKSDWH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 83,
+            "missing": 17,
+            "types": {
+              "string": 83
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 467943,
+            "type:str": 467943,
+            "missing": 73907
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "JXDD": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 519921,
+            "type:str": 519921,
+            "missing": 21929
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "JSLXM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 519921,
+            "type:str": 519921,
+            "missing": 21929
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SKDDLBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "XYJCCBH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "ETL_TIME": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 541850,
+            "type:str": 541850,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    },
+    "dwd_bzksbjsjzlb": {
+      "primary_key": "BH",
+      "document": "latest_api_docs/本专科生班级数据子类表.md",
+      "sample_rows": 100,
+      "full_audit_rows": 425,
+      "sample_row_field_counts": {
+        "10": 100
+      },
+      "full_row_field_counts": {
+        "10": 195,
+        "9": 230
+      },
+      "fields": {
+        "BH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 425,
+            "type:str": 425,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "BJMC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 425,
+            "type:str": 425,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "BJJC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "BJLBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "SSXQH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 425,
+            "type:str": 425,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SSDWH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 425,
+            "type:str": 425,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SSNJ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 425,
+            "type:str": 425,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "JBNY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 195,
+            "type:str": 195,
+            "missing": 230
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "BJRS": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "YXZTM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "BZRJGH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "FDYJGH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 425,
+            "type:str": 425,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "BZXH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "SSZYH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "SFDDB": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "NJZYDM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 425,
+            "type:str": 425,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XQH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "XZ": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "integer": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 425,
+            "type:number": 425,
+            "missing": 0
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false,
+          "normal_number_form": "integer_value"
+        },
+        "NJZYMC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "ETL_TIME": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 425,
+            "type:str": 425,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    },
+    "dwd_bzkskcsjzlb": {
+      "primary_key": "KCH",
+      "document": "latest_api_docs/本专科生课程数据子类表.md",
+      "sample_rows": 100,
+      "full_audit_rows": 8159,
+      "sample_row_field_counts": {
+        "19": 17,
+        "17": 21,
+        "15": 3,
+        "16": 59
+      },
+      "full_row_field_counts": {
+        "19": 2800,
+        "17": 326,
+        "15": 497,
+        "16": 4122,
+        "18": 413,
+        "13": 1
+      },
+      "fields": {
+        "KCH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 8159,
+            "type:str": 8159,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "KCMC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 8159,
+            "type:str": 8159,
+            "surrounding_whitespace": 30,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "KCYWMC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 4,
+            "type:str": 4,
+            "missing": 8155
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "KCJJ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 100,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 28,
+            "type:str": 28,
+            "surrounding_whitespace": 1,
+            "missing": 8131
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "XF": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "integer": 49,
+              "number": 51
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 8159,
+            "type:number": 8159,
+            "missing": 0
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "ZHXS": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 97,
+            "missing": 3,
+            "types": {
+              "integer": 96,
+              "number": 1
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 4109,
+            "type:number": 4109,
+            "missing": 4050
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "ZXS": {
+          "document_type": "String",
+          "current_document_type": "JSON number",
+          "document_required": true,
+          "pg_storage_type": "JSON",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "integer": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 8159,
+            "type:number": 8159,
+            "missing": 0
+          },
+          "normal_types": [
+            "number"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false,
+          "normal_number_form": "integer_value"
+        },
+        "KCLBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 8158,
+            "type:str": 8158,
+            "missing": 1
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "KCSXM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 8159,
+            "type:str": 8159,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "KCXZM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 8159,
+            "type:str": 8159,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SFXQHZKFKC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 4940,
+            "type:str": 4940,
+            "missing": 3219
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SFKZRTKC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 4940,
+            "type:str": 4940,
+            "missing": 3219
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "KCLXM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 8151,
+            "type:str": 8151,
+            "missing": 8
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "KKXY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 8159,
+            "type:str": 8159,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SFYX": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 8159,
+            "type:str": 8159,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SFWLK": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 8158,
+            "type:str": 8158,
+            "missing": 1
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "KCBQ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 38,
+            "missing": 62,
+            "types": {
+              "string": 38
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 6444,
+            "type:str": 6444,
+            "surrounding_whitespace": 13,
+            "missing": 1715
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "SFCXKC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 8159,
+            "type:str": 8159,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "CXKCH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 17,
+            "missing": 83,
+            "types": {
+              "string": 17
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 6537,
+            "type:str": 6537,
+            "missing": 1622
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "CXKCMC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 17,
+            "missing": 83,
+            "types": {
+              "string": 17
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 6537,
+            "type:str": 6537,
+            "surrounding_whitespace": 17,
+            "missing": 1622
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "ETL_TIME": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 8159,
+            "type:str": 8159,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    },
+    "dwd_bzkskbsjzlb": {
+      "primary_key": "ID",
+      "document": "latest_api_docs/本专科生课表数据子类表.md",
+      "sample_rows": 100,
+      "full_audit_rows": 492191,
+      "sample_row_field_counts": {
+        "5": 100
+      },
+      "full_row_field_counts": {
+        "5": 492187,
+        "4": 4
+      },
+      "fields": {
+        "ID": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 492191,
+            "type:str": 492191,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 492191,
+            "type:str": 492191,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "JHKCH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 492187,
+            "type:str": 492187,
+            "missing": 4
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "JXBH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 492191,
+            "type:str": 492191,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "ETL_TIME": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 100,
+            "missing": 0,
+            "types": {
+              "string": 100
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 492191,
+            "type:str": 492191,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    },
+    "dwd_xqjbsjzlb": {
+      "primary_key": "XQH",
+      "document": "latest_api_docs/校区基本数据子类表.md",
+      "sample_rows": 2,
+      "full_audit_rows": 2,
+      "sample_row_field_counts": {
+        "4": 2
+      },
+      "full_row_field_counts": {
+        "4": 2
+      },
+      "fields": {
+        "XQH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 2,
+            "missing": 0,
+            "types": {
+              "string": 2
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2,
+            "type:str": 2,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XQMC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 2,
+            "missing": 0,
+            "types": {
+              "string": 2
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2,
+            "type:str": 2,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "XQCX": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": false,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 2,
+            "missing": 0,
+            "types": {
+              "string": 2
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2,
+            "type:str": 2,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "ETL_TIME": {
+          "document_type": "LocalDateTime",
+          "current_document_type": "LocalDateTime",
+          "document_required": false,
+          "pg_storage_type": "TIMESTAMP WITHOUT TIME ZONE",
+          "first_sample": {
+            "present": 2,
+            "missing": 0,
+            "types": {
+              "string": 2
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 2,
+            "type:str": 2,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    },
+    "dwd_yxsdwjbsjzlb": {
+      "primary_key": "DWH",
+      "document": "latest_api_docs/院系所单位基本数据子类表.md",
+      "sample_rows": 69,
+      "full_audit_rows": 69,
+      "sample_row_field_counts": {
+        "7": 1,
+        "11": 13,
+        "10": 19,
+        "8": 10,
+        "9": 15,
+        "12": 11
+      },
+      "full_row_field_counts": {
+        "7": 1,
+        "11": 13,
+        "10": 19,
+        "8": 10,
+        "9": 15,
+        "12": 11
+      },
+      "fields": {
+        "DWH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 69,
+            "missing": 0,
+            "types": {
+              "string": 69
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 69,
+            "type:str": 69,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "DWMC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 69,
+            "missing": 0,
+            "types": {
+              "string": 69
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 69,
+            "type:str": 69,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "DWYWMC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "DWJC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "DWYWJC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "DWJP": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "DWDZ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "LSDWH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 69,
+            "missing": 0,
+            "types": {
+              "string": 69
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 69,
+            "type:str": 69,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "DWLBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 65,
+            "missing": 4,
+            "types": {
+              "string": 65
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 65,
+            "type:str": 65,
+            "missing": 4
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "DWBBM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "DWYXBSM": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 69,
+            "missing": 0,
+            "types": {
+              "string": 69
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 69,
+            "type:str": 69,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "SXRQ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "SFST": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "JLNY": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "DWFZRJGH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "SFGK": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "LSDZZBH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "DZZFZRJGH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "LSXQH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 0,
+            "missing": 69,
+            "types": {
+              
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "文档类型，尚未观测",
+          "required_but_missing": true
+        },
+        "SFSC": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 69,
+            "missing": 0,
+            "types": {
+              "string": 69
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 69,
+            "type:str": 69,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        },
+        "FGXLD": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 29,
+            "missing": 40,
+            "types": {
+              "string": 29
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 29,
+            "type:str": 29,
+            "missing": 40
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "JLRQ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 28,
+            "missing": 41,
+            "types": {
+              "string": 28
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 28,
+            "type:str": 28,
+            "missing": 41
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "CJR": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 28,
+            "missing": 41,
+            "types": {
+              "string": 28
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 28,
+            "type:str": 28,
+            "missing": 41
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "ZJXGRJGH": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 55,
+            "missing": 14,
+            "types": {
+              "string": 55
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 55,
+            "type:str": 55,
+            "missing": 14
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "ZHXGSJ": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 68,
+            "missing": 1,
+            "types": {
+              "string": 68
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 68,
+            "type:str": 68,
+            "missing": 1
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": true
+        },
+        "ETL_TIME": {
+          "document_type": "String",
+          "current_document_type": "String",
+          "document_required": true,
+          "pg_storage_type": "TEXT",
+          "first_sample": {
+            "present": 69,
+            "missing": 0,
+            "types": {
+              "string": 69
+            },
+            "literal_null": 0,
+            "surrounding_whitespace": 0
+          },
+          "full_audit": {
+            "present": 69,
+            "type:str": 69,
+            "missing": 0
+          },
+          "normal_types": [
+            "string"
+          ],
+          "evidence_level": "实测形状",
+          "required_but_missing": false
+        }
+      }
+    }
+  }
+}

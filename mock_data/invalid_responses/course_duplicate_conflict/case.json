@@ -1,0 +1,8 @@
+{
+  "id": "course_duplicate_conflict",
+  "group": "invalid_responses",
+  "basis": "故意异常：课程同号不能套用通讯归并规则",
+  "note": "",
+  "input": "invalid_responses/course_duplicate_conflict/input.json",
+  "expected": "invalid_responses/course_duplicate_conflict/expected.json"
+}

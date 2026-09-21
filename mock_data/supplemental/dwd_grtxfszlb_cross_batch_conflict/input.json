@@ -1,0 +1,21 @@
+{
+  "table": "dwd_grtxfszlb",
+  "primary_key": "JGH",
+  "current": [
+    {
+      "JGH": "001",
+      "YDDH": "MOCK-NEW",
+      "DZXX": "teacher001@campus.example",
+      "ETL_TIME": "2026-08-05 09:00:00"
+    }
+  ],
+  "incoming": [
+    {
+      "JGH": "001",
+      "YDDH": "MOCK-CONFLICT",
+      "DZXX": "teacher001@campus.example",
+      "ETL_TIME": "2026-08-05 09:00:00"
+    }
+  ],
+  "priority_field": "ETL_TIME"
+}

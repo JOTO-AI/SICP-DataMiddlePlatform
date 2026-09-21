@@ -1,0 +1,31 @@
+{
+  "code": 200,
+  "message": "请求成功",
+  "data": {
+    "list": [
+      {
+        "BH": "00B01",
+        "BJMC": "虚构班级一（更新）",
+        "FDYJGH": "001",
+        "JBNY": "2026-09-01",
+        "NJZYDM": "00N1",
+        "SSDWH": "00D1",
+        "SSNJ": "2026",
+        "SSXQH": "01",
+        "XZ": 3,
+        "BJJC": "测试班1",
+        "BJLBM": "MOCK_CLASS",
+        "BJRS": "4",
+        "YXZTM": "1",
+        "BZRJGH": "001",
+        "BZXH": "00202600001",
+        "SSZYH": "00M1",
+        "SFDDB": "0",
+        "XQH": "01",
+        "NJZYMC": "2026虚构专业1",
+        "ETL_TIME": "2026-08-05 09:00:00"
+      }
+    ],
+    "total": 1
+  }
+}

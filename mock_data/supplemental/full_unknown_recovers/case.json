@@ -1,0 +1,8 @@
+{
+  "id": "full_unknown_recovers",
+  "group": "supplemental",
+  "basis": "补充假设：未知字段与重试序列，方案6.2",
+  "note": "邮件仅为替身断言，生成器不发送邮件。",
+  "input": "supplemental/full_unknown_recovers/input.json",
+  "expected": "supplemental/full_unknown_recovers/expected.json"
+}

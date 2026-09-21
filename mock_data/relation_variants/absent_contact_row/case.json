@@ -1,0 +1,8 @@
+{
+  "id": "absent_contact_row",
+  "group": "relation_variants",
+  "basis": "实测缺口变体，方案3及6.1",
+  "note": "区别于存在仅JGH/ETL_TIME的通讯行",
+  "input": "relation_variants/absent_contact_row/input.json",
+  "expected": "relation_variants/absent_contact_row/expected.json"
+}

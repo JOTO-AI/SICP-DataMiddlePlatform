@@ -1,0 +1,8 @@
+{
+  "id": "wrong_total_type",
+  "group": "invalid_responses",
+  "basis": "故意异常，非上游错误码约定",
+  "note": "",
+  "input": "invalid_responses/wrong_total_type/input.json",
+  "expected": "invalid_responses/wrong_total_type/expected.json"
+}

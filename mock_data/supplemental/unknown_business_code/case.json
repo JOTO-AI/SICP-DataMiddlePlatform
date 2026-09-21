@@ -1,0 +1,8 @@
+{
+  "id": "unknown_business_code",
+  "group": "supplemental",
+  "basis": "补充边界：未观测的业务代码；字符串按原值保存",
+  "note": "正常mock采用实测代码样例不等于上游穷尽枚举；未知代码的业务含义不推断。",
+  "input": "supplemental/unknown_business_code/input.json",
+  "expected": "supplemental/unknown_business_code/expected.json"
+}

@@ -1,0 +1,8 @@
+{
+  "id": "latest_term_before_score_filter",
+  "group": "supplemental",
+  "basis": "已采用实测关系：同人同课多ID、多学期；先选最新学期再筛分数",
+  "note": "",
+  "input": "supplemental/latest_term_before_score_filter/input.json",
+  "expected": "supplemental/latest_term_before_score_filter/expected.json"
+}

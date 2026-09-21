@@ -1,0 +1,8 @@
+{
+  "id": "cross_term_ambiguity",
+  "group": "supplemental",
+  "basis": "补充边界：同教学班课程跨学期复用",
+  "note": "",
+  "input": "supplemental/cross_term_ambiguity/input.json",
+  "expected": "supplemental/cross_term_ambiguity/expected.json"
+}

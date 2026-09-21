@@ -1,0 +1,96 @@
+{
+  "table": "dwd_jzgjcsjzlb",
+  "task": "mock-full",
+  "mode": "full",
+  "local_business_columns": [
+    "JGH",
+    "DWH",
+    "XM",
+    "YWXM",
+    "XMPY",
+    "CYM",
+    "XBM",
+    "CSRQ",
+    "CSDM",
+    "MZM",
+    "GJDQM",
+    "SFZJLXM",
+    "SFZJH",
+    "HYZKM",
+    "GATQWM",
+    "ZZMMM",
+    "JKZKM",
+    "XYZJM",
+    "XXM",
+    "SFZJYXQ",
+    "XQH",
+    "ZGXLM",
+    "WHCDM",
+    "CJGZNY",
+    "LXRQ",
+    "QXRQ",
+    "CJNY",
+    "BZLBM",
+    "JZGLBM",
+    "RKZKM",
+    "DABH",
+    "DAWB",
+    "DQZTM",
+    "TC",
+    "XKLBM",
+    "YJXKM",
+    "EJXKM",
+    "YJFX",
+    "ZGZCM",
+    "ZGXWM",
+    "GWMCM",
+    "GWDJM",
+    "GCCRCLXM",
+    "HTQDQKM",
+    "ZGZYZG",
+    "SFSJT",
+    "SFSSX",
+    "XYJGM",
+    "XZSSZYH",
+    "JGM",
+    "YRFSM",
+    "YHKH",
+    "SFZB",
+    "SFSFS",
+    "WPJS",
+    "JZBM",
+    "ETL_TIME"
+  ],
+  "request": {
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 2
+    }
+  },
+  "max_attempts": 2,
+  "responses": [
+    {
+      "code": 200,
+      "message": "请求成功",
+      "data": {
+        "list": [
+          {
+            "JGH": "001",
+            "DWH": "00D1",
+            "XM": "虚构教师001",
+            "XBM": "1",
+            "SFZJLXM": "1",
+            "SFZJH": "MOCK-STAFF-000001",
+            "HYZKM": "10",
+            "DQZTM": "11",
+            "JZBM": "10335",
+            "ETL_TIME": "2026-08-05 09:00:00",
+            "CYM": "虚构曾用名"
+          }
+        ],
+        "total": 1
+      }
+    }
+  ]
+}

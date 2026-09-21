@@ -1,0 +1,8 @@
+{
+  "id": "missing_new_class",
+  "group": "relation_variants",
+  "basis": "实测缺口变体，方案3及6.1",
+  "note": "新入学在读学生有班号但档案不可用",
+  "input": "relation_variants/missing_new_class/input.json",
+  "expected": "relation_variants/missing_new_class/expected.json"
+}

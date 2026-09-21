@@ -1,0 +1,58 @@
+{
+  "table": "dwd_bzkskcsjzlb",
+  "response": {
+    "code": 200,
+    "message": "请求成功",
+    "data": {
+      "list": [
+        {
+          "KCH": "000C0001",
+          "KCMC": "虚构课程001",
+          "XF": 3,
+          "ZXS": 48,
+          "KCLBM": "5",
+          "KCSXM": "1",
+          "KCXZM": "1",
+          "SFXQHZKFKC": "0",
+          "SFKZRTKC": "0",
+          "KCLXM": "3",
+          "KKXY": "00D1",
+          "SFYX": "1",
+          "SFWLK": "0",
+          "SFCXKC": "1",
+          "KCYWMC": "Fictional Course 1",
+          "KCJJ": "虚构课程1介绍",
+          "ZHXS": 3,
+          "KCBQ": "岗位实习",
+          "CXKCH": "000C0001",
+          "CXKCMC": "虚构课程001",
+          "ETL_TIME": "2026-08-05 07:50:00"
+        },
+        {
+          "KCH": "000C0001",
+          "KCMC": "冲突课程名",
+          "XF": 3,
+          "ZXS": 48,
+          "KCLBM": "5",
+          "KCSXM": "1",
+          "KCXZM": "1",
+          "SFXQHZKFKC": "0",
+          "SFKZRTKC": "0",
+          "KCLXM": "3",
+          "KKXY": "00D1",
+          "SFYX": "1",
+          "SFWLK": "0",
+          "SFCXKC": "1",
+          "KCYWMC": "Fictional Course 1",
+          "KCJJ": "虚构课程1介绍",
+          "ZHXS": 3,
+          "KCBQ": "岗位实习",
+          "CXKCH": "000C0001",
+          "CXKCMC": "虚构课程001",
+          "ETL_TIME": "2026-08-05 07:50:00"
+        }
+      ],
+      "total": 2
+    }
+  }
+}

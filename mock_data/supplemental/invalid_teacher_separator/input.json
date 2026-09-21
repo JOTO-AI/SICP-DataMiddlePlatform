@@ -1,0 +1,42 @@
+{
+  "table": "dwd_bzkspksjzlb",
+  "rows": [
+    {
+      "PKH": "P000001",
+      "JHKCH": "000C0001",
+      "JXBH": "J2026-0001",
+      "JXBMC": "虚构教学班1",
+      "JSJGH": "001；1001",
+      "JSXM": "虚构教师001,虚构教师002",
+      "KKXND": "2026-2027",
+      "KKXQM": "1",
+      "KCXZM": "1",
+      "SKRQ": "20260907",
+      "SKJC": "1",
+      "XQJ": "星期一",
+      "SKSJ": "08:20:00",
+      "JXZY": "虚构教学资源",
+      "JXTZ": "课堂讲授",
+      "RKJSM": "MOCK_TEACHER",
+      "KKSM": "虚构课程正常开课",
+      "PKYQ": "使用多媒体教室",
+      "SKDDLBM": "MOCK_CLASSROOM",
+      "XYJCCBH": "MOCK-TEXTBOOK-001",
+      "KRL": 40,
+      "XDRS": 3,
+      "ZC": "1",
+      "XKNJ": "2026",
+      "SKBJH": "00B01",
+      "SKJSH": "00101",
+      "XKRSXD": 40,
+      "QSZ": 1,
+      "ZZZ": 16,
+      "JSSZXQH": "01",
+      "XKXQH": "01",
+      "KCKSDWH": "00D1",
+      "JXDD": "虚构教学楼101",
+      "JSLXM": "1",
+      "ETL_TIME": "2026-08-05 07:50:00"
+    }
+  ]
+}

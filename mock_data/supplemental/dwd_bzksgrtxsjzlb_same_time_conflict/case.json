@@ -1,0 +1,8 @@
+{
+  "id": "dwd_bzksgrtxsjzlb_same_time_conflict",
+  "group": "supplemental",
+  "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+  "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+  "input": "supplemental/dwd_bzksgrtxsjzlb_same_time_conflict/input.json",
+  "expected": "supplemental/dwd_bzksgrtxsjzlb_same_time_conflict/expected.json"
+}

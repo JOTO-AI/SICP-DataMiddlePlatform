@@ -1,0 +1,8 @@
+{
+  "id": "schedule_sparse_shapes",
+  "group": "relation_variants",
+  "basis": "字段数量参考样本；具体字段组合为合成选取",
+  "note": "必填字段缺失，仅用于兼容性测试；不属于符合文档的正常数据",
+  "input": "relation_variants/schedule_sparse_shapes/input.json",
+  "expected": "relation_variants/schedule_sparse_shapes/expected.json"
+}

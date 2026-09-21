@@ -1,0 +1,8 @@
+{
+  "id": "empty_middle_page",
+  "group": "invalid_responses",
+  "basis": "故意异常：分页完整性",
+  "note": "",
+  "input": "invalid_responses/empty_middle_page/input.json",
+  "expected": "invalid_responses/empty_middle_page/expected.json"
+}

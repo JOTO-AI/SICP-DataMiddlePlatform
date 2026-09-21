@@ -1,0 +1,8 @@
+{
+  "id": "whitespace_only",
+  "group": "supplemental",
+  "basis": "补充假设：单字段变化计修改",
+  "note": "",
+  "input": "supplemental/whitespace_only/input.json",
+  "expected": "supplemental/whitespace_only/expected.json"
+}

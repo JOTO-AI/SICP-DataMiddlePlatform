@@ -1,0 +1,4 @@
+{
+  "error": "duplicate_primary_key_conflict",
+  "apply_latest_person_rule": false
+}

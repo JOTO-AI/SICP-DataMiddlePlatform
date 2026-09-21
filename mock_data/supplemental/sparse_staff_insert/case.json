@@ -1,0 +1,8 @@
+{
+  "id": "sparse_staff_insert",
+  "group": "supplemental",
+  "basis": "补充假设：仅主键和时间的极稀疏档案",
+  "note": "教职工普通字段非必填；此最小组合不冒充首批十字段实测形状。姓名缺失不能作为业务就绪基准。",
+  "input": "supplemental/sparse_staff_insert/input.json",
+  "expected": "supplemental/sparse_staff_insert/expected.json"
+}

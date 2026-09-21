@@ -1,0 +1,8 @@
+{
+  "id": "invalid_teacher_separator",
+  "group": "supplemental",
+  "basis": "补充边界：重复/非法分隔未观测；拒绝策略供本地测试，不声明上游规则",
+  "note": "",
+  "input": "supplemental/invalid_teacher_separator/input.json",
+  "expected": "supplemental/invalid_teacher_separator/expected.json"
+}

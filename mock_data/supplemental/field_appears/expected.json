@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "XH": "00202600001",
+      "ETL_TIME": "2026-08-05 09:00:00",
+      "DZXX": "student001@campus.example"
+    }
+  ],
+  "added": [
+    
+  ],
+  "modified": [
+    "00202600001"
+  ],
+  "database_columns": {
+    "00202600001": {
+      "DZXX": "student001@campus.example"
+    }
+  }
+}

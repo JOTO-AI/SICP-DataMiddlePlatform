@@ -1,0 +1,8 @@
+{
+  "id": "missing_old_class",
+  "group": "relation_variants",
+  "basis": "实测缺口变体，方案3及6.1",
+  "note": "历史班级缺档；不推断毕业或删除原因",
+  "input": "relation_variants/missing_old_class/input.json",
+  "expected": "relation_variants/missing_old_class/expected.json"
+}

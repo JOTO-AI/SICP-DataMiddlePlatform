@@ -1,0 +1,8 @@
+{
+  "id": "multiple_schedules_teachers",
+  "group": "supplemental",
+  "basis": "已采用实测关系：多个PKH、英文逗号多教师，不做子串匹配",
+  "note": "",
+  "input": "supplemental/multiple_schedules_teachers/input.json",
+  "expected": "supplemental/multiple_schedules_teachers/expected.json"
+}

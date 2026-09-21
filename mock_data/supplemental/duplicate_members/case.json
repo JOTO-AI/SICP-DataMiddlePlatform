@@ -1,0 +1,8 @@
+{
+  "id": "duplicate_members",
+  "group": "supplemental",
+  "basis": "补充边界：重复成员保留源ID，名单去重",
+  "note": "",
+  "input": "supplemental/duplicate_members/input.json",
+  "expected": "supplemental/duplicate_members/expected.json"
+}

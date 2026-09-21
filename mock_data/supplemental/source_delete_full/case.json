@@ -1,0 +1,8 @@
+{
+  "id": "source_delete_full",
+  "group": "supplemental",
+  "basis": "补充假设：同范围全量可见物理删除",
+  "note": "",
+  "input": "supplemental/source_delete_full/input.json",
+  "expected": "supplemental/source_delete_full/expected.json"
+}

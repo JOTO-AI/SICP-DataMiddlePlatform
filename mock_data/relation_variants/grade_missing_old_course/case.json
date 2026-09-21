@@ -1,0 +1,8 @@
+{
+  "id": "grade_missing_old_course",
+  "group": "relation_variants",
+  "basis": "实测缺口变体，方案3及6.1",
+  "note": "历史成绩保持源课程号，不猜补课程",
+  "input": "relation_variants/grade_missing_old_course/input.json",
+  "expected": "relation_variants/grade_missing_old_course/expected.json"
+}

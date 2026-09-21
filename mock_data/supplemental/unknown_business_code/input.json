@@ -1,0 +1,35 @@
+{
+  "table": "dwd_bzksjbsjzlb",
+  "rows": [
+    {
+      "XH": "00202600001",
+      "XM": "虚构学生001",
+      "CSRQ": "2008-01-15",
+      "MZM": "01",
+      "RLSPL": "https://video.campus.example/student/00202600001",
+      "SFZJH": "MOCK-STUDENT-000001",
+      "SFZJLXM": "1",
+      "SYDM": "310000",
+      "XBM": "MOCK_UNKNOWN",
+      "ZZMMM": "13",
+      "YWXM": "Fictional Student 1",
+      "XMPY": "xugouxuesheng1",
+      "HYZKM": "MOCK_UNMARRIED",
+      "CYM": "虚构曾用名1",
+      "SFDSZN": "0",
+      "GJDQM": "MOCK_COUNTRY",
+      "JGM": "310114",
+      "CCQJ": "虚构甲站至虚构乙站",
+      "SFZJYXQ": "2030-01-15",
+      "TC": "绘画",
+      "AH": "阅读",
+      "YHKH": "MOCK-BANK-STUDENT-000001",
+      "CSDM": "MOCK_BIRTHPLACE",
+      "GATQWM": "MOCK_REGION",
+      "JKZKM": "MOCK_HEALTH",
+      "XXM": "MOCK_BLOOD",
+      "XYZJM": "MOCK_RELIGION",
+      "ETL_TIME": "2026-08-05 07:50:00"
+    }
+  ]
+}

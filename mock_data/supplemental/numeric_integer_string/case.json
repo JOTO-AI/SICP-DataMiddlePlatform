@@ -1,0 +1,8 @@
+{
+  "id": "numeric_integer_string",
+  "group": "supplemental",
+  "basis": "补充假设：仅数字字面表示/类型变化，方案2.2",
+  "note": "",
+  "input": "supplemental/numeric_integer_string/input.json",
+  "expected": "supplemental/numeric_integer_string/expected.json"
+}

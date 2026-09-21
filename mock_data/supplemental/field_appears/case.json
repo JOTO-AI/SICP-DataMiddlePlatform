@@ -1,0 +1,8 @@
+{
+  "id": "field_appears",
+  "group": "supplemental",
+  "basis": "补充假设：合成演变",
+  "note": "",
+  "input": "supplemental/field_appears/input.json",
+  "expected": "supplemental/field_appears/expected.json"
+}

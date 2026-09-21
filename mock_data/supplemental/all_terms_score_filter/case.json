@@ -1,0 +1,8 @@
+{
+  "id": "all_terms_score_filter",
+  "group": "supplemental",
+  "basis": "接口事实：显式all查询全部学年，sicp-api-design.md第4节",
+  "note": "",
+  "input": "supplemental/all_terms_score_filter/input.json",
+  "expected": "supplemental/all_terms_score_filter/expected.json"
+}

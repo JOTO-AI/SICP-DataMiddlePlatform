@@ -1,0 +1,48 @@
+{
+  "primary_keys": [
+    "001",
+    "1001",
+    "T00003",
+    "T00004",
+    "T00005",
+    "T00006"
+  ],
+  "rows": [
+    {
+      "JGH": "001",
+      "YDDH": "00090000001",
+      "DZXX": "teacher001@campus.example",
+      "ETL_TIME": "2026-08-05 07:50:00"
+    },
+    {
+      "JGH": "1001",
+      "YDDH": "00090000001",
+      "DZXX": " teacher002@campus.example ",
+      "ETL_TIME": "2026-08-05 07:50:00"
+    },
+    {
+      "JGH": "T00003",
+      "YDDH": "00090000003",
+      "DZXX": "teacher003@campus.example",
+      "ETL_TIME": "2026-08-05 07:50:00"
+    },
+    {
+      "JGH": "T00004",
+      "YDDH": "00090000004",
+      "DZXX": "teacher004@campus.example",
+      "ETL_TIME": "2026-08-05 07:50:00"
+    },
+    {
+      "JGH": "T00005",
+      "YDDH": "00090000005",
+      "DZXX": "teacher005@campus.example",
+      "ETL_TIME": "2026-08-05 07:50:00"
+    },
+    {
+      "JGH": "T00006",
+      "YDDH": "00090000006",
+      "DZXX": "teacher006@campus.example",
+      "ETL_TIME": "2026-08-05 07:50:00"
+    }
+  ]
+}

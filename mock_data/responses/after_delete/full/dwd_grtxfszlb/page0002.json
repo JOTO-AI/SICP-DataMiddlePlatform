@@ -1,0 +1,15 @@
+{
+  "code": 200,
+  "message": "请求成功",
+  "data": {
+    "list": [
+      {
+        "JGH": "T00006",
+        "YDDH": "00090000006",
+        "DZXX": "teacher006@campus.example",
+        "ETL_TIME": "2026-08-05 07:50:00"
+      }
+    ],
+    "total": 6
+  }
+}

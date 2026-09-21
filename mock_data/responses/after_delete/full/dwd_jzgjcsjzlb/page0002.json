@@ -1,0 +1,26 @@
+{
+  "code": 200,
+  "message": "请求成功",
+  "data": {
+    "list": [
+      {
+        "JGH": "T00006",
+        "DWH": "00D2",
+        "XM": "虚构教师006",
+        "XBM": "2",
+        "SFZJLXM": "1",
+        "SFZJH": "MOCK-STAFF-000006",
+        "HYZKM": "20",
+        "DQZTM": "11",
+        "JZBM": "10335",
+        "ETL_TIME": "2026-08-05 07:50:00",
+        "CSRQ": "1990-01-01",
+        "SFSJT": "1",
+        "SFSSX": "1",
+        "YHKH": "MOCK-BANK-000006",
+        "WPJS": "1"
+      }
+    ],
+    "total": 6
+  }
+}

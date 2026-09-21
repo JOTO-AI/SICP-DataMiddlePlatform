@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "XH": "00202600002",
+      "ETL_TIME": "2026-08-05 09:00:00"
+    }
+  ],
+  "field_present": false,
+  "field_value": null,
+  "database_columns": {
+    "YDDH": null
+  },
+  "modified": [
+    "00202600002"
+  ]
+}

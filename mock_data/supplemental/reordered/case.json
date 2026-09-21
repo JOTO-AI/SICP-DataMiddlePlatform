@@ -1,0 +1,8 @@
+{
+  "id": "reordered",
+  "group": "supplemental",
+  "basis": "补充假设：仅对象字段及记录顺序变化",
+  "note": "",
+  "input": "supplemental/reordered/input.json",
+  "expected": "supplemental/reordered/expected.json"
+}

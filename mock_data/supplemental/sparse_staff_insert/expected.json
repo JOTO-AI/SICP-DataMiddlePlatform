@@ -1,0 +1,15 @@
+{
+  "raw_rows": [
+    {
+      "JGH": "MOCK-SPARSE-001",
+      "ETL_TIME": "2026-08-05 07:50:00"
+    }
+  ],
+  "database_columns": {
+    "XM": null,
+    "DWH": null,
+    "DQZTM": null
+  },
+  "source_valid": true,
+  "staff_query_ready": false
+}

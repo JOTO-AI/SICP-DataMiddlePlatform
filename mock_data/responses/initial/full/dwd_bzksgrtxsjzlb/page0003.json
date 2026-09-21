@@ -1,0 +1,21 @@
+{
+  "code": 200,
+  "message": "请求成功",
+  "data": {
+    "list": [
+      {
+        "XH": "00202600011",
+        "YDDH": "00000000011",
+        "DZXX": " student011@campus.example ",
+        "ETL_TIME": "2026-08-05 07:50:00"
+      },
+      {
+        "XH": "00202600012",
+        "YDDH": "00000000012",
+        "DZXX": " student012@campus.example ",
+        "ETL_TIME": "2026-08-05 07:50:00"
+      }
+    ],
+    "total": 12
+  }
+}

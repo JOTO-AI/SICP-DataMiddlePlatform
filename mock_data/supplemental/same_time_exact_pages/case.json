@@ -1,0 +1,8 @@
+{
+  "id": "same_time_exact_pages",
+  "group": "supplemental",
+  "basis": "实测形状：同ETL_TIME多行；边界为模拟约定",
+  "note": "",
+  "input": "supplemental/same_time_exact_pages/input.json",
+  "expected": "supplemental/same_time_exact_pages/expected.json"
+}

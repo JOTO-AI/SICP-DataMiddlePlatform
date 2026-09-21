@@ -1,0 +1,8 @@
+{
+  "error": "ambiguous_member_term",
+  "source_ids": [
+    "REL1",
+    "REL2"
+  ],
+  "choose_term_automatically": false
+}

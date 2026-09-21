@@ -1,0 +1,8 @@
+{
+  "id": "full_row_merge",
+  "group": "supplemental",
+  "basis": "补充假设：合成演变，方案6.1",
+  "note": "",
+  "input": "supplemental/full_row_merge/input.json",
+  "expected": "supplemental/full_row_merge/expected.json"
+}

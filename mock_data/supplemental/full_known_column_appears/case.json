@@ -1,0 +1,8 @@
+{
+  "id": "full_known_column_appears",
+  "group": "supplemental",
+  "basis": "补充假设：未知字段与重试序列，方案6.2",
+  "note": "邮件仅为替身断言，生成器不发送邮件。",
+  "input": "supplemental/full_known_column_appears/input.json",
+  "expected": "supplemental/full_known_column_appears/expected.json"
+}

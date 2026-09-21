@@ -1,0 +1,8 @@
+{
+  "id": "schedule_missing_course",
+  "group": "relation_variants",
+  "basis": "实测缺口变体，方案3及6.1",
+  "note": "JHKCH=KCH等值未匹配，保留排课，关联字段为null并可定位日志",
+  "input": "relation_variants/schedule_missing_course/input.json",
+  "expected": "relation_variants/schedule_missing_course/expected.json"
+}

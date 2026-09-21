@@ -1,0 +1,484 @@
+{
+  "evidence": "source_samples/full_audit_20260918_155758/responses",
+  "scope": "Observed public code examples and date formats for normal fictional fixtures; not an exhaustive upstream code dictionary or collector rejection policy. No personal records copied.",
+  "dates": {
+    "dwd_jzgjcsjzlb": {
+      "CSRQ": "YYYY-MM-DD",
+      "LXRQ": "DD-MON-YY",
+      "CJNY": "DD-MON-YY"
+    },
+    "dwd_bzksjbsjzlb": {
+      "CSRQ": "YYYY-MM-DD"
+    },
+    "dwd_bzksxjjbsjzlb": {
+      "RXNY": "YYYY-MM-DD",
+      "YJBYRQ": "YYYY-MM-DD"
+    },
+    "dwd_bzksbjsjzlb": {
+      "JBNY": "YYYY-MM-DD"
+    },
+    "dwd_yxsdwjbsjzlb": {
+      "JLRQ": "YYYYMMDD"
+    }
+  },
+  "codes": {
+    "dwd_yxsdwjbsjzlb": {
+      "DWLBM": {
+        "values": [
+          "1",
+          "5"
+        ],
+        "source_counts": {
+          "5": 16,
+          "1": 29
+        }
+      },
+      "DWYXBSM": {
+        "values": [
+          "1",
+          "0"
+        ],
+        "source_counts": {
+          "1": 47,
+          "0": 22
+        }
+      },
+      "SFSC": {
+        "values": [
+          "0"
+        ],
+        "source_counts": {
+          "0": 60
+        }
+      }
+    },
+    "dwd_jzgjcsjzlb": {
+      "XBM": {
+        "values": [
+          "1",
+          "2"
+        ],
+        "source_counts": {
+          "1": 1332,
+          "2": 1258
+        }
+      },
+      "SFZJLXM": {
+        "values": [
+          "1"
+        ],
+        "source_counts": {
+          "1": 2485
+        }
+      },
+      "HYZKM": {
+        "values": [
+          "10",
+          "20"
+        ],
+        "source_counts": {
+          "10": 1560,
+          "20": 454
+        }
+      },
+      "DQZTM": {
+        "values": [
+          "11"
+        ],
+        "source_counts": {
+          "11": 879
+        }
+      },
+      "JZBM": {
+        "values": [
+          "10335"
+        ],
+        "source_counts": {
+          "10335": 457
+        }
+      },
+      "SFSJT": {
+        "values": [
+          "0",
+          "1"
+        ],
+        "source_counts": {
+          "0": 837,
+          "1": 52
+        }
+      },
+      "SFSSX": {
+        "values": [
+          "0",
+          "1"
+        ],
+        "source_counts": {
+          "0": 709,
+          "1": 27
+        }
+      },
+      "WPJS": {
+        "values": [
+          "0",
+          "1"
+        ],
+        "source_counts": {
+          "1": 680,
+          "0": 596
+        }
+      },
+      "MZM": {
+        "values": [
+          "01"
+        ],
+        "source_counts": {
+          "01": 924
+        }
+      },
+      "ZZMMM": {
+        "values": [
+          "01"
+        ],
+        "source_counts": {
+          "01": 341
+        }
+      },
+      "ZGXLM": {
+        "values": [
+          "14"
+        ],
+        "source_counts": {
+          "14": 188
+        }
+      },
+      "ZGXWM": {
+        "values": [
+          "3"
+        ],
+        "source_counts": {
+          "3": 236
+        }
+      },
+      "JKZKM": {
+        "values": [
+          "1"
+        ],
+        "source_counts": {
+          "1": 211
+        }
+      },
+      "BZLBM": {
+        "values": [
+          "101"
+        ],
+        "source_counts": {
+          "101": 14
+        }
+      },
+      "GWMCM": {
+        "values": [
+          "教师"
+        ],
+        "source_counts": {
+          "教师": 209
+        }
+      },
+      "JZGLBM": {
+        "values": [
+          "12"
+        ],
+        "source_counts": {
+          "12": 8
+        }
+      },
+      "ZGZCM": {
+        "values": [
+          "010"
+        ],
+        "source_counts": {
+          "010": 1
+        }
+      }
+    },
+    "dwd_bzksjbsjzlb": {
+      "MZM": {
+        "values": [
+          "01"
+        ],
+        "source_counts": {
+          "01": 30055
+        }
+      },
+      "SFZJLXM": {
+        "values": [
+          "1"
+        ],
+        "source_counts": {
+          "1": 34607
+        }
+      },
+      "XBM": {
+        "values": [
+          "1",
+          "2"
+        ],
+        "source_counts": {
+          "1": 21063,
+          "2": 13545
+        }
+      },
+      "ZZMMM": {
+        "values": [
+          "13"
+        ],
+        "source_counts": {
+          "13": 28671
+        }
+      },
+      "JGM": {
+        "values": [
+          "310114"
+        ],
+        "source_counts": {
+          "310114": 800
+        }
+      },
+      "SYDM": {
+        "values": [
+          "310000",
+          " 0000"
+        ],
+        "source_counts": {
+          " 0000": 8630,
+          "310000": 11320
+        }
+      }
+    },
+    "dwd_bzksxjjbsjzlb": {
+      "PYCCM": {
+        "values": [
+          "4"
+        ],
+        "source_counts": {
+          "4": 34607
+        }
+      },
+      "XSLBM": {
+        "values": [
+          "41"
+        ],
+        "source_counts": {
+          "41": 31155
+        }
+      },
+      "XSDQZTM": {
+        "values": [
+          "01"
+        ],
+        "source_counts": {
+          "01": 8094
+        }
+      },
+      "XJZTM": {
+        "values": [
+          "1"
+        ],
+        "source_counts": {
+          "1": 16263
+        }
+      },
+      "SFZX": {
+        "values": [
+          "1"
+        ],
+        "source_counts": {
+          "1": 8143
+        }
+      },
+      "XXXSM": {
+        "values": [
+          "01"
+        ],
+        "source_counts": {
+          "01": 32381
+        }
+      },
+      "PYFSM": {
+        "values": [
+          "21"
+        ],
+        "source_counts": {
+          "21": 1
+        }
+      }
+    },
+    "dwd_bzkszyxxsjzlb": {
+      "PYCCM": {
+        "values": [
+          "4"
+        ],
+        "source_counts": {
+          "4": 307
+        }
+      },
+      "PYFSM": {
+        "values": [
+          "5"
+        ],
+        "source_counts": {
+          "5": 307
+        }
+      },
+      "XSLBM": {
+        "values": [
+          "41"
+        ],
+        "source_counts": {
+          "41": 252
+        }
+      },
+      "YXZTM": {
+        "values": [
+          "1"
+        ],
+        "source_counts": {
+          "1": 159
+        }
+      },
+      "ZYFLM": {
+        "values": [
+          "2"
+        ],
+        "source_counts": {
+          "2": 226
+        }
+      },
+      "XKMLM": {
+        "values": [
+          "09"
+        ],
+        "source_counts": {
+          "09": 1
+        }
+      }
+    },
+    "dwd_bzksnjzysjzlb": {
+      "XSLBM": {
+        "values": [
+          "41"
+        ],
+        "source_counts": {
+          "41": 465
+        }
+      },
+      "PYCCM": {
+        "values": [
+          "5"
+        ],
+        "source_counts": {
+          "5": 562
+        }
+      }
+    },
+    "dwd_bzkskcsjzlb": {
+      "KCLBM": {
+        "values": [
+          "5"
+        ],
+        "source_counts": {
+          "5": 3363
+        }
+      },
+      "KCSXM": {
+        "values": [
+          "1"
+        ],
+        "source_counts": {
+          "1": 5305
+        }
+      },
+      "KCXZM": {
+        "values": [
+          "1"
+        ],
+        "source_counts": {
+          "1": 3381
+        }
+      },
+      "SFXQHZKFKC": {
+        "values": [
+          "0"
+        ],
+        "source_counts": {
+          "0": 4572
+        }
+      },
+      "SFKZRTKC": {
+        "values": [
+          "0"
+        ],
+        "source_counts": {
+          "0": 4619
+        }
+      },
+      "KCLXM": {
+        "values": [
+          "3"
+        ],
+        "source_counts": {
+          "3": 4682
+        }
+      },
+      "SFYX": {
+        "values": [
+          "1"
+        ],
+        "source_counts": {
+          "1": 4224
+        }
+      },
+      "SFWLK": {
+        "values": [
+          "0"
+        ],
+        "source_counts": {
+          "0": 6701
+        }
+      },
+      "SFCXKC": {
+        "values": [
+          "1"
+        ],
+        "source_counts": {
+          "1": 8159
+        }
+      },
+      "KCBQ": {
+        "values": [
+          "岗位实习"
+        ],
+        "source_counts": {
+          "岗位实习": 20
+        }
+      }
+    },
+    "dwd_bzkspksjzlb": {
+      "KCXZM": {
+        "values": [
+          "1"
+        ],
+        "source_counts": {
+          "1": 127823
+        }
+      },
+      "JSLXM": {
+        "values": [
+          "1"
+        ],
+        "source_counts": {
+          "1": 210872
+        }
+      }
+    }
+  }
+}

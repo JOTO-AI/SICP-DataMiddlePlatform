@@ -1,0 +1,8 @@
+{
+  "id": "time_boundaries",
+  "group": "supplemental",
+  "basis": "补充假设：本地Asia/Shanghai左闭右开约定",
+  "note": "",
+  "input": "supplemental/time_boundaries/input.json",
+  "expected": "supplemental/time_boundaries/expected.json"
+}

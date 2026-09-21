@@ -1,0 +1,8 @@
+{
+  "id": "member_missing_course_key",
+  "group": "relation_variants",
+  "basis": "实测缺口变体，方案3及6.1",
+  "note": "实测必填字段缺失，仅用于兼容性测试，不属于符合文档的正常数据",
+  "input": "relation_variants/member_missing_course_key/input.json",
+  "expected": "relation_variants/member_missing_course_key/expected.json"
+}

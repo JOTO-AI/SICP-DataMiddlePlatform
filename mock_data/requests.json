@@ -1,0 +1,5024 @@
+[
+  {
+    "snapshot": "initial",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_xqjbsjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "01",
+      "02"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_xqjbsjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_yxsdwjbsjzlb/page0001.json",
+    "expected_total": 5,
+    "expected_primary_keys": [
+      "00D1",
+      "00D2",
+      "00D3",
+      "00D4",
+      "10001"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_yxsdwjbsjzlb/page0002.json",
+    "expected_total": 5,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_jzgjcsjzlb/page0001.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      "001",
+      "1001",
+      "T00003",
+      "T00004",
+      "T00005"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_jzgjcsjzlb/page0002.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      "T00006"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_jzgjcsjzlb/page0003.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_grtxfszlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_grtxfszlb/page0001.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      "001",
+      "1001",
+      "T00003",
+      "T00004",
+      "T00005"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_grtxfszlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_grtxfszlb/page0002.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      "T00006"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_grtxfszlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_grtxfszlb/page0003.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksjbsjzlb/page0001.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600002",
+      "00202600003",
+      "00202600004",
+      "00202600005"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksjbsjzlb/page0002.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      "00202600006",
+      "00202600007",
+      "00202600008",
+      "00202600009",
+      "00202600010"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksjbsjzlb/page0003.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      "00202600011",
+      "00202600012"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksjbsjzlb/page0004.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksgrtxsjzlb/page0001.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600002",
+      "00202600003",
+      "00202600004",
+      "00202600005"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksgrtxsjzlb/page0002.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      "00202600006",
+      "00202600007",
+      "00202600008",
+      "00202600009",
+      "00202600010"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksgrtxsjzlb/page0003.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      "00202600011",
+      "00202600012"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksgrtxsjzlb/page0004.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksxjjbsjzlb/page0001.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600002",
+      "00202600003",
+      "00202600004",
+      "00202600005"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksxjjbsjzlb/page0002.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      "00202600006",
+      "00202600007",
+      "00202600008",
+      "00202600009",
+      "00202600010"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksxjjbsjzlb/page0003.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      "00202600011",
+      "00202600012"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksxjjbsjzlb/page0004.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkszyxxsjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "00M1",
+      "00M2"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkszyxxsjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksnjzysjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "00N1",
+      "00N2"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksnjzysjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksbjsjzlb/page0001.json",
+    "expected_total": 4,
+    "expected_primary_keys": [
+      "00B01",
+      "00B02",
+      "00B03",
+      "00B04"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzksbjsjzlb/page0002.json",
+    "expected_total": 4,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkskcsjzlb/page0001.json",
+    "expected_total": 8,
+    "expected_primary_keys": [
+      "000C0001",
+      "000C0002",
+      "000C0003",
+      "000C0004",
+      "000C0005"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkskcsjzlb/page0002.json",
+    "expected_total": 8,
+    "expected_primary_keys": [
+      "000C0006",
+      "000C0007",
+      "000C0008"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkskcsjzlb/page0003.json",
+    "expected_total": 8,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkscjzlb/page0001.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000001",
+      "G000002",
+      "G000003",
+      "G000004",
+      "G000005"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkscjzlb/page0002.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000006",
+      "G000007",
+      "G000008",
+      "G000009",
+      "G000010"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkscjzlb/page0003.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000011",
+      "G000012",
+      "G000013",
+      "G000014",
+      "G000015"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkscjzlb/page0004.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000016",
+      "G000017",
+      "G000018",
+      "G000019",
+      "G000020"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 5,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkscjzlb/page0005.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000021",
+      "G000022",
+      "G000023",
+      "G000024",
+      "G000025"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 6,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkscjzlb/page0006.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000026",
+      "G000027",
+      "G000028",
+      "G000029",
+      "G000030"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 7,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkscjzlb/page0007.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000031",
+      "G000032",
+      "G000033",
+      "G000034",
+      "G000035"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 8,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkscjzlb/page0008.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000036"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 9,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkscjzlb/page0009.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkspksjzlb/page0001.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      "P000001",
+      "P000002",
+      "P000003",
+      "P000004",
+      "P000005"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkspksjzlb/page0002.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      "P000006",
+      "P000007",
+      "P000008",
+      "P000009",
+      "P000010"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkspksjzlb/page0003.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      "P000011",
+      "P000012",
+      "P000013",
+      "P000014",
+      "P000015"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkspksjzlb/page0004.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      "P000016"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 5,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkspksjzlb/page0005.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkskbsjzlb/page0001.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000001",
+      "R000002",
+      "R000003",
+      "R000004",
+      "R000005"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkskbsjzlb/page0002.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000006",
+      "R000007",
+      "R000008",
+      "R000009",
+      "R000010"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkskbsjzlb/page0003.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000011",
+      "R000012",
+      "R000013",
+      "R000014",
+      "R000015"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkskbsjzlb/page0004.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000016",
+      "R000017",
+      "R000018",
+      "R000019",
+      "R000020"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 5,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkskbsjzlb/page0005.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000021",
+      "R000022",
+      "R000023",
+      "R000024"
+    ]
+  },
+  {
+    "snapshot": "initial",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 6,
+      "pageSize": 5
+    },
+    "response": "responses/initial/full/dwd_bzkskbsjzlb/page0006.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_xqjbsjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "01",
+      "02"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_xqjbsjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_xqjbsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "01"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_xqjbsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_xqjbsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "01"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_xqjbsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_xqjbsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "01"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_xqjbsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_xqjbsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_xqjbsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_yxsdwjbsjzlb/page0001.json",
+    "expected_total": 5,
+    "expected_primary_keys": [
+      "00D1",
+      "00D2",
+      "00D3",
+      "00D4",
+      "10001"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_yxsdwjbsjzlb/page0002.json",
+    "expected_total": 5,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_yxsdwjbsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "00D1"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_yxsdwjbsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_yxsdwjbsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "00D1"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_yxsdwjbsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_yxsdwjbsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "00D1"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_yxsdwjbsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_yxsdwjbsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_yxsdwjbsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_jzgjcsjzlb/page0001.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      "001",
+      "1001",
+      "T00003",
+      "T00004",
+      "T00005"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_jzgjcsjzlb/page0002.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      "T00006"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_jzgjcsjzlb/page0003.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_jzgjcsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "001"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_jzgjcsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_jzgjcsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "001"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_jzgjcsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_jzgjcsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "001"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_jzgjcsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_jzgjcsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_jzgjcsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_grtxfszlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_grtxfszlb/page0001.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      "001",
+      "1001",
+      "T00003",
+      "T00004",
+      "T00005"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_grtxfszlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_grtxfszlb/page0002.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      "T00006"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_grtxfszlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_grtxfszlb/page0003.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_grtxfszlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_grtxfszlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "001"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_grtxfszlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_grtxfszlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_grtxfszlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_grtxfszlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "001"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_grtxfszlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_grtxfszlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_grtxfszlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_grtxfszlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "001"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_grtxfszlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_grtxfszlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_grtxfszlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_grtxfszlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_grtxfszlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_grtxfszlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksjbsjzlb/page0001.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600002",
+      "00202600003",
+      "00202600004",
+      "00202600005"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksjbsjzlb/page0002.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600006",
+      "00202600007",
+      "00202600008",
+      "00202600009",
+      "00202600010"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksjbsjzlb/page0003.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600011",
+      "00202600012",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksjbsjzlb/page0004.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzksjbsjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzksjbsjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzksjbsjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzksjbsjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzksjbsjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzksjbsjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzksjbsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzksjbsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksgrtxsjzlb/page0001.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600002",
+      "00202600003",
+      "00202600004",
+      "00202600005"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksgrtxsjzlb/page0002.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600006",
+      "00202600007",
+      "00202600008",
+      "00202600009",
+      "00202600010"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksgrtxsjzlb/page0003.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600011",
+      "00202600012",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksgrtxsjzlb/page0004.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzksgrtxsjzlb/page0001.json",
+    "expected_total": 3,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600002",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzksgrtxsjzlb/page0002.json",
+    "expected_total": 3,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzksgrtxsjzlb/page0001.json",
+    "expected_total": 3,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600002",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzksgrtxsjzlb/page0002.json",
+    "expected_total": 3,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzksgrtxsjzlb/page0001.json",
+    "expected_total": 3,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600002",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzksgrtxsjzlb/page0002.json",
+    "expected_total": 3,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzksgrtxsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzksgrtxsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksxjjbsjzlb/page0001.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600002",
+      "00202600003",
+      "00202600004",
+      "00202600005"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksxjjbsjzlb/page0002.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600006",
+      "00202600007",
+      "00202600008",
+      "00202600009",
+      "00202600010"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksxjjbsjzlb/page0003.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600011",
+      "00202600012",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksxjjbsjzlb/page0004.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzksxjjbsjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzksxjjbsjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzksxjjbsjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzksxjjbsjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzksxjjbsjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzksxjjbsjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzksxjjbsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzksxjjbsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkszyxxsjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "00M1",
+      "00M2"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkszyxxsjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzkszyxxsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "00M1"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzkszyxxsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzkszyxxsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "00M1"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzkszyxxsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzkszyxxsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "00M1"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzkszyxxsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzkszyxxsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzkszyxxsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksnjzysjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "00N1",
+      "00N2"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksnjzysjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzksnjzysjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "00N1"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzksnjzysjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzksnjzysjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "00N1"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzksnjzysjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzksnjzysjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "00N1"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzksnjzysjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzksnjzysjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzksnjzysjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksbjsjzlb/page0001.json",
+    "expected_total": 4,
+    "expected_primary_keys": [
+      "00B01",
+      "00B02",
+      "00B03",
+      "00B04"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzksbjsjzlb/page0002.json",
+    "expected_total": 4,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzksbjsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "00B01"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzksbjsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzksbjsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "00B01"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzksbjsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzksbjsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "00B01"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzksbjsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzksbjsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzksbjsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkskcsjzlb/page0001.json",
+    "expected_total": 8,
+    "expected_primary_keys": [
+      "000C0001",
+      "000C0002",
+      "000C0003",
+      "000C0004",
+      "000C0005"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkskcsjzlb/page0002.json",
+    "expected_total": 8,
+    "expected_primary_keys": [
+      "000C0006",
+      "000C0007",
+      "000C0008"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkskcsjzlb/page0003.json",
+    "expected_total": 8,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzkskcsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "000C0002"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzkskcsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzkskcsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "000C0002"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzkskcsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzkskcsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "000C0002"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzkskcsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzkskcsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzkskcsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkscjzlb/page0001.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000001",
+      "G000002",
+      "G000003",
+      "G000004",
+      "G000005"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkscjzlb/page0002.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000006",
+      "G000007",
+      "G000008",
+      "G000009",
+      "G000010"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkscjzlb/page0003.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000011",
+      "G000012",
+      "G000013",
+      "G000014",
+      "G000015"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkscjzlb/page0004.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000016",
+      "G000017",
+      "G000018",
+      "G000019",
+      "G000020"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 5,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkscjzlb/page0005.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000021",
+      "G000022",
+      "G000023",
+      "G000024",
+      "G000025"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 6,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkscjzlb/page0006.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000026",
+      "G000027",
+      "G000028",
+      "G000029",
+      "G000030"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 7,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkscjzlb/page0007.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000031",
+      "G000032",
+      "G000033",
+      "G000034",
+      "G000035"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 8,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkscjzlb/page0008.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000036"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 9,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkscjzlb/page0009.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzkscjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "G000003"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzkscjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzkscjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "G000003"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzkscjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzkscjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "G000003"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzkscjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzkscjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkscjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzkscjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkspksjzlb/page0001.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      "P000001",
+      "P000002",
+      "P000003",
+      "P000004",
+      "P000005"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkspksjzlb/page0002.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      "P000006",
+      "P000007",
+      "P000008",
+      "P000009",
+      "P000010"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkspksjzlb/page0003.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      "P000011",
+      "P000012",
+      "P000013",
+      "P000014",
+      "P000015"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkspksjzlb/page0004.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      "P000016"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 5,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkspksjzlb/page0005.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzkspksjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "P000001"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzkspksjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzkspksjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "P000001"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzkspksjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzkspksjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "P000001"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzkspksjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzkspksjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzkspksjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkskbsjzlb/page0001.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000001",
+      "R000002",
+      "R000003",
+      "R000004",
+      "R000005"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkskbsjzlb/page0002.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000006",
+      "R000007",
+      "R000008",
+      "R000009",
+      "R000010"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkskbsjzlb/page0003.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000011",
+      "R000012",
+      "R000013",
+      "R000014",
+      "R000015"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkskbsjzlb/page0004.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000016",
+      "R000017",
+      "R000018",
+      "R000019",
+      "R000020"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 5,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkskbsjzlb/page0005.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000021",
+      "R000022",
+      "R000023",
+      "R000024"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 6,
+      "pageSize": 5
+    },
+    "response": "responses/updated/full/dwd_bzkskbsjzlb/page0006.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzkskbsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "R000001"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "incremental",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/incremental/dwd_bzkskbsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzkskbsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "R000001"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "repeat",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 07:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/repeat/dwd_bzkskbsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzkskbsjzlb/page0001.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      "R000001"
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "overlap",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 08:55:00",
+      "endTime": "2026-08-05 10:00:00"
+    },
+    "response": "responses/updated/overlap/dwd_bzkskbsjzlb/page0002.json",
+    "expected_total": 1,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzkskbsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "updated",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "empty",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/updated/empty/dwd_bzkskbsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_xqjbsjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "01",
+      "02"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_xqjbsjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_xqjbsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_xqjbsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_xqjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_xqjbsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_yxsdwjbsjzlb/page0001.json",
+    "expected_total": 5,
+    "expected_primary_keys": [
+      "00D1",
+      "00D2",
+      "00D3",
+      "00D4",
+      "10001"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_yxsdwjbsjzlb/page0002.json",
+    "expected_total": 5,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_yxsdwjbsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_yxsdwjbsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_yxsdwjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_yxsdwjbsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_jzgjcsjzlb/page0001.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      "001",
+      "1001",
+      "T00003",
+      "T00004",
+      "T00005"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_jzgjcsjzlb/page0002.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      "T00006"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_jzgjcsjzlb/page0003.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_jzgjcsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_jzgjcsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_jzgjcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_jzgjcsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_grtxfszlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_grtxfszlb/page0001.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      "001",
+      "1001",
+      "T00003",
+      "T00004",
+      "T00005"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_grtxfszlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_grtxfszlb/page0002.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      "T00006"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_grtxfszlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_grtxfszlb/page0003.json",
+    "expected_total": 6,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_grtxfszlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_grtxfszlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_grtxfszlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_grtxfszlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_grtxfszlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksjbsjzlb/page0001.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600002",
+      "00202600003",
+      "00202600004",
+      "00202600005"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksjbsjzlb/page0002.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600006",
+      "00202600007",
+      "00202600008",
+      "00202600009",
+      "00202600010"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksjbsjzlb/page0003.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600011",
+      "00202600012",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksjbsjzlb/page0004.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzksjbsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksjbsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzksjbsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksgrtxsjzlb/page0001.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600002",
+      "00202600004",
+      "00202600005",
+      "00202600006"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksgrtxsjzlb/page0002.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      "00202600007",
+      "00202600008",
+      "00202600009",
+      "00202600010",
+      "00202600011"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksgrtxsjzlb/page0003.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      "00202600012",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksgrtxsjzlb/page0004.json",
+    "expected_total": 12,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzksgrtxsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksgrtxsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksgrtxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzksgrtxsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksxjjbsjzlb/page0001.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600001",
+      "00202600002",
+      "00202600003",
+      "00202600004",
+      "00202600005"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksxjjbsjzlb/page0002.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600006",
+      "00202600007",
+      "00202600008",
+      "00202600009",
+      "00202600010"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksxjjbsjzlb/page0003.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      "00202600011",
+      "00202600012",
+      "00202600013"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksxjjbsjzlb/page0004.json",
+    "expected_total": 13,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzksxjjbsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksxjjbsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksxjjbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzksxjjbsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkszyxxsjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "00M1",
+      "00M2"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkszyxxsjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzkszyxxsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkszyxxsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkszyxxsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzkszyxxsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksnjzysjzlb/page0001.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      "00N1",
+      "00N2"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksnjzysjzlb/page0002.json",
+    "expected_total": 2,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzksnjzysjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksnjzysjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksnjzysjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzksnjzysjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksbjsjzlb/page0001.json",
+    "expected_total": 4,
+    "expected_primary_keys": [
+      "00B01",
+      "00B02",
+      "00B03",
+      "00B04"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzksbjsjzlb/page0002.json",
+    "expected_total": 4,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzksbjsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzksbjsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzksbjsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkskcsjzlb/page0001.json",
+    "expected_total": 8,
+    "expected_primary_keys": [
+      "000C0001",
+      "000C0002",
+      "000C0003",
+      "000C0004",
+      "000C0005"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkskcsjzlb/page0002.json",
+    "expected_total": 8,
+    "expected_primary_keys": [
+      "000C0006",
+      "000C0007",
+      "000C0008"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkskcsjzlb/page0003.json",
+    "expected_total": 8,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzkskcsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkskcsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskcsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzkskcsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkscjzlb/page0001.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000001",
+      "G000002",
+      "G000003",
+      "G000004",
+      "G000005"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkscjzlb/page0002.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000006",
+      "G000007",
+      "G000008",
+      "G000009",
+      "G000010"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkscjzlb/page0003.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000011",
+      "G000012",
+      "G000013",
+      "G000014",
+      "G000015"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkscjzlb/page0004.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000016",
+      "G000017",
+      "G000018",
+      "G000019",
+      "G000020"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 5,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkscjzlb/page0005.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000021",
+      "G000022",
+      "G000023",
+      "G000024",
+      "G000025"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 6,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkscjzlb/page0006.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000026",
+      "G000027",
+      "G000028",
+      "G000029",
+      "G000030"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 7,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkscjzlb/page0007.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000031",
+      "G000032",
+      "G000033",
+      "G000034",
+      "G000035"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 8,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkscjzlb/page0008.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      "G000036"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkscjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 9,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkscjzlb/page0009.json",
+    "expected_total": 36,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkscjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzkscjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkscjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkscjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzkscjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkspksjzlb/page0001.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      "P000001",
+      "P000002",
+      "P000003",
+      "P000004",
+      "P000005"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkspksjzlb/page0002.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      "P000006",
+      "P000007",
+      "P000008",
+      "P000009",
+      "P000010"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkspksjzlb/page0003.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      "P000011",
+      "P000012",
+      "P000013",
+      "P000014",
+      "P000015"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkspksjzlb/page0004.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      "P000016"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 5,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkspksjzlb/page0005.json",
+    "expected_total": 16,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzkspksjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkspksjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkspksjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzkspksjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkskbsjzlb/page0001.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000001",
+      "R000002",
+      "R000003",
+      "R000004",
+      "R000005"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkskbsjzlb/page0002.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000006",
+      "R000007",
+      "R000008",
+      "R000009",
+      "R000010"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 3,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkskbsjzlb/page0003.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000011",
+      "R000012",
+      "R000013",
+      "R000014",
+      "R000015"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 4,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkskbsjzlb/page0004.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000016",
+      "R000017",
+      "R000018",
+      "R000019",
+      "R000020"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 5,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkskbsjzlb/page0005.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      "R000021",
+      "R000022",
+      "R000023",
+      "R000024"
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "full",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 6,
+      "pageSize": 5
+    },
+    "response": "responses/after_delete/full/dwd_bzkskbsjzlb/page0006.json",
+    "expected_total": 24,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 1,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzkskbsjzlb/page0001.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  },
+  {
+    "snapshot": "after_delete",
+    "table": "dwd_bzkskbsjzlb",
+    "mode": "deletion_window",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzkskbsjzlb",
+    "params": {
+      "page": 2,
+      "pageSize": 5,
+      "startTime": "2026-08-05 10:00:00",
+      "endTime": "2026-08-05 12:00:00"
+    },
+    "response": "responses/after_delete/deletion_window/dwd_bzkskbsjzlb/page0002.json",
+    "expected_total": 0,
+    "expected_primary_keys": [
+      
+    ]
+  }
+]

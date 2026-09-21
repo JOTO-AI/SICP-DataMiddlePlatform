@@ -1,0 +1,8 @@
+{
+  "id": "changing_total",
+  "group": "invalid_responses",
+  "basis": "故意异常：分页完整性",
+  "note": "",
+  "input": "invalid_responses/changing_total/input.json",
+  "expected": "invalid_responses/changing_total/expected.json"
+}

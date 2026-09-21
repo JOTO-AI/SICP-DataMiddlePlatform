@@ -1,0 +1,39 @@
+{
+  "code": 200,
+  "message": "请求成功",
+  "data": {
+    "list": [
+      {
+        "XH": "00202600007",
+        "YDDH": "00000000007",
+        "DZXX": " student007@campus.example ",
+        "ETL_TIME": "2026-08-05 07:50:00"
+      },
+      {
+        "XH": "00202600008",
+        "YDDH": "00000000008",
+        "DZXX": " student008@campus.example ",
+        "ETL_TIME": "2026-08-05 07:50:00"
+      },
+      {
+        "XH": "00202600009",
+        "YDDH": "00000000009",
+        "DZXX": " student009@campus.example ",
+        "ETL_TIME": "2026-08-05 07:50:00"
+      },
+      {
+        "XH": "00202600010",
+        "YDDH": "00000000010",
+        "DZXX": " student010@campus.example ",
+        "ETL_TIME": "2026-08-05 07:50:00"
+      },
+      {
+        "XH": "00202600011",
+        "YDDH": "00000000011",
+        "DZXX": " student011@campus.example ",
+        "ETL_TIME": "2026-08-05 07:50:00"
+      }
+    ],
+    "total": 12
+  }
+}

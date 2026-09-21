@@ -1,0 +1,8 @@
+{
+  "id": "text_score",
+  "group": "supplemental",
+  "basis": "补充边界：未观测文字成绩",
+  "note": "",
+  "input": "supplemental/text_score/input.json",
+  "expected": "supplemental/text_score/expected.json"
+}

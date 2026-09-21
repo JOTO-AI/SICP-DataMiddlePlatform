@@ -1,0 +1,8 @@
+{
+  "id": "missing_last_page",
+  "group": "invalid_responses",
+  "basis": "故意异常：分页完整性",
+  "note": "",
+  "input": "invalid_responses/missing_last_page/input.json",
+  "expected": "invalid_responses/missing_last_page/expected.json"
+}

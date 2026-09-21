@@ -1,0 +1,602 @@
+[
+  {
+    "id": "full_row_merge",
+    "group": "supplemental",
+    "basis": "补充假设：合成演变，方案6.1",
+    "note": "",
+    "input": "supplemental/full_row_merge/input.json",
+    "expected": "supplemental/full_row_merge/expected.json"
+  },
+  {
+    "id": "field_appears",
+    "group": "supplemental",
+    "basis": "补充假设：合成演变",
+    "note": "",
+    "input": "supplemental/field_appears/input.json",
+    "expected": "supplemental/field_appears/expected.json"
+  },
+  {
+    "id": "sparse_staff_insert",
+    "group": "supplemental",
+    "basis": "补充假设：仅主键和时间的极稀疏档案",
+    "note": "教职工普通字段非必填；此最小组合不冒充首批十字段实测形状。姓名缺失不能作为业务就绪基准。",
+    "input": "supplemental/sparse_staff_insert/input.json",
+    "expected": "supplemental/sparse_staff_insert/expected.json"
+  },
+  {
+    "id": "empty_missing",
+    "group": "supplemental",
+    "basis": "实测形状",
+    "note": "",
+    "input": "supplemental/empty_missing/input.json",
+    "expected": "supplemental/empty_missing/expected.json"
+  },
+  {
+    "id": "empty_json_null",
+    "group": "supplemental",
+    "basis": "补充边界，未观测",
+    "note": "",
+    "input": "supplemental/empty_json_null/input.json",
+    "expected": "supplemental/empty_json_null/expected.json"
+  },
+  {
+    "id": "empty_empty_string",
+    "group": "supplemental",
+    "basis": "补充边界，未观测",
+    "note": "",
+    "input": "supplemental/empty_empty_string/input.json",
+    "expected": "supplemental/empty_empty_string/expected.json"
+  },
+  {
+    "id": "empty_literal_null",
+    "group": "supplemental",
+    "basis": "实测字符串形态；通讯字段位置为合成假设",
+    "note": "",
+    "input": "supplemental/empty_literal_null/input.json",
+    "expected": "supplemental/empty_literal_null/expected.json"
+  },
+  {
+    "id": "numeric_integer_decimal",
+    "group": "supplemental",
+    "basis": "补充假设：仅数字字面表示/类型变化，方案2.2",
+    "note": "",
+    "input": "supplemental/numeric_integer_decimal/input.json",
+    "expected": "supplemental/numeric_integer_decimal/expected.json"
+  },
+  {
+    "id": "numeric_integer_string",
+    "group": "supplemental",
+    "basis": "补充假设：仅数字字面表示/类型变化，方案2.2",
+    "note": "",
+    "input": "supplemental/numeric_integer_string/input.json",
+    "expected": "supplemental/numeric_integer_string/expected.json"
+  },
+  {
+    "id": "numeric_decimal_string",
+    "group": "supplemental",
+    "basis": "补充假设：仅数字字面表示/类型变化，方案2.2",
+    "note": "",
+    "input": "supplemental/numeric_decimal_string/input.json",
+    "expected": "supplemental/numeric_decimal_string/expected.json"
+  },
+  {
+    "id": "reordered",
+    "group": "supplemental",
+    "basis": "补充假设：仅对象字段及记录顺序变化",
+    "note": "",
+    "input": "supplemental/reordered/input.json",
+    "expected": "supplemental/reordered/expected.json"
+  },
+  {
+    "id": "whitespace_only",
+    "group": "supplemental",
+    "basis": "补充假设：单字段变化计修改",
+    "note": "",
+    "input": "supplemental/whitespace_only/input.json",
+    "expected": "supplemental/whitespace_only/expected.json"
+  },
+  {
+    "id": "etl_only",
+    "group": "supplemental",
+    "basis": "补充假设：单字段变化计修改",
+    "note": "",
+    "input": "supplemental/etl_only/input.json",
+    "expected": "supplemental/etl_only/expected.json"
+  },
+  {
+    "id": "empty_incremental",
+    "group": "supplemental",
+    "basis": "补充假设：窗口内无删除标记，未返回行保留",
+    "note": "",
+    "input": "supplemental/empty_incremental/input.json",
+    "expected": "supplemental/empty_incremental/expected.json"
+  },
+  {
+    "id": "repeat_incremental",
+    "group": "supplemental",
+    "basis": "补充假设：窗口内无删除标记，未返回行保留",
+    "note": "",
+    "input": "supplemental/repeat_incremental/input.json",
+    "expected": "supplemental/repeat_incremental/expected.json"
+  },
+  {
+    "id": "source_delete_incremental",
+    "group": "supplemental",
+    "basis": "补充假设：窗口内无删除标记，未返回行保留",
+    "note": "",
+    "input": "supplemental/source_delete_incremental/input.json",
+    "expected": "supplemental/source_delete_incremental/expected.json"
+  },
+  {
+    "id": "source_delete_full",
+    "group": "supplemental",
+    "basis": "补充假设：同范围全量可见物理删除",
+    "note": "",
+    "input": "supplemental/source_delete_full/input.json",
+    "expected": "supplemental/source_delete_full/expected.json"
+  },
+  {
+    "id": "time_boundaries",
+    "group": "supplemental",
+    "basis": "补充假设：本地Asia/Shanghai左闭右开约定",
+    "note": "",
+    "input": "supplemental/time_boundaries/input.json",
+    "expected": "supplemental/time_boundaries/expected.json"
+  },
+  {
+    "id": "same_time_exact_pages",
+    "group": "supplemental",
+    "basis": "实测形状：同ETL_TIME多行；边界为模拟约定",
+    "note": "",
+    "input": "supplemental/same_time_exact_pages/input.json",
+    "expected": "supplemental/same_time_exact_pages/expected.json"
+  },
+  {
+    "id": "dwd_bzksgrtxsjzlb_latest",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_bzksgrtxsjzlb_latest/input.json",
+    "expected": "supplemental/dwd_bzksgrtxsjzlb_latest/expected.json"
+  },
+  {
+    "id": "dwd_bzksgrtxsjzlb_identical_duplicate",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_bzksgrtxsjzlb_identical_duplicate/input.json",
+    "expected": "supplemental/dwd_bzksgrtxsjzlb_identical_duplicate/expected.json"
+  },
+  {
+    "id": "dwd_bzksgrtxsjzlb_same_time_conflict",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_bzksgrtxsjzlb_same_time_conflict/input.json",
+    "expected": "supplemental/dwd_bzksgrtxsjzlb_same_time_conflict/expected.json"
+  },
+  {
+    "id": "dwd_bzksgrtxsjzlb_late_old",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_bzksgrtxsjzlb_late_old/input.json",
+    "expected": "supplemental/dwd_bzksgrtxsjzlb_late_old/expected.json"
+  },
+  {
+    "id": "dwd_bzksgrtxsjzlb_cross_batch_conflict",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_bzksgrtxsjzlb_cross_batch_conflict/input.json",
+    "expected": "supplemental/dwd_bzksgrtxsjzlb_cross_batch_conflict/expected.json"
+  },
+  {
+    "id": "dwd_grtxfszlb_latest",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_grtxfszlb_latest/input.json",
+    "expected": "supplemental/dwd_grtxfszlb_latest/expected.json"
+  },
+  {
+    "id": "dwd_grtxfszlb_identical_duplicate",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_grtxfszlb_identical_duplicate/input.json",
+    "expected": "supplemental/dwd_grtxfszlb_identical_duplicate/expected.json"
+  },
+  {
+    "id": "dwd_grtxfszlb_same_time_conflict",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_grtxfszlb_same_time_conflict/input.json",
+    "expected": "supplemental/dwd_grtxfszlb_same_time_conflict/expected.json"
+  },
+  {
+    "id": "dwd_grtxfszlb_late_old",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_grtxfszlb_late_old/input.json",
+    "expected": "supplemental/dwd_grtxfszlb_late_old/expected.json"
+  },
+  {
+    "id": "dwd_grtxfszlb_cross_batch_conflict",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_grtxfszlb_cross_batch_conflict/input.json",
+    "expected": "supplemental/dwd_grtxfszlb_cross_batch_conflict/expected.json"
+  },
+  {
+    "id": "dwd_bzksxjjbsjzlb_latest",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_bzksxjjbsjzlb_latest/input.json",
+    "expected": "supplemental/dwd_bzksxjjbsjzlb_latest/expected.json"
+  },
+  {
+    "id": "dwd_bzksxjjbsjzlb_identical_duplicate",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_bzksxjjbsjzlb_identical_duplicate/input.json",
+    "expected": "supplemental/dwd_bzksxjjbsjzlb_identical_duplicate/expected.json"
+  },
+  {
+    "id": "dwd_bzksxjjbsjzlb_same_time_conflict",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_bzksxjjbsjzlb_same_time_conflict/input.json",
+    "expected": "supplemental/dwd_bzksxjjbsjzlb_same_time_conflict/expected.json"
+  },
+  {
+    "id": "dwd_bzksxjjbsjzlb_late_old",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_bzksxjjbsjzlb_late_old/input.json",
+    "expected": "supplemental/dwd_bzksxjjbsjzlb_late_old/expected.json"
+  },
+  {
+    "id": "dwd_bzksxjjbsjzlb_cross_batch_conflict",
+    "group": "supplemental",
+    "basis": "补充边界：源响应多人次版本；已确认关系：通讯/学籍取最新",
+    "note": "本表字段目录无业务更新时间，使用ETL_TIME；同时间冲突报错。",
+    "input": "supplemental/dwd_bzksxjjbsjzlb_cross_batch_conflict/input.json",
+    "expected": "supplemental/dwd_bzksxjjbsjzlb_cross_batch_conflict/expected.json"
+  },
+  {
+    "id": "latest_term_before_score_filter",
+    "group": "supplemental",
+    "basis": "已采用实测关系：同人同课多ID、多学期；先选最新学期再筛分数",
+    "note": "",
+    "input": "supplemental/latest_term_before_score_filter/input.json",
+    "expected": "supplemental/latest_term_before_score_filter/expected.json"
+  },
+  {
+    "id": "all_terms_score_filter",
+    "group": "supplemental",
+    "basis": "接口事实：显式all查询全部学年，sicp-api-design.md第4节",
+    "note": "",
+    "input": "supplemental/all_terms_score_filter/input.json",
+    "expected": "supplemental/all_terms_score_filter/expected.json"
+  },
+  {
+    "id": "multiple_schedules_teachers",
+    "group": "supplemental",
+    "basis": "已采用实测关系：多个PKH、英文逗号多教师，不做子串匹配",
+    "note": "",
+    "input": "supplemental/multiple_schedules_teachers/input.json",
+    "expected": "supplemental/multiple_schedules_teachers/expected.json"
+  },
+  {
+    "id": "duplicate_members",
+    "group": "supplemental",
+    "basis": "补充边界：重复成员保留源ID，名单去重",
+    "note": "",
+    "input": "supplemental/duplicate_members/input.json",
+    "expected": "supplemental/duplicate_members/expected.json"
+  },
+  {
+    "id": "cross_term_ambiguity",
+    "group": "supplemental",
+    "basis": "补充边界：同教学班课程跨学期复用",
+    "note": "",
+    "input": "supplemental/cross_term_ambiguity/input.json",
+    "expected": "supplemental/cross_term_ambiguity/expected.json"
+  },
+  {
+    "id": "duplicate_teacher_tokens",
+    "group": "supplemental",
+    "basis": "补充边界：重复/非法分隔未观测；拒绝策略供本地测试，不声明上游规则",
+    "note": "",
+    "input": "supplemental/duplicate_teacher_tokens/input.json",
+    "expected": "supplemental/duplicate_teacher_tokens/expected.json"
+  },
+  {
+    "id": "invalid_teacher_separator",
+    "group": "supplemental",
+    "basis": "补充边界：重复/非法分隔未观测；拒绝策略供本地测试，不声明上游规则",
+    "note": "",
+    "input": "supplemental/invalid_teacher_separator/input.json",
+    "expected": "supplemental/invalid_teacher_separator/expected.json"
+  },
+  {
+    "id": "empty_teacher_token",
+    "group": "supplemental",
+    "basis": "补充边界：重复/非法分隔未观测；拒绝策略供本地测试，不声明上游规则",
+    "note": "",
+    "input": "supplemental/empty_teacher_token/input.json",
+    "expected": "supplemental/empty_teacher_token/expected.json"
+  },
+  {
+    "id": "text_score",
+    "group": "supplemental",
+    "basis": "补充边界：未观测文字成绩",
+    "note": "",
+    "input": "supplemental/text_score/input.json",
+    "expected": "supplemental/text_score/expected.json"
+  },
+  {
+    "id": "unknown_business_code",
+    "group": "supplemental",
+    "basis": "补充边界：未观测的业务代码；字符串按原值保存",
+    "note": "正常mock采用实测代码样例不等于上游穷尽枚举；未知代码的业务含义不推断。",
+    "input": "supplemental/unknown_business_code/input.json",
+    "expected": "supplemental/unknown_business_code/expected.json"
+  },
+  {
+    "id": "missing_old_class",
+    "group": "relation_variants",
+    "basis": "实测缺口变体，方案3及6.1",
+    "note": "历史班级缺档；不推断毕业或删除原因",
+    "input": "relation_variants/missing_old_class/input.json",
+    "expected": "relation_variants/missing_old_class/expected.json"
+  },
+  {
+    "id": "missing_new_class",
+    "group": "relation_variants",
+    "basis": "实测缺口变体，方案3及6.1",
+    "note": "新入学在读学生有班号但档案不可用",
+    "input": "relation_variants/missing_new_class/input.json",
+    "expected": "relation_variants/missing_new_class/expected.json"
+  },
+  {
+    "id": "missing_status",
+    "group": "relation_variants",
+    "basis": "实测缺口变体，方案3及6.1",
+    "note": "保留基本档案；不补造学籍，按表规划8.2.1阻止学生就绪",
+    "input": "relation_variants/missing_status/input.json",
+    "expected": "relation_variants/missing_status/expected.json"
+  },
+  {
+    "id": "grade_literal_null_course",
+    "group": "relation_variants",
+    "basis": "实测缺口变体，方案3及6.1",
+    "note": "历史成绩保持源课程号，不猜补课程",
+    "input": "relation_variants/grade_literal_null_course/input.json",
+    "expected": "relation_variants/grade_literal_null_course/expected.json"
+  },
+  {
+    "id": "grade_missing_old_course",
+    "group": "relation_variants",
+    "basis": "实测缺口变体，方案3及6.1",
+    "note": "历史成绩保持源课程号，不猜补课程",
+    "input": "relation_variants/grade_missing_old_course/input.json",
+    "expected": "relation_variants/grade_missing_old_course/expected.json"
+  },
+  {
+    "id": "schedule_missing_course",
+    "group": "relation_variants",
+    "basis": "实测缺口变体，方案3及6.1",
+    "note": "JHKCH=KCH等值未匹配，保留排课，关联字段为null并可定位日志",
+    "input": "relation_variants/schedule_missing_course/input.json",
+    "expected": "relation_variants/schedule_missing_course/expected.json"
+  },
+  {
+    "id": "member_missing_schedule",
+    "group": "relation_variants",
+    "basis": "实测缺口变体，方案3及6.1",
+    "note": "未匹配排课，不猜测为毕业或无课",
+    "input": "relation_variants/member_missing_schedule/input.json",
+    "expected": "relation_variants/member_missing_schedule/expected.json"
+  },
+  {
+    "id": "member_missing_course_key",
+    "group": "relation_variants",
+    "basis": "实测缺口变体，方案3及6.1",
+    "note": "实测必填字段缺失，仅用于兼容性测试，不属于符合文档的正常数据",
+    "input": "relation_variants/member_missing_course_key/input.json",
+    "expected": "relation_variants/member_missing_course_key/expected.json"
+  },
+  {
+    "id": "absent_contact_row",
+    "group": "relation_variants",
+    "basis": "实测缺口变体，方案3及6.1",
+    "note": "区别于存在仅JGH/ETL_TIME的通讯行",
+    "input": "relation_variants/absent_contact_row/input.json",
+    "expected": "relation_variants/absent_contact_row/expected.json"
+  },
+  {
+    "id": "schedule_sparse_shapes",
+    "group": "relation_variants",
+    "basis": "字段数量参考样本；具体字段组合为合成选取",
+    "note": "必填字段缺失，仅用于兼容性测试；不属于符合文档的正常数据",
+    "input": "relation_variants/schedule_sparse_shapes/input.json",
+    "expected": "relation_variants/schedule_sparse_shapes/expected.json"
+  },
+  {
+    "id": "missing_primary_key",
+    "group": "invalid_responses",
+    "basis": "故意异常，非上游错误码约定",
+    "note": "",
+    "input": "invalid_responses/missing_primary_key/input.json",
+    "expected": "invalid_responses/missing_primary_key/expected.json"
+  },
+  {
+    "id": "array_primary_key",
+    "group": "invalid_responses",
+    "basis": "故意异常，非上游错误码约定",
+    "note": "",
+    "input": "invalid_responses/array_primary_key/input.json",
+    "expected": "invalid_responses/array_primary_key/expected.json"
+  },
+  {
+    "id": "empty_primary_key",
+    "group": "invalid_responses",
+    "basis": "故意异常，非上游错误码约定",
+    "note": "",
+    "input": "invalid_responses/empty_primary_key/input.json",
+    "expected": "invalid_responses/empty_primary_key/expected.json"
+  },
+  {
+    "id": "null_primary_key",
+    "group": "invalid_responses",
+    "basis": "故意异常，非上游错误码约定",
+    "note": "",
+    "input": "invalid_responses/null_primary_key/input.json",
+    "expected": "invalid_responses/null_primary_key/expected.json"
+  },
+  {
+    "id": "optional_object_type",
+    "group": "invalid_responses",
+    "basis": "故意异常，非上游错误码约定",
+    "note": "",
+    "input": "invalid_responses/optional_object_type/input.json",
+    "expected": "invalid_responses/optional_object_type/expected.json"
+  },
+  {
+    "id": "wrong_list_structure",
+    "group": "invalid_responses",
+    "basis": "故意异常，非上游错误码约定",
+    "note": "",
+    "input": "invalid_responses/wrong_list_structure/input.json",
+    "expected": "invalid_responses/wrong_list_structure/expected.json"
+  },
+  {
+    "id": "missing_data",
+    "group": "invalid_responses",
+    "basis": "故意异常，非上游错误码约定",
+    "note": "",
+    "input": "invalid_responses/missing_data/input.json",
+    "expected": "invalid_responses/missing_data/expected.json"
+  },
+  {
+    "id": "wrong_total_type",
+    "group": "invalid_responses",
+    "basis": "故意异常，非上游错误码约定",
+    "note": "",
+    "input": "invalid_responses/wrong_total_type/input.json",
+    "expected": "invalid_responses/wrong_total_type/expected.json"
+  },
+  {
+    "id": "course_duplicate_conflict",
+    "group": "invalid_responses",
+    "basis": "故意异常：课程同号不能套用通讯归并规则",
+    "note": "",
+    "input": "invalid_responses/course_duplicate_conflict/input.json",
+    "expected": "invalid_responses/course_duplicate_conflict/expected.json"
+  },
+  {
+    "id": "empty_middle_page",
+    "group": "invalid_responses",
+    "basis": "故意异常：分页完整性",
+    "note": "",
+    "input": "invalid_responses/empty_middle_page/input.json",
+    "expected": "invalid_responses/empty_middle_page/expected.json"
+  },
+  {
+    "id": "changing_total",
+    "group": "invalid_responses",
+    "basis": "故意异常：分页完整性",
+    "note": "",
+    "input": "invalid_responses/changing_total/input.json",
+    "expected": "invalid_responses/changing_total/expected.json"
+  },
+  {
+    "id": "duplicate_across_pages",
+    "group": "invalid_responses",
+    "basis": "故意异常：分页完整性",
+    "note": "",
+    "input": "invalid_responses/duplicate_across_pages/input.json",
+    "expected": "invalid_responses/duplicate_across_pages/expected.json"
+  },
+  {
+    "id": "missing_last_page",
+    "group": "invalid_responses",
+    "basis": "故意异常：分页完整性",
+    "note": "",
+    "input": "invalid_responses/missing_last_page/input.json",
+    "expected": "invalid_responses/missing_last_page/expected.json"
+  },
+  {
+    "id": "full_known_column_appears",
+    "group": "supplemental",
+    "basis": "补充假设：未知字段与重试序列，方案6.2",
+    "note": "邮件仅为替身断言，生成器不发送邮件。",
+    "input": "supplemental/full_known_column_appears/input.json",
+    "expected": "supplemental/full_known_column_appears/expected.json"
+  },
+  {
+    "id": "full_unknown_recovers",
+    "group": "supplemental",
+    "basis": "补充假设：未知字段与重试序列，方案6.2",
+    "note": "邮件仅为替身断言，生成器不发送邮件。",
+    "input": "supplemental/full_unknown_recovers/input.json",
+    "expected": "supplemental/full_unknown_recovers/expected.json"
+  },
+  {
+    "id": "full_unknown_persists",
+    "group": "supplemental",
+    "basis": "补充假设：未知字段与重试序列，方案6.2",
+    "note": "邮件仅为替身断言，生成器不发送邮件。",
+    "input": "supplemental/full_unknown_persists/input.json",
+    "expected": "supplemental/full_unknown_persists/expected.json"
+  },
+  {
+    "id": "full_unknown_null_persists",
+    "group": "supplemental",
+    "basis": "补充假设：未知字段与重试序列，方案6.2",
+    "note": "邮件仅为替身断言，生成器不发送邮件。",
+    "input": "supplemental/full_unknown_null_persists/input.json",
+    "expected": "supplemental/full_unknown_null_persists/expected.json"
+  },
+  {
+    "id": "incremental_known_column_appears",
+    "group": "supplemental",
+    "basis": "补充假设：未知字段与重试序列，方案6.2",
+    "note": "邮件仅为替身断言，生成器不发送邮件。",
+    "input": "supplemental/incremental_known_column_appears/input.json",
+    "expected": "supplemental/incremental_known_column_appears/expected.json"
+  },
+  {
+    "id": "incremental_unknown_recovers",
+    "group": "supplemental",
+    "basis": "补充假设：未知字段与重试序列，方案6.2",
+    "note": "邮件仅为替身断言，生成器不发送邮件。",
+    "input": "supplemental/incremental_unknown_recovers/input.json",
+    "expected": "supplemental/incremental_unknown_recovers/expected.json"
+  },
+  {
+    "id": "incremental_unknown_persists",
+    "group": "supplemental",
+    "basis": "补充假设：未知字段与重试序列，方案6.2",
+    "note": "邮件仅为替身断言，生成器不发送邮件。",
+    "input": "supplemental/incremental_unknown_persists/input.json",
+    "expected": "supplemental/incremental_unknown_persists/expected.json"
+  },
+  {
+    "id": "incremental_unknown_null_persists",
+    "group": "supplemental",
+    "basis": "补充假设：未知字段与重试序列，方案6.2",
+    "note": "邮件仅为替身断言，生成器不发送邮件。",
+    "input": "supplemental/incremental_unknown_null_persists/input.json",
+    "expected": "supplemental/incremental_unknown_null_persists/expected.json"
+  }
+]

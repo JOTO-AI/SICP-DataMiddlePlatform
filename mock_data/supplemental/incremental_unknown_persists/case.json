@@ -1,0 +1,8 @@
+{
+  "id": "incremental_unknown_persists",
+  "group": "supplemental",
+  "basis": "补充假设：未知字段与重试序列，方案6.2",
+  "note": "邮件仅为替身断言，生成器不发送邮件。",
+  "input": "supplemental/incremental_unknown_persists/input.json",
+  "expected": "supplemental/incremental_unknown_persists/expected.json"
+}

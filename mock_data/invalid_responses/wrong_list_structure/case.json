@@ -1,0 +1,8 @@
+{
+  "id": "wrong_list_structure",
+  "group": "invalid_responses",
+  "basis": "故意异常，非上游错误码约定",
+  "note": "",
+  "input": "invalid_responses/wrong_list_structure/input.json",
+  "expected": "invalid_responses/wrong_list_structure/expected.json"
+}

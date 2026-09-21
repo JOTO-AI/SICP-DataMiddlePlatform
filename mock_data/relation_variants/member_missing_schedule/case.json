@@ -1,0 +1,8 @@
+{
+  "id": "member_missing_schedule",
+  "group": "relation_variants",
+  "basis": "实测缺口变体，方案3及6.1",
+  "note": "未匹配排课，不猜测为毕业或无课",
+  "input": "relation_variants/member_missing_schedule/input.json",
+  "expected": "relation_variants/member_missing_schedule/expected.json"
+}

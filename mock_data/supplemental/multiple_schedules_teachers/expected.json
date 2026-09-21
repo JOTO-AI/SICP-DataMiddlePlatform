@@ -1,0 +1,34 @@
+{
+  "schedule_ids": [
+    "P000001",
+    "P000002"
+  ],
+  "teacher_tokens": [
+    "001",
+    "1001"
+  ],
+  "teacher_01_matches": [
+    
+  ],
+  "student_numbers": [
+    "00202600001",
+    "00202600002"
+  ],
+  "student_count": 2,
+  "teaching_class_course_count": 1,
+  "weekday": 1,
+  "dates": [
+    "2026-09-07"
+  ],
+  "sections_by_schedule": {
+    "P000001": [
+      1
+    ],
+    "P000002": [
+      2
+    ]
+  },
+  "weeks": [
+    1
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "code": 200,
+  "message": "请求成功",
+  "data": {
+    "list": [
+      {
+        "ZYH": "00M1",
+        "ZYMC": "虚构专业1",
+        "DWH": "00D1",
+        "PYCCM": "4",
+        "PYFSM": "5",
+        "XSLBM": "41",
+        "XZ": 3,
+        "YXZTM": "1",
+        "ZYFLM": "2",
+        "ZYJC": "虚构专业简称",
+        "BZKZYM": "MOCK-MAJOR-1",
+        "XKMLM": "09",
+        "SSZYHDL": "00M1",
+        "ZYCCM": "MOCK_LEVEL",
+        "QSXQM": "1",
+        "ZYYWMC": "Fictional Major 1",
+        "JLNY": "2020-01",
+        "PZSZNY": "2020-02",
+        "SCZSNY": "2020-09",
+        "SYXWLBM": "MOCK_DEGREE",
+        "SSZYQH": "MOCK-MAJOR-GROUP-1",
+        "SFSFLZY": "0",
+        "SFZZZY": "1",
+        "FZRJGH": "001",
+        "ZSZTM": "MOCK_OPEN",
+        "ETL_TIME": "2026-08-05 09:00:00"
+      }
+    ],
+    "total": 1
+  }
+}

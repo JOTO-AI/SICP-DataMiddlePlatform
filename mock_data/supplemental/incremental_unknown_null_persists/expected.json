@@ -1,0 +1,16 @@
+{
+  "error": "unknown_business_field",
+  "attempts_used": 2,
+  "final_failure_notifications": 1,
+  "retry_request_unchanged": true,
+  "notification": {
+    "recipient": "admin@mock.example",
+    "task": "mock-incremental",
+    "table": "dwd_jzgjcsjzlb",
+    "unknown_fields": [
+      "MOCK_UNKNOWN_FIELD"
+    ]
+  },
+  "preserve_old_data": true,
+  "advance_successful_window": false
+}

@@ -1,0 +1,16 @@
+{
+  "table": "dwd_bzksgrtxsjzlb",
+  "before": [
+    {
+      "XH": "00202600001",
+      "ETL_TIME": "2026-08-05 07:50:00"
+    }
+  ],
+  "incoming": [
+    {
+      "XH": "00202600001",
+      "ETL_TIME": "2026-08-05 09:00:00",
+      "DZXX": "student001@campus.example"
+    }
+  ]
+}

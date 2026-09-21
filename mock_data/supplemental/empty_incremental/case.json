@@ -1,0 +1,8 @@
+{
+  "id": "empty_incremental",
+  "group": "supplemental",
+  "basis": "补充假设：窗口内无删除标记，未返回行保留",
+  "note": "",
+  "input": "supplemental/empty_incremental/input.json",
+  "expected": "supplemental/empty_incremental/expected.json"
+}

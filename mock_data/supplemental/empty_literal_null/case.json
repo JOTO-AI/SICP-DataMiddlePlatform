@@ -1,0 +1,8 @@
+{
+  "id": "empty_literal_null",
+  "group": "supplemental",
+  "basis": "实测字符串形态；通讯字段位置为合成假设",
+  "note": "",
+  "input": "supplemental/empty_literal_null/input.json",
+  "expected": "supplemental/empty_literal_null/expected.json"
+}

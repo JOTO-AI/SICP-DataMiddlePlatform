@@ -1,0 +1,12 @@
+{
+  "source_valid": true,
+  "course_name": null,
+  "course_code": "000C0001",
+  "credits": null,
+  "interface_failure": false,
+  "log_contains": {
+    "source_table": "dwd_bzkspksjzlb",
+    "primary_key": "P000001",
+    "JHKCH": "000C0001"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "id": "empty_json_null",
+  "group": "supplemental",
+  "basis": "补充边界，未观测",
+  "note": "",
+  "input": "supplemental/empty_json_null/input.json",
+  "expected": "supplemental/empty_json_null/expected.json"
+}

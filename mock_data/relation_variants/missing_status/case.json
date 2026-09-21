@@ -1,0 +1,8 @@
+{
+  "id": "missing_status",
+  "group": "relation_variants",
+  "basis": "实测缺口变体，方案3及6.1",
+  "note": "保留基本档案；不补造学籍，按表规划8.2.1阻止学生就绪",
+  "input": "relation_variants/missing_status/input.json",
+  "expected": "relation_variants/missing_status/expected.json"
+}

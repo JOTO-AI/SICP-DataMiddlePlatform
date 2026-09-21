@@ -1,0 +1,8 @@
+{
+  "id": "duplicate_teacher_tokens",
+  "group": "supplemental",
+  "basis": "补充边界：重复/非法分隔未观测；拒绝策略供本地测试，不声明上游规则",
+  "note": "",
+  "input": "supplemental/duplicate_teacher_tokens/input.json",
+  "expected": "supplemental/duplicate_teacher_tokens/expected.json"
+}

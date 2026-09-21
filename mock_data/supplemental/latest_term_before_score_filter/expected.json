@@ -1,0 +1,17 @@
+{
+  "all_grade_ids": [
+    "G000001",
+    "G000002"
+  ],
+  "latest_term": {
+    "academic_year": "2026-2027",
+    "semester": "1"
+  },
+  "filtered_grade_ids": [
+    
+  ],
+  "derived_numeric_scores": {
+    "G000001": 95,
+    "G000002": 70.5
+  }
+}

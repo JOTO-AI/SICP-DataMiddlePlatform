@@ -1,0 +1,8 @@
+{
+  "id": "null_primary_key",
+  "group": "invalid_responses",
+  "basis": "故意异常，非上游错误码约定",
+  "note": "",
+  "input": "invalid_responses/null_primary_key/input.json",
+  "expected": "invalid_responses/null_primary_key/expected.json"
+}

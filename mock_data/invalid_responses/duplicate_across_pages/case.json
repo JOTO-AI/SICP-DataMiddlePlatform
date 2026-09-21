@@ -1,0 +1,8 @@
+{
+  "id": "duplicate_across_pages",
+  "group": "invalid_responses",
+  "basis": "故意异常：分页完整性",
+  "note": "",
+  "input": "invalid_responses/duplicate_across_pages/input.json",
+  "expected": "invalid_responses/duplicate_across_pages/expected.json"
+}

@@ -1,0 +1,74 @@
+[
+  {
+    "XH": "00202600001",
+    "YDDH": "00000000001",
+    "DZXX": " student001@campus.example ",
+    "ETL_TIME": "2026-08-05 07:50:00"
+  },
+  {
+    "XH": "00202600002",
+    "YDDH": "00000000002",
+    "DZXX": " student002@campus.example ",
+    "ETL_TIME": "2026-08-05 07:50:00"
+  },
+  {
+    "XH": "00202600003",
+    "YDDH": "00000000003",
+    "DZXX": " student003@campus.example ",
+    "ETL_TIME": "2026-08-05 07:50:00"
+  },
+  {
+    "XH": "00202600004",
+    "YDDH": "00000000004",
+    "DZXX": " student004@campus.example ",
+    "ETL_TIME": "2026-08-05 07:50:00"
+  },
+  {
+    "XH": "00202600005",
+    "YDDH": "00000000005",
+    "DZXX": " student005@campus.example ",
+    "ETL_TIME": "2026-08-05 07:50:00"
+  },
+  {
+    "XH": "00202600006",
+    "YDDH": "00000000006",
+    "DZXX": " student006@campus.example ",
+    "ETL_TIME": "2026-08-05 07:50:00"
+  },
+  {
+    "XH": "00202600007",
+    "YDDH": "00000000007",
+    "DZXX": " student007@campus.example ",
+    "ETL_TIME": "2026-08-05 07:50:00"
+  },
+  {
+    "XH": "00202600008",
+    "YDDH": "00000000008",
+    "DZXX": " student008@campus.example ",
+    "ETL_TIME": "2026-08-05 07:50:00"
+  },
+  {
+    "XH": "00202600009",
+    "YDDH": "00000000009",
+    "DZXX": " student009@campus.example ",
+    "ETL_TIME": "2026-08-05 07:50:00"
+  },
+  {
+    "XH": "00202600010",
+    "YDDH": "00000000010",
+    "DZXX": " student010@campus.example ",
+    "ETL_TIME": "2026-08-05 07:50:00"
+  },
+  {
+    "XH": "00202600011",
+    "YDDH": "00000000011",
+    "DZXX": " student011@campus.example ",
+    "ETL_TIME": "2026-08-05 07:50:00"
+  },
+  {
+    "XH": "00202600012",
+    "YDDH": "00000000012",
+    "DZXX": " student012@campus.example ",
+    "ETL_TIME": "2026-08-05 07:50:00"
+  }
+]

@@ -1,0 +1,8 @@
+{
+  "id": "empty_missing",
+  "group": "supplemental",
+  "basis": "实测形状",
+  "note": "",
+  "input": "supplemental/empty_missing/input.json",
+  "expected": "supplemental/empty_missing/expected.json"
+}

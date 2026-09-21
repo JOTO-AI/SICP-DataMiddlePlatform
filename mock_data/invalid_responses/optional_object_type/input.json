@@ -1,0 +1,20 @@
+{
+  "table": "dwd_bzksgrtxsjzlb",
+  "response": {
+    "code": 200,
+    "message": "请求成功",
+    "data": {
+      "list": [
+        {
+          "XH": "00202600001",
+          "YDDH": {
+            "value": "000"
+          },
+          "DZXX": " student001@campus.example ",
+          "ETL_TIME": "2026-08-05 07:50:00"
+        }
+      ],
+      "total": 1
+    }
+  }
+}
