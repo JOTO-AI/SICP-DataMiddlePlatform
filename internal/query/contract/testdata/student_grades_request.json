@@ -1,0 +1,16 @@
+{
+  "student_number": "000001",
+  "academic_year": "all",
+  "semester": null,
+  "course_code": "000010",
+  "course_name": "合成课程",
+  "course_attribute_codes": ["1"],
+  "course_nature_codes": null,
+  "course_type_codes": [],
+  "course_department_code": null,
+  "course_department_name": null,
+  "score_min": 0,
+  "score_max": 100,
+  "page": 1,
+  "page_size": 100
+}

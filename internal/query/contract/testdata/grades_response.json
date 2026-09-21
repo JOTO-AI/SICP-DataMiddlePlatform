@@ -1,0 +1,29 @@
+{
+  "total": 1,
+  "synced_at": "2026-09-18T09:00:00+08:00",
+  "items": [{
+    "grade_id": "SYNTHETIC-GRADE-001",
+    "student": {"student_number":"000001","name":null,"department_code":"000100","department_name":null,"class_code":null,"class_name":null},
+    "academic_year": "2025-2026",
+    "semester": "2",
+    "course": {
+      "course_code": "000010",
+      "course_name": null,
+      "attribute_code": "1",
+      "attribute_name": null,
+      "nature_code": null,
+      "nature_name": null,
+      "type_code": null,
+      "type_name": null,
+      "department": {"organization_code":"000100","organization_name":null},
+      "total_hours": 0,
+      "retake_flag": null,
+      "retake_course_code": null,
+      "retake_course_name": null
+    },
+    "score": 0,
+    "grade_point": null,
+    "credits": 0,
+    "source_updated_at": null
+  }]
+}

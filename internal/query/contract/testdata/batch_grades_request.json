@@ -1,0 +1,20 @@
+{
+  "student_numbers": ["000001", "000002"],
+  "student_department_code": "000100",
+  "student_department_name": null,
+  "class_code": null,
+  "class_name": null,
+  "academic_year": "2025-2026",
+  "semester": "2",
+  "course_code": null,
+  "course_name": null,
+  "course_attribute_codes": [],
+  "course_nature_codes": ["301", "302"],
+  "course_type_codes": null,
+  "course_department_code": null,
+  "course_department_name": "合成学院",
+  "score_min": null,
+  "score_max": 0,
+  "page": null,
+  "page_size": null
+}

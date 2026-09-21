@@ -1,0 +1,35 @@
+name: Linux CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Unit tests, race checks, vet and Linux builds
+        run: ./scripts/check.sh
+      - name: Repeat lifecycle race regression
+        run: go test -race -count=30 ./internal/service
+      - name: Build service images
+        run: |
+          docker build --platform linux/amd64 -f deploy/Dockerfile --build-arg SERVICE=query-service -t sicp-query:p01 .
+          docker build --platform linux/amd64 -f deploy/Dockerfile --build-arg SERVICE=sync-worker -t sicp-worker:p01 .
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-unit-evidence
+          path: artifacts/
+          if-no-files-found: error

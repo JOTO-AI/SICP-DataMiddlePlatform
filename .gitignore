@@ -9,8 +9,13 @@ DEVELOPMENT_PLAN.md
 function_list_V4.md
 MOCK_DATA_GENERATION_PLAN.md
 PROJECT_ARCHITECTURE.md
-sicp-api-design.md
 source_api_docs.zip
 数据表结构与主键规划.md
 本地数据中台功能清单.docx
 .pytest_cache
+__pycache__/
+*.pyc
+.env
+.env.*
+artifacts/
+*.test

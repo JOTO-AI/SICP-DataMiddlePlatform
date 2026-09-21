@@ -1,0 +1,24 @@
+{
+  "student_number":"000001",
+  "academic_year":"2026-2027",
+  "semester":"1",
+  "synced_at":"2026-09-18T09:00:00+08:00",
+  "items":[{
+    "course_code":"000010",
+    "course_name":null,
+    "planned_course_code":"000010",
+    "teaching_class_number":"000100",
+    "teaching_class_name":null,
+    "enrolled_count":0,
+    "teacher_staff_numbers":[],
+    "room_code":"001201",
+    "credits":0,
+    "teacher_names":[],
+    "location":null,
+    "weekday":1,
+    "sections":[1,2],
+    "weeks":[],
+    "dates":[],
+    "source_updated_at":null
+  }]
+}

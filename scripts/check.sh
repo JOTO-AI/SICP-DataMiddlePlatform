@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+expected="go$(awk '$1 == "go" { print $2 }' go.mod)"
+test "$(go env GOVERSION)" = "$expected"
+test -z "$(gofmt -l cmd internal)"
+go vet ./...
+mkdir -p artifacts
+go test -race -count=1 -coverprofile=artifacts/coverage.out -json ./... | tee artifacts/unit-tests.jsonl
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o artifacts/query-service ./cmd/query-service
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o artifacts/sync-worker ./cmd/sync-worker

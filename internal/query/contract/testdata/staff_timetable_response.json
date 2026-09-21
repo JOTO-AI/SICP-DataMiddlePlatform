@@ -1,0 +1,24 @@
+{
+  "staff_number":"000001",
+  "academic_year":"2026-2027",
+  "semester":"1",
+  "synced_at":"2026-09-18T09:00:00+08:00",
+  "items":[{
+    "course_code":"000010",
+    "course_name":"合成课程",
+    "planned_course_code":"000010",
+    "teaching_class_number":"000100",
+    "teaching_class_name":null,
+    "enrolled_count":null,
+    "teacher_staff_numbers":["000001","000002"],
+    "room_code":null,
+    "credits":null,
+    "teacher_names":["合成教师"],
+    "location":null,
+    "weekday":2,
+    "sections":[],
+    "weeks":[1,3],
+    "dates":["2026-09-08"],
+    "source_updated_at":"2026-09-18T08:00:00+08:00"
+  }]
+}
