@@ -21,6 +21,8 @@ go run ./cmd/query-service
 
 ## 检查与镜像
 
+单元测试统一在 GitHub Actions 的 Linux CI 执行；以下命令为工作流使用的检查和构建入口。
+
 ```bash
 ./scripts/check.sh
 docker build --platform linux/amd64 -f deploy/Dockerfile --build-arg SERVICE=query-service -t sicp-query:p01 .

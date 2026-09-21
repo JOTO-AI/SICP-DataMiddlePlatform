@@ -1,0 +1,19 @@
+{
+  "run": "35588634484",
+  "artifact_id": 10632454968,
+  "top_level": {
+    "pass": 17,
+    "fail": 0,
+    "skip": 0
+  },
+  "including_subtests": {
+    "pass": 42,
+    "fail": 0,
+    "skip": 0
+  },
+  "commit": "fb7a27fb317ee8b46ffcd3b3f9dd375c4052fa5a",
+  "url": "https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/35588634484",
+  "runner": "ubuntu-24.04",
+  "go": "1.26.8",
+  "review": "passed"
+}
