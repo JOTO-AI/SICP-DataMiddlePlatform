@@ -10,9 +10,10 @@ import (
 // Temporary, orphaned, payload and receipt bytes all count. The execution
 // ownership protocol provides the single worker process writing that volume.
 type QuotaFiles struct {
-	files Files
-	limit int64
-	mu    sync.Mutex
+	files     Files
+	limit     int64
+	mu        sync.Mutex
+	lifecycle sync.Mutex // Retain/release/retirement share this across all Stores.
 }
 
 func NewQuotaFiles(files Files, limit int64) (*QuotaFiles, error) {
@@ -44,6 +45,18 @@ func (q *QuotaFiles) List(ctx context.Context, prefix string) ([]string, error) 
 	return q.files.List(ctx, prefix)
 }
 func (q *QuotaFiles) Usage(ctx context.Context) (int64, error) { return q.files.Usage(ctx) }
+
+func (q *QuotaFiles) remove(ctx context.Context, name string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	remover, ok := q.files.(interface {
+		Remove(context.Context, string) error
+	})
+	if !ok {
+		return ErrStorage
+	}
+	return remover.Remove(ctx, name)
+}
 func fileError(err error) error {
 	if errors.Is(err, ErrCapacity) {
 		return ErrCapacity
