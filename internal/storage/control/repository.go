@@ -238,6 +238,19 @@ func (r Repository) Load(ctx context.Context, destination any) error {
 	if err != nil {
 		return err
 	}
+	var loaded reflect.Value
+	err = r.transaction(ctx, func(tx storage.Transaction) error {
+		var err error
+		loaded, err = readEntity(ctx, tx, d, strings.Join(where, " AND "), identity, false)
+		return err
+	})
+	if err == nil {
+		d.value.Set(loaded)
+	}
+	return err
+}
+
+func readEntity(ctx context.Context, tx storage.Transaction, d definition, where string, identity []any, lock bool) (reflect.Value, error) {
 	loaded := reflect.New(d.value.Type()).Elem()
 	var columns []string
 	var destinations []any
@@ -254,11 +267,10 @@ func (r Repository) Load(ctx context.Context, destination any) error {
 		columns = append(columns, column)
 		destinations = append(destinations, loaded.Field(i).Addr().Interface())
 	}
-	err = r.transaction(ctx, func(tx storage.Transaction) error {
-		return tx.QueryRow(ctx, "SELECT "+strings.Join(columns, ",")+" FROM control."+d.table+" WHERE "+strings.Join(where, " AND "), identity...).Scan(destinations...)
-	})
-	if err == nil {
-		d.value.Set(loaded)
+	sql := "SELECT " + strings.Join(columns, ",") + " FROM control." + d.table + " WHERE " + where
+	if lock {
+		sql += " FOR UPDATE"
 	}
-	return err
+	err := tx.QueryRow(ctx, sql, identity...).Scan(destinations...)
+	return loaded, err
 }
