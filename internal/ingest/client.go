@@ -56,9 +56,10 @@ const (
 // Failure never retains an upstream error, URL, response message or body.
 // Cause is restricted to safe context sentinels or ValidationError.
 type Failure struct {
-	Kind    FailureKind
-	Attempt Attempt
-	Cause   error
+	Kind      FailureKind
+	Attempt   Attempt
+	Cause     error
+	retryable bool
 }
 
 func (e *Failure) Error() string    { return "source request: " + string(e.Kind) }
@@ -146,7 +147,7 @@ func (c *Client) Fetch(ctx context.Context, input PageRequest) (Page, error) {
 		if ctx.Err() != nil {
 			return fail(CancelledFailure, ctx.Err())
 		}
-		return fail(TransportFailure, nil)
+		return Page{}, &Failure{Kind: TransportFailure, Attempt: a, retryable: temporaryTransport(err)}
 	}
 	if resp == nil {
 		return fail(TransportFailure, nil)
@@ -164,7 +165,7 @@ func (c *Client) Fetch(ctx context.Context, input PageRequest) (Page, error) {
 		return fail(CancelledFailure, ctx.Err())
 	}
 	if err != nil {
-		return fail(TransportFailure, nil)
+		return Page{}, &Failure{Kind: TransportFailure, Attempt: a, retryable: temporaryTransport(err)}
 	}
 	if int64(len(body)) > c.maxBytes {
 		return fail(ResponseLimit, nil)
