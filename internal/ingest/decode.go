@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -48,8 +49,9 @@ const (
 )
 
 type ValidationError struct {
-	Kind  ValidationKind
-	Field string
+	Kind   ValidationKind
+	Field  string
+	Fields []string
 }
 
 // Error intentionally omits raw values and untrusted source field names.
@@ -103,10 +105,15 @@ func DecodeRecord(tableName string, input []byte) (Record, error) {
 	for _, column := range d.Columns {
 		known[column.Name] = true
 	}
+	var unknown []string
 	for name := range fields {
 		if !known[name] {
-			return Record{}, &ValidationError{Kind: UnknownField, Field: name}
+			unknown = append(unknown, name)
 		}
+	}
+	if len(unknown) > 0 {
+		sort.Strings(unknown)
+		return Record{}, &ValidationError{Kind: UnknownField, Field: unknown[0], Fields: unknown}
 	}
 	pk, present := fields[d.PrimaryKey]
 	if !present || pk.Type != String {

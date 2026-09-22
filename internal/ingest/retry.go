@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sort"
 	"syscall"
 )
 
@@ -23,9 +24,24 @@ type AttemptResult struct {
 }
 
 type PageResult struct {
-	Page     Page
-	Attempts []AttemptResult
+	Page         Page
+	Attempts     []AttemptResult
+	FinalFailure *FailureEvent
 }
+
+// FailureEvent is emitted once by the logical page call, never per attempt.
+// Task/call identities and persistence are supplied by the P05 event/outbox
+// boundary. No token, source value or response message is included here.
+type FailureEvent struct {
+	Source, Path             string
+	Mode                     Mode
+	Page, PageSize, Attempts int
+	UnknownFields            []string
+	Reason                   FailureKind
+}
+
+func (e FailureEvent) String() string   { return "source final unknown-field failure" }
+func (e FailureEvent) GoString() string { return e.String() }
 
 const RetryWaitFailure FailureKind = "retry_wait"
 
@@ -35,8 +51,24 @@ func (c *Client) FetchPage(ctx context.Context, input PageRequest, policy RetryP
 	return fetchPage(ctx, input, policy, c.Fetch)
 }
 
-func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch func(context.Context, PageRequest) (Page, error)) (PageResult, error) {
-	result := PageResult{}
+func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch func(context.Context, PageRequest) (Page, error)) (result PageResult, finalErr error) {
+	unknown := map[string]bool{}
+	defer func() {
+		if finalErr == nil || len(unknown) == 0 {
+			return
+		}
+		fields := make([]string, 0, len(unknown))
+		for field := range unknown {
+			fields = append(fields, field)
+		}
+		sort.Strings(fields)
+		reason := RecordFailure
+		var failure *Failure
+		if errors.As(finalErr, &failure) {
+			reason = failure.Kind
+		}
+		result.FinalFailure = &FailureEvent{Source: input.Table, Path: definitions[input.Table].Path, Mode: input.Mode, Page: input.Page, PageSize: input.PageSize, Attempts: len(result.Attempts), UnknownFields: fields, Reason: reason}
+	}()
 	if policy.MaxAttempts < 1 || policy.MaxAttempts > 100 || (policy.MaxAttempts > 1 && policy.Wait == nil) {
 		return result, &Failure{Kind: ConfigurationFailure}
 	}
@@ -52,6 +84,12 @@ func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch
 			return result, &Failure{Kind: TransportFailure}
 		}
 		result.Attempts = append(result.Attempts, AttemptResult{Number: attempt, Attempt: failure.Attempt, Failure: failure.Kind})
+		var validation *ValidationError
+		if errors.As(err, &validation) && validation.Kind == UnknownField {
+			for _, field := range validation.Fields {
+				unknown[field] = true
+			}
+		}
 		if !failure.retryable || attempt == policy.MaxAttempts {
 			return result, failure
 		}

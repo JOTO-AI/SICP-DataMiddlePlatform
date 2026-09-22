@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -211,15 +212,36 @@ func (c *Client) Fetch(ctx context.Context, input PageRequest) (Page, error) {
 		return fail(StructureFailure, nil)
 	}
 	rows := make([]Record, 0, len(rawRows))
+	unknown := map[string]bool{}
+	var recordError error
 	for _, raw := range rawRows {
 		if ctx.Err() != nil {
 			return fail(CancelledFailure, ctx.Err())
 		}
 		record, err := DecodeRecord(input.Table, raw)
 		if err != nil {
-			return fail(RecordFailure, err)
+			var validation *ValidationError
+			if errors.As(err, &validation) && validation.Kind == UnknownField {
+				for _, field := range validation.Fields {
+					unknown[field] = true
+				}
+			} else if recordError == nil {
+				recordError = err
+			}
+			continue
 		}
 		rows = append(rows, record)
+	}
+	if len(unknown) > 0 {
+		fields := make([]string, 0, len(unknown))
+		for field := range unknown {
+			fields = append(fields, field)
+		}
+		sort.Strings(fields)
+		return Page{}, &Failure{Kind: RecordFailure, Attempt: a, Cause: &ValidationError{Kind: UnknownField, Field: fields[0], Fields: fields}, retryable: true, retryAfter: retryAfter}
+	}
+	if recordError != nil {
+		return fail(RecordFailure, recordError)
 	}
 	return Page{Total: total, Records: rows, Attempt: a, retryAfter: retryAfter}, nil
 }

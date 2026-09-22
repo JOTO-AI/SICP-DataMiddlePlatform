@@ -85,7 +85,7 @@ func TestT03_10TransientFailuresRetryWholePageWithIdenticalParameters(t *testing
 }
 
 func TestT03_11DeterministicFailuresDoNotRetry(t *testing.T) {
-	for _, scenario := range []string{"token", "business", "parse", "structure", "key", "unknown", "permanent_network", "http"} {
+	for _, scenario := range []string{"token", "business", "parse", "structure", "key", "permanent_network", "http"} {
 		t.Run(scenario, func(t *testing.T) {
 			calls := 0
 			c := sourceClient(t, transportFunc(func(*http.Request) (*http.Response, error) {
@@ -103,8 +103,6 @@ func TestT03_11DeterministicFailuresDoNotRetry(t *testing.T) {
 					body = `{"code":200,"message":"ok","data":null}`
 				case "key":
 					body = `{"code":200,"message":"ok","data":{"total":1,"list":[{"XQH":null}]}}`
-				case "unknown":
-					body = `{"code":200,"message":"ok","data":{"total":1,"list":[{"XQH":"01","UNKNOWN":null}]}}`
 				case "permanent_network":
 					return nil, errors.New("permanent error")
 				case "http":

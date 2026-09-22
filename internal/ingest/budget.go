@@ -225,14 +225,16 @@ func (c *Coordinator) attempt(ctx context.Context, input PageRequest, task *Task
 	}
 	page, err := c.client.Fetch(attemptCtx, input)
 	var f *Failure
+	var cause error
 	meta, retryAfter := page.Attempt, page.retryAfter
 	if errors.As(err, &f) {
 		meta, retryAfter = f.Attempt, f.retryAfter
+		cause = f.Cause
 	}
 	if retryAfter != "" {
 		until, valid := retryAfterTime(retryAfter, c.clock.Now())
 		if !valid {
-			return Page{}, &Failure{Kind: CooldownFailure, Attempt: meta}
+			return Page{}, &Failure{Kind: CooldownFailure, Attempt: meta, Cause: cause}
 		}
 		// Persist even if the request/task has just expired. A bounded independent
 		// control write prevents a later task from bypassing upstream cooldown.
@@ -240,17 +242,17 @@ func (c *Coordinator) attempt(ctx context.Context, input PageRequest, task *Task
 		saveErr := c.cooldown.ExtendCooldown(persist, until)
 		cancel()
 		if saveErr != nil {
-			return Page{}, &Failure{Kind: CooldownStorageFailure, Attempt: meta}
+			return Page{}, &Failure{Kind: CooldownStorageFailure, Attempt: meta, Cause: cause}
 		}
 		if !until.Before(pageDeadline) {
-			return Page{}, &Failure{Kind: CooldownFailure, Attempt: meta}
+			return Page{}, &Failure{Kind: CooldownFailure, Attempt: meta, Cause: cause}
 		}
 	}
 	if c.expired(ctx, pageDeadline) {
-		return Page{}, &Failure{Kind: BudgetFailure, Attempt: meta}
+		return Page{}, &Failure{Kind: BudgetFailure, Attempt: meta, Cause: cause}
 	}
 	if c.expired(attemptCtx, deadline) {
-		return Page{}, &Failure{Kind: RequestTimeout, Attempt: meta, retryable: true}
+		return Page{}, &Failure{Kind: RequestTimeout, Attempt: meta, Cause: cause, retryable: true}
 	}
 	if f != nil && f.Kind == HTTPFailure && f.Attempt.HTTPStatus != nil {
 		for _, status := range c.config.RetryHTTP {
