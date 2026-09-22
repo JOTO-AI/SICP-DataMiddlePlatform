@@ -7,6 +7,8 @@ import (
 	"net"
 	"sort"
 	"syscall"
+
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 )
 
 // RetryPolicy.Wait receives the completed attempt number. The production
@@ -27,6 +29,9 @@ type PageResult struct {
 	Page         Page
 	Attempts     []AttemptResult
 	FinalFailure *FailureEvent
+	// ObservationError is separate from the source/business result. An end
+	// record failure cannot undo an already completed source request.
+	ObservationError error
 }
 
 // FailureEvent is emitted once by the logical page call, never per attempt.
@@ -44,6 +49,7 @@ func (e FailureEvent) String() string   { return "source final unknown-field fai
 func (e FailureEvent) GoString() string { return e.String() }
 
 const RetryWaitFailure FailureKind = "retry_wait"
+const ObservationFailure FailureKind = "observation"
 
 // FetchPage only publishes a complete, validated page once. Failed attempts
 // contribute telemetry, never rows. There are no persistence side effects.
@@ -52,6 +58,20 @@ func (c *Client) FetchPage(ctx context.Context, input PageRequest, policy RetryP
 }
 
 func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch func(context.Context, PageRequest) (Page, error)) (result PageResult, finalErr error) {
+	callCtx, call, recordErr := events.Begin(ctx, events.Call, "", 0)
+	if recordErr != nil {
+		return result, &Failure{Kind: ObservationFailure}
+	}
+	ctx = callCtx
+	defer func() {
+		outcome := events.Succeeded
+		if finalErr != nil {
+			outcome = events.Failed
+		}
+		if err := call.Finish(ctx, outcome, nil, nil); err != nil {
+			result.ObservationError = err
+		}
+	}()
 	unknown := map[string]bool{}
 	defer func() {
 		if finalErr == nil || len(unknown) == 0 {
@@ -73,7 +93,22 @@ func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch
 		return result, &Failure{Kind: ConfigurationFailure}
 	}
 	for attempt := 1; attempt <= policy.MaxAttempts; attempt++ {
-		page, err := fetch(ctx, input)
+		attemptCtx, span, recordErr := events.Begin(ctx, events.Attempt, "", attempt)
+		if recordErr != nil {
+			return result, &Failure{Kind: ObservationFailure}
+		}
+		page, err := fetch(attemptCtx, input)
+		meta, outcome := page.Attempt, events.Succeeded
+		var observedFailure *Failure
+		if err != nil {
+			outcome = events.Failed
+			if errors.As(err, &observedFailure) {
+				meta = observedFailure.Attempt
+			}
+		}
+		if recordErr := span.Finish(ctx, outcome, meta.HTTPStatus, meta.BusinessCode); recordErr != nil {
+			result.ObservationError = recordErr
+		}
 		if err == nil {
 			result.Attempts = append(result.Attempts, AttemptResult{Number: attempt, Attempt: page.Attempt})
 			result.Page = page
