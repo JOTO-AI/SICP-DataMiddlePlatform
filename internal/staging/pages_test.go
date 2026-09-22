@@ -69,7 +69,13 @@ func (f *memoryFiles) Publish(ctx context.Context, temp, name string) error {
 	}
 	return nil
 }
-func (f *memoryFiles) Sync(context.Context) error { f.syncs++; return nil }
+func (f *memoryFiles) Sync(context.Context) error {
+	f.syncs++
+	if f.failure == "sync" {
+		return errors.New("directory synchronization failed")
+	}
+	return nil
+}
 func (f *memoryFiles) Usage(context.Context) (int64, error) {
 	var size int64
 	for _, data := range f.files {

@@ -74,6 +74,21 @@ func OpenDirectory(path string) (*Directory, error) {
 	return &Directory{root: root}, nil
 }
 func (d *Directory) Close() error { return d.root.Close() }
+
+// Remove is the physical primitive used only after Store.Cleanup has persisted
+// retirement under the shared lifecycle lock. Missing files are retry-safe.
+func (d *Directory) Remove(ctx context.Context, name string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if !flatName(name) {
+		return ErrInvalid
+	}
+	if err := d.root.Remove(name); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return ErrStorage
+	}
+	return d.Sync(ctx)
+}
 func flatName(name string) bool {
 	return name != "" && name != "." && name != ".." && !strings.ContainsAny(name, "/\\:")
 }

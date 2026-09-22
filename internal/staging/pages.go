@@ -81,10 +81,16 @@ func (s *Store) identity(r ingest.PageRequest) string {
 }
 
 func (s *Store) CommitPage(ctx context.Context, request ingest.PageRequest, page ingest.Page, summary ingest.PageSummary) error {
+	q := s.files.(*QuotaFiles)
+	q.lifecycle.Lock()
+	defer q.lifecycle.Unlock()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if ctx.Err() != nil {
 		return ctx.Err()
+	}
+	if err := s.notRetired(ctx); err != nil {
+		return err
 	}
 	r, err := normalized(request)
 	if err != nil {

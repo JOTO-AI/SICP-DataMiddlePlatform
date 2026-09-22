@@ -12,7 +12,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/staging"
 )
 
-func sealedInput(t *testing.T, table string, mode ingest.Mode, rows []ingest.Record) (*staging.Sealed, string) {
+func sealedStore(t *testing.T, table string, mode ingest.Mode, rows []ingest.Record, extras ...map[string][]ingest.Record) (*staging.Store, *staging.Sealed, string) {
 	t.Helper()
 	root := t.TempDir()
 	files, err := staging.OpenDirectory(root)
@@ -33,6 +33,8 @@ func sealedInput(t *testing.T, table string, mode ingest.Mode, rows []ingest.Rec
 		var content []ingest.Record
 		if d.Name == table {
 			content = rows
+		} else if len(extras) > 0 {
+			content = extras[0][d.Name]
 		}
 		request := ingest.PageRequest{Table: d.Name, Mode: mode, Page: 1, PageSize: 2}
 		if mode == ingest.Incremental {
@@ -69,6 +71,11 @@ func sealedInput(t *testing.T, table string, mode ingest.Mode, rows []ingest.Rec
 	if err != nil {
 		t.Fatal(err)
 	}
+	return store, sealed, root
+}
+
+func sealedInput(t *testing.T, table string, mode ingest.Mode, rows []ingest.Record) (*staging.Sealed, string) {
+	_, sealed, root := sealedStore(t, table, mode, rows)
 	return sealed, root
 }
 

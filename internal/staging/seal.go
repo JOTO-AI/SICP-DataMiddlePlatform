@@ -29,8 +29,14 @@ type sealDocument struct {
 // Seal reconstructs completeness from durable receipts and payloads. Caller
 // success flags cannot substitute for a complete set of all fourteen sources.
 func (s *Store) Seal(ctx context.Context, limits ingest.PageLimits) (SealRef, error) {
+	q := s.files.(*QuotaFiles)
+	q.lifecycle.Lock()
+	defer q.lifecycle.Unlock()
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := s.notRetired(ctx); err != nil {
+		return SealRef{}, err
+	}
 	entries, err := s.Entries(ctx)
 	if err != nil {
 		return SealRef{}, err
@@ -73,6 +79,9 @@ func (s *Sealed) ReadPage(ctx context.Context, index int) (ingest.Page, error) {
 }
 
 func (s *Store) OpenSealed(ctx context.Context, reference SealRef) (*Sealed, error) {
+	if err := s.notRetired(ctx); err != nil {
+		return nil, err
+	}
 	if reference.RunID != s.runID {
 		return nil, ErrInvalid
 	}
