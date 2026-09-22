@@ -42,6 +42,9 @@ func (t *tx) Exec(_ context.Context, sql string, args ...any) (int64, error) {
 }
 func (t *tx) QueryRow(_ context.Context, sql string, args ...any) storage.Row {
 	t.db.calls = append(t.db.calls, dbCall{sql, args})
+	if strings.HasPrefix(sql, "SELECT task_id,owner_id,generation FROM control.execution") {
+		return result{raw: []any{"task-A", "owner-A", int64(9)}}
+	}
 	if strings.HasPrefix(sql, "INSERT") {
 		return result{raw: []any{int64(77)}}
 	}
@@ -113,7 +116,6 @@ func TestT02_14EveryEntityUsesFixedControlAndIndependentColumns(t *testing.T) {
 		{"steps", "task_id,name,status,started_at,finished_at,evidence", &control.Step{TaskID: "task-A", Name: "fetch", Status: "running", StartedAt: &t1, Evidence: ptr(control.Document("{}"))}, &control.Step{TaskID: "task-A", Name: "fetch"}, []any{"task-A", "fetch", "running", t1, nil, "{}"}, []any{"task-A", "fetch"}},
 		{"checkpoints", "task_id,name,payload,recorded_at", &control.Checkpoint{TaskID: "task-A", Name: "sealed", Payload: `{"pages":2}`, RecordedAt: t2}, &control.Checkpoint{TaskID: "task-A", Name: "sealed"}, []any{"task-A", "sealed", `{"pages":2}`, t2}, []any{"task-A", "sealed"}},
 		{"schedule", "singleton,revision,last_started_at,next_due_at,deferred,cooldown_until", &control.Schedule{Singleton: true, Revision: 3, LastStartedAt: &t1, NextDueAt: &t4, Deferred: true, CooldownUntil: &t5}, &control.Schedule{Singleton: true}, []any{true, int64(3), t1, t4, true, t5}, []any{true}},
-		{"execution", "singleton,task_id,owner_id,generation", &control.Execution{Singleton: true, TaskID: ptr("task-A"), OwnerID: ptr("owner-A"), Generation: 9}, &control.Execution{Singleton: true}, []any{true, "task-A", "owner-A", int64(9)}, []any{true}},
 		{"bundles", "id,tables,created_at,published_at,checked_at", &control.Bundle{ID: "C100", Tables: `{"table":"V1"}`, CreatedAt: t0, PublishedAt: &t3, CheckedAt: &t4}, &control.Bundle{ID: "C100"}, []any{"C100", `{"table":"V1"}`, t0, t3, t4}, []any{"C100"}},
 		{"slots", "instance,slot,generation,bundle_id,admission_open,state", &control.Slot{Instance: "S", Slot: 1, Generation: 7, BundleID: ptr("C100"), State: "ready"}, &control.Slot{Instance: "S", Slot: 1}, []any{"S", int16(1), int64(7), "C100", false, "ready"}, []any{"S", int16(1)}},
 		{"candidates", "id,task_id,instance,slot,generation,bundle_id,owner_generation,state,evidence,ready_at", &control.Candidate{ID: "candidate-A", TaskID: "task-A", Instance: "M", Generation: 8, BundleID: "C101", OwnerGeneration: 9, State: "building", Evidence: ptr(control.Document("{}"))}, &control.Candidate{ID: "candidate-A"}, []any{"candidate-A", "task-A", "M", int16(0), int64(8), "C101", int64(9), "building", "{}", nil}, []any{"candidate-A"}},
@@ -125,9 +127,19 @@ func TestT02_14EveryEntityUsesFixedControlAndIndependentColumns(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r, d := repository(t)
 			d.raw = tc.raw
+			if tc.name == "candidates" || tc.name == "source_progress" {
+				r = r.WithOwnership(control.Ownership{TaskID: "task-A", OwnerID: "owner-A", Generation: 9})
+			}
 			if err := r.Insert(t.Context(), tc.entity); err != nil {
 				t.Fatal(err)
 			}
+			var writes []dbCall
+			for _, call := range d.calls {
+				if !strings.Contains(call.sql, "FROM control.execution") {
+					writes = append(writes, call)
+				}
+			}
+			d.calls = writes
 			var writeColumns []string
 			var writeValues []any
 			for i, name := range strings.Split(tc.columns, ",") {

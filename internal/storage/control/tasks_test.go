@@ -24,6 +24,7 @@ type taskDB struct {
 	failCommit, failRead bool
 	rollbacks            int
 	calls                []dbCall
+	mutations            []dbCall
 }
 type taskTx struct {
 	db                   *taskDB
@@ -32,6 +33,7 @@ type taskTx struct {
 	lastStarted, nextDue *time.Time
 	revision             int64
 	closed               bool
+	mutations            []dbCall
 }
 
 func (d *taskDB) Begin(_ context.Context, c storage.Connection) (storage.Transaction, error) {
@@ -51,6 +53,39 @@ func (x *taskTx) Exec(_ context.Context, sql string, args ...any) (int64, error)
 		return 0, errors.New("injected SQL failure")
 	}
 	switch {
+	case strings.HasPrefix(sql, "UPDATE control.execution SET task_id=$1"):
+		if x.owner.TaskID != "" || x.owner.Generation != args[3].(int64) {
+			return 0, nil
+		}
+		x.owner = control.Ownership{TaskID: args[0].(string), OwnerID: args[1].(string), Generation: args[2].(int64)}
+		return 1, nil
+	case strings.HasPrefix(sql, "UPDATE control.tasks SET owner_id=$1"):
+		for _, row := range x.records {
+			if row[0] == args[2] && row[13] == args[3] {
+				row[12] = args[0]
+				row[13] = args[1]
+				return 1, nil
+			}
+		}
+		return 0, nil
+	case strings.HasPrefix(sql, "UPDATE control.tasks SET owner_id=NULL"):
+		for _, row := range x.records {
+			if row[0] == args[0] && row[12] == args[1] && row[13] == args[2] {
+				row[12] = nil
+				return 1, nil
+			}
+		}
+		return 0, nil
+	case strings.HasPrefix(sql, "UPDATE control.execution SET task_id=NULL"):
+		if x.owner.TaskID != args[0] || x.owner.OwnerID != args[1] || x.owner.Generation != args[2] {
+			return 0, nil
+		}
+		x.owner.TaskID = ""
+		x.owner.OwnerID = ""
+		return 1, nil
+	case strings.HasPrefix(sql, "INSERT INTO control.candidates"), strings.HasPrefix(sql, "UPDATE control.candidates"), strings.HasPrefix(sql, "INSERT INTO control.source_progress"), strings.HasPrefix(sql, "UPDATE control.source_progress"):
+		x.mutations = append(x.mutations, dbCall{sql, append([]any(nil), args...)})
+		return 1, nil
 	case strings.HasPrefix(sql, "INSERT INTO control.tasks"):
 		key := args[1].(string)
 		if _, ok := x.records[key]; ok {
@@ -112,6 +147,7 @@ func (x *taskTx) Commit(context.Context) error {
 	x.db.lastStarted = x.lastStarted
 	x.db.nextDue = x.nextDue
 	x.db.revision = x.revision
+	x.db.mutations = append(x.db.mutations, x.mutations...)
 	x.closed = true
 	x.db.mu.Unlock()
 	return nil

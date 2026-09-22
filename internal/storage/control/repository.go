@@ -15,6 +15,7 @@ import (
 type Repository struct {
 	Registry storage.Registry
 	Database storage.Database
+	owner    *Ownership
 }
 
 var ErrEntity = errors.New("invalid control entity")
@@ -141,6 +142,9 @@ func (r Repository) transaction(ctx context.Context, fn func(storage.Transaction
 
 // Insert creates a new fact; it never silently replaces an existing row.
 func (r Repository) Insert(ctx context.Context, entity any) error {
+	if err := r.validateWriter(entity); err != nil {
+		return err
+	}
 	d, err := describe(entity)
 	if err != nil {
 		return err
@@ -171,6 +175,9 @@ func (r Repository) Insert(ctx context.Context, entity any) error {
 	sql := "INSERT INTO control." + d.table + " (" + strings.Join(columns, ",") + ") VALUES (" + strings.Join(placeholders, ",") + ")"
 	var generated int64
 	err = r.transaction(ctx, func(tx storage.Transaction) error {
+		if err := r.fenceWriter(ctx, tx); err != nil {
+			return err
+		}
 		if generatedIndex >= 0 {
 			name, _ := tag(d, generatedIndex)
 			return tx.QueryRow(ctx, sql+` RETURNING "`+name+`"`, values...).Scan(&generated)
@@ -192,6 +199,9 @@ func (r Repository) Insert(ctx context.Context, entity any) error {
 
 // Update changes one existing identity. It does not create absent records.
 func (r Repository) Update(ctx context.Context, entity any) error {
+	if err := r.validateWriter(entity); err != nil {
+		return err
+	}
 	d, err := describe(entity)
 	if err != nil {
 		return err
@@ -215,7 +225,14 @@ func (r Repository) Update(ctx context.Context, entity any) error {
 		return err
 	}
 	values = append(values, identity...)
+	if candidate, ok := entity.(*Candidate); ok {
+		values = append(values, candidate.TaskID, candidate.OwnerGeneration)
+		where = append(where, fmt.Sprintf(`"task_id"=$%d AND "owner_generation"=$%d`, len(values)-1, len(values)))
+	}
 	return r.transaction(ctx, func(tx storage.Transaction) error {
+		if err := r.fenceWriter(ctx, tx); err != nil {
+			return err
+		}
 		count, err := tx.Exec(ctx, "UPDATE control."+d.table+" SET "+strings.Join(sets, ",")+" WHERE "+strings.Join(where, " AND "), values...)
 		if err != nil {
 			return err
