@@ -70,6 +70,13 @@ func (f *memoryFiles) Publish(ctx context.Context, temp, name string) error {
 	return nil
 }
 func (f *memoryFiles) Sync(context.Context) error { f.syncs++; return nil }
+func (f *memoryFiles) Usage(context.Context) (int64, error) {
+	var size int64
+	for _, data := range f.files {
+		size += int64(len(data))
+	}
+	return size, nil
+}
 func (f *memoryFiles) List(ctx context.Context, prefix string) ([]string, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -86,7 +93,15 @@ func (f *memoryFiles) List(ctx context.Context, prefix string) ([]string, error)
 
 func store(t *testing.T, files staging.Files) *staging.Store {
 	t.Helper()
-	s, err := staging.NewStore("run-001", files, 1<<20)
+	quota, ok := files.(*staging.QuotaFiles)
+	if !ok {
+		var err error
+		quota, err = staging.NewQuotaFiles(files, 128<<20)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	s, err := staging.NewStore("run-001", quota, 1<<20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +217,11 @@ func TestT04_01CancelledAndInvalidInputDoNotWrite(t *testing.T) {
 	if err := s.CommitPage(ctx, r, p, m); !errors.Is(err, context.Canceled) || files.writes != 0 {
 		t.Fatal("cancelled page wrote data")
 	}
-	if _, err := staging.NewStore("../escape", files, 1024); err == nil {
+	quota, err := staging.NewQuotaFiles(files, 128<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := staging.NewStore("../escape", quota, 1024); err == nil {
 		t.Fatal("unsafe run identity accepted")
 	}
 	r.Table = "../escape"

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"strings"
 )
@@ -22,6 +23,42 @@ type Files interface {
 	Publish(context.Context, string, string) error
 	Sync(context.Context) error
 	List(context.Context, string) ([]string, error)
+	Usage(context.Context) (int64, error)
+}
+
+func (d *Directory) Usage(ctx context.Context) (int64, error) {
+	if ctx.Err() != nil {
+		return 0, ctx.Err()
+	}
+	dir, err := d.root.Open(".")
+	if err != nil {
+		return 0, ErrStorage
+	}
+	defer dir.Close()
+	var size int64
+	for {
+		entries, err := dir.ReadDir(128)
+		for _, entry := range entries {
+			info, statErr := entry.Info()
+			if statErr != nil || !info.Mode().IsRegular() {
+				return 0, ErrStorage
+			}
+			if info.Size() < 0 || info.Size() > math.MaxInt64-size {
+				return 0, ErrCapacity
+			}
+			size += info.Size()
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return 0, ErrStorage
+		}
+		if ctx.Err() != nil {
+			return 0, ctx.Err()
+		}
+	}
+	return size, ctx.Err()
 }
 
 // Directory uses a pre-provisioned, private persistent directory. os.Root

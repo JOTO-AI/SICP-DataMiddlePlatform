@@ -82,3 +82,31 @@ func TestT04_02DirectoryStoreSurvivesReopen(t *testing.T) {
 		t.Fatal("reopened store lost or duplicated receipt")
 	}
 }
+
+func TestT04_05DirectoryQuotaChargesPendingAndPublishedFiles(t *testing.T) {
+	d, err := staging.OpenDirectory(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	quota, err := staging.NewQuotaFiles(d, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	temp, err := quota.WriteTemporary(context.Background(), []byte("123"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = quota.Publish(context.Background(), temp, "committed.data"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = quota.WriteTemporary(context.Background(), []byte("45")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = quota.WriteTemporary(context.Background(), []byte("6")); !errors.Is(err, staging.ErrCapacity) {
+		t.Fatal("pending files uncharged")
+	}
+	if used, err := quota.Usage(context.Background()); err != nil || used != 5 {
+		t.Fatal("wrong directory usage")
+	}
+}

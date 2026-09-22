@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 )
@@ -41,10 +42,11 @@ type Store struct {
 	runID        string
 	files        Files
 	maxPageBytes int64
+	mu           sync.Mutex
 }
 
-func NewStore(runID string, files Files, maxPageBytes int64) (*Store, error) {
-	if !runName.MatchString(runID) || files == nil || maxPageBytes < 1 || maxPageBytes > 64<<20 {
+func NewStore(runID string, files *QuotaFiles, maxPageBytes int64) (*Store, error) {
+	if !runName.MatchString(runID) || files == nil || files.files == nil || files.limit < 1 || maxPageBytes < 1 || maxPageBytes > 64<<20 {
 		return nil, ErrInvalid
 	}
 	return &Store{runID: runID, files: files, maxPageBytes: maxPageBytes}, nil
@@ -79,6 +81,8 @@ func (s *Store) identity(r ingest.PageRequest) string {
 }
 
 func (s *Store) CommitPage(ctx context.Context, request ingest.PageRequest, page ingest.Page, summary ingest.PageSummary) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -137,9 +141,18 @@ func (s *Store) CommitPage(ctx context.Context, request ingest.PageRequest, page
 	if err != nil || len(receipt) > receiptLimit {
 		return ErrInvalid
 	}
+	exists := false
 	if existing, err := s.files.Read(ctx, s.identity(r)+".receipt.json", receiptLimit); err == nil {
+		exists = true
 		if !bytes.Equal(existing, receipt) {
 			return ErrConflict
+		}
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return ErrStorage
+	}
+	if _, err := s.files.Read(ctx, s.runID+".sealed.json", sealLimit); err == nil {
+		if !exists {
+			return ErrSealed
 		}
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return ErrStorage
@@ -161,11 +174,11 @@ func (s *Store) ensure(ctx context.Context, name string, data []byte, limit int6
 		return s.files.Sync(ctx)
 	}
 	if !errors.Is(err, fs.ErrNotExist) {
-		return ErrStorage
+		return fileError(err)
 	}
 	temp, err := s.files.WriteTemporary(ctx, data)
 	if err != nil {
-		return ErrStorage
+		return fileError(err)
 	}
 	err = s.files.Publish(ctx, temp, name)
 	if errors.Is(err, fs.ErrExist) {
@@ -179,7 +192,7 @@ func (s *Store) ensure(ctx context.Context, name string, data []byte, limit int6
 		return s.files.Sync(ctx)
 	}
 	if err != nil {
-		return ErrStorage
+		return fileError(err)
 	}
 	return nil
 }
