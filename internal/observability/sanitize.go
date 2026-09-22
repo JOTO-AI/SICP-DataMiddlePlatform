@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -100,8 +101,62 @@ func (s *Sanitizer) Correlation(raw string) string {
 		return ""
 	}
 	mac := hmac.New(sha256.New, s.key[:])
-	_, _ = mac.Write([]byte(raw))
+	for len(raw) > 0 {
+		n := min(len(raw), 4096)
+		_, _ = mac.Write([]byte(raw[:n]))
+		raw = raw[n:]
+	}
 	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// Fingerprint hashes bounded chunks and length-delimits parts; source field
+// names can be large even when the resulting notification is tightly bounded.
+func (s *Sanitizer) Fingerprint(parts ...string) string {
+	if s == nil {
+		return ""
+	}
+	mac := hmac.New(sha256.New, s.key[:])
+	for _, part := range parts {
+		var size [8]byte
+		binary.BigEndian.PutUint64(size[:], uint64(len(part)))
+		_, _ = mac.Write(size[:])
+		for len(part) > 0 {
+			n := min(len(part), 4096)
+			_, _ = mac.Write([]byte(part[:n]))
+			part = part[n:]
+		}
+	}
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// SchemaField is a notification-only allowlist. Arbitrary detail maps remain
+// entirely redacted. A stable reference lets operators match unusual names.
+func (s *Sanitizer) SchemaField(raw string, trusted ...string) (name, reference string) {
+	reference = s.Fingerprint("schema", raw)
+	if s == nil || len(raw) == 0 || len(raw) > 64 {
+		return "", reference
+	}
+	for i, c := range raw {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || i > 0 && c >= '0' && c <= '9') {
+			return "", reference
+		}
+	}
+	for _, secret := range s.secrets {
+		if strings.Contains(raw, secret) {
+			return "", reference
+		}
+	}
+	approved := false
+	for _, value := range trusted {
+		if raw == value {
+			approved = true
+			break
+		}
+	}
+	if !approved {
+		return "", reference
+	}
+	return raw, reference
 }
 func (s *Sanitizer) Sanitize(e events.Event, d Details) (SafeEvent, error) {
 	if s == nil || e.Validate() != nil {

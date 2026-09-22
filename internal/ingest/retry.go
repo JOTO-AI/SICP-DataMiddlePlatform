@@ -7,6 +7,7 @@ import (
 	"net"
 	"sort"
 	"syscall"
+	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 )
@@ -38,12 +39,17 @@ type PageResult struct {
 // Task/call identities and persistence are supplied by the P05 event/outbox
 // boundary. No token, source value or response message is included here.
 type FailureEvent struct {
+	TaskID, CallID           string
+	OccurredAt               time.Time
 	Source, Path             string
 	Mode                     Mode
 	Page, PageSize, Attempts int
 	UnknownFields            []string
 	Reason                   FailureKind
+	final                    bool
 }
+
+func (e FailureEvent) IsFinal() bool { return e.final }
 
 func (e FailureEvent) String() string   { return "source final unknown-field failure" }
 func (e FailureEvent) GoString() string { return e.String() }
@@ -83,6 +89,12 @@ func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch
 		if err := call.FinishFailure(ctx, outcome, nil, nil, failureKind); err != nil {
 			result.ObservationError = err
 		}
+		if result.FinalFailure != nil {
+			identity := call.Identity()
+			result.FinalFailure.TaskID = identity.TaskID
+			result.FinalFailure.CallID = identity.CallID
+			result.FinalFailure.OccurredAt, _ = call.FinishedAt()
+		}
 	}()
 	unknown := map[string]bool{}
 	defer func() {
@@ -99,7 +111,7 @@ func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch
 		if errors.As(finalErr, &failure) {
 			reason = failure.Kind
 		}
-		result.FinalFailure = &FailureEvent{Source: input.Table, Path: definitions[input.Table].Path, Mode: input.Mode, Page: input.Page, PageSize: input.PageSize, Attempts: len(result.Attempts), UnknownFields: fields, Reason: reason}
+		result.FinalFailure = &FailureEvent{Source: input.Table, Path: definitions[input.Table].Path, Mode: input.Mode, Page: input.Page, PageSize: input.PageSize, Attempts: len(result.Attempts), UnknownFields: fields, Reason: reason, final: true}
 	}()
 	if policy.MaxAttempts < 1 || policy.MaxAttempts > 100 || (policy.MaxAttempts > 1 && policy.Wait == nil) {
 		return result, &Failure{Kind: ConfigurationFailure}

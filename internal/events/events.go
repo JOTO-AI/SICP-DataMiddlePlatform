@@ -239,6 +239,20 @@ func (s *Span) Identity() Identity {
 	return s.base.Identity
 }
 
+// FinishedAt exposes the frozen terminal fact even if its log acknowledgement
+// failed. A notification must not invent a new occurrence time on replay.
+func (s *Span) FinishedAt() (time.Time, bool) {
+	if s == nil {
+		return time.Time{}, false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.pendingFinish == nil {
+		return time.Time{}, false
+	}
+	return s.pendingFinish.OccurredAt, true
+}
+
 // Finish records business completion; Transport records client delivery separately.
 func (s *Span) Finish(ctx context.Context, outcome Outcome, status *int, code *int64) error {
 	return s.end(ctx, Finished, outcome, status, code, "")
