@@ -3,6 +3,7 @@ package observability
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 )
 
 var ErrDelivery = errors.New("log delivery not acknowledged")
@@ -21,27 +22,43 @@ type Journal interface {
 	Batch(context.Context, int, int) ([]Stored, error)
 	Remove(context.Context, string) error
 	Flush(context.Context) error
+	Lookup(context.Context, string) ([]byte, error)
+	Usage(context.Context) (Usage, error)
 }
 type LogStore interface {
 	StoreBatch(context.Context, []SafeEvent) error
 }
 type Buffer struct {
-	files                  Journal
+	files                  *QuotaJournal
 	sanitizer              *Sanitizer
 	batchCount, batchBytes int
 	delivery               chan struct{}
 	wake                   chan struct{}
+	appendGate             chan struct{}
+	closed                 atomic.Bool
 }
 
-func NewBuffer(files Journal, s *Sanitizer, batchCount, batchBytes int) (*Buffer, error) {
+func NewBuffer(files *QuotaJournal, s *Sanitizer, batchCount, batchBytes int) (*Buffer, error) {
 	if files == nil || s == nil || batchCount < 1 || batchCount > 1000 || batchBytes < s.maxBytes || batchBytes > 64<<20 {
 		return nil, ErrBuffer
 	}
-	return &Buffer{files: files, sanitizer: s, batchCount: batchCount, batchBytes: batchBytes, delivery: make(chan struct{}, 1), wake: make(chan struct{}, 1)}, nil
+	return &Buffer{files: files, sanitizer: s, batchCount: batchCount, batchBytes: batchBytes, delivery: make(chan struct{}, 1), wake: make(chan struct{}, 1), appendGate: make(chan struct{}, 1)}, nil
 }
 func (b *Buffer) Append(ctx context.Context, e SafeEvent) error {
 	if b == nil || !e.Valid() {
 		return ErrPayload
+	}
+	if b.closed.Load() {
+		return ErrClosed
+	}
+	select {
+	case b.appendGate <- struct{}{}:
+		defer func() { <-b.appendGate }()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	if b.closed.Load() {
+		return ErrClosed
 	}
 	if ctx.Err() != nil {
 		return ctx.Err()
@@ -51,6 +68,9 @@ func (b *Buffer) Append(ctx context.Context, e SafeEvent) error {
 		return err
 	}
 	if err := b.files.Put(ctx, safe.ID(), safe.Bytes()); err != nil {
+		if errors.Is(err, ErrCapacity) {
+			return ErrCapacity
+		}
 		return ErrBuffer
 	}
 	select {

@@ -7,9 +7,11 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"sort"
 	"strings"
+	"syscall"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 )
@@ -54,7 +56,10 @@ func (d *Directory) sync(ctx context.Context) error {
 		return ErrBuffer
 	}
 	defer dir.Close()
-	if dir.Sync() != nil {
+	if err := dir.Sync(); err != nil {
+		if errors.Is(err, syscall.ENOSPC) {
+			return ErrCapacity
+		}
 		return ErrBuffer
 	}
 	return ctx.Err()
@@ -119,6 +124,9 @@ func (d *Directory) Put(ctx context.Context, id string, body []byte) error {
 	name := "pending-" + hex.EncodeToString(nonce[:]) + ".tmp"
 	f, err := d.root.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
+		if errors.Is(err, syscall.ENOSPC) {
+			return ErrCapacity
+		}
 		return ErrBuffer
 	}
 	n, writeErr := f.Write(body)
@@ -130,12 +138,18 @@ func (d *Directory) Put(ctx context.Context, id string, body []byte) error {
 	}
 	closeErr := f.Close()
 	if writeErr != nil || closeErr != nil {
+		if errors.Is(writeErr, syscall.ENOSPC) || errors.Is(closeErr, syscall.ENOSPC) {
+			return ErrCapacity
+		}
 		return ErrBuffer
 	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
 	if err := d.root.Link(name, id+".json"); err != nil {
+		if errors.Is(err, syscall.ENOSPC) {
+			return ErrCapacity
+		}
 		return ErrBuffer
 	}
 	if err := d.sync(ctx); err != nil {
@@ -143,6 +157,52 @@ func (d *Directory) Put(ctx context.Context, id string, body []byte) error {
 	}
 	_ = d.root.Remove(name)
 	return nil
+}
+func (d *Directory) Lookup(ctx context.Context, id string) ([]byte, error) {
+	if err := d.lock(ctx); err != nil {
+		return nil, err
+	}
+	defer d.unlock()
+	body, err := d.read(ctx, id)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, fs.ErrNotExist
+	}
+	if err != nil {
+		return nil, ErrBuffer
+	}
+	return body, nil
+}
+func (d *Directory) Usage(ctx context.Context) (Usage, error) {
+	if err := d.lock(ctx); err != nil {
+		return Usage{}, err
+	}
+	defer d.unlock()
+	dir, err := d.root.Open(".")
+	if err != nil {
+		return Usage{}, ErrBuffer
+	}
+	defer dir.Close()
+	var total Usage
+	for {
+		if ctx.Err() != nil {
+			return Usage{}, ctx.Err()
+		}
+		entries, err := dir.ReadDir(128)
+		for _, entry := range entries {
+			info, err := entry.Info()
+			if err != nil || !info.Mode().IsRegular() || info.Size() < 0 || info.Size() > math.MaxInt64-total.Bytes {
+				return Usage{}, ErrBuffer
+			}
+			total.Bytes += info.Size()
+			total.Files++
+		}
+		if err == io.EOF {
+			return total, nil
+		}
+		if err != nil {
+			return Usage{}, ErrBuffer
+		}
+	}
 }
 func (d *Directory) Batch(ctx context.Context, maxCount, maxBytes int) ([]Stored, error) {
 	if err := d.lock(ctx); err != nil {

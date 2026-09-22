@@ -68,7 +68,7 @@ func TestT05_07LowTrafficFlushesAtLongestWait(t *testing.T) {
 }
 func TestRunWakesForFullBatchWithoutWaitingForIdleTimer(t *testing.T) {
 	j := newJournal()
-	b, err := observability.NewBuffer(j, sanitizer(t), 2, 32768)
+	b, err := observability.NewBuffer(quota(t, j), sanitizer(t), 2, 32768)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestRunWakesForFullBatchWithoutWaitingForIdleTimer(t *testing.T) {
 func TestBatchThresholdAndFailureBackoffDoNotCreateRecursiveEvents(t *testing.T) {
 	ctx := context.Background()
 	j := newJournal()
-	b, err := observability.NewBuffer(j, sanitizer(t), 2, 32768)
+	b, err := observability.NewBuffer(quota(t, j), sanitizer(t), 2, 32768)
 	if err != nil {
 		t.Fatal(err)
 	}

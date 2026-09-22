@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -37,13 +38,21 @@ type Dispatcher struct {
 	gate                     chan struct{}
 	firstPending, retryUntil time.Time
 	delivered, failures      atomic.Uint64
+	runMu                    sync.Mutex
+	runStarted               bool
+	runCancel                context.CancelFunc
+	runDone                  chan struct{}
+	waiters                  sync.WaitGroup
+	closeOnce                sync.Once
+	closeDone                chan struct{}
+	closeErr                 error
 }
 
 func NewDispatcher(b *Buffer, store LogStore, clock Timer, c DispatchConfig) (*Dispatcher, error) {
 	if b == nil || store == nil || clock == nil || c.MaxWait <= 0 || c.MaxWait > time.Minute || c.RetryWait <= 0 || c.RetryWait > time.Minute || c.Timeout <= 0 || c.Timeout > time.Minute || c.BatchBytes < 1 || c.BatchBytes > b.batchBytes {
 		return nil, ErrBuffer
 	}
-	return &Dispatcher{buffer: b, store: store, clock: clock, config: c, gate: make(chan struct{}, 1)}, nil
+	return &Dispatcher{buffer: b, store: store, clock: clock, config: c, gate: make(chan struct{}, 1), runDone: make(chan struct{}), closeDone: make(chan struct{})}, nil
 }
 func (d *Dispatcher) Stats() DispatchStats {
 	return DispatchStats{d.delivered.Load(), d.failures.Load()}
@@ -52,11 +61,20 @@ func (d *Dispatcher) Stats() DispatchStats {
 // Pump performs at most one batch. Run owns its timer; tests drive the identical
 // decision with FakeClock. Failures use counters, never recursive event logs.
 func (d *Dispatcher) Pump(ctx context.Context) (time.Duration, error) {
+	if d.buffer.closed.Load() {
+		return 0, ErrClosed
+	}
+	opCtx, cancel := context.WithTimeout(ctx, d.config.Timeout)
+	defer cancel()
+	ctx = opCtx
 	select {
 	case d.gate <- struct{}{}:
 		defer func() { <-d.gate }()
 	case <-ctx.Done():
 		return 0, ctx.Err()
+	}
+	if d.buffer.closed.Load() {
+		return 0, ErrClosed
 	}
 	now := d.clock.Now()
 	if now.Before(d.retryUntil) {
@@ -103,6 +121,17 @@ func (d *Dispatcher) failed(now time.Time, err error) (time.Duration, error) {
 	return d.config.RetryWait, err
 }
 func (d *Dispatcher) Run(ctx context.Context) error {
+	d.runMu.Lock()
+	if d.runStarted || d.buffer.closed.Load() {
+		d.runMu.Unlock()
+		return ErrClosed
+	}
+	d.runStarted = true
+	ctx, d.runCancel = context.WithCancel(ctx)
+	cancelRun := d.runCancel
+	d.runMu.Unlock()
+	defer cancelRun()
+	defer close(d.runDone)
 	for {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -113,13 +142,19 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		}
 		waitCtx, cancel := context.WithCancel(ctx)
 		done := make(chan error, 1)
-		go func() { done <- d.clock.Wait(waitCtx, delay) }()
+		d.waiters.Add(1)
+		go func() { defer d.waiters.Done(); done <- d.clock.Wait(waitCtx, delay) }()
 		select {
 		case <-ctx.Done():
 			cancel()
 			return ctx.Err()
 		case <-d.buffer.wake:
 			cancel()
+			select {
+			case <-done:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		case err := <-done:
 			cancel()
 			if err != nil && ctx.Err() == nil {

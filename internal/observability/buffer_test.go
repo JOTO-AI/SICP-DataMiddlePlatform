@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/observability"
@@ -25,13 +27,39 @@ func (j *journal) Put(ctx context.Context, id string, b []byte) error {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	if j.failPut {
-		return errors.New("disk full secret")
+		return syscall.ENOSPC
 	}
 	if old, ok := j.files[id]; ok && string(old) != string(b) {
 		return observability.ErrConflict
 	}
 	j.files[id] = append([]byte(nil), b...)
 	return ctx.Err()
+}
+func (j *journal) Lookup(ctx context.Context, id string) ([]byte, error) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	b, ok := j.files[id]
+	if !ok {
+		return nil, fs.ErrNotExist
+	}
+	return append([]byte(nil), b...), ctx.Err()
+}
+func (j *journal) Usage(ctx context.Context) (observability.Usage, error) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	u := observability.Usage{Files: int64(len(j.files))}
+	for _, b := range j.files {
+		u.Bytes += int64(len(b))
+	}
+	return u, ctx.Err()
+}
+func quota(t *testing.T, j observability.Journal) *observability.QuotaJournal {
+	t.Helper()
+	q, err := observability.NewQuota(j, observability.CapacityConfig{MaxBytes: 1 << 20, MaxFiles: 1000, WarningPercent: 80, Policy: observability.RejectNew})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return q
 }
 func (j *journal) Batch(ctx context.Context, count, limit int) ([]observability.Stored, error) {
 	j.mu.Lock()
@@ -97,7 +125,7 @@ func (s *logStore) StoreBatch(_ context.Context, b []observability.SafeEvent) er
 }
 func buffer(t *testing.T, j observability.Journal) *observability.Buffer {
 	t.Helper()
-	b, err := observability.NewBuffer(j, sanitizer(t), 10, 32768)
+	b, err := observability.NewBuffer(quota(t, j), sanitizer(t), 10, 32768)
 	if err != nil {
 		t.Fatal(err)
 	}

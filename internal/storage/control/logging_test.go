@@ -47,7 +47,11 @@ func TestT05_18LogDeliveryFailureDoesNotRollbackCommittedControlFact(t *testing.
 		t.Fatal(err)
 	}
 	defer files.Close()
-	b, err := observability.NewBuffer(files, s, 10, 32768)
+	q, err := observability.NewQuota(files, observability.CapacityConfig{MaxBytes: 1 << 20, MaxFiles: 1000, WarningPercent: 80, Policy: observability.RejectNew})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := observability.NewBuffer(q, s, 10, 32768)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +71,7 @@ func TestT05_18LogDeliveryFailureDoesNotRollbackCommittedControlFact(t *testing.
 	if err := r.Load(ctx, &loaded); err != nil || loaded.Status != "accepted" || !loaded.AcceptedAt.Equal(req.AcceptedAt) {
 		t.Fatal("committed task fact lost")
 	}
-	rebuilt, err := observability.NewBuffer(files, s, 10, 32768)
+	rebuilt, err := observability.NewBuffer(q, s, 10, 32768)
 	if err != nil {
 		t.Fatal(err)
 	}

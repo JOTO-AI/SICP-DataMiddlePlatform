@@ -214,6 +214,12 @@ func (g *Guard) RecordDetails(ctx context.Context, e events.Event, d Details) er
 		return err
 	}
 	if err := g.sink.Append(context.WithValue(ctx, recordingKey{}, true), safe); err != nil {
+		if errors.Is(err, ErrCapacity) {
+			return ErrCapacity
+		}
+		if errors.Is(err, ErrClosed) {
+			return ErrClosed
+		}
 		return ErrBuffer
 	}
 	return nil
