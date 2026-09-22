@@ -41,7 +41,8 @@ type Notice struct {
 	Truncated    bool               `json:"truncated"`
 }
 type Payload struct {
-	Notice Notice `json:"notice"`
+	Notice   Notice    `json:"notice"`
+	Delivery *Delivery `json:"delivery,omitempty"`
 }
 type Outbox interface {
 	EnqueueNotification(context.Context, control.Notification) (control.Notification, bool, error)

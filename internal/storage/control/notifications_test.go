@@ -51,6 +51,25 @@ func (d *outboxDB) Begin(_ context.Context, c storage.Connection) (storage.Trans
 }
 func (x *outboxTx) Exec(_ context.Context, sql string, args ...any) (int64, error) {
 	x.db.calls = append(x.db.calls, dbCall{sql, args})
+	if strings.HasPrefix(sql, "UPDATE control.notification_outbox SET payload=") {
+		for _, row := range x.rows {
+			if row[0] == args[0] {
+				row[3] = args[1]
+				row[4] = args[2]
+				row[5] = args[3]
+				row[7] = nil
+				row[8] = nil
+				if at := args[4].(*time.Time); at != nil {
+					row[7] = at.UTC().Truncate(time.Microsecond)
+				}
+				if at := args[5].(*time.Time); at != nil {
+					row[8] = at.UTC().Truncate(time.Microsecond)
+				}
+				return 1, nil
+			}
+		}
+		return 0, nil
+	}
 	if !strings.HasPrefix(sql, "INSERT INTO control.notification_outbox ") {
 		return 0, errors.New("unexpected control mutation")
 	}
@@ -115,12 +134,20 @@ func (r *notificationRows) Scan(dest ...any) error {
 func (r *notificationRows) Err() error { return nil }
 func (r *notificationRows) Close()     {}
 func (x *outboxTx) Query(_ context.Context, sql string, args ...any) (storage.Rows, error) {
-	if !strings.Contains(sql, "FROM control.notification_outbox WHERE status='pending'") {
+	due := strings.Contains(sql, "WHERE status IN ('pending','sending')")
+	if !due && !strings.Contains(sql, "FROM control.notification_outbox WHERE status='pending'") {
 		return nil, errors.New("unexpected recovery query")
 	}
 	var keys []string
 	for key, row := range x.rows {
-		if row[4] == "pending" {
+		eligible := row[4] == "pending"
+		if due {
+			eligible = (row[4] == "pending" || row[4] == "sending") && row[5].(int) < args[1].(int)
+			if row[7] != nil && row[7].(time.Time).After(args[2].(time.Time)) {
+				eligible = false
+			}
+		}
+		if eligible {
 			keys = append(keys, key)
 		}
 	}
