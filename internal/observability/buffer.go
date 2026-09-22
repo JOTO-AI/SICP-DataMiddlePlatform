@@ -30,13 +30,14 @@ type Buffer struct {
 	sanitizer              *Sanitizer
 	batchCount, batchBytes int
 	delivery               chan struct{}
+	wake                   chan struct{}
 }
 
 func NewBuffer(files Journal, s *Sanitizer, batchCount, batchBytes int) (*Buffer, error) {
 	if files == nil || s == nil || batchCount < 1 || batchCount > 1000 || batchBytes < s.maxBytes || batchBytes > 64<<20 {
 		return nil, ErrBuffer
 	}
-	return &Buffer{files, s, batchCount, batchBytes, make(chan struct{}, 1)}, nil
+	return &Buffer{files: files, sanitizer: s, batchCount: batchCount, batchBytes: batchBytes, delivery: make(chan struct{}, 1), wake: make(chan struct{}, 1)}, nil
 }
 func (b *Buffer) Append(ctx context.Context, e SafeEvent) error {
 	if b == nil || !e.Valid() {
@@ -51,6 +52,10 @@ func (b *Buffer) Append(ctx context.Context, e SafeEvent) error {
 	}
 	if err := b.files.Put(ctx, safe.ID(), safe.Bytes()); err != nil {
 		return ErrBuffer
+	}
+	select {
+	case b.wake <- struct{}{}:
+	default:
 	}
 	return nil
 }
