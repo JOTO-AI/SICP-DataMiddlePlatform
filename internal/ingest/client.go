@@ -35,9 +35,10 @@ type Attempt struct {
 }
 
 type Page struct {
-	Total   int64
-	Records []Record
-	Attempt Attempt
+	Total      int64
+	Records    []Record
+	Attempt    Attempt
+	retryAfter string
 }
 
 type FailureKind string
@@ -56,10 +57,11 @@ const (
 // Failure never retains an upstream error, URL, response message or body.
 // Cause is restricted to safe context sentinels or ValidationError.
 type Failure struct {
-	Kind      FailureKind
-	Attempt   Attempt
-	Cause     error
-	retryable bool
+	Kind       FailureKind
+	Attempt    Attempt
+	Cause      error
+	retryable  bool
+	retryAfter string
 }
 
 func (e *Failure) Error() string    { return "source request: " + string(e.Kind) }
@@ -106,8 +108,9 @@ func NewClient(origin, token string, transport http.RoundTripper, maxBytes int64
 
 func (c *Client) Fetch(ctx context.Context, input PageRequest) (Page, error) {
 	a := Attempt{}
+	retryAfter := ""
 	fail := func(kind FailureKind, cause error) (Page, error) {
-		return Page{}, &Failure{Kind: kind, Attempt: a, Cause: cause}
+		return Page{}, &Failure{Kind: kind, Attempt: a, Cause: cause, retryAfter: retryAfter}
 	}
 	if err := ctx.Err(); err != nil {
 		return fail(CancelledFailure, err)
@@ -147,12 +150,13 @@ func (c *Client) Fetch(ctx context.Context, input PageRequest) (Page, error) {
 		if ctx.Err() != nil {
 			return fail(CancelledFailure, ctx.Err())
 		}
-		return Page{}, &Failure{Kind: TransportFailure, Attempt: a, retryable: temporaryTransport(err)}
+		return Page{}, &Failure{Kind: TransportFailure, Attempt: a, retryable: temporaryTransport(err), retryAfter: retryAfter}
 	}
 	if resp == nil {
 		return fail(TransportFailure, nil)
 	}
 	status := resp.StatusCode
+	retryAfter = resp.Header.Get("Retry-After")
 	a.HTTPStatus = &status
 	if status < 200 || status >= 300 {
 		return fail(HTTPFailure, nil)
@@ -165,7 +169,7 @@ func (c *Client) Fetch(ctx context.Context, input PageRequest) (Page, error) {
 		return fail(CancelledFailure, ctx.Err())
 	}
 	if err != nil {
-		return Page{}, &Failure{Kind: TransportFailure, Attempt: a, retryable: temporaryTransport(err)}
+		return Page{}, &Failure{Kind: TransportFailure, Attempt: a, retryable: temporaryTransport(err), retryAfter: retryAfter}
 	}
 	if int64(len(body)) > c.maxBytes {
 		return fail(ResponseLimit, nil)
@@ -217,7 +221,7 @@ func (c *Client) Fetch(ctx context.Context, input PageRequest) (Page, error) {
 		}
 		rows = append(rows, record)
 	}
-	return Page{Total: total, Records: rows, Attempt: a}, nil
+	return Page{Total: total, Records: rows, Attempt: a, retryAfter: retryAfter}, nil
 }
 
 // Decode objects explicitly so duplicate envelope keys cannot silently win.

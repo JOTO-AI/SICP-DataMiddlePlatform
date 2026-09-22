@@ -32,12 +32,16 @@ const RetryWaitFailure FailureKind = "retry_wait"
 // FetchPage only publishes a complete, validated page once. Failed attempts
 // contribute telemetry, never rows. There are no persistence side effects.
 func (c *Client) FetchPage(ctx context.Context, input PageRequest, policy RetryPolicy) (PageResult, error) {
+	return fetchPage(ctx, input, policy, c.Fetch)
+}
+
+func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch func(context.Context, PageRequest) (Page, error)) (PageResult, error) {
 	result := PageResult{}
 	if policy.MaxAttempts < 1 || policy.MaxAttempts > 100 || (policy.MaxAttempts > 1 && policy.Wait == nil) {
 		return result, &Failure{Kind: ConfigurationFailure}
 	}
 	for attempt := 1; attempt <= policy.MaxAttempts; attempt++ {
-		page, err := c.Fetch(ctx, input)
+		page, err := fetch(ctx, input)
 		if err == nil {
 			result.Attempts = append(result.Attempts, AttemptResult{Number: attempt, Attempt: page.Attempt})
 			result.Page = page
@@ -52,6 +56,10 @@ func (c *Client) FetchPage(ctx context.Context, input PageRequest, policy RetryP
 			return result, failure
 		}
 		if err := policy.Wait(ctx, attempt); err != nil {
+			var budgetFailure *Failure
+			if errors.As(err, &budgetFailure) {
+				return result, budgetFailure
+			}
 			if ctx.Err() != nil {
 				return result, &Failure{Kind: CancelledFailure, Cause: ctx.Err()}
 			}
