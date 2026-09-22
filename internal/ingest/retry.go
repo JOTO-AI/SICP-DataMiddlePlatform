@@ -58,6 +58,13 @@ func (c *Client) FetchPage(ctx context.Context, input PageRequest, policy RetryP
 }
 
 func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch func(context.Context, PageRequest) (Page, error)) (result PageResult, finalErr error) {
+	if definition, ok := definitions[input.Table]; ok && input.Page > 0 && input.PageSize > 0 {
+		meta := events.Metadata{Source: input.Table, Path: definition.Path, Mode: string(input.Mode), Page: input.Page, PageSize: input.PageSize}
+		if input.Mode == Incremental {
+			meta.StartTime, meta.EndTime = input.StartTime, input.EndTime
+		}
+		ctx = events.WithMetadata(ctx, meta)
+	}
 	callCtx, call, recordErr := events.Begin(ctx, events.Call, "", 0)
 	if recordErr != nil {
 		return result, &Failure{Kind: ObservationFailure}
@@ -68,7 +75,12 @@ func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch
 		if finalErr != nil {
 			outcome = events.Failed
 		}
-		if err := call.Finish(ctx, outcome, nil, nil); err != nil {
+		failureKind := ""
+		var failure *Failure
+		if errors.As(finalErr, &failure) {
+			failureKind = string(failure.Kind)
+		}
+		if err := call.FinishFailure(ctx, outcome, nil, nil, failureKind); err != nil {
 			result.ObservationError = err
 		}
 	}()
@@ -106,7 +118,11 @@ func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch
 				meta = observedFailure.Attempt
 			}
 		}
-		if recordErr := span.Finish(ctx, outcome, meta.HTTPStatus, meta.BusinessCode); recordErr != nil {
+		failureKind := ""
+		if observedFailure != nil {
+			failureKind = string(observedFailure.Kind)
+		}
+		if recordErr := span.FinishFailure(ctx, outcome, meta.HTTPStatus, meta.BusinessCode, failureKind); recordErr != nil {
 			result.ObservationError = recordErr
 		}
 		if err == nil {

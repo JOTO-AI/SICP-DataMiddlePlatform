@@ -34,6 +34,14 @@ func TestT05_01RetryHasOneCallAndSeparateAttemptIdentities(t *testing.T) {
 	if all[0].Kind != events.Call || all[5].Kind != events.Call || all[0].EntityID != all[5].EntityID {
 		t.Fatal("logical call duplicated")
 	}
+	for _, e := range all {
+		if e.Metadata.Source != pageRequest().Table || e.Metadata.Page != 1 || e.Metadata.PageSize != pageRequest().PageSize {
+			t.Fatal("source page metadata missing")
+		}
+	}
+	if all[2].Metadata.Failure != "transport" || all[4].Metadata.Failure != "" {
+		t.Fatal("safe failure classification missing")
+	}
 	if all[1].Identity.CallID != all[3].Identity.CallID || all[1].Identity.AttemptID == all[3].Identity.AttemptID || all[1].Identity.AttemptNo != 1 || all[3].Identity.AttemptNo != 2 || all[2].Outcome != events.Failed || all[4].Outcome != events.Succeeded || all[2].HTTPStatus != nil || *all[4].HTTPStatus != 200 {
 		t.Fatal("retry identity/status lost")
 	}
