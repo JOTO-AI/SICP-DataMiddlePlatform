@@ -8,8 +8,10 @@ import (
 	"net/http"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/cache"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/snapshot"
 )
 
 type UseCase func(context.Context, any) (any, error)
@@ -21,6 +23,14 @@ type Observation func(*events.Span, error)
 // Business wraps real auth/parse/use-case/response behavior. Request metadata
 // and operation are server supplied; no request fields are copied into logs.
 func Business(op contract.Operation, key string, recorder *events.Recorder, observe Observation, run UseCase) (http.Handler, error) {
+	return business(op, key, recorder, observe, run, false)
+}
+
+func BusinessWithSnapshot(op contract.Operation, key string, recorder *events.Recorder, observe Observation, run UseCase) (http.Handler, error) {
+	return business(op, key, recorder, observe, run, true)
+}
+
+func business(op contract.Operation, key string, recorder *events.Recorder, observe Observation, run UseCase, snapshots bool) (http.Handler, error) {
 	if recorder == nil || observe == nil || run == nil {
 		return nil, errors.New("query dependencies required")
 	}
@@ -39,14 +49,22 @@ func Business(op contract.Operation, key string, recorder *events.Recorder, obse
 			WriteFailure(w, r, err)
 			return
 		}
-		data, err := run(r.Context(), params)
+		token, err := requestSnapshot(r.Header, op, snapshots)
+		if err != nil {
+			WriteFailure(w, r, err)
+			return
+		}
+		ctx := context.WithValue(r.Context(), snapshotKey{}, token)
+		data, err := run(ctx, params)
 		if err != nil {
 			var failure *Failure
 			if !errors.As(err, &failure) {
 				category := contract.DependencyFailure
 				switch {
-				case errors.Is(err, read.ErrBudget):
+				case errors.Is(err, read.ErrBudget), errors.Is(err, cache.ErrCapacity):
 					category = contract.ResourceExhausted
+				case errors.Is(err, snapshot.ErrSnapshot):
+					category = contract.Conflict
 				case errors.Is(err, read.ErrHandle):
 					category = contract.NotReady
 				case errors.Is(err, context.DeadlineExceeded), errors.Is(err, context.Canceled):
@@ -56,6 +74,16 @@ func Business(op contract.Operation, key string, recorder *events.Recorder, obse
 			}
 			WriteFailure(w, r, err)
 			return
+		}
+		if reply, ok := data.(Reply); ok {
+			if reply.Snapshot != "" {
+				if !snapshots || op != contract.StudentGrades && op != contract.BatchGrades || !validSnapshot(reply.Snapshot) {
+					WriteFailure(w, r, &Failure{Category: contract.Internal})
+					return
+				}
+				w.Header().Set(snapshot.Header, reply.Snapshot)
+			}
+			data = reply.Data
 		}
 		WriteSuccess(w, r, data)
 	}))
@@ -87,6 +115,7 @@ func Business(op contract.Operation, key string, recorder *events.Recorder, obse
 		outcome := events.Succeeded
 		if status >= 400 {
 			outcome = events.Failed
+			buffer.header.Del(snapshot.Header)
 		}
 		if err := span.Finish(ctx, outcome, &status, nil); err != nil {
 			observe(span, err)

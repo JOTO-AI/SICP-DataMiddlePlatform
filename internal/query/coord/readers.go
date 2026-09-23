@@ -67,6 +67,18 @@ func (c *Coordinator) Acquire(ctx context.Context, snapshot string) (read.Reques
 	if err != nil {
 		return nil, err
 	}
+	return c.AcquireFixed(ctx, h)
+}
+
+// AcquireFixed registers the already selected combination. Cache work must not
+// resolve a new active route after its key has been chosen.
+func (c *Coordinator) AcquireFixed(ctx context.Context, h read.Handle) (read.RequestLease, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if c == nil || c.Store == nil || c.Proof == nil || c.Clock == nil || c.Random == nil || c.ProcessID == "" {
+		return nil, read.ErrHandle
+	}
 	if h.Validate() != nil {
 		return nil, read.ErrHandle
 	}
