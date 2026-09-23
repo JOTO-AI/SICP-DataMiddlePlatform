@@ -219,9 +219,46 @@ func rollback(ctx context.Context, tx storage.Transaction) {
 // generation/bundle handle are supplied by P06/P11 before calling this method.
 // SQL NULL maps to nil RawMessage, not a fabricated source key-presence claim.
 func (r Repository) ReadBatch(ctx context.Context, position storage.Position, tableName, after string, limit int) (result []SourceRow, err error) {
+	return r.ReadMatching(ctx, position, tableName, after, limit, nil)
+}
+
+// Filter selects an allowlisted TEXT column; values are always bound. Contains
+// means literal, case-sensitive substring, so %, _ and backslash are ordinary.
+type Filter struct {
+	Column   string
+	Value    string
+	Contains bool
+}
+
+func (r Repository) ReadMatching(ctx context.Context, position storage.Position, tableName, after string, limit int, filters []Filter) (result []SourceRow, err error) {
 	table, ok := tables[tableName]
-	if !ok || limit < 1 || limit > MaxBatchRows {
+	if !ok || limit < 1 || limit > MaxBatchRows || len(filters) > 32 {
 		return nil, ErrInput
+	}
+	// Validate structure before acquiring any database resource.
+	conditions := []string{`"` + table.PrimaryKey + `" COLLATE "C" > $1`}
+	args := []any{after, limit}
+	for _, filter := range filters {
+		allowed := false
+		for _, column := range table.Columns {
+			if column.Name == filter.Column && column.Kind == value.Text {
+				allowed = true
+				break
+			}
+		}
+		if !allowed || len(filter.Value) > 4096 || strings.ContainsRune(filter.Value, 0) {
+			return nil, ErrInput
+		}
+		args = append(args, filter.Value)
+		column := `"` + filter.Column + `"`
+		if filter.Contains {
+			conditions = append(conditions, fmt.Sprintf("strpos(%s, $%d) > 0", column, len(args)))
+		} else {
+			conditions = append(conditions, fmt.Sprintf(`%s COLLATE "C" = $%d`, column, len(args)))
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	connection, err := r.Registry.Business(position)
 	if err != nil {
@@ -246,8 +283,8 @@ func (r Repository) ReadBatch(ctx context.Context, position storage.Position, ta
 			columns[i] += "::text"
 		}
 	}
-	sql := "SELECT " + strings.Join(columns, ",") + " FROM source." + table.Name + ` WHERE "` + table.PrimaryKey + `" COLLATE "C" > $1 ORDER BY "` + table.PrimaryKey + `" COLLATE "C" LIMIT $2`
-	rows, err := reader.Query(ctx, sql, after, limit)
+	sql := "SELECT " + strings.Join(columns, ",") + " FROM source." + table.Name + " WHERE " + strings.Join(conditions, " AND ") + ` ORDER BY "` + table.PrimaryKey + `" COLLATE "C" LIMIT $2`
+	rows, err := reader.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -55,7 +55,7 @@ func Run(ctx context.Context, cfg config.Config, deps Dependencies) (runErr erro
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
-	handler, err := NewHTTP(cfg.Role, deps.Clock, deps.Random, deps.Readiness)
+	handler, err := NewHTTP(cfg.Role, cfg.APIKey, deps.Clock, deps.Random, deps.Readiness)
 	if err != nil {
 		return err
 	}

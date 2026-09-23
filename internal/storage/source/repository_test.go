@@ -298,3 +298,37 @@ func TestT02_08CatalogMatchesIndependentFieldPlan(t *testing.T) {
 		t.Fatal("caller mutated identifier allowlist")
 	}
 }
+
+func TestT06_08NamesAreBoundAsLiteralSubstrings(t *testing.T) {
+	var previous string
+	for _, name := range []string{"campus", `x' OR TRUE --`, `100%_\\`, "中文"} {
+		r, db, _, target := setup(t)
+		_, err := r.ReadMatching(t.Context(), target.Position, "dwd_xqjbsjzlb", "", 10, []source.Filter{{Column: "XQMC", Value: name, Contains: true}, {Column: "XQH", Value: "001"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		call := db.calls[0]
+		if !reflect.DeepEqual(call.args, []any{"", 10, name, "001"}) || !strings.Contains(call.sql, `strpos("XQMC", $3) > 0`) || !strings.Contains(call.sql, `"XQH" COLLATE "C" = $4`) || !db.closed {
+			t.Fatal(call)
+		}
+		if previous != "" && previous != call.sql {
+			t.Fatal("input changed SQL structure")
+		}
+		previous = call.sql
+	}
+	for _, column := range []string{`XQH" OR TRUE --`, "unknown", "ETL_TIME"} {
+		r, db, _, target := setup(t)
+		if _, err := r.ReadMatching(t.Context(), target.Position, "dwd_xqjbsjzlb", "", 10, []source.Filter{{Column: column, Value: "x"}}); err == nil || len(db.calls) != 0 {
+			t.Fatal(column, err, db.calls)
+		}
+	}
+}
+
+func TestT06_12MatchingReadsDiscardLaterFailure(t *testing.T) {
+	r, db, _, target := setup(t)
+	db.readRows = [][]any{{"0001", "campus", nil, nil}}
+	db.rowError = errors.New("later cursor failure")
+	if rows, err := r.ReadMatching(t.Context(), target.Position, "dwd_xqjbsjzlb", "", 10, []source.Filter{{Column: "XQMC", Value: "campus", Contains: true}}); err == nil || rows != nil || !db.closed {
+		t.Fatal(rows, err)
+	}
+}

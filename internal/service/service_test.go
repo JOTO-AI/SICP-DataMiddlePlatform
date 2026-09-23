@@ -24,7 +24,7 @@ var fakeTime = time.Date(2026, 9, 18, 9, 0, 0, 0, time.FixedZone("test", 8*3600)
 
 func TestT01_07LiveButNotBusinessReady(t *testing.T) {
 	for _, role := range []config.Role{config.Query, config.Worker} {
-		h, err := service.NewHTTP(role, testkit.FakeClock{Time: fakeTime}, testkit.FixedRandom(1), nil)
+		h, err := service.NewHTTP(role, "synthetic-key", testkit.FakeClock{Time: fakeTime}, testkit.FixedRandom(1), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -37,7 +37,9 @@ func TestT01_07LiveButNotBusinessReady(t *testing.T) {
 		}
 		for _, d := range contract.Definitions() {
 			rec := httptest.NewRecorder()
-			h.ServeHTTP(rec, httptest.NewRequest("POST", d.Path, nil))
+			req := httptest.NewRequest("POST", d.Path, nil)
+			req.Header.Set("X-API-Key", "synthetic-key")
+			h.ServeHTTP(rec, req)
 			want := 503
 			if role == config.Worker {
 				want = 404
@@ -51,7 +53,7 @@ func TestT01_07LiveButNotBusinessReady(t *testing.T) {
 
 func TestT01_08InjectedClockAndRandomReachRequestContext(t *testing.T) {
 	var observed service.Metadata
-	h, err := service.NewHTTP(config.Query, testkit.FakeClock{Time: fakeTime}, testkit.FixedRandom(0xab), testkit.ReadyFunc(func(ctx context.Context) bool { observed = service.RequestMetadata(ctx); return false }))
+	h, err := service.NewHTTP(config.Query, "synthetic-key", testkit.FakeClock{Time: fakeTime}, testkit.FixedRandom(0xab), testkit.ReadyFunc(func(ctx context.Context) bool { observed = service.RequestMetadata(ctx); return false }))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +169,7 @@ func TestListenFailureCleansInitializedDependencies(t *testing.T) {
 }
 
 func TestDrainingOverridesReadinessAndBlocksQueries(t *testing.T) {
-	h, err := service.NewHTTP(config.Query, testkit.FakeClock{Time: fakeTime}, testkit.FixedRandom(1), testkit.ReadyFunc(func(context.Context) bool { return true }))
+	h, err := service.NewHTTP(config.Query, "synthetic-key", testkit.FakeClock{Time: fakeTime}, testkit.FixedRandom(1), testkit.ReadyFunc(func(context.Context) bool { return true }))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +228,7 @@ type failingRandom struct{}
 
 func (failingRandom) Read([]byte) (int, error) { return 0, errors.New("private-secret") }
 func TestRandomFailureIsSanitized(t *testing.T) {
-	h, err := service.NewHTTP(config.Query, testkit.FakeClock{Time: fakeTime}, failingRandom{}, nil)
+	h, err := service.NewHTTP(config.Query, "synthetic-key", testkit.FakeClock{Time: fakeTime}, failingRandom{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,3 +240,24 @@ func TestRandomFailureIsSanitized(t *testing.T) {
 }
 
 var _ http.Handler = (*service.HTTP)(nil)
+
+func TestT06_01ServiceEnforcesAPIKeyAndServerRequestID(t *testing.T) {
+	h, err := service.NewHTTP(config.Query, "synthetic-key", testkit.FakeClock{Time: fakeTime}, testkit.FixedRandom(1), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"", "wrong", "synthetic-key"} {
+		r := httptest.NewRequest("POST", contract.Definitions()[0].Path, nil)
+		r.Header.Set("X-API-Key", key)
+		r.Header.Set("X-Request-ID", "untrusted-secret")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		want := 401
+		if key == "synthetic-key" {
+			want = 503
+		}
+		if w.Code != want || w.Header().Get("X-Request-ID") != strings.Repeat("01", 16) || strings.Contains(w.Body.String(), "secret") || !strings.Contains(w.Body.String(), `"request_id":"`+strings.Repeat("01", 16)+`"`) {
+			t.Fatal(w.Code, w.Body.String())
+		}
+	}
+}
