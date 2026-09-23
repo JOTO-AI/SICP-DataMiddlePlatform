@@ -19,6 +19,45 @@ type Service struct {
 	Limits read.Limits
 }
 
+func (s Service) Staff(ctx context.Context, h read.Handle, req contract.StaffTimetableRequest, synced time.Time) (out contract.StaffTimetableResponse, err error) {
+	defer func() {
+		if err != nil {
+			out = contract.StaffTimetableResponse{}
+		}
+	}()
+	if _, err = StaffMatches(nil, req); err != nil {
+		return
+	}
+	b, err := read.NewBudget(s.Limits, s.Clock)
+	if err != nil {
+		return out, err
+	}
+	// Teacher IDs are delimited source values, not SQL substring predicates.
+	rows, err := read.Collect(ctx, s.Source, h, SchedulesTable, []source.Filter{{Column: "KKXND", Value: req.AcademicYear}, {Column: "KKXQM", Value: req.Semester}}, b)
+	if err != nil {
+		return out, err
+	}
+	matches, err := staffMatchesChecked(rows, req, func() error { return b.Check(ctx) })
+	if err != nil {
+		return out, err
+	}
+	a, err := s.assembler(ctx, h, matches, b)
+	if err != nil {
+		return out, err
+	}
+	entries, err := a.entriesChecked(matches, func() error { return b.Check(ctx) })
+	if err != nil {
+		return out, err
+	}
+	at, err := s.Times.Instant(synced)
+	if err != nil {
+		return out, err
+	}
+	out = contract.StaffTimetableResponse{StaffNumber: req.StaffNumber, AcademicYear: req.AcademicYear, Semester: req.Semester, SyncedAt: *at, Items: FilterStaff(entries, req)}
+	err = b.Check(ctx)
+	return
+}
+
 func (s Service) Student(ctx context.Context, h read.Handle, req contract.StudentTimetableRequest, synced time.Time) (out contract.StudentTimetableResponse, err error) {
 	defer func() {
 		if err != nil {

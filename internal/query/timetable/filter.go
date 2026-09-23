@@ -23,6 +23,19 @@ func FilterCourse(entries []contract.TimetableEntry, query *string) []contract.T
 	return out
 }
 
+func FilterStaff(entries []contract.TimetableEntry, req contract.StaffTimetableRequest) []contract.TimetableEntry {
+	out := []contract.TimetableEntry{}
+	for _, entry := range entries {
+		if req.TeachingClassNumber != nil && entry.TeachingClassNumber != *req.TeachingClassNumber {
+			continue
+		}
+		if MatchCourse(entry, req.CourseQuery) {
+			out = append(out, entry)
+		}
+	}
+	return out
+}
+
 func (a Assembler) Student(relations, schedules []source.SourceRow, req contract.StudentTimetableRequest) ([]contract.TimetableEntry, error) {
 	matches, err := StudentMatches(relations, schedules, req)
 	if err != nil {

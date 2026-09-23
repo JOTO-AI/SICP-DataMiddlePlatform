@@ -140,8 +140,12 @@ func setupOperation(t *testing.T, r *repository, failPhase events.Phase, op cont
 		factory = handlers.BatchGrades
 	}
 	var h http.Handler
-	if op == contract.StudentTimetable {
-		h, err = handlers.StudentTimetable("synthetic-key", timetable.Service{Source: r, Times: times, Clock: clock, Limits: limits}, a, metadata{operation: op}, recorder, func(*events.Span, error) { observation++ })
+	if op == contract.StudentTimetable || op == contract.StaffTimetable {
+		timetableFactory := handlers.StudentTimetable
+		if op == contract.StaffTimetable {
+			timetableFactory = handlers.StaffTimetable
+		}
+		h, err = timetableFactory("synthetic-key", timetable.Service{Source: r, Times: times, Clock: clock, Limits: limits}, a, metadata{operation: op}, recorder, func(*events.Span, error) { observation++ })
 	} else {
 		h, err = factory("synthetic-key", grades.Service{Source: r, Times: times, Clock: clock, Limits: limits}, a, metadata{operation: op}, recorder, func(*events.Span, error) { observation++ })
 	}
