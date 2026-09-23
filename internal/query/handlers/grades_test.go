@@ -19,6 +19,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/grades"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/handlers"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/timetable"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/service"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
@@ -54,6 +55,7 @@ type repository struct {
 	tables map[string][]source.SourceRow
 	calls  []queryCall
 	fail   string
+	failAt int
 	cancel context.CancelFunc
 }
 
@@ -65,7 +67,7 @@ func (r *repository) ReadMatching(_ context.Context, h read.Handle, table, after
 	if h != pinned {
 		return nil, errors.New("wrong repository handle")
 	}
-	if table == r.fail {
+	if table == r.fail || r.failAt > 0 && len(r.calls) == r.failAt {
 		return nil, errors.New("private SQL credentials")
 	}
 	pk := ""
@@ -137,7 +139,12 @@ func setupOperation(t *testing.T, r *repository, failPhase events.Phase, op cont
 	if op == contract.BatchGrades {
 		factory = handlers.BatchGrades
 	}
-	h, err := factory("synthetic-key", grades.Service{Source: r, Times: times, Clock: clock, Limits: limits}, a, metadata{operation: op}, recorder, func(*events.Span, error) { observation++ })
+	var h http.Handler
+	if op == contract.StudentTimetable {
+		h, err = handlers.StudentTimetable("synthetic-key", timetable.Service{Source: r, Times: times, Clock: clock, Limits: limits}, a, metadata{operation: op}, recorder, func(*events.Span, error) { observation++ })
+	} else {
+		h, err = factory("synthetic-key", grades.Service{Source: r, Times: times, Clock: clock, Limits: limits}, a, metadata{operation: op}, recorder, func(*events.Span, error) { observation++ })
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

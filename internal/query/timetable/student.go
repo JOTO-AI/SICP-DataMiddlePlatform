@@ -36,11 +36,20 @@ func validTerm(year, semester string) bool {
 // StudentMatches requires ALL terms for the relevant relation keys: the source
 // membership table has no term, so prefiltering schedules would hide ambiguity.
 func StudentMatches(relations, schedules []source.SourceRow, req contract.StudentTimetableRequest) ([]Match, error) {
+	return studentMatchesChecked(relations, schedules, req, nil)
+}
+
+func studentMatchesChecked(relations, schedules []source.SourceRow, req contract.StudentTimetableRequest, check func() error) ([]Match, error) {
 	if strings.TrimSpace(req.StudentNumber) == "" || !validTerm(req.AcademicYear, req.Semester) {
 		return nil, compute.ErrValue
 	}
 	members := map[relationKey][]source.SourceRow{}
 	for _, r := range relations {
+		if check != nil {
+			if err := check(); err != nil {
+				return nil, err
+			}
+		}
 		student, err := compute.Required(r, "XH")
 		if err != nil {
 			return nil, err
@@ -70,6 +79,11 @@ func StudentMatches(relations, schedules []source.SourceRow, req contract.Studen
 	candidates := []candidate{}
 	terms := map[relationKey]map[term]bool{}
 	for _, r := range schedules {
+		if check != nil {
+			if err := check(); err != nil {
+				return nil, err
+			}
+		}
 		class, err := compute.Required(r, "JXBH")
 		if err != nil {
 			return nil, err
@@ -103,6 +117,11 @@ func StudentMatches(relations, schedules []source.SourceRow, req contract.Studen
 	selected := term{req.AcademicYear, req.Semester}
 	out := []Match{}
 	for _, c := range candidates {
+		if check != nil {
+			if err := check(); err != nil {
+				return nil, err
+			}
+		}
 		if c.term != selected {
 			continue
 		}
