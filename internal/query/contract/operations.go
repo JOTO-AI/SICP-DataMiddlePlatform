@@ -20,7 +20,7 @@ func Definitions() []Definition {
 	return []Definition{
 		{StudentGrades, "/api/v1/sicp/students/grades/query", nil},
 		{BatchGrades, "/api/v1/sicp/students/grades/batch-query", nil},
-		{StudentTimetable, "/api/v1/sicp/students/timetable/query", []string{"unscheduled_course", "duplicate_course", "timetable_formats"}},
+		{StudentTimetable, "/api/v1/sicp/students/timetable/query", nil},
 		{StaffTimetable, "/api/v1/sicp/staff/timetable/query", []string{"duplicate_course", "timetable_formats"}},
 	}
 }
