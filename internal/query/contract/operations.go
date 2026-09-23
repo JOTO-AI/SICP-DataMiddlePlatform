@@ -18,14 +18,14 @@ type Definition struct {
 // Definitions returns fresh values to keep callers from mutating the catalog.
 func Definitions() []Definition {
 	return []Definition{
-		{StudentGrades, "/api/v1/sicp/students/grades/query", []string{"non_numeric_score", "duplicate_course", "historical_course"}},
+		{StudentGrades, "/api/v1/sicp/students/grades/query", nil},
 		{BatchGrades, "/api/v1/sicp/students/grades/batch-query", []string{"non_numeric_score", "duplicate_course", "historical_course"}},
 		{StudentTimetable, "/api/v1/sicp/students/timetable/query", []string{"unscheduled_course", "duplicate_course", "timetable_formats"}},
 		{StaffTimetable, "/api/v1/sicp/staff/timetable/query", []string{"duplicate_course", "timetable_formats"}},
 	}
 }
 
-// Categories are internal classifications, not the final P06 response envelope.
+// Categories are the fixed public codes defined by the query transport contract.
 type ErrorCategory string
 
 const (
@@ -37,4 +37,5 @@ const (
 	DependencyFailure ErrorCategory = "dependency_failure"
 	DeadlineExceeded  ErrorCategory = "deadline_exceeded"
 	Internal          ErrorCategory = "internal"
+	ResourceExhausted ErrorCategory = "resource_exhausted"
 )

@@ -37,11 +37,28 @@ func (h *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.handler.Ser
 func (h *HTTP) Stop()                                            { h.draining.Store(true) }
 
 func NewHTTP(role config.Role, apiKey string, clock ports.Clock, random ports.Random, readiness ports.Readiness) (*HTTP, error) {
+	return NewHTTPWithHandlers(role, apiKey, clock, random, readiness, nil)
+}
+
+// NewHTTPWithHandlers installs only implemented, authenticated query handlers.
+// Missing operations retain guarded placeholders and keep readiness false.
+func NewHTTPWithHandlers(role config.Role, apiKey string, clock ports.Clock, random ports.Random, readiness ports.Readiness, handlers map[contract.Operation]http.Handler) (*HTTP, error) {
 	if clock == nil || random == nil {
 		return nil, fmt.Errorf("clock and random dependencies required")
 	}
 	if role != config.Query && role != config.Worker {
 		return nil, fmt.Errorf("invalid service role")
+	}
+	for op, handler := range handlers {
+		known := false
+		for _, d := range contract.Definitions() {
+			if d.Operation == op {
+				known = true
+			}
+		}
+		if role != config.Query || !known || handler == nil {
+			return nil, fmt.Errorf("invalid query handler registration")
+		}
 	}
 	h := &HTTP{}
 	mux := http.NewServeMux()
@@ -60,18 +77,28 @@ func NewHTTP(role config.Role, apiKey string, clock ports.Clock, random ports.Ra
 		writeJSON(w, status, map[string]bool{"ready": ready})
 	})
 	if role == config.Query {
+		// Validate the configured credential even when all handlers are supplied.
+		if _, err := transport.APIKey(apiKey, http.NotFoundHandler()); err != nil {
+			return nil, err
+		}
 		for _, definition := range contract.Definitions() {
-			if err := registry.Register(definition, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if handler := handlers[definition.Operation]; handler != nil {
+				if err := registry.Enable(definition, handler); err != nil {
+					return nil, err
+				}
+				continue
+			}
+			placeholder, err := transport.APIKey(apiKey, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				transport.WriteFailure(w, r, &transport.Failure{Category: contract.NotReady})
-			})); err != nil {
+			}))
+			if err != nil {
+				return nil, err
+			}
+			if err := registry.Register(definition, placeholder); err != nil {
 				return nil, err
 			}
 		}
-		guarded, err := transport.APIKey(apiKey, registry.Handler())
-		if err != nil {
-			return nil, err
-		}
-		mux.Handle("/api/", guarded)
+		mux.Handle("/api/", registry.Handler())
 	}
 	// Serialize injected readers as they need not be concurrency safe.
 	var randomMu sync.Mutex

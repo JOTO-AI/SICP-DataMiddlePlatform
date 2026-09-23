@@ -190,6 +190,11 @@ func (r *Recorder) Begin(ctx context.Context, k Kind, parent Identity, instance 
 	switch k {
 	case Request:
 		i = Identity{RequestID: id}
+		// The HTTP service may supply its already generated trusted request ID.
+		// Incoming client headers must never be passed as this internal identity.
+		if parent.RequestID != "" {
+			i.RequestID = parent.RequestID
+		}
 	case Task:
 		i.TaskID = id
 		i.StepID = ""

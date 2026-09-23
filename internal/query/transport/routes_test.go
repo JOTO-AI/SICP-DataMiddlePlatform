@@ -58,6 +58,9 @@ func TestT01_01RoutesAndOperationsAreUnique(t *testing.T) {
 
 func TestT01_09UnresolvedContractCannotBeEnabled(t *testing.T) {
 	for _, d := range contract.Definitions() {
+		if len(d.PendingRules) == 0 {
+			continue
+		}
 		r := transport.NewRegistry()
 		err := r.Enable(d, http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Fatal("pending business executed") }))
 		if err == nil || !strings.Contains(err.Error(), string(contract.NotReady)) {

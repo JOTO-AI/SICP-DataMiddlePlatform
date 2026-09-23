@@ -65,6 +65,8 @@ func WriteFailure(w http.ResponseWriter, r *http.Request, err error) {
 		status, message = http.StatusServiceUnavailable, "Dependency unavailable"
 	case contract.DeadlineExceeded:
 		status, message = http.StatusGatewayTimeout, "Query timed out"
+	case contract.ResourceExhausted:
+		status, message = http.StatusUnprocessableEntity, "Query resource limit exceeded"
 	default:
 		category = contract.Internal
 	}

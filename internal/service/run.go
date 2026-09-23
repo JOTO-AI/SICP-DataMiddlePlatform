@@ -16,6 +16,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/config"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/lifecycle"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 )
 
 type Event struct {
@@ -24,11 +25,12 @@ type Event struct {
 	Resources []lifecycle.Result `json:"resources,omitempty"`
 }
 type Dependencies struct {
-	Clock     ports.Clock
-	Random    ports.Random
-	Readiness ports.Readiness
-	Factories []lifecycle.Factory
-	Listen    func(string, string) (net.Listener, error)
+	Clock         ports.Clock
+	Random        ports.Random
+	Readiness     ports.Readiness
+	QueryHandlers map[contract.Operation]http.Handler
+	Factories     []lifecycle.Factory
+	Listen        func(string, string) (net.Listener, error)
 	// Record must return promptly; only sanitized lifecycle facts are supplied.
 	Record func(Event)
 }
@@ -55,7 +57,7 @@ func Run(ctx context.Context, cfg config.Config, deps Dependencies) (runErr erro
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
-	handler, err := NewHTTP(cfg.Role, cfg.APIKey, deps.Clock, deps.Random, deps.Readiness)
+	handler, err := NewHTTPWithHandlers(cfg.Role, cfg.APIKey, deps.Clock, deps.Random, deps.Readiness, deps.QueryHandlers)
 	if err != nil {
 		return err
 	}

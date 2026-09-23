@@ -78,6 +78,7 @@ func TestT06_14FailureEnvelope(t *testing.T) {
 		{contract.Forbidden, 403, "Access denied"}, {contract.NotReady, 503, "Service not ready"},
 		{contract.Conflict, 409, "Snapshot conflict"}, {contract.DependencyFailure, 503, "Dependency unavailable"},
 		{contract.DeadlineExceeded, 504, "Query timed out"}, {contract.Internal, 500, "Internal error"},
+		{contract.ResourceExhausted, 422, "Query resource limit exceeded"},
 	} {
 		t.Run(string(tc.category), func(t *testing.T) {
 			r := httptest.NewRequest("POST", "/", nil)
