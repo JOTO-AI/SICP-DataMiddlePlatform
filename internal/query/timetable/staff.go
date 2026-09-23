@@ -12,6 +12,18 @@ func StaffMatches(schedules []source.SourceRow, req contract.StaffTimetableReque
 	return staffMatchesChecked(schedules, req, nil)
 }
 
+func (a Assembler) Staff(schedules []source.SourceRow, req contract.StaffTimetableRequest) ([]contract.TimetableEntry, error) {
+	matches, err := StaffMatches(schedules, req)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := a.Entries(matches)
+	if err != nil {
+		return nil, err
+	}
+	return FilterStaff(entries, req), nil
+}
+
 func staffMatchesChecked(schedules []source.SourceRow, req contract.StaffTimetableRequest, check func() error) ([]Match, error) {
 	if strings.TrimSpace(req.StaffNumber) == "" || !validTerm(req.AcademicYear, req.Semester) {
 		return nil, compute.ErrValue
