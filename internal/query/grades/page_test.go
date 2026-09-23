@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
-	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/grades"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
 
