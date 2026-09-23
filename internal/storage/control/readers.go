@@ -120,6 +120,9 @@ func (r Repository) ReserveOverwrite(ctx context.Context, h SlotIdentity) (Slot,
 		if err := r.fenceWriter(ctx, tx); err != nil {
 			return err
 		}
+		if err := lockSnapshots(ctx, tx); err != nil {
+			return err
+		}
 		if err := lockSlot(ctx, tx, h.Position); err != nil {
 			return err
 		}
@@ -135,6 +138,13 @@ func (r Repository) ReserveOverwrite(ctx context.Context, h SlotIdentity) (Slot,
 			return err
 		}
 		if busy {
+			return ErrBusy
+		}
+		var retained bool
+		if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.query_snapshots q WHERE q.bundle_id=$1 AND q.expires_at>CURRENT_TIMESTAMP) AND NOT EXISTS (SELECT 1 FROM control.slots s WHERE s.bundle_id=$1 AND s.state='ready' AND s.admission_open=TRUE AND (s.instance<>$2 OR s.slot<>$3))", h.BundleID, s.Instance, s.Slot).Scan(&retained); err != nil {
+			return err
+		}
+		if retained {
 			return ErrBusy
 		}
 		count, err := tx.Exec(ctx, "UPDATE control.slots SET admission_open=FALSE,state='building',generation=$3,bundle_id=NULL WHERE instance=$1 AND slot=$2", s.Instance, s.Slot, s.Generation+1)

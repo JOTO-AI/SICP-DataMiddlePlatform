@@ -23,6 +23,8 @@ type readerDB struct {
 	failCommit bool
 	records    map[string]control.Reader
 	executions map[string]sqlRecord
+	retained   bool
+	otherCopy  bool
 }
 type sqlRecord struct {
 	reader   string
@@ -46,6 +48,9 @@ func (d *readerDB) Begin(_ context.Context, _ storage.Connection) (storage.Trans
 func (t *readerTX) Exec(_ context.Context, sql string, args ...any) (int64, error) {
 	t.db.calls = append(t.db.calls, dbCall{sql, args})
 	if strings.Contains(sql, "pg_advisory_xact_lock") {
+		if len(args) == 1 && args[0] == int64(734219003) {
+			return 1, nil
+		}
 		if len(args) != 2 || args[0] != int32(734219002) || args[1] != int32(3) {
 			return 0, errors.New("wrong slot lock")
 		}
@@ -111,6 +116,12 @@ func (t *readerTX) QueryRow(_ context.Context, sql string, args ...any) storage.
 	t.db.calls = append(t.db.calls, dbCall{sql, args})
 	if strings.Contains(sql, "FROM control.execution") {
 		return result{raw: []any{"task-A", "owner-A", int64(9)}}
+	}
+	if strings.Contains(sql, "FROM control.query_snapshots") {
+		if !strings.Contains(sql, "expires_at>CURRENT_TIMESTAMP") || !strings.Contains(sql, "s.instance<>$2 OR s.slot<>$3") {
+			return result{fail: true}
+		}
+		return result{raw: []any{t.db.retained && !t.db.otherCopy}}
 	}
 	if !t.locked {
 		return result{fail: true}
