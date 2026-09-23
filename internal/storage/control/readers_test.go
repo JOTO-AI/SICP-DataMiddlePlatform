@@ -3,6 +3,7 @@ package control_test
 import (
 	"context"
 	"errors"
+	"maps"
 	"strings"
 	"sync"
 	"testing"
@@ -20,18 +21,27 @@ type readerDB struct {
 	readers    int
 	calls      []dbCall
 	failCommit bool
+	records    map[string]control.Reader
+	executions map[string]sqlRecord
+}
+type sqlRecord struct {
+	reader   string
+	started  time.Time
+	finished *time.Time
 }
 type readerTX struct {
-	db      *readerDB
-	before  control.Slot
-	readers int
-	done    bool
-	locked  bool
+	db         *readerDB
+	before     control.Slot
+	readers    int
+	done       bool
+	locked     bool
+	records    map[string]control.Reader
+	executions map[string]sqlRecord
 }
 
 func (d *readerDB) Begin(_ context.Context, _ storage.Connection) (storage.Transaction, error) {
 	d.mu.Lock()
-	return &readerTX{db: d, before: d.slot, readers: d.readers}, nil
+	return &readerTX{db: d, before: d.slot, readers: d.readers, records: maps.Clone(d.records), executions: maps.Clone(d.executions)}, nil
 }
 func (t *readerTX) Exec(_ context.Context, sql string, args ...any) (int64, error) {
 	t.db.calls = append(t.db.calls, dbCall{sql, args})
@@ -48,6 +58,42 @@ func (t *readerTX) Exec(_ context.Context, sql string, args ...any) (int64, erro
 	switch {
 	case strings.HasPrefix(sql, "INSERT INTO control.readers"):
 		t.db.readers++
+		if t.db.records == nil {
+			t.db.records = map[string]control.Reader{}
+		}
+		at := args[6].(time.Time)
+		t.db.records[args[0].(string)] = control.Reader{ID: args[0].(string), Instance: args[1].(string), Slot: args[2].(int16), Generation: args[3].(int64), BundleID: args[4].(string), ProcessID: args[5].(string), AdmittedAt: at, SQLFinishedAt: &at}
+		return 1, nil
+	case strings.HasPrefix(sql, "INSERT INTO control.reader_sql"):
+		if t.db.executions == nil {
+			t.db.executions = map[string]sqlRecord{}
+		}
+		id := args[0].(string)
+		if _, ok := t.db.executions[id]; ok {
+			return 0, errors.New("duplicate execution")
+		}
+		t.db.executions[id] = sqlRecord{reader: args[1].(string), started: args[2].(time.Time)}
+		return 1, nil
+	case strings.HasPrefix(sql, "UPDATE control.reader_sql"):
+		id := args[0].(string)
+		record := t.db.executions[id]
+		at := args[2].(time.Time)
+		record.finished = &at
+		t.db.executions[id] = record
+		return 1, nil
+	case strings.HasPrefix(sql, "UPDATE control.readers"):
+		id := args[0].(string)
+		record := t.db.records[id]
+		if strings.Contains(sql, "released_at=$2") {
+			at := args[1].(time.Time)
+			record.ReleasedAt = &at
+		} else if strings.Contains(sql, "sql_finished_at=NULL") {
+			record.SQLFinishedAt = nil
+		} else {
+			at := args[1].(time.Time)
+			record.SQLFinishedAt = &at
+		}
+		t.db.records[id] = record
 		return 1, nil
 	case strings.HasPrefix(sql, "UPDATE control.slots"):
 		t.db.slot.AdmissionOpen = false
@@ -77,11 +123,51 @@ func (t *readerTX) QueryRow(_ context.Context, sql string, args ...any) storage.
 		}
 		return result{raw: []any{s.Generation, b, s.AdmissionOpen, s.State}}
 	}
+	if strings.Contains(sql, "FROM control.reader_sql") {
+		if strings.Contains(sql, "SELECT EXISTS") {
+			active := false
+			for _, record := range t.db.executions {
+				if record.reader == args[0].(string) && record.finished == nil {
+					active = true
+				}
+			}
+			return result{raw: []any{active}}
+		}
+		record, ok := t.db.executions[args[0].(string)]
+		if !ok || record.reader != args[1].(string) {
+			return result{fail: true}
+		}
+		var at any
+		if record.finished != nil {
+			at = *record.finished
+		}
+		return result{raw: []any{record.started, at}}
+	}
+	if strings.Contains(sql, "FROM control.readers WHERE id=$1") {
+		r, ok := t.db.records[args[0].(string)]
+		if !ok {
+			return result{fail: true}
+		}
+		var released, finished any
+		if r.ReleasedAt != nil {
+			released = *r.ReleasedAt
+		}
+		if r.SQLFinishedAt != nil {
+			finished = *r.SQLFinishedAt
+		}
+		return result{raw: []any{r.Instance, r.Slot, r.Generation, r.BundleID, r.AdmittedAt, released, finished}}
+	}
 	if strings.Contains(sql, "SELECT EXISTS") {
 		if !strings.Contains(sql, "released_at IS NULL OR sql_finished_at IS NULL") || strings.Contains(sql, "generation=") {
 			return result{fail: true}
 		}
-		return result{raw: []any{t.db.readers > 0}}
+		busy := false
+		for _, r := range t.db.records {
+			if r.ReleasedAt == nil || r.SQLFinishedAt == nil {
+				busy = true
+			}
+		}
+		return result{raw: []any{busy}}
 	}
 	return result{fail: true}
 }
@@ -97,6 +183,8 @@ func (t *readerTX) Rollback(context.Context) error {
 	if !t.done {
 		t.db.slot = t.before
 		t.db.readers = t.readers
+		t.db.records = t.records
+		t.db.executions = t.executions
 		t.done = true
 		t.db.mu.Unlock()
 	}
