@@ -13,6 +13,31 @@ func MatchStudent(g contract.Grade, req contract.BatchGradesRequest) bool {
 	return member(&s.StudentNumber, req.StudentNumbers) && exact(s.DepartmentCode, req.StudentDepartmentCode) && contains(s.DepartmentName, req.StudentDepartmentName) && exact(s.ClassCode, req.ClassCode) && contains(s.ClassName, req.ClassName)
 }
 
+func (a Assembler) Batch(rows []source.SourceRow, req contract.BatchGradesRequest) ([]contract.Grade, error) {
+	return a.batchChecked(rows, req, func() error { return nil })
+}
+
+func (a Assembler) batchChecked(rows []source.SourceRow, req contract.BatchGradesRequest, check func() error) ([]contract.Grade, error) {
+	scoped, err := BatchScope(rows, req)
+	if err != nil {
+		return nil, err
+	}
+	result := []contract.Grade{}
+	for _, row := range scoped {
+		if err := check(); err != nil {
+			return nil, err
+		}
+		grade, err := a.Grade(row)
+		if err != nil {
+			return nil, err
+		}
+		if MatchStudent(grade, req) && MatchCourse(grade, req.GradeFilters) && MatchScore(grade, req.GradeFilters) {
+			result = append(result, grade)
+		}
+	}
+	return result, nil
+}
+
 // BatchScope applies one explicit term range to all students. It never invokes
 // StudentScope's latest-term policy, even when a student has no recent grades.
 func BatchScope(rows []source.SourceRow, req contract.BatchGradesRequest) ([]source.SourceRow, error) {

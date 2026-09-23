@@ -1,6 +1,7 @@
 package grades_test
 
 import (
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
@@ -9,11 +10,42 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/grades"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/transport"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
 
 func TestT08_01BatchRequiresExplicitYear(t *testing.T) {
 	if rows, err := grades.BatchScope(terms(), contract.BatchGradesRequest{}); err == nil || rows != nil {
 		t.Fatal(rows, err)
+	}
+}
+
+func TestT08_09BatchAndStudentShareFieldsFiltersAndMissingRelations(t *testing.T) {
+	for _, missing := range []bool{false, true} {
+		for _, filter := range []contract.GradeFilters{
+			{}, {ScoreMin: number(80), ScoreMax: number(90)}, {ScoreMin: number(90)}, {CourseCode: text("C01")},
+			{CourseName: text("Course")}, {CourseAttributeCodes: []string{"unknown-attribute"}}, {CourseDepartmentCode: text("D02")},
+		} {
+			data := fixture()
+			if missing {
+				data = grades.Related{}
+			}
+			a := assembler(t, data)
+			rows := []source.SourceRow{base()}
+			single, err := a.Student(rows, contract.StudentGradesRequest{StudentNumber: "001", AcademicYear: text("all"), GradeFilters: filter})
+			if err != nil {
+				t.Fatal(err)
+			}
+			batch, err := a.Batch(rows, contract.BatchGradesRequest{AcademicYear: "all", StudentNumbers: []string{"001", "001"}, GradeFilters: filter})
+			if err != nil || !reflect.DeepEqual(batch, single) {
+				t.Fatal(missing, filter, batch, single, err)
+			}
+		}
+	}
+	r := base()
+	r["KCCJ"] = json.RawMessage(`"缺考"`)
+	got, err := assembler(t, fixture()).Batch([]source.SourceRow{r}, contract.BatchGradesRequest{AcademicYear: "all"})
+	if err != nil || len(got) != 1 || got[0].Score != nil || got[0].Credits == nil || *got[0].Credits != 2 {
+		t.Fatal(got, err)
 	}
 }
 
