@@ -87,6 +87,7 @@ type Initializer struct {
 	Outbox    publication.Outbox
 	Delivery  publication.Delivery
 	Clock     ports.Clock
+	Progress  ProgressStore
 }
 type Initialization struct {
 	Task     InitialTask
@@ -97,7 +98,7 @@ type Initialization struct {
 }
 
 func (i Initializer) Run(ctx context.Context, task InitialTask) (out Initialization, err error) {
-	if i.Store == nil || i.Source == nil || i.Preparer == nil || i.Builder == nil || i.Validator == nil || i.Outbox == nil || i.Delivery == nil || i.Clock == nil || task.ID == "" || len(task.ID) > 64 || task.Combination == "" || task.CodeVersion == "" || task.StartedAt.IsZero() {
+	if i.Store == nil || i.Source == nil || i.Preparer == nil || i.Builder == nil || i.Validator == nil || i.Outbox == nil || i.Delivery == nil || i.Progress == nil || i.Clock == nil || task.ID == "" || len(task.ID) > 64 || task.Combination == "" || task.CodeVersion == "" || task.StartedAt.IsZero() {
 		return out, ErrInitialization
 	}
 	out.Task = task
@@ -153,9 +154,26 @@ func (i Initializer) Run(ctx context.Context, task InitialTask) (out Initializat
 			return out, err
 		}
 	}
+	plan := control.ProgressPlan{TaskID: task.ID, BundleID: task.Combination, Mode: "initialize", StartedAt: task.StartedAt, CheckedAt: i.Clock.Now(), Ends: map[string]time.Time{}}
+	for _, table := range out.Manifest.Tables {
+		plan.Ends[table.Table] = task.StartedAt
+	}
+	if err = i.Progress.StageProgress(ctx, plan); err != nil {
+		return out, err
+	}
 	// No route_shift exists on this path: first publication follows BOTH copies.
 	target := out.Targets[1]
 	intent := control.PublicationIntent{ID: task.ID + "-publish", Kind: "bundle_publish", CodeVersion: task.CodeVersion, Target: control.SlotIdentity{Position: target.Position, Generation: target.Generation, BundleID: task.Combination}, CreatedAt: i.Clock.Now()}
 	out.Event, err = publication.Submit(ctx, i.Outbox, i.Delivery, intent)
-	return out, err // Formal publication and successful progress are P12.06.
+	if err != nil {
+		return out, err
+	}
+	confirmed, confirmErr := i.Progress.ConfirmPublication(ctx, out.Event, i.Clock.Now())
+	err = confirmErr
+	if err != nil {
+		return out, err
+	}
+	out.Event = confirmed
+	err = i.Progress.CompletePublished(ctx, out.Event, i.Clock.Now())
+	return out, err
 }

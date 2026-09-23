@@ -53,6 +53,7 @@ type initialWorld struct {
 	input  candidate.Manifest
 	intent control.PublicationIntent
 	builds int
+	plan   control.ProgressPlan
 }
 
 func (w *initialWorld) record(step string) error {
@@ -111,6 +112,21 @@ func (w *initialWorld) EnqueuePublication(_ context.Context, intent control.Publ
 }
 func (w *initialWorld) Apply(context.Context, control.Publication) error { return w.record("apply") }
 
+func (w *initialWorld) StageProgress(_ context.Context, p control.ProgressPlan) error {
+	w.plan = p
+	return w.record("progress-plan")
+}
+func (w *initialWorld) ConfirmPublication(_ context.Context, e control.Publication, _ time.Time) (control.Publication, error) {
+	if err := w.record("confirm"); err != nil {
+		return control.Publication{}, err
+	}
+	e.Status = "confirmed"
+	return e, nil
+}
+func (w *initialWorld) CompletePublished(context.Context, control.Publication, time.Time) error {
+	return w.record("progress")
+}
+
 func initialization(t *testing.T, failure string) (update.Initializer, update.InitialTask, *initialWorld, *[]string) {
 	t.Helper()
 	w := &initialWorld{t: t, fail: failure}
@@ -166,7 +182,7 @@ func initialization(t *testing.T, failure string) (update.Initializer, update.In
 		t.Fatal(err)
 	}
 	a := update.Acquirer{Collector: collector, Staging: store, Budget: budget, Limits: ingest.PageLimits{MaxPages: 100, MaxRecords: 1000, MaxBytes: 1 << 20}, PageSize: 2, Owner: "initialize", Observe: func(err error) { t.Errorf("unexpected observation: %v", err) }}
-	i := update.Initializer{Store: w, Source: a, Preparer: candidate.TargetFiles{Files: quota, MaxChunkBytes: 512, MaxChunks: 1000}, Options: candidate.PrepareOptions{Scope: "mock-school", SpoolDirectory: t.TempDir(), Limits: merge.Limits{BatchRows: 2, BatchBytes: 256, FanIn: 2, MaxRuns: 1000, MaxSpoolBytes: 16 << 20, InputPageRows: 2, InputPageBytes: 1 << 20}}, Builder: w, Validator: w, Outbox: w, Delivery: w, Clock: clock}
+	i := update.Initializer{Store: w, Source: a, Preparer: candidate.TargetFiles{Files: quota, MaxChunkBytes: 512, MaxChunks: 1000}, Options: candidate.PrepareOptions{Scope: "mock-school", SpoolDirectory: t.TempDir(), Limits: merge.Limits{BatchRows: 2, BatchBytes: 256, FanIn: 2, MaxRuns: 1000, MaxSpoolBytes: 16 << 20, InputPageRows: 2, InputPageBytes: 1 << 20}}, Builder: w, Validator: w, Outbox: w, Delivery: w, Clock: clock, Progress: w}
 	return i, update.InitialTask{ID: "init", Combination: "C1", CodeVersion: "v1", StartedAt: clock.Now()}, w, &requests
 }
 
@@ -176,7 +192,7 @@ func TestT12_10FirstPublicationRequiresSameSealedTargetAndBothReadySerially(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"plan", "target", "build-m", "ready-m", "build-s", "ready-s", "enqueue", "apply"}
+	want := []string{"plan", "target", "build-m", "ready-m", "build-s", "ready-s", "progress-plan", "enqueue", "apply", "confirm", "progress"}
 	if !reflect.DeepEqual(w.trace, want) || len(result.Manifest.Tables) != 14 {
 		t.Fatalf("wrong serial initialization: %v", w.trace)
 	}
@@ -186,13 +202,13 @@ func TestT12_10FirstPublicationRequiresSameSealedTargetAndBothReadySerially(t *t
 	if len(*requests) != 16 {
 		t.Fatalf("fourteen sources plus pagination and retry expected: %v", requests)
 	}
-	if result.Event.Status != "pending" {
-		t.Fatal("application marked formal progress prematurely")
+	if result.Event.Status != "confirmed" || len(w.plan.Ends) != 14 || !w.plan.StartedAt.Equal(task.StartedAt) {
+		t.Fatal("publication and progress did not complete")
 	}
 }
 
 func TestT12_11AnySourceSecondCopyOrEvidenceFailureBlocksFirstPublication(t *testing.T) {
-	for _, failure := range []string{"plan", "source", "target", "build-m", "ready-m", "build-s", "ready-s", "stale-evidence"} {
+	for _, failure := range []string{"plan", "source", "target", "build-m", "ready-m", "build-s", "ready-s", "stale-evidence", "progress-plan"} {
 		t.Run(failure, func(t *testing.T) {
 			i, task, w, _ := initialization(t, failure)
 			if _, err := i.Run(context.Background(), task); err == nil {
@@ -203,6 +219,28 @@ func TestT12_11AnySourceSecondCopyOrEvidenceFailureBlocksFirstPublication(t *tes
 			}
 			if failure == "source" && w.builds != 0 {
 				t.Fatal("partial fourteen-source acquisition reached build")
+			}
+		})
+	}
+}
+
+func TestT12_15ResumeOnlyConfirmsPublicationAndProgressWithoutRebuilding(t *testing.T) {
+	for _, failure := range []string{"apply", "confirm", "progress"} {
+		t.Run(failure, func(t *testing.T) {
+			i, task, w, requests := initialization(t, failure)
+			out, err := i.Run(context.Background(), task)
+			if err == nil || out.Event.ID == "" {
+				t.Fatal("lost durable event needed for recovery")
+			}
+			beforeBuilds, beforeRequests := w.builds, len(*requests)
+			w.fail = ""
+			w.trace = nil
+			f := update.Finisher{Store: w, Delivery: w, Clock: i.Clock}
+			if err = f.Finish(context.Background(), out.Event); err != nil {
+				t.Fatal(err)
+			}
+			if w.builds != beforeBuilds || len(*requests) != beforeRequests || !reflect.DeepEqual(w.trace, []string{"apply", "confirm", "progress"}) {
+				t.Fatal("resume touched acquisition or slots")
 			}
 		})
 	}
