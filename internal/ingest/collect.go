@@ -14,9 +14,10 @@ type PageCall struct {
 	Attempts []AttemptResult
 }
 type Acquisition struct {
-	Manifest     Manifest
-	Calls        []PageCall
-	FinalFailure *FailureEvent
+	Manifest         Manifest
+	Calls            []PageCall
+	FinalFailure     *FailureEvent
+	ObservationError error
 }
 type AcquisitionError struct {
 	Source string
@@ -67,6 +68,9 @@ func (c *Coordinator) Collect(ctx context.Context, input PageRequest, task *Task
 		}
 		input.Page = pageNumber
 		page, err := c.FetchPage(taskCtx, input, task)
+		if page.ObservationError != nil {
+			result.ObservationError = page.ObservationError
+		}
 		result.Calls = append(result.Calls, PageCall{Page: pageNumber, Attempts: page.Attempts})
 		if err != nil {
 			result.FinalFailure = page.FinalFailure
