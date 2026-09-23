@@ -67,3 +67,66 @@ func TestT08_02BatchUsesCommonYearInsteadOfPerStudentLatest(t *testing.T) {
 		}
 	}
 }
+
+func TestT08_04RepeatedIDsAndSameNamesDoNotMergeOrMultiplyGrades(t *testing.T) {
+	rows := []contract.Grade{{GradeID: "G01", Student: contract.GradeStudent{StudentNumber: "001", Name: text("Same")}}, {GradeID: "G02", Student: contract.GradeStudent{StudentNumber: "002", Name: text("Same")}}}
+	req := contract.BatchGradesRequest{StudentNumbers: []string{"001", "001", "002"}}
+	ids := []string{}
+	for _, g := range rows {
+		if grades.MatchStudent(g, req) {
+			ids = append(ids, g.GradeID)
+		}
+	}
+	if !reflect.DeepEqual(ids, []string{"G01", "G02"}) {
+		t.Fatal(ids)
+	}
+}
+
+func TestT08_05CurrentAffiliationFiltersIntersectWithStudentSet(t *testing.T) {
+	g, err := assembler(t, fixture()).Grade(base())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		req  contract.BatchGradesRequest
+		want bool
+	}{
+		{"all", contract.BatchGradesRequest{StudentNumbers: []string{"001"}, StudentDepartmentCode: text("D01"), StudentDepartmentName: text("Student"), ClassCode: text("B01"), ClassName: text("Class")}, true},
+		{"other-student", contract.BatchGradesRequest{StudentNumbers: []string{"002"}}, false},
+		{"old-dept", contract.BatchGradesRequest{StudentDepartmentCode: text("OLD")}, false},
+		{"dept-name", contract.BatchGradesRequest{StudentDepartmentName: text("Course")}, false},
+		{"class-code", contract.BatchGradesRequest{ClassCode: text("B02")}, false},
+		{"class-name", contract.BatchGradesRequest{ClassName: text("Other")}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := grades.MatchStudent(g, tc.req); got != tc.want {
+				t.Fatal(got)
+			}
+		})
+	}
+	g.Student.DepartmentCode = nil
+	if grades.MatchStudent(g, contract.BatchGradesRequest{StudentDepartmentCode: text("D01")}) {
+		t.Fatal("missing affiliation matched")
+	}
+}
+
+func TestT08_06StudentAndTeachingDepartmentsAreIndependent(t *testing.T) {
+	g, err := assembler(t, fixture()).Grade(base())
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := contract.BatchGradesRequest{StudentDepartmentCode: text("D01"), GradeFilters: contract.GradeFilters{CourseDepartmentCode: text("D02")}}
+	if !grades.MatchStudent(g, req) || !grades.MatchCourse(g, req.GradeFilters) {
+		t.Fatal("independent dimensions rejected")
+	}
+	req.StudentDepartmentCode = text("D02")
+	if grades.MatchStudent(g, req) {
+		t.Fatal("teaching department substituted")
+	}
+	req.StudentDepartmentCode = text("D01")
+	req.CourseDepartmentCode = text("D01")
+	if grades.MatchCourse(g, req.GradeFilters) {
+		t.Fatal("student department substituted")
+	}
+}

@@ -6,6 +6,13 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
 
+// MatchStudent treats the requested identifiers as a set: the caller visits
+// each source grade once, so repeated IDs never multiply records.
+func MatchStudent(g contract.Grade, req contract.BatchGradesRequest) bool {
+	s := g.Student
+	return member(&s.StudentNumber, req.StudentNumbers) && exact(s.DepartmentCode, req.StudentDepartmentCode) && contains(s.DepartmentName, req.StudentDepartmentName) && exact(s.ClassCode, req.ClassCode) && contains(s.ClassName, req.ClassName)
+}
+
 // BatchScope applies one explicit term range to all students. It never invokes
 // StudentScope's latest-term policy, even when a student has no recent grades.
 func BatchScope(rows []source.SourceRow, req contract.BatchGradesRequest) ([]source.SourceRow, error) {
