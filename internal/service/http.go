@@ -36,7 +36,7 @@ type HTTP struct {
 func (h *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.handler.ServeHTTP(w, r) }
 func (h *HTTP) Stop()                                            { h.draining.Store(true) }
 
-func NewHTTP(role config.Role, clock ports.Clock, random ports.Random, readiness ports.Readiness) (*HTTP, error) {
+func NewHTTP(role config.Role, apiKey string, clock ports.Clock, random ports.Random, readiness ports.Readiness) (*HTTP, error) {
 	if clock == nil || random == nil {
 		return nil, fmt.Errorf("clock and random dependencies required")
 	}
@@ -62,31 +62,37 @@ func NewHTTP(role config.Role, clock ports.Clock, random ports.Random, readiness
 	if role == config.Query {
 		for _, definition := range contract.Definitions() {
 			if err := registry.Register(definition, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				writeJSON(w, http.StatusServiceUnavailable, map[string]string{"category": string(contract.NotReady)})
+				transport.WriteFailure(w, r, &transport.Failure{Category: contract.NotReady})
 			})); err != nil {
 				return nil, err
 			}
 		}
-		mux.Handle("/api/", registry.Handler())
+		guarded, err := transport.APIKey(apiKey, registry.Handler())
+		if err != nil {
+			return nil, err
+		}
+		mux.Handle("/api/", guarded)
 	}
 	// Serialize injected readers as they need not be concurrency safe.
 	var randomMu sync.Mutex
 	h.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if h.draining.Load() && r.URL.Path != "/livez" && r.URL.Path != "/readyz" {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"category": string(contract.NotReady)})
-			return
-		}
 		var id [16]byte
 		randomMu.Lock()
 		_, err := io.ReadFull(random, id[:])
 		randomMu.Unlock()
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"category": string(contract.Internal)})
+			transport.WriteFailure(w, r, &transport.Failure{Category: contract.Internal})
 			return
 		}
 		m := Metadata{hex.EncodeToString(id[:]), clock.Now()}
 		w.Header().Set("X-Request-ID", m.RequestID)
-		mux.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), metadataKey{}, m)))
+		ctx := transport.WithRequestID(context.WithValue(r.Context(), metadataKey{}, m), m.RequestID)
+		r = r.WithContext(ctx)
+		if h.draining.Load() && r.URL.Path != "/livez" && r.URL.Path != "/readyz" {
+			transport.WriteFailure(w, r, &transport.Failure{Category: contract.NotReady})
+			return
+		}
+		mux.ServeHTTP(w, r)
 	})
 	return h, nil
 }
