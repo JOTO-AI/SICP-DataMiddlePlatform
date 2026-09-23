@@ -41,6 +41,12 @@ func (t *publicationTx) Exec(_ context.Context, sql string, args ...any) (int64,
 		e.Target = control.Document(args[1].(string))
 		t.events[e.ID] = e
 	}
+	if strings.HasPrefix(sql, "UPDATE control.publication_outbox SET applied_at=") {
+		e := t.events[args[0].(string)]
+		at := args[1].(time.Time)
+		e.AppliedAt = &at
+		t.events[e.ID] = e
+	}
 	return 1, nil
 }
 func entityColumns(v any) []any {

@@ -51,6 +51,9 @@ func ActiveDocument(a ActiveMetadata) (Document, error) {
 		return "", err
 	}
 	raw, err := json.Marshal(a)
+	if len(raw) > 4096 {
+		return "", ErrEntity
+	}
 	return Document(raw), err
 }
 
