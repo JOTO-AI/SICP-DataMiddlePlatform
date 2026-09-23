@@ -36,10 +36,10 @@ func (a *admission) Acquire(context.Context, string) (read.RequestLease, error) 
 func (a *admission) Handle() read.Handle         { return pinned }
 func (a *admission) Close(context.Context) error { a.closed++; return nil }
 
-type metadata struct{}
+type metadata struct{ operation contract.Operation }
 
-func (metadata) SyncedAt(_ context.Context, h read.Handle, op contract.Operation) (time.Time, error) {
-	if h != pinned || op != contract.StudentGrades {
+func (m metadata) SyncedAt(_ context.Context, h read.Handle, op contract.Operation) (time.Time, error) {
+	if h != pinned || op != m.operation {
 		return time.Time{}, errors.New("wrong metadata handle")
 	}
 	return time.Date(2026, 9, 18, 1, 0, 0, 0, time.UTC), nil
@@ -54,10 +54,14 @@ type repository struct {
 	tables map[string][]source.SourceRow
 	calls  []queryCall
 	fail   string
+	cancel context.CancelFunc
 }
 
 func (r *repository) ReadMatching(_ context.Context, h read.Handle, table, after string, limit int, filters []source.Filter) ([]source.SourceRow, error) {
 	r.calls = append(r.calls, queryCall{h, table, append([]source.Filter(nil), filters...)})
+	if r.cancel != nil {
+		r.cancel()
+	}
 	if h != pinned {
 		return nil, errors.New("wrong repository handle")
 	}
@@ -109,6 +113,10 @@ func sourceRow(raw string) source.SourceRow {
 }
 
 func setup(t *testing.T, r *repository, failPhase events.Phase) (http.Handler, *admission, *[]events.Event, *int) {
+	return setupOperation(t, r, failPhase, contract.StudentGrades, read.DefaultLimits())
+}
+
+func setupOperation(t *testing.T, r *repository, failPhase events.Phase, op contract.Operation, limits read.Limits) (http.Handler, *admission, *[]events.Event, *int) {
 	t.Helper()
 	clock := testkit.FakeClock{Time: time.Date(2026, 9, 18, 2, 0, 0, 0, time.UTC)}
 	all := []events.Event{}
@@ -125,11 +133,15 @@ func setup(t *testing.T, r *repository, failPhase events.Phase) (http.Handler, *
 	}
 	a := &admission{}
 	times, _ := compute.NewTimes("Asia/Shanghai")
-	h, err := handlers.StudentGrades("synthetic-key", grades.Service{Source: r, Times: times, Clock: clock, Limits: read.DefaultLimits()}, a, metadata{}, recorder, func(*events.Span, error) { observation++ })
+	factory := handlers.StudentGrades
+	if op == contract.BatchGrades {
+		factory = handlers.BatchGrades
+	}
+	h, err := factory("synthetic-key", grades.Service{Source: r, Times: times, Clock: clock, Limits: limits}, a, metadata{operation: op}, recorder, func(*events.Span, error) { observation++ })
 	if err != nil {
 		t.Fatal(err)
 	}
-	httpService, err := service.NewHTTPWithHandlers(config.Query, "synthetic-key", clock, testkit.FixedRandom(1), testkit.ReadyFunc(func(context.Context) bool { return true }), map[contract.Operation]http.Handler{contract.StudentGrades: h})
+	httpService, err := service.NewHTTPWithHandlers(config.Query, "synthetic-key", clock, testkit.FixedRandom(1), testkit.ReadyFunc(func(context.Context) bool { return true }), map[contract.Operation]http.Handler{op: h})
 	if err != nil {
 		t.Fatal(err)
 	}
