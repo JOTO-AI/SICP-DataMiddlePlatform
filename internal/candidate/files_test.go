@@ -34,7 +34,7 @@ func targetInput(t *testing.T, mode ingest.Mode, objects ...string) (*staging.Le
 	limits := ingest.PageLimits{MaxPages: 100, MaxRecords: 1000, MaxBytes: 1 << 20}
 	for _, d := range ingest.Catalog() {
 		var rows []ingest.Record
-		if d.Name == "dwd_xqjbsjzlb" {
+		if d.Name == "dwd_bzkscjzlb" {
 			for _, object := range objects {
 				row, err := ingest.DecodeRecord(d.Name, []byte(object))
 				if err != nil {
@@ -76,7 +76,7 @@ func targetInput(t *testing.T, mode ingest.Mode, objects ...string) (*staging.Le
 func targetObjects(t *testing.T, f TargetFiles, m Manifest) []string {
 	t.Helper()
 	for _, table := range m.Tables {
-		if table.Table != "dwd_xqjbsjzlb" {
+		if table.Table != "dwd_bzkscjzlb" {
 			continue
 		}
 		r, err := f.Open(context.Background(), m, table)
@@ -100,18 +100,18 @@ func targetObjects(t *testing.T, f TargetFiles, m Manifest) []string {
 			out = append(out, string(raw))
 		}
 	}
-	t.Fatal("campus absent")
+	t.Fatal("grades absent")
 	return nil
 }
 
 func TestT12_11ImmutableCompleteTargetFeedsBothCopiesAndDetectsCorruption(t *testing.T) {
-	lease, f, o, root := targetInput(t, ingest.Full, `{"XQH":"c","XQMC":null}`, `{"XQH":"a"}`, `{"XQH":"b","XQMC":9007199254740993}`)
+	lease, f, o, root := targetInput(t, ingest.Full, `{"ID":"c","XF":null}`, `{"ID":"a"}`, `{"ID":"b","XF":9007199254740993}`)
 	ctx := context.Background()
 	m, err := f.Prepare(ctx, o, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{`{"XQH":"a"}`, `{"XQH":"b","XQMC":9007199254740993}`, `{"XQH":"c","XQMC":null}`}
+	want := []string{`{"ID":"a"}`, `{"ID":"b","XF":9007199254740993}`, `{"ID":"c","XF":null}`}
 	for range 2 {
 		if got := targetObjects(t, f, m); !reflect.DeepEqual(got, want) {
 			t.Fatalf("original source changed: %v", got)
@@ -139,13 +139,13 @@ func TestT12_11ImmutableCompleteTargetFeedsBothCopiesAndDetectsCorruption(t *tes
 }
 
 func TestT12_11IncrementalTargetIncludesUnchangedOriginalRows(t *testing.T) {
-	lease, baseFiles, options, _ := targetInput(t, ingest.Full, `{"XQH":"a"}`, `{"XQH":"b","XQMC":"before"}`)
+	lease, baseFiles, options, _ := targetInput(t, ingest.Full, `{"ID":"a"}`, `{"ID":"b","XF":"before"}`)
 	ctx := context.Background()
 	base, err := baseFiles.Prepare(ctx, options, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
-	delta, f, o, _ := targetInput(t, ingest.Incremental, `{"XQH":"b","XQMC":"after"}`)
+	delta, f, o, _ := targetInput(t, ingest.Incremental, `{"ID":"b","XF":"after"}`)
 	o.Combination = "C2"
 	o.Base = &base
 	o.BaseSource = baseFiles
@@ -153,7 +153,7 @@ func TestT12_11IncrementalTargetIncludesUnchangedOriginalRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{`{"XQH":"a"}`, `{"XQH":"b","XQMC":"after"}`}
+	want := []string{`{"ID":"a"}`, `{"ID":"b","XF":"after"}`}
 	if got := targetObjects(t, f, m); !reflect.DeepEqual(got, want) {
 		t.Fatalf("unchanged baseline lost: %v", got)
 	}
@@ -162,7 +162,7 @@ func TestT12_11IncrementalTargetIncludesUnchangedOriginalRows(t *testing.T) {
 func TestT12_11TargetCapacityAndInputModeFailureLeaveNoCompleteManifest(t *testing.T) {
 	for _, failure := range []string{"chunks", "bytes", "mode"} {
 		t.Run(failure, func(t *testing.T) {
-			lease, f, o, root := targetInput(t, ingest.Full, `{"XQH":"a"}`, `{"XQH":"b"}`, `{"XQH":"c"}`)
+			lease, f, o, root := targetInput(t, ingest.Full, `{"ID":"a"}`, `{"ID":"b"}`, `{"ID":"c"}`)
 			switch failure {
 			case "chunks":
 				f.MaxChunks = 1
