@@ -1,0 +1,129 @@
+package candidate
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"time"
+
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/value"
+)
+
+type IndexReader interface {
+	CheckPrimaryIndex(context.Context, storage.Position, string) error
+}
+type StorageChecks struct {
+	Target  CompleteSource
+	Source  read.Matcher
+	Indexes IndexReader
+	Clock   ports.Clock
+	Limits  read.Limits
+}
+
+func (s StorageChecks) SourceStorage(ctx context.Context, h read.Handle, m Manifest) error {
+	if s.Target == nil || s.Source == nil || s.Clock == nil || m.Validate() != nil || h.Combination != m.Combination {
+		return ErrBuild
+	}
+	if err := s.Target.Validate(ctx, m); err != nil {
+		return err
+	}
+	b, err := read.NewBudget(s.Limits, s.Clock)
+	if err != nil {
+		return err
+	}
+	for _, version := range m.Tables {
+		var table source.Table
+		for _, t := range source.Catalog() {
+			if t.Name == version.Table {
+				table = t
+			}
+		}
+		if err = s.table(ctx, h, m, version, table, b); err != nil {
+			return err
+		}
+	}
+	return s.Target.Validate(ctx, m)
+}
+func (s StorageChecks) table(ctx context.Context, h read.Handle, m Manifest, v TableVersion, table source.Table, b *read.Budget) (err error) {
+	rows, err := s.Target.Open(ctx, m, v)
+	if err != nil {
+		return err
+	}
+	if rows == nil {
+		return ErrBuild
+	}
+	defer func() {
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		err = errors.Join(err, rows.Close(cleanup))
+	}()
+	original := newChecked(v, rows)
+	err = read.Scan(ctx, s.Source, h, table.Name, nil, b, func(actual source.SourceRow) error {
+		expected, more, err := original.Next(ctx)
+		if err != nil {
+			return err
+		}
+		if !more || len(actual) != len(table.Columns) {
+			return ErrBuild
+		}
+		for _, column := range table.Columns {
+			raw, ok := actual[column.Name]
+			if !ok {
+				return ErrBuild
+			}
+			want, present := expected[column.Name]
+			a, err := value.Bind(column.Kind, value.Field{Present: len(raw) > 0, Raw: raw})
+			if err != nil {
+				return err
+			}
+			b, err := value.Bind(column.Kind, value.Field{Present: present, Raw: want})
+			if err != nil {
+				return err
+			}
+			if column.Kind == value.JSON && a != nil && b != nil {
+				// Preserve number lexemes and JSON null; object key order may differ.
+				x, err := (ingest.Record{Fields: map[string]ingest.Token{"v": {Raw: raw}}}).Canonical()
+				if err != nil {
+					return err
+				}
+				y, err := (ingest.Record{Fields: map[string]ingest.Token{"v": {Raw: want}}}).Canonical()
+				if err != nil {
+					return err
+				}
+				if !bytes.Equal(x, y) {
+					return ErrBuild
+				}
+			} else if a != b {
+				return ErrBuild
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	_, more, err := original.Next(ctx)
+	if err != nil {
+		return err
+	}
+	if more || !original.verified {
+		return ErrBuild
+	}
+	return nil
+}
+func (s StorageChecks) SourceIndexes(ctx context.Context, h read.Handle, m Manifest) error {
+	if s.Indexes == nil || m.Validate() != nil || h.Validate() != nil || h.Combination != m.Combination {
+		return ErrBuild
+	}
+	for _, table := range m.Tables {
+		if err := s.Indexes.CheckPrimaryIndex(ctx, h.Position, table.Table); err != nil {
+			return err
+		}
+	}
+	return nil
+}
