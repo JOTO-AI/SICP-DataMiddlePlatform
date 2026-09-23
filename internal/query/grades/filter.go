@@ -1,10 +1,27 @@
 package grades
 
 import (
+	"math"
 	"strings"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 )
+
+func MatchScore(g contract.Grade, f contract.GradeFilters) bool {
+	if f.ScoreMin == nil && f.ScoreMax == nil {
+		return true
+	}
+	if g.Score == nil || math.IsNaN(*g.Score) || math.IsInf(*g.Score, 0) {
+		return false
+	}
+	if f.ScoreMin != nil && !(*g.Score >= *f.ScoreMin) {
+		return false
+	}
+	if f.ScoreMax != nil && !(*g.Score <= *f.ScoreMax) {
+		return false
+	}
+	return true
+}
 
 func MatchCourse(g contract.Grade, f contract.GradeFilters) bool {
 	c := g.Course
