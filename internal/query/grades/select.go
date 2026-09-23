@@ -8,12 +8,19 @@ import (
 // Student selects the term first, assembles whole rows, then intersects all
 // filters. No pagination is applied until this complete result is available.
 func (a Assembler) Student(rows []source.SourceRow, req contract.StudentGradesRequest) ([]contract.Grade, error) {
+	return a.studentChecked(rows, req, func() error { return nil })
+}
+
+func (a Assembler) studentChecked(rows []source.SourceRow, req contract.StudentGradesRequest, check func() error) ([]contract.Grade, error) {
 	scoped, err := StudentScope(rows, req)
 	if err != nil {
 		return nil, err
 	}
 	result := []contract.Grade{}
 	for _, row := range scoped {
+		if err := check(); err != nil {
+			return nil, err
+		}
 		grade, err := a.Grade(row)
 		if err != nil {
 			return nil, err

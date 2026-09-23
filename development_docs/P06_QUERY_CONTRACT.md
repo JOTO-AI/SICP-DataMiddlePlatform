@@ -21,8 +21,11 @@
 | dependency_failure | 503 | Dependency unavailable |
 | deadline_exceeded | 504 | Query timed out |
 | internal | 500 | Internal error |
+| resource_exhausted | 422 | Query resource limit exceeded |
 
 未知错误映射 internal；成功数据编码失败也返回完整 internal 错误，不先写 200。
+
+P07 实际处理器接入后，资源预算超限统一 resource_exhausted；编码后业务响应另限 16 MiB，超限返回同码。业务完成日志和实际 HTTP 写出分别记录，写出失败不改写已经发生的业务结果。日志起始无法持久化时不准入查询；结束记录失败通过必配 Observation 回调保留/报告，不伪装日志已成功。
 
 ## 后续业务决定
 
