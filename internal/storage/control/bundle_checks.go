@@ -11,7 +11,8 @@ import (
 
 // BundleChecks reads all successful dataset checks in one database statement,
 // so a concurrent complete-round update cannot produce a mixed metadata view.
-// P12/P13 write these facts atomically with confirmed progress, never on fetch
+// P12 writes these facts with confirmed publication of a completely checked
+// bundle; P13 also refreshes them with complete unchanged rounds. Never on fetch
 // start, partial completion, or an unconfirmed publication response.
 func (r Repository) BundleChecks(ctx context.Context, bundle string) (map[string]time.Time, error) {
 	if strings.TrimSpace(bundle) == "" || len(bundle) > 256 {
