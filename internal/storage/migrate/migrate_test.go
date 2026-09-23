@@ -125,6 +125,69 @@ func TestT02_06MigrationReplayConflictAndRollback(t *testing.T) {
 	}
 }
 
+func TestT11_12SQLExecutionLedgerMigrationIsAppendOnlyAndReplayable(t *testing.T) {
+	plan, err := migrate.Catalog(migrate.Control)
+	if err != nil || len(plan) < 2 || plan[1].Version != "control_002" {
+		t.Fatal(plan, err)
+	}
+	plan = plan[:2]
+	if !strings.Contains(plan[1].SQL, "REFERENCES control.readers(id)") || !strings.Contains(plan[1].SQL, "finished_at >= started_at") {
+		t.Fatal("execution identity or time constraint missing")
+	}
+	db := &database{}
+	target := migrate.Target{Domain: migrate.Control}
+	r := registry(t)
+	if n, err := migrate.Apply(t.Context(), db, r, target, plan[:1]); err != nil || n != 1 {
+		t.Fatal(n, err)
+	}
+	if n, err := migrate.Apply(t.Context(), db, r, target, plan); err != nil || n != 1 {
+		t.Fatal(n, err)
+	}
+	if n, err := migrate.Apply(t.Context(), db, r, target, plan); err != nil || n != 0 {
+		t.Fatal(n, err)
+	}
+}
+
+func TestT11_16SnapshotMigrationUpgradesExecutionLedger(t *testing.T) {
+	plan, err := migrate.Catalog(migrate.Control)
+	if err != nil || len(plan) < 3 || plan[2].Version != "control_003" {
+		t.Fatal(plan, err)
+	}
+	plan = plan[:3]
+	db := &database{}
+	target := migrate.Target{Domain: migrate.Control}
+	r := registry(t)
+	if n, err := migrate.Apply(t.Context(), db, r, target, plan[:2]); err != nil || n != 2 {
+		t.Fatal(n, err)
+	}
+	if n, err := migrate.Apply(t.Context(), db, r, target, plan); err != nil || n != 1 {
+		t.Fatal(n, err)
+	}
+	if n, err := migrate.Apply(t.Context(), db, r, target, plan); err != nil || n != 0 {
+		t.Fatal(n, err)
+	}
+}
+
+func TestT11_18BundleChecksMigrationUpgradesSnapshots(t *testing.T) {
+	plan, err := migrate.Catalog(migrate.Control)
+	if err != nil || len(plan) < 4 || plan[3].Version != "control_004" {
+		t.Fatal(plan, err)
+	}
+	plan = plan[:4]
+	db := &database{}
+	target := migrate.Target{Domain: migrate.Control}
+	r := registry(t)
+	if n, err := migrate.Apply(t.Context(), db, r, target, plan[:3]); err != nil || n != 3 {
+		t.Fatal(n, err)
+	}
+	if n, err := migrate.Apply(t.Context(), db, r, target, plan); err != nil || n != 1 {
+		t.Fatal(n, err)
+	}
+	if n, err := migrate.Apply(t.Context(), db, r, target, plan); err != nil || n != 0 {
+		t.Fatal(n, err)
+	}
+}
+
 func TestT02_13SourceDDLMatchesIndependentFieldPlan(t *testing.T) {
 	plan, err := migrate.Catalog(migrate.Business)
 	if err != nil {

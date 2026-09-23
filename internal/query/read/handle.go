@@ -61,7 +61,9 @@ type Repository struct {
 // ReadBatch never consults an active route. It uses the complete caller handle
 // at admission and its position for the underlying fixed-slot repository.
 func (r Repository) ReadBatch(ctx context.Context, h Handle, table, after string, limit int) (rows []source.SourceRow, err error) {
-	return r.withRead(ctx, h, func() ([]source.SourceRow, error) { return r.Storage.ReadBatch(ctx, h.Position, table, after, limit) })
+	return r.withRead(ctx, h, func(sqlContext context.Context) ([]source.SourceRow, error) {
+		return r.Storage.ReadBatch(sqlContext, h.Position, table, after, limit)
+	})
 }
 
 type MatchingReader interface {
@@ -73,12 +75,12 @@ func (r Repository) ReadMatching(ctx context.Context, h Handle, table, after str
 	if !ok {
 		return nil, ErrHandle
 	}
-	return r.withRead(ctx, h, func() ([]source.SourceRow, error) {
-		return reader.ReadMatching(ctx, h.Position, table, after, limit, filters)
+	return r.withRead(ctx, h, func(sqlContext context.Context) ([]source.SourceRow, error) {
+		return reader.ReadMatching(sqlContext, h.Position, table, after, limit, filters)
 	})
 }
 
-func (r Repository) withRead(ctx context.Context, h Handle, run func() ([]source.SourceRow, error)) (rows []source.SourceRow, err error) {
+func (r Repository) withRead(ctx context.Context, h Handle, run func(context.Context) ([]source.SourceRow, error)) (rows []source.SourceRow, err error) {
 	if h.Validate() != nil || r.Gate == nil || r.Storage == nil {
 		return nil, ErrHandle
 	}
@@ -108,7 +110,12 @@ func (r Repository) withRead(ctx context.Context, h Handle, run func() ([]source
 	if err = ctx.Err(); err != nil {
 		return nil, err
 	}
-	rows, err = run()
+	if binding, ok := lease.(interface {
+		Context(context.Context) context.Context
+	}); ok {
+		ctx = binding.Context(ctx)
+	}
+	rows, err = run(ctx)
 	if err == nil {
 		err = ctx.Err()
 	}
@@ -148,6 +155,11 @@ func Execute(ctx context.Context, admission Admission, snapshot string, run func
 	}
 	if err = ctx.Err(); err != nil {
 		return nil, err
+	}
+	if binding, ok := lease.(interface {
+		Context(context.Context) context.Context
+	}); ok {
+		ctx = binding.Context(ctx)
 	}
 	result, err = run(ctx, h)
 	if err == nil {

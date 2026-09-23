@@ -58,11 +58,19 @@ func Catalog(domain Domain) ([]Migration, error) {
 	if domain != Business && domain != Control && domain != Logs {
 		return nil, fmt.Errorf("unknown migration domain")
 	}
-	data, err := scripts.ReadFile("sql/" + string(domain) + "_001.sql")
-	if err != nil {
-		return nil, err
+	versions := []string{string(domain) + "_001"}
+	if domain == Control {
+		versions = append(versions, "control_002", "control_003", "control_004")
 	}
-	return []Migration{{Version: string(domain) + "_001", SQL: string(data)}}, nil
+	plan := make([]Migration, 0, len(versions))
+	for _, version := range versions {
+		data, err := scripts.ReadFile("sql/" + version + ".sql")
+		if err != nil {
+			return nil, err
+		}
+		plan = append(plan, Migration{Version: version, SQL: string(data)})
+	}
+	return plan, nil
 }
 
 // Apply validates the complete plan before opening a transaction. The advisory

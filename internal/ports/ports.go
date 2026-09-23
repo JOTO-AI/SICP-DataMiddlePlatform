@@ -23,7 +23,9 @@ type FileStore interface {
 }
 
 type Cache interface {
+	// Get returns nil, nil only for a miss; backend failures stay errors.
 	Get(context.Context, string) ([]byte, error)
+	// Set persists without a TTL and reports its own write acknowledgement.
 	Set(context.Context, string, []byte) error
 }
 
