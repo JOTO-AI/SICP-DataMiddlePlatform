@@ -25,6 +25,23 @@ type Evidence struct {
 	Queries                  map[contract.Operation]QueryEvidence
 }
 
+func (e Evidence) Validate(target source.Target, m Manifest, code string) error {
+	if m.Validate() != nil || e.Target != target || e.Combination != m.Combination || e.CodeVersion != code || e.CheckedAt.IsZero() || len(e.Queries) != len(contract.Definitions()) {
+		return ErrBuild
+	}
+	for _, definition := range contract.Definitions() {
+		deps, err := dependencies(m, definition.Operation)
+		if err != nil {
+			return err
+		}
+		query, ok := e.Queries[definition.Operation]
+		if !ok || query.Cases < 1 || !digest(query.SHA256) || !maps.Equal(deps, query.Dependencies) {
+			return ErrBuild
+		}
+	}
+	return nil
+}
+
 // BeginValidation atomically makes prior readiness non-authoritative and
 // freezes candidate writes under the execution fence. Ready must verify the
 // same candidate, generation, manifest and owner again before committing.
