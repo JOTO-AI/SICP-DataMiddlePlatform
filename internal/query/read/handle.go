@@ -61,6 +61,24 @@ type Repository struct {
 // ReadBatch never consults an active route. It uses the complete caller handle
 // at admission and its position for the underlying fixed-slot repository.
 func (r Repository) ReadBatch(ctx context.Context, h Handle, table, after string, limit int) (rows []source.SourceRow, err error) {
+	return r.withRead(ctx, h, func() ([]source.SourceRow, error) { return r.Storage.ReadBatch(ctx, h.Position, table, after, limit) })
+}
+
+type MatchingReader interface {
+	ReadMatching(context.Context, storage.Position, string, string, int, []source.Filter) ([]source.SourceRow, error)
+}
+
+func (r Repository) ReadMatching(ctx context.Context, h Handle, table, after string, limit int, filters []source.Filter) ([]source.SourceRow, error) {
+	reader, ok := r.Storage.(MatchingReader)
+	if !ok {
+		return nil, ErrHandle
+	}
+	return r.withRead(ctx, h, func() ([]source.SourceRow, error) {
+		return reader.ReadMatching(ctx, h.Position, table, after, limit, filters)
+	})
+}
+
+func (r Repository) withRead(ctx context.Context, h Handle, run func() ([]source.SourceRow, error)) (rows []source.SourceRow, err error) {
 	if h.Validate() != nil || r.Gate == nil || r.Storage == nil {
 		return nil, ErrHandle
 	}
@@ -90,7 +108,7 @@ func (r Repository) ReadBatch(ctx context.Context, h Handle, table, after string
 	if err = ctx.Err(); err != nil {
 		return nil, err
 	}
-	rows, err = r.Storage.ReadBatch(ctx, h.Position, table, after, limit)
+	rows, err = run()
 	if err == nil {
 		err = ctx.Err()
 	}
