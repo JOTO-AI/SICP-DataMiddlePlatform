@@ -17,8 +17,8 @@ const (
 )
 
 type Position struct {
-	Instance Instance
-	Slot     int
+	Instance Instance `json:"instance"`
+	Slot     int      `json:"slot"`
 }
 
 func (p Position) Validate() error {

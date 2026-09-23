@@ -11,9 +11,9 @@ import (
 
 // SlotIdentity is a complete physical generation, never just a live pointer.
 type SlotIdentity struct {
-	Position   storage.Position
-	Generation int64
-	BundleID   string
+	Position   storage.Position `json:"location"`
+	Generation int64            `json:"generation,string"`
+	BundleID   string           `json:"combination"`
 }
 
 func (h SlotIdentity) valid() bool {
