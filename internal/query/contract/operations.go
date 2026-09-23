@@ -19,7 +19,7 @@ type Definition struct {
 func Definitions() []Definition {
 	return []Definition{
 		{StudentGrades, "/api/v1/sicp/students/grades/query", nil},
-		{BatchGrades, "/api/v1/sicp/students/grades/batch-query", []string{"non_numeric_score", "duplicate_course", "historical_course"}},
+		{BatchGrades, "/api/v1/sicp/students/grades/batch-query", nil},
 		{StudentTimetable, "/api/v1/sicp/students/timetable/query", []string{"unscheduled_course", "duplicate_course", "timetable_formats"}},
 		{StaffTimetable, "/api/v1/sicp/staff/timetable/query", []string{"duplicate_course", "timetable_formats"}},
 	}

@@ -16,6 +16,14 @@ func (a Assembler) StudentPage(rows []source.SourceRow, req contract.StudentGrad
 	return a.page(selected, req.GradeFilters, syncedAt)
 }
 
+func (a Assembler) BatchPage(rows []source.SourceRow, req contract.BatchGradesRequest, syncedAt time.Time) (contract.GradesResponse, error) {
+	selected, err := a.Batch(rows, req)
+	if err != nil {
+		return contract.GradesResponse{}, err
+	}
+	return a.page(selected, req.GradeFilters, syncedAt)
+}
+
 func (a Assembler) page(selected []contract.Grade, filters contract.GradeFilters, syncedAt time.Time) (contract.GradesResponse, error) {
 	page, size := 1, 100
 	if filters.Page != nil {
