@@ -98,6 +98,11 @@ func (t *progressTx) Exec(ctx context.Context, sql string, args ...any) (int64, 
 		checked, finished := args[1].(time.Time), args[2].(time.Time)
 		t.task.CheckedAt = &checked
 		t.task.FinishedAt = &finished
+	case strings.HasPrefix(sql, "UPDATE control.tasks SET status='success_unchanged'"):
+		t.task.Status = "success_unchanged"
+		checked, finished := args[1].(time.Time), args[2].(time.Time)
+		t.task.CheckedAt = &checked
+		t.task.FinishedAt = &finished
 	default:
 		return t.publicationTx.Exec(ctx, sql, args...)
 	}

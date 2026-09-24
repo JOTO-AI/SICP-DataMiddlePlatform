@@ -53,13 +53,21 @@ type ChangeResult struct {
 }
 
 func (c Changed) Run(ctx context.Context, active control.ActiveMetadata) (out ChangeResult, err error) {
-	if c.Source == nil || c.Store == nil || c.Builder == nil || c.Validator == nil || c.Readability == nil || c.Shifter == nil || c.Outbox == nil || c.Delivery == nil || c.Progress == nil || c.Clock == nil || c.CodeVersion == "" {
+	if c.Source == nil {
 		return out, ErrInitialization
 	}
-	out.Prepared, err = c.Source.Prepare(ctx, active)
+	prepared, err := c.Source.Prepare(ctx, active)
 	if err != nil {
 		return out, err
 	}
+	return c.RunPrepared(ctx, prepared)
+}
+
+func (c Changed) RunPrepared(ctx context.Context, prepared PreparedUpdate) (out ChangeResult, err error) {
+	if c.Store == nil || c.Builder == nil || c.Validator == nil || c.Readability == nil || c.Shifter == nil || c.Outbox == nil || c.Delivery == nil || c.Progress == nil || c.Clock == nil || c.CodeVersion == "" {
+		return out, ErrInitialization
+	}
+	out.Prepared = prepared
 	p := out.Prepared.Plan
 	m := out.Prepared.Manifest
 	if p.Validate() != nil || len(p.TaskID) > 64 || m.Validate() != nil || p.Mode != "incremental" || m.Combination == p.Origin.Position.BundleID {
