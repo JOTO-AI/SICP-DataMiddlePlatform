@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/assembly"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/config"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/lifecycle"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
@@ -127,7 +128,7 @@ func SignalContext(parent context.Context, signals <-chan os.Signal) (context.Co
 }
 
 func Main(role config.Role) int {
-	cfg, err := config.Load(role, os.LookupEnv)
+	cfg, err := config.LoadRuntime(role, os.LookupEnv)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -137,7 +138,7 @@ func Main(role config.Role) int {
 	defer signal.Stop(signals)
 	ctx, cancel := SignalContext(context.Background(), signals)
 	defer cancel()
-	err = Run(ctx, cfg, Dependencies{
+	err = RunConfigured(ctx, cfg, assembly.RealFactories(), Dependencies{
 		Clock: ports.SystemClock{}, Random: rand.Reader,
 		Record: func(event Event) { _ = json.NewEncoder(os.Stdout).Encode(event) },
 	})
@@ -146,4 +147,20 @@ func Main(role config.Role) int {
 		return 1
 	}
 	return 0
+}
+
+// RunConfigured is the production entry boundary. Assembly failure cannot fall
+// back to the dependency-free HTTP shell used by lifecycle unit tests.
+func RunConfigured(ctx context.Context, cfg config.Runtime, factories assembly.Factories, deps Dependencies) (err error) {
+	runtime, _, err := assembly.Open(ctx, cfg, factories)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		cleanup, cancel := context.WithTimeout(context.Background(), cfg.Service.ShutdownTimeout)
+		defer cancel()
+		err = errors.Join(err, runtime.Close(cleanup))
+	}()
+	deps.Factories = append([]lifecycle.Factory{{Name: "runtime", Open: func(context.Context) (ports.Resource, error) { return runtime, nil }}}, deps.Factories...)
+	return Run(ctx, cfg.Service, deps)
 }
