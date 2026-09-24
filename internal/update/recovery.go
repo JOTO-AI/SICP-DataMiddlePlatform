@@ -33,6 +33,25 @@ type Recovery struct {
 	Execution Termination
 }
 
+// Claim repeats discovery and termination checks immediately before the
+// repository's atomic compare-and-takeover. It never claims an idle scheduler.
+func (r Recovery) Claim(ctx context.Context, worker string) (control.Ownership, error) {
+	d, err := r.Inspect(ctx)
+	if err != nil {
+		return control.Ownership{}, err
+	}
+	if d.Action == "idle" || d.State.Owner.TaskID == "" {
+		return control.Ownership{}, ErrRecoveryPending
+	}
+	store, ok := r.Store.(interface {
+		Takeover(context.Context, control.Ownership, string) (control.Ownership, error)
+	})
+	if !ok {
+		return control.Ownership{}, ErrInitialization
+	}
+	return store.Takeover(ctx, d.State.Owner, worker)
+}
+
 // Inspect never writes finished_at, clears ownership, opens slots, or starts a
 // task. Only "idle" may reach new scheduling; every other decision is recovery.
 func (r Recovery) Inspect(ctx context.Context) (RecoveryDecision, error) {

@@ -144,3 +144,46 @@ func TestT14_05EmptyStartupAndFirstPublicationAreDistinct(t *testing.T) {
 		t.Fatal(out, err)
 	}
 }
+
+func (w *recoveryWorld) Takeover(_ context.Context, old control.Ownership, worker string) (control.Ownership, error) {
+	w.calls = append(w.calls, "takeover")
+	return control.Ownership{TaskID: old.TaskID, OwnerID: worker, Generation: old.Generation + 1}, nil
+}
+func TestT14_13ClaimRequiresActualExecutorAndSQLTermination(t *testing.T) {
+	r, w := recoveryFixture()
+	w.stopped = false
+	if _, err := r.Claim(t.Context(), "new-worker"); !errors.Is(err, update.ErrRecoveryPending) {
+		t.Fatal(err)
+	}
+	for _, step := range w.calls {
+		if step == "takeover" {
+			t.Fatal("claimed before termination")
+		}
+	}
+	w.stopped = true
+	owner, err := r.Claim(t.Context(), "new-worker")
+	if err != nil || owner.Generation != w.state.Owner.Generation+1 || owner.TaskID != w.state.Task.ID {
+		t.Fatal(owner, err)
+	}
+}
+
+func TestT14_08ShiftRecoveryDoesNotConfirmSourceProgress(t *testing.T) {
+	c, w := changedFixture(t)
+	w.fail = "build-second"
+	saved, err := c.Run(t.Context(), w.active)
+	if err == nil {
+		t.Fatal("missing interruption")
+	}
+	w.fail = ""
+	w.trace = nil
+	f := update.Finisher{Store: w, Delivery: w, Clock: c.Clock}
+	event, err := f.Recover(t.Context(), saved.Shift.Event)
+	if err != nil || event.Kind != "route_shift" {
+		t.Fatal(event, err)
+	}
+	for _, step := range w.trace {
+		if step == "progress-success" || step == "build-first" || step == "build-second" {
+			t.Fatal("shift recovery changed data or progress")
+		}
+	}
+}

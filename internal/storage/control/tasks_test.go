@@ -56,6 +56,13 @@ func (x *taskTx) Exec(_ context.Context, sql string, args ...any) (int64, error)
 		return 0, errors.New("injected SQL failure")
 	}
 	switch {
+	case strings.HasPrefix(sql, "UPDATE control.execution SET owner_id="):
+		if x.owner.TaskID != args[2] || x.owner.OwnerID != args[3] || x.owner.Generation != args[4] {
+			return 0, nil
+		}
+		x.owner.OwnerID = args[0].(string)
+		x.owner.Generation = args[1].(int64)
+		return 1, nil
 	case strings.HasPrefix(sql, "UPDATE control.tasks SET status='failed'"):
 		for _, row := range x.records {
 			if row[0] == args[0] && row[3] == "running" {
