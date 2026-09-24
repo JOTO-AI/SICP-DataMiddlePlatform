@@ -21,6 +21,12 @@ type deliveryRedis struct {
 
 func (r *deliveryRedis) Do(_ context.Context, command string, args ...any) (any, error) {
 	r.calls++
+	if command == "GET" {
+		if r.value == "" {
+			return nil, nil
+		}
+		return r.value, nil
+	}
 	if command != "EVAL" {
 		return nil, errors.New("unexpected non-atomic delivery")
 	}

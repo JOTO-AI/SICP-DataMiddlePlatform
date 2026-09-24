@@ -36,3 +36,25 @@ func (f Finisher) Finish(ctx context.Context, event control.Publication) error {
 	}
 	return f.Store.CompletePublished(ctx, confirmed, f.Clock.Now())
 }
+
+// Recover confirms either kind of immutable event. A route shift never advances
+// successful source progress; local recovery must recheck its drain separately.
+func (f Finisher) Recover(ctx context.Context, event control.Publication) (control.Publication, error) {
+	if f.Store == nil || f.Delivery == nil || f.Clock == nil || (event.Kind != "route_shift" && event.Kind != "bundle_publish") {
+		return control.Publication{}, ErrInitialization
+	}
+	if err := f.Delivery.Apply(ctx, event); err != nil {
+		return control.Publication{}, err
+	}
+	confirmed, err := f.Store.ConfirmPublication(ctx, event, f.Clock.Now())
+	if err != nil {
+		return control.Publication{}, err
+	}
+	if confirmed.Kind != event.Kind || confirmed.Status != "confirmed" {
+		return control.Publication{}, ErrRecoveryPending
+	}
+	if event.Kind == "bundle_publish" {
+		err = f.Store.CompletePublished(ctx, confirmed, f.Clock.Now())
+	}
+	return confirmed, err
+}

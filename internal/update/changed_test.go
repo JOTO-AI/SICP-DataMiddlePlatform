@@ -71,7 +71,8 @@ func (w *changedWorld) Shift(_ context.Context, p update.ReadabilityProof) (upda
 	a.Position = p.Destination
 	w.active = a
 	raw, _ := control.ActiveDocument(a)
-	e := control.Publication{ID: a.EventID, Kind: "route_shift", TaskID: p.TaskID, Status: "confirmed", Target: raw}
+	expected, _ := control.ActiveDocument(p.Origin)
+	e := control.Publication{ID: a.EventID, Sequence: a.Sequence, Kind: "route_shift", TaskID: p.TaskID, Status: "confirmed", Target: raw, Expected: &expected, CreatedAt: p.CheckedAt, ConfirmedAt: &p.CheckedAt}
 	err := w.step("drain")
 	return update.ShiftResult{Event: e, Drained: err == nil}, err
 }

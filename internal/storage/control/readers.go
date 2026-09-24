@@ -140,6 +140,9 @@ func (r Repository) ReserveOverwrite(ctx context.Context, h SlotIdentity) (Slot,
 		if busy {
 			return ErrBusy
 		}
+		if err = bundleReferenced(ctx, tx, h.BundleID); err != nil {
+			return err
+		}
 		var retained bool
 		if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.query_snapshots q WHERE q.bundle_id=$1 AND q.expires_at>CURRENT_TIMESTAMP) AND NOT EXISTS (SELECT 1 FROM control.slots s WHERE s.bundle_id=$1 AND s.state='ready' AND s.admission_open=TRUE AND (s.instance<>$2 OR s.slot<>$3))", h.BundleID, s.Instance, s.Slot).Scan(&retained); err != nil {
 			return err

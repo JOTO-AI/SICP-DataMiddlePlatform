@@ -20,6 +20,8 @@ type taskDB struct {
 	owner                control.Ownership
 	lastStarted, nextDue *time.Time
 	revision             int64
+	deferred, pending    bool
+	cooldown             *time.Time
 	failSQL              string
 	failCommit, failRead bool
 	rollbacks            int
@@ -32,6 +34,7 @@ type taskTx struct {
 	owner                control.Ownership
 	lastStarted, nextDue *time.Time
 	revision             int64
+	deferred             bool
 	closed               bool
 	mutations            []dbCall
 }
@@ -41,7 +44,7 @@ func (d *taskDB) Begin(_ context.Context, c storage.Connection) (storage.Transac
 		return nil, errors.New("wrong database")
 	}
 	d.mu.Lock()
-	x := &taskTx{db: d, records: map[string][]any{}, owner: d.owner, lastStarted: d.lastStarted, nextDue: d.nextDue, revision: d.revision}
+	x := &taskTx{db: d, records: map[string][]any{}, owner: d.owner, lastStarted: d.lastStarted, nextDue: d.nextDue, revision: d.revision, deferred: d.deferred}
 	for key, row := range d.records {
 		x.records[key] = append([]any(nil), row...)
 	}
@@ -53,6 +56,30 @@ func (x *taskTx) Exec(_ context.Context, sql string, args ...any) (int64, error)
 		return 0, errors.New("injected SQL failure")
 	}
 	switch {
+	case strings.HasPrefix(sql, "UPDATE control.execution SET owner_id="):
+		if x.owner.TaskID != args[2] || x.owner.OwnerID != args[3] || x.owner.Generation != args[4] {
+			return 0, nil
+		}
+		x.owner.OwnerID = args[0].(string)
+		x.owner.Generation = args[1].(int64)
+		return 1, nil
+	case strings.HasPrefix(sql, "UPDATE control.tasks SET status='failed'"):
+		for _, row := range x.records {
+			if row[0] == args[0] && row[3] == "running" {
+				row[3] = "failed"
+				at := args[1].(*time.Time)
+				row[11] = nil
+				if at != nil {
+					row[11] = *at
+				}
+				row[15] = args[2]
+				return 1, nil
+			}
+		}
+		return 0, nil
+	case strings.HasPrefix(sql, "UPDATE control.schedule SET deferred=TRUE"):
+		x.deferred = true
+		return 1, nil
 	case strings.HasPrefix(sql, "UPDATE control.execution SET task_id=$1"):
 		if x.owner.TaskID != "" || x.owner.Generation != args[3].(int64) {
 			return 0, nil
@@ -111,6 +138,7 @@ func (x *taskTx) Exec(_ context.Context, sql string, args ...any) (int64, error)
 		next := args[1].(time.Time)
 		x.nextDue = &next
 		x.revision++
+		x.deferred = false
 		return 1, nil
 	default:
 		return 0, errors.New("unexpected SQL in task test")
@@ -118,6 +146,33 @@ func (x *taskTx) Exec(_ context.Context, sql string, args ...any) (int64, error)
 }
 func (x *taskTx) QueryRow(_ context.Context, sql string, args ...any) storage.Row {
 	x.db.calls = append(x.db.calls, dbCall{sql, args})
+	if strings.HasPrefix(sql, "SELECT revision,last_started_at") {
+		value := func(at *time.Time) any {
+			if at == nil {
+				return nil
+			}
+			return *at
+		}
+		return result{raw: []any{x.revision, value(x.lastStarted), value(x.nextDue), x.deferred, value(x.db.cooldown)}}
+	}
+	if strings.Contains(sql, "SELECT EXISTS (SELECT 1 FROM control.tasks WHERE idempotency_key=") {
+		_, ok := x.records[args[0].(string)]
+		return result{raw: []any{ok}}
+	}
+	if strings.Contains(sql, "SELECT EXISTS (SELECT 1 FROM control.publication_outbox") {
+		return result{raw: []any{x.db.pending}}
+	}
+	if strings.Contains(sql, "SELECT EXISTS (SELECT 1 FROM control.tasks WHERE status NOT IN") {
+		busy := false
+		for _, row := range x.records {
+			switch row[3] {
+			case "failed", "success_published", "success_unchanged":
+			default:
+				busy = true
+			}
+		}
+		return result{raw: []any{busy}}
+	}
 	if strings.Contains(sql, "FROM control.execution") {
 		var task, owner any
 		if x.owner.TaskID != "" {
@@ -147,6 +202,7 @@ func (x *taskTx) Commit(context.Context) error {
 	x.db.lastStarted = x.lastStarted
 	x.db.nextDue = x.nextDue
 	x.db.revision = x.revision
+	x.db.deferred = x.deferred
 	x.db.mutations = append(x.db.mutations, x.mutations...)
 	x.closed = true
 	x.db.mu.Unlock()
