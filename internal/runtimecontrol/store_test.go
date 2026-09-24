@@ -32,7 +32,11 @@ func (r row) Scan(dst ...any) error {
 			out.Set(reflect.New(out.Type().Elem()))
 			out = out.Elem()
 		}
-		out.Set(reflect.ValueOf(v).Convert(out.Type()))
+		value := reflect.ValueOf(v)
+		if !value.CanConvert(out.Type()) {
+			return errors.New("fixture column type does not match query")
+		}
+		out.Set(value.Convert(out.Type()))
 	}
 	return nil
 }

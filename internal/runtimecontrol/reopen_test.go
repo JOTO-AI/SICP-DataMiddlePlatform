@@ -37,7 +37,7 @@ func (d *reopenDB) QueryRow(ctx context.Context, q string, args ...any) storage.
 		}
 		return row{"old-copy"}
 	case strings.Contains(q, "FROM control.candidates"):
-		return row{"old-copy", "old-task", "S", int16(0), int64(1), "C100", int64(1), "ready", d.at, jsonText(d.copy.Evidence)}
+		return row{"old-copy", "old-task", "S", int16(0), int64(1), "C100", int64(1), "ready", jsonText(d.copy.Evidence), d.at}
 	case strings.Contains(q, "FROM control.bundles"):
 		return row{"C100", jsonText(d.copy.Manifest), d.at, d.at, d.at}
 	case strings.Contains(q, "FROM control.slots"):
