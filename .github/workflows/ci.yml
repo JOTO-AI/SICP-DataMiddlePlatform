@@ -38,3 +38,45 @@ jobs:
           name: linux-unit-evidence
           path: artifacts/
           if-no-files-found: error
+  integration:
+    needs: unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      GOTOOLCHAIN: local
+      SICP_INTEGRATION: '1'
+      SICP_PROJECT: sicp-integration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Prepare isolated synthetic dependencies
+        run: |
+          bash scripts/sicp.sh prepare
+          docker compose -p "$SICP_PROJECT" -f deploy/compose.yaml build mock
+          bash scripts/sicp.sh infra
+      - name: Run integration cases sequentially
+        run: |
+          mkdir -p artifacts/integration
+          set +e
+          go test -tags=integration -race -count=1 -parallel=1 -timeout=20m -json ./tests/integration | tee artifacts/integration/results.jsonl
+          result=${PIPESTATUS[0]}
+          printf '%s\n' "$result" > artifacts/integration/exit-code.txt
+          exit "$result"
+      - name: Collect dependency logs and remove isolated volumes
+        if: always()
+        run: |
+          mkdir -p artifacts/integration
+          docker compose -p "$SICP_PROJECT" -f deploy/compose.yaml logs --no-color > artifacts/integration/compose.log 2>&1 || true
+          docker compose -p "$SICP_PROJECT" -f deploy/compose.yaml down --volumes --remove-orphans
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-integration-evidence
+          path: artifacts/integration/
+          if-no-files-found: error
