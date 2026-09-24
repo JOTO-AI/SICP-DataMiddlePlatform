@@ -14,6 +14,7 @@ type repairDB struct {
 	*readerDB
 	active         control.Document
 	pending, ready bool
+	referenced     bool
 	candidate      *control.Candidate
 }
 type repairTX struct {
@@ -31,6 +32,14 @@ func (d *repairDB) Begin(ctx context.Context, c storage.Connection) (storage.Tra
 }
 func (x *repairTX) QueryRow(ctx context.Context, sql string, args ...any) storage.Row {
 	switch {
+	case strings.Contains(sql, "FROM control.resource_refs"):
+		return result{raw: []any{x.d.referenced}}
+	case strings.Contains(sql, "OR EXISTS (SELECT 1 FROM control.query_snapshots"):
+		busy := x.d.retained
+		for _, r := range x.d.records {
+			busy = busy || r.ReleasedAt == nil || r.SQLFinishedAt == nil
+		}
+		return result{raw: []any{busy}}
 	case strings.Contains(sql, "publication_outbox WHERE status='pending'"):
 		return result{raw: []any{x.d.pending}}
 	case strings.HasPrefix(sql, "SELECT (SELECT target::text"):
@@ -59,6 +68,10 @@ func (x *repairTX) Exec(ctx context.Context, sql string, args ...any) (int64, er
 		bundle := x.d.slot.BundleID
 		n, err := x.readerTX.Exec(ctx, sql, args...)
 		x.d.slot.BundleID = bundle
+		if len(args) == 4 {
+			next := args[3].(string)
+			x.d.slot.BundleID = &next
+		}
 		return n, err
 	}
 	return x.readerTX.Exec(ctx, sql, args...)

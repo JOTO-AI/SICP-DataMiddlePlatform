@@ -114,6 +114,9 @@ func (t *readerTX) Exec(_ context.Context, sql string, args ...any) (int64, erro
 }
 func (t *readerTX) QueryRow(_ context.Context, sql string, args ...any) storage.Row {
 	t.db.calls = append(t.db.calls, dbCall{sql, args})
+	if strings.Contains(sql, "FROM control.resource_refs") {
+		return result{raw: []any{false}}
+	}
 	if strings.Contains(sql, "FROM control.execution") {
 		return result{raw: []any{"task-A", "owner-A", int64(9)}}
 	}
