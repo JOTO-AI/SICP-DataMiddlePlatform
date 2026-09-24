@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
 	"sync/atomic"
 	"testing"
@@ -111,7 +112,8 @@ func TestT15_11UnacknowledgedLogSurvivesApplicationExit(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer j.Close()
-	sanitizer, err := observability.NewSanitizer(16384, 2048, make([]byte, 32), nil)
+	key := sha256.Sum256([]byte("synthetic-shutdown-test-key"))
+	sanitizer, err := observability.NewSanitizer(16384, 2048, key[:], nil)
 	if err != nil {
 		t.Fatal(err)
 	}
