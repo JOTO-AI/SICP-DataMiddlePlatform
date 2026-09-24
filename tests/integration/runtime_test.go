@@ -61,10 +61,17 @@ func (r *scopedRedis) Do(ctx context.Context, command string, args ...any) (any,
 }
 
 type mockSource struct {
-	mu       sync.Mutex
-	rows     map[string][]json.RawMessage
-	server   *httptest.Server
-	requests int
+	mu        sync.Mutex
+	rows      map[string][]json.RawMessage
+	server    *httptest.Server
+	requests  int
+	failTable string
+	audit     []sourceRequest
+}
+
+type sourceRequest struct {
+	Table, Start, End string
+	Rows              int
 }
 
 func newSource(t *testing.T) *mockSource {
@@ -104,6 +111,39 @@ func newSource(t *testing.T) *mockSource {
 			http.Error(w, "invalid synthetic source request", 400)
 			return
 		}
+		if table == m.failTable {
+			http.Error(w, "synthetic source failure", 500)
+			return
+		}
+		startTime, endTime := r.URL.Query().Get("startTime"), r.URL.Query().Get("endTime")
+		if startTime != "" || endTime != "" {
+			start, e1 := time.Parse("2006-01-02 15:04:05.999999", startTime)
+			end, e2 := time.Parse("2006-01-02 15:04:05.999999", endTime)
+			if e1 != nil || e2 != nil || !start.Before(end) {
+				http.Error(w, "invalid synthetic window", 400)
+				return
+			}
+			filtered := make([]json.RawMessage, 0, len(rows))
+			for _, row := range rows {
+				var stamp struct {
+					ETL string `json:"ETL_TIME"`
+				}
+				if err := json.Unmarshal(row, &stamp); err != nil {
+					http.Error(w, "invalid fixture", 500)
+					return
+				}
+				at, err := time.Parse("2006-01-02 15:04:05.999999", strings.Replace(stamp.ETL, "T", " ", 1))
+				if err != nil {
+					http.Error(w, "invalid fixture timestamp", 500)
+					return
+				}
+				if !at.Before(start) && at.Before(end) {
+					filtered = append(filtered, row)
+				}
+			}
+			rows = filtered
+		}
+		m.audit = append(m.audit, sourceRequest{Table: table, Start: startTime, End: endTime, Rows: len(rows)})
 		start := min((page-1)*size, len(rows))
 		end := min(start+size, len(rows))
 		w.Header().Set("Content-Type", "application/json")

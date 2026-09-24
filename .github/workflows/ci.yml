@@ -73,7 +73,7 @@ jobs:
         run: |
           mkdir -p artifacts/integration
           set +e
-          for group in I01 I02 I03; do
+          for group in I01 I02 I03 I04; do
             go test -tags=integration -race -count=1 -parallel=1 -timeout=15m -run "^Test${group}_" -json ./tests/integration | tee "artifacts/integration/$group.jsonl"
             result=${PIPESTATUS[0]}
             printf '%s\n' "$result" > "artifacts/integration/$group-exit-code.txt"
