@@ -35,6 +35,7 @@ type scopedRedis struct {
 	raw       *adapters.Redis
 	prefix    string
 	beforeSet func(context.Context, string) error
+	afterDo   func(string, []any, any, error) (any, error)
 }
 
 func (r *scopedRedis) Close(context.Context) error { return nil }
@@ -57,7 +58,11 @@ func (r *scopedRedis) Do(ctx context.Context, command string, args ...any) (any,
 	default:
 		return nil, errors.New("unexpected integration Redis command")
 	}
-	return r.raw.Do(ctx, command, args...)
+	value, err := r.raw.Do(ctx, command, args...)
+	if r.afterDo != nil {
+		return r.afterDo(command, args, value, err)
+	}
+	return value, err
 }
 
 type mockSource struct {
