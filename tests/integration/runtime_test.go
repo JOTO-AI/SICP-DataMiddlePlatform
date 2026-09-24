@@ -67,6 +67,7 @@ type mockSource struct {
 	requests  int
 	failTable string
 	audit     []sourceRequest
+	afterPage func(string, int)
 }
 
 type sourceRequest struct {
@@ -148,6 +149,9 @@ func newSource(t *testing.T) *mockSource {
 		end := min(start+size, len(rows))
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"code": 200, "message": "ok", "data": map[string]any{"total": len(rows), "list": rows[start:end]}})
+		if m.afterPage != nil {
+			m.afterPage(table, page)
+		}
 	}))
 	t.Cleanup(m.server.Close)
 	return m
