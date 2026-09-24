@@ -200,15 +200,33 @@ func TestT12_14ForcedAcquisitionOmitsWindowOnEveryPageAndRetry(t *testing.T) {
 }
 func TestT13_12FetcherUsesCompleteSealBeforeActualPreparation(t *testing.T) {
 	a, _ := acquisition(t, "")
-	i, _, _, _ := initialization(t, "")
+	i, initialTask, _, _ := initialization(t, "")
 	p := updatePlan()
 	p.Mode = "force_full"
 	spy := &preparationSpy{next: i.Preparer}
 	o := i.Options
 	o.Combination = "C101"
+	baseline, err := i.Run(t.Context(), initialTask)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Origin.Position.BundleID = baseline.Manifest.Combination
+	o.Base = &baseline.Manifest
+	o.BaseSource = i.Preparer.(candidate.TargetFiles)
 	f := update.Fetcher{Planner: planner{plan: p}, Source: a, Preparer: spy, Options: o, Zone: time.UTC}
 	out, err := f.Prepare(t.Context(), p.Origin)
 	if err != nil || spy.calls != 1 || len(out.Manifest.Tables) != 14 || !reflect.DeepEqual(out.Plan, p) {
+		t.Fatal(out, err)
+	}
+}
+
+func TestT13_16FullUpdateWithoutTrustedOldBaselineCannotPrepareTarget(t *testing.T) {
+	a, _ := acquisition(t, "")
+	p := updatePlan()
+	p.Mode = "force_full"
+	spy := &preparationSpy{}
+	out, err := (update.Fetcher{Planner: planner{plan: p}, Source: a, Preparer: spy, Zone: time.UTC}).Prepare(t.Context(), p.Origin)
+	if err == nil || spy.calls != 0 || out.Manifest.Combination != "" {
 		t.Fatal(out, err)
 	}
 }

@@ -91,6 +91,11 @@ func (f Fetcher) Prepare(ctx context.Context, active control.ActiveMetadata) (Pr
 	}
 	o := f.Options
 	o.Mode = ingest.Mode(p.Mode)
+	// Both update modes compare with the acknowledged ORIGINAL full baseline.
+	// Without it a full fetch could bypass deletion/abnormal-empty protection.
+	if o.Base == nil || o.BaseSource == nil || o.Base.Combination != p.Origin.Position.BundleID || o.Base.Validate() != nil {
+		return PreparedUpdate{}, ErrInitialization
+	}
 	m, err := f.Preparer.Prepare(ctx, o, l)
 	if err != nil {
 		return PreparedUpdate{}, err

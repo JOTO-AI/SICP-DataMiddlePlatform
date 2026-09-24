@@ -70,7 +70,7 @@ func (c Changed) RunPrepared(ctx context.Context, prepared PreparedUpdate) (out 
 	out.Prepared = prepared
 	p := out.Prepared.Plan
 	m := out.Prepared.Manifest
-	if p.Validate() != nil || len(p.TaskID) > 64 || m.Validate() != nil || p.Mode != "incremental" || m.Combination == p.Origin.Position.BundleID {
+	if p.Validate() != nil || len(p.TaskID) > 64 || m.Validate() != nil || m.Combination == p.Origin.Position.BundleID {
 		return out, ErrInitialization
 	}
 	targets, old, err := c.Store.PlanCopies(ctx, out.Prepared)
@@ -89,7 +89,7 @@ func (c Changed) RunPrepared(ctx context.Context, prepared PreparedUpdate) (out 
 	}
 	build := func(n int) error {
 		var e error
-		out.Reports[n], e = c.Builder.Build(ctx, targets[n], m, false)
+		out.Reports[n], e = c.Builder.Build(ctx, targets[n], m, p.Mode == "force_full")
 		if e != nil {
 			return e
 		}
