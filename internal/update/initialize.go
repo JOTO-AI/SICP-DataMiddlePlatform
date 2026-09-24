@@ -31,11 +31,17 @@ type Acquirer struct {
 // Full commits every page and requires an actual fourteen-source seal. The
 // retained lease stays durable on later failure for controlled recovery/GC.
 func (a Acquirer) Full(ctx context.Context) (*staging.Lease, error) {
+	return a.collect(ctx, func(table string) ingest.PageRequest {
+		return ingest.PageRequest{Table: table, Mode: ingest.Full, Page: 1, PageSize: a.PageSize}
+	})
+}
+
+func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageRequest) (*staging.Lease, error) {
 	if a.Collector == nil || a.Staging == nil || a.Budget == nil || a.PageSize < 1 || a.Owner == "" || a.Observe == nil {
 		return nil, ErrInitialization
 	}
 	for _, table := range ingest.Catalog() {
-		result, err := a.Collector.Collect(ctx, ingest.PageRequest{Table: table.Name, Mode: ingest.Full, Page: 1, PageSize: a.PageSize}, a.Budget, a.Limits, a.Staging)
+		result, err := a.Collector.Collect(ctx, request(table.Name), a.Budget, a.Limits, a.Staging)
 		if result.ObservationError != nil {
 			a.Observe(result.ObservationError)
 		}
