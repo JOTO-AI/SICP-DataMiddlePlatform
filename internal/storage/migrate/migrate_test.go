@@ -168,6 +168,25 @@ func TestT11_16SnapshotMigrationUpgradesExecutionLedger(t *testing.T) {
 	}
 }
 
+func TestT14_14ReferenceMigrationUpgradesAndReplaysWithoutChangingHistory(t *testing.T) {
+	plan, err := migrate.Catalog(migrate.Control)
+	if err != nil || len(plan) < 5 || plan[4].Version != "control_005" {
+		t.Fatal(plan, err)
+	}
+	db := &database{}
+	target := migrate.Target{Domain: migrate.Control}
+	r := registry(t)
+	if n, err := migrate.Apply(t.Context(), db, r, target, plan[:4]); err != nil || n != 4 {
+		t.Fatal(n, err)
+	}
+	if n, err := migrate.Apply(t.Context(), db, r, target, plan[:5]); err != nil || n != 1 {
+		t.Fatal(n, err)
+	}
+	if n, err := migrate.Apply(t.Context(), db, r, target, plan[:5]); err != nil || n != 0 {
+		t.Fatal(n, err)
+	}
+}
+
 func TestT11_18BundleChecksMigrationUpgradesSnapshots(t *testing.T) {
 	plan, err := migrate.Catalog(migrate.Control)
 	if err != nil || len(plan) < 4 || plan[3].Version != "control_004" {
