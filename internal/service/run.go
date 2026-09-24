@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/application"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/assembly"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/config"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/lifecycle"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
@@ -29,6 +31,7 @@ type Dependencies struct {
 	Random        ports.Random
 	Readiness     ports.Readiness
 	QueryHandlers map[contract.Operation]http.Handler
+	Management    http.Handler
 	Factories     []lifecycle.Factory
 	Listen        func(string, string) (net.Listener, error)
 	// Record must return promptly; only sanitized lifecycle facts are supplied.
@@ -57,7 +60,7 @@ func Run(ctx context.Context, cfg config.Config, deps Dependencies) (runErr erro
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
-	handler, err := NewHTTPWithHandlers(cfg.Role, cfg.APIKey, deps.Clock, deps.Random, deps.Readiness, deps.QueryHandlers)
+	handler, err := newHTTP(cfg.Role, cfg.APIKey, deps.Clock, deps.Random, deps.Readiness, deps.QueryHandlers, deps.Management)
 	if err != nil {
 		return err
 	}
@@ -127,7 +130,7 @@ func SignalContext(parent context.Context, signals <-chan os.Signal) (context.Co
 }
 
 func Main(role config.Role) int {
-	cfg, err := config.Load(role, os.LookupEnv)
+	cfg, err := config.LoadRuntime(role, os.LookupEnv)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -137,7 +140,7 @@ func Main(role config.Role) int {
 	defer signal.Stop(signals)
 	ctx, cancel := SignalContext(context.Background(), signals)
 	defer cancel()
-	err = Run(ctx, cfg, Dependencies{
+	err = RunConfigured(ctx, cfg, assembly.RealFactories(), Dependencies{
 		Clock: ports.SystemClock{}, Random: rand.Reader,
 		Record: func(event Event) { _ = json.NewEncoder(os.Stdout).Encode(event) },
 	})
@@ -146,4 +149,34 @@ func Main(role config.Role) int {
 		return 1
 	}
 	return 0
+}
+
+// RunConfigured is the production entry boundary. Assembly failure cannot fall
+// back to the dependency-free HTTP shell used by lifecycle unit tests.
+func RunConfigured(ctx context.Context, cfg config.Runtime, factories assembly.Factories, deps Dependencies) (err error) {
+	runtime, _, err := assembly.Open(ctx, cfg, factories)
+	if err != nil {
+		return err
+	}
+	owned := false
+	defer func() {
+		// Once the lifecycle manager owns runtime, its single shutdown budget
+		// is authoritative even when it could not reach dependency cleanup.
+		if owned {
+			return
+		}
+		cleanup, cancel := context.WithTimeout(context.Background(), cfg.Service.ShutdownTimeout)
+		defer cancel()
+		err = errors.Join(err, runtime.Close(cleanup))
+	}()
+	deps.Factories = append([]lifecycle.Factory{{Name: "runtime", Open: func(context.Context) (ports.Resource, error) { owned = true; return runtime, nil }}}, deps.Factories...)
+	app, err := application.New(cfg, runtime)
+	if err != nil {
+		return err
+	}
+	deps.QueryHandlers = app.Queries
+	deps.Management = app.Management
+	deps.Readiness = app
+	deps.Factories = append(deps.Factories, lifecycle.Factory{Name: "application", Open: func(context.Context) (ports.Resource, error) { app.Start(ctx); return app, nil }})
+	return Run(ctx, cfg.Service, deps)
 }

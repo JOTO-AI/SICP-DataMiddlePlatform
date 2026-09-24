@@ -125,7 +125,13 @@ func (l *sqlLease) Release(ctx context.Context) error {
 	if !stopped {
 		return errors.New("SQL execution termination unconfirmed")
 	}
-	return l.owner.Store.FinishSQL(ctx, identity(l.h), l.readerID, l.id, l.owner.Clock.Now())
+	if err := l.owner.Store.FinishSQL(ctx, identity(l.h), l.readerID, l.id, l.owner.Clock.Now()); err != nil {
+		return err
+	}
+	if proof, ok := l.owner.Proof.(interface{ Forget(string) }); ok {
+		proof.Forget(l.id)
+	}
+	return nil
 }
 
 // ExecutionID lets the database adapter associate a durable execution with its

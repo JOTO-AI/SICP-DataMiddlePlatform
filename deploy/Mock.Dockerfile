@@ -1,0 +1,7 @@
+FROM python:3.12-slim-bookworm
+WORKDIR /app
+COPY mock.py /app/mock.py
+USER 65532:65532
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["python", "/app/mock.py"]

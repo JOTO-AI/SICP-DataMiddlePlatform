@@ -94,7 +94,7 @@ func TestT02_06MigrationReplayConflictAndRollback(t *testing.T) {
 	target := migrate.Target{Domain: migrate.Business, Position: storage.Position{Instance: storage.Main}}
 	plan, _ := migrate.Catalog(migrate.Business)
 	db := &database{}
-	if n, err := migrate.Apply(t.Context(), db, r, target, plan); err != nil || n != 1 {
+	if n, err := migrate.Apply(t.Context(), db, r, target, plan); err != nil || n != len(plan) {
 		t.Fatalf("initial migration: %d %v", n, err)
 	}
 	if n, err := migrate.Apply(t.Context(), db, r, target, plan); err != nil || n != 0 {
@@ -265,6 +265,29 @@ func TestT02_13SourceDDLMatchesIndependentFieldPlan(t *testing.T) {
 	}
 	if !strings.Contains(plan[0].SQL, "GRANT SELECT ON ALL TABLES IN SCHEMA source TO sicp_query") {
 		t.Fatal("missing query read grant")
+	}
+}
+
+func TestT15_10WorkerValidationUsesQueryRoleAndRoutesHaveReadOnlyEvidence(t *testing.T) {
+	business, err := migrate.Catalog(migrate.Business)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(business[len(business)-1].SQL, "GRANT sicp_query TO sicp_worker") {
+		t.Fatal("missing validation role membership")
+	}
+	control, err := migrate.Catalog(migrate.Control)
+	if err != nil {
+		t.Fatal(err)
+	}
+	grant := control[len(control)-1].SQL
+	if !strings.Contains(grant, "ON control.candidates TO sicp_query") || !strings.Contains(grant, "evidence") {
+		t.Fatal("missing query route evidence grant")
+	}
+	for _, denied := range []string{"INSERT", "UPDATE", "DELETE", "TRUNCATE", "task_id", "owner_generation"} {
+		if strings.Contains(grant, denied) {
+			t.Fatal("excessive query permission", denied)
+		}
 	}
 }
 

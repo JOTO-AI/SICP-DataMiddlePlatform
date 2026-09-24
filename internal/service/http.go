@@ -43,6 +43,9 @@ func NewHTTP(role config.Role, apiKey string, clock ports.Clock, random ports.Ra
 // NewHTTPWithHandlers installs only implemented, authenticated query handlers.
 // Missing operations retain guarded placeholders and keep readiness false.
 func NewHTTPWithHandlers(role config.Role, apiKey string, clock ports.Clock, random ports.Random, readiness ports.Readiness, handlers map[contract.Operation]http.Handler) (*HTTP, error) {
+	return newHTTP(role, apiKey, clock, random, readiness, handlers, nil)
+}
+func newHTTP(role config.Role, apiKey string, clock ports.Clock, random ports.Random, readiness ports.Readiness, handlers map[contract.Operation]http.Handler, management http.Handler) (*HTTP, error) {
 	if clock == nil || random == nil {
 		return nil, fmt.Errorf("clock and random dependencies required")
 	}
@@ -67,15 +70,34 @@ func NewHTTPWithHandlers(role config.Role, apiKey string, clock ports.Clock, ran
 		writeJSON(w, http.StatusOK, map[string]bool{"live": true})
 	})
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
-		dependenciesReady := !h.draining.Load() && readiness != nil && readiness.Ready(r.Context())
+		fields := map[string]bool{}
+		dependenciesReady := false
+		if health, ok := readiness.(interface {
+			Status(context.Context) map[string]bool
+		}); ok {
+			for k, v := range health.Status(r.Context()) {
+				fields[k] = v && !h.draining.Load()
+			}
+			if role == config.Query {
+				dependenciesReady = fields["query_ready"]
+			} else {
+				dependenciesReady = fields["sync_ready"]
+			}
+		} else {
+			dependenciesReady = !h.draining.Load() && readiness != nil && readiness.Ready(r.Context())
+		}
 		// A valid data combination alone cannot make placeholder handlers ready.
-		ready := dependenciesReady && role == config.Query && registry.Ready()
+		ready := dependenciesReady && (role == config.Query && registry.Ready() || role == config.Worker && management != nil)
 		status := http.StatusServiceUnavailable
 		if ready {
 			status = http.StatusOK
 		}
-		writeJSON(w, status, map[string]bool{"ready": ready})
+		fields["ready"] = ready
+		writeJSON(w, status, fields)
 	})
+	if role == config.Worker && management != nil {
+		mux.Handle("/admin/", management)
+	}
 	if role == config.Query {
 		// Validate the configured credential even when all handlers are supplied.
 		if _, err := transport.APIKey(apiKey, http.NotFoundHandler()); err != nil {

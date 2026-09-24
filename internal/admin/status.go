@@ -1,0 +1,77 @@
+package admin
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"time"
+
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
+)
+
+type StatusStore interface {
+	TaskStatus(context.Context, string) (control.TaskStatus, error)
+}
+type StatusHandler struct{ Store StatusStore }
+type TaskView struct {
+	ID                string                 `json:"task_id"`
+	Mode              string                 `json:"mode"`
+	Status            string                 `json:"status"`
+	Operator          string                 `json:"operator"`
+	Predecessor       *string                `json:"predecessor_id"`
+	AcceptedAt        time.Time              `json:"accepted_at"`
+	StartedAt         *time.Time             `json:"started_at"`
+	ReadyAt           *time.Time             `json:"ready_at"`
+	PublishedAt       *time.Time             `json:"published_at"`
+	CheckedAt         *time.Time             `json:"checked_at"`
+	FinishedAt        *time.Time             `json:"finished_at"`
+	ProgressConfirmed bool                   `json:"progress_confirmed"`
+	Progress          map[string]time.Time   `json:"confirmed_until"`
+	Counts            *control.ResultSummary `json:"counts"`
+	Failure           string                 `json:"failure,omitempty"`
+}
+
+func (s StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	_, action, ok := Identity(r.Context())
+	if !ok || action != Status {
+		respond(w, 403, "forbidden", "Action not permitted", nil)
+		return
+	}
+	if s.Store == nil {
+		respond(w, 503, "unavailable", "Task status unavailable", nil)
+		return
+	}
+	out, err := s.Store.TaskStatus(r.Context(), r.PathValue("task_id"))
+	if err != nil {
+		if errors.Is(err, control.ErrMissing) {
+			respond(w, 404, "not_found", "Task not found", nil)
+		} else {
+			respond(w, 503, "unavailable", "Task status unavailable", nil)
+		}
+		return
+	}
+	task := out.Task
+	view := TaskView{ID: task.ID, Mode: task.Mode, Status: task.Status, Operator: task.RequestedBy, Predecessor: task.PredecessorID, AcceptedAt: task.AcceptedAt, StartedAt: task.StartedAt, ReadyAt: task.ReadyAt, PublishedAt: task.PublishedAt, CheckedAt: task.CheckedAt, FinishedAt: task.FinishedAt, ProgressConfirmed: out.Progress != nil}
+	if out.Progress != nil {
+		view.Progress = out.Progress.Ends
+	}
+	// Decode into a whitelist: arbitrary task summary, roles, source payloads,
+	// idempotency keys and executor credentials never enter the status response.
+	if len(task.Summary) <= 16<<10 {
+		var counts control.ResultSummary
+		if json.Unmarshal([]byte(task.Summary), &counts) == nil && counts.Validate() == nil {
+			view.Counts = &counts
+		}
+		var failure struct {
+			Failure string `json:"failure"`
+		}
+		if json.Unmarshal([]byte(task.Summary), &failure) == nil {
+			switch failure.Failure {
+			case "acquisition_failed", "corrupt_seal", "interrupted":
+				view.Failure = failure.Failure
+			}
+		}
+	}
+	respond(w, 200, "ok", "OK", view)
+}

@@ -168,6 +168,9 @@ func initialization(t *testing.T, failure string) (update.Initializer, update.In
 		if failure == "source" && name == ingest.Catalog()[len(ingest.Catalog())-1].Name {
 			status = 403
 		}
+		if failure == "unknown" {
+			body = `{"code":200,"message":"ok","data":{"total":1,"list":[{"UNEXPECTED_SYNTHETIC":"private"}]}}`
+		}
 		return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 	}), 1<<20)
 	if err != nil {
@@ -184,6 +187,34 @@ func initialization(t *testing.T, failure string) (update.Initializer, update.In
 	a := update.Acquirer{Collector: collector, Staging: store, Budget: budget, Limits: ingest.PageLimits{MaxPages: 100, MaxRecords: 1000, MaxBytes: 1 << 20}, PageSize: 2, Owner: "initialize", Observe: func(err error) { t.Errorf("unexpected observation: %v", err) }}
 	i := update.Initializer{Store: w, Source: a, Preparer: candidate.TargetFiles{Files: quota, MaxChunkBytes: 512, MaxChunks: 1000}, Options: candidate.PrepareOptions{Scope: "mock-school", SpoolDirectory: t.TempDir(), Limits: merge.Limits{BatchRows: 2, BatchBytes: 256, FanIn: 2, MaxRuns: 1000, MaxSpoolBytes: 16 << 20, InputPageRows: 2, InputPageBytes: 1 << 20}}, Builder: w, Validator: w, Outbox: w, Delivery: w, Clock: clock, Progress: w}
 	return i, update.InitialTask{ID: "init", Combination: "C1", CodeVersion: "v1", StartedAt: clock.Now()}, w, &requests
+}
+
+func TestT15_10AcquisitionPersistsFinalUnknownFieldNotification(t *testing.T) {
+	for _, fails := range []bool{false, true} {
+		t.Run(fmt.Sprint(fails), func(t *testing.T) {
+			i, _, _, _ := initialization(t, "unknown")
+			a := i.Source.(update.Acquirer)
+			calls := 0
+			injected := errors.New("notification commit failed")
+			a.Notify = func(ctx context.Context, f *ingest.FailureEvent) error {
+				calls++
+				if f == nil || ctx.Err() != nil {
+					t.Fatal("missing final failure or independent context")
+				}
+				if _, ok := ctx.Deadline(); !ok {
+					t.Fatal("unbounded notification persistence")
+				}
+				if fails {
+					return injected
+				}
+				return nil
+			}
+			lease, err := a.Full(t.Context())
+			if err == nil || lease != nil || calls != 1 || errors.Is(err, injected) != fails {
+				t.Fatal(lease, err, calls)
+			}
+		})
+	}
 }
 
 func TestT12_10FirstPublicationRequiresSameSealedTargetAndBothReadySerially(t *testing.T) {

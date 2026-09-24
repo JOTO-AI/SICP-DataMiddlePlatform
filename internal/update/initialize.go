@@ -26,6 +26,7 @@ type Acquirer struct {
 	PageSize  int
 	Owner     string
 	Observe   func(error)
+	Notify    func(context.Context, *ingest.FailureEvent) error
 }
 
 // Full commits every page and requires an actual fourteen-source seal. The
@@ -42,6 +43,12 @@ func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageR
 	}
 	for _, table := range ingest.Catalog() {
 		result, err := a.Collector.Collect(ctx, request(table.Name), a.Budget, a.Limits, a.Staging)
+		if result.FinalFailure != nil && a.Notify != nil {
+			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			notifyErr := a.Notify(cleanup, result.FinalFailure)
+			cancel()
+			err = errors.Join(err, notifyErr)
+		}
 		if result.ObservationError != nil {
 			a.Observe(result.ObservationError)
 		}
