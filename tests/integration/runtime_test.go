@@ -246,6 +246,19 @@ func (f *runtimeFixture) run(t *testing.T, mode, id string) {
 		t.Fatalf("admission: %v", err)
 	}
 	if err := f.worker.Engine.Cycle(f.e.ctx); err != nil {
+		// State names are safe synthetic diagnostics; do not dump source rows,
+		// transport credentials or arbitrary persisted payloads on failure.
+		conn := f.e.connection(t, 4)
+		rows, diagnostic := conn.Query(f.e.ctx, "SELECT name FROM control.checkpoints ORDER BY name")
+		if diagnostic == nil {
+			for rows.Next() {
+				var name string
+				if rows.Scan(&name) == nil {
+					t.Logf("retained checkpoint: %s", name)
+				}
+			}
+			rows.Close()
+		}
 		t.Fatalf("task %s: %v", mode, err)
 	}
 	task := control.Task{ID: id}
