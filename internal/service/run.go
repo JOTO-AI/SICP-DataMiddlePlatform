@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/application"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/assembly"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/config"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/lifecycle"
@@ -30,6 +31,7 @@ type Dependencies struct {
 	Random        ports.Random
 	Readiness     ports.Readiness
 	QueryHandlers map[contract.Operation]http.Handler
+	Management    http.Handler
 	Factories     []lifecycle.Factory
 	Listen        func(string, string) (net.Listener, error)
 	// Record must return promptly; only sanitized lifecycle facts are supplied.
@@ -58,7 +60,7 @@ func Run(ctx context.Context, cfg config.Config, deps Dependencies) (runErr erro
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
-	handler, err := NewHTTPWithHandlers(cfg.Role, cfg.APIKey, deps.Clock, deps.Random, deps.Readiness, deps.QueryHandlers)
+	handler, err := newHTTP(cfg.Role, cfg.APIKey, deps.Clock, deps.Random, deps.Readiness, deps.QueryHandlers, deps.Management)
 	if err != nil {
 		return err
 	}
@@ -162,5 +164,13 @@ func RunConfigured(ctx context.Context, cfg config.Runtime, factories assembly.F
 		err = errors.Join(err, runtime.Close(cleanup))
 	}()
 	deps.Factories = append([]lifecycle.Factory{{Name: "runtime", Open: func(context.Context) (ports.Resource, error) { return runtime, nil }}}, deps.Factories...)
+	app, err := application.New(cfg, runtime)
+	if err != nil {
+		return err
+	}
+	deps.QueryHandlers = app.Queries
+	deps.Management = app.Management
+	deps.Readiness = app
+	deps.Factories = append(deps.Factories, lifecycle.Factory{Name: "application", Open: func(context.Context) (ports.Resource, error) { app.Start(ctx); return app, nil }})
 	return Run(ctx, cfg.Service, deps)
 }

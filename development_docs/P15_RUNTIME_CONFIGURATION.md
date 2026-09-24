@@ -1,6 +1,6 @@
 # 运行配置与依赖装配
 
-双服务入口使用 `config.LoadRuntime`，先完整校验，再按 PostgreSQL → Redis → 持久文件 → worker HTTP 源 → worker 邮件创建。缺配置、缺工厂或初始化失败直接失败；释放部分结果及此前资源，顺序相反且有总预算，不回退内存存储。当前步骤只接通依赖，恢复/调度与业务就绪由 P15.05 接通。
+双服务入口使用 `config.LoadRuntime`，先完整校验，再按 PostgreSQL → Redis → 持久文件 → worker HTTP 源 → worker 邮件创建。缺配置、缺工厂或初始化失败直接失败；释放部分结果及此前资源，顺序相反且有总预算，不回退内存存储。P15.05 接通真实查询、管理、日志、通知与串行 worker：每轮先读取恢复事实并证明旧进程/SQL 已停止，再处理任务或调度。
 
 | 环境变量 | 约束 |
 |---|---|
@@ -16,6 +16,7 @@
 | STAGING_DIRECTORY、TARGET_DIRECTORY、SPOOL_DIRECTORY | worker 必填；预建的三个独立持久目录，与日志路径不得重叠，实际符号链接解析后也不得重叠 |
 | STAGING_MAX_BYTES、TARGET_MAX_BYTES、SPOOL_MAX_BYTES | worker 必填；各 1MiB—1TiB，目标/获取文件使用共享配额，spool 预算供后续任务编排使用 |
 | SOURCE_ORIGIN、SOURCE_TOKEN | worker 必填；明确 http/https origin，无用户信息、查询和额外路径；无默认真实上游，禁跳转及环境代理 |
+| SOURCE_SCOPE、SOURCE_QUALITY | worker 必填；scope 为稳定源范围标识，最多 256 字节；quality 是十四个源表名对应的 JSON 对象，每项含 MinimumRows、MaximumDeletedRows、AllowEmpty，计数不可负，不提供隐式宽松策略 |
 | MANAGEMENT_CREDENTIALS | worker 必填；JSON 数组，结构和动作见管理 API 文档，未知字段/尾随 JSON 拒绝 |
 | MAIL_ADDRESS、MAIL_TLS、MAIL_FROM、MAIL_TO | worker 必填；SMTP host:port、tls/starttls/none 和明确发件/收件地址；无默认外部目标 |
 | MAIL_USERNAME、MAIL_PASSWORD | 必须成对配置；none 不允许认证，production 不允许 none |
@@ -25,3 +26,7 @@
 邮件采用 SMTP，强制检查配置收件目标、TLS 证书验证与上下文取消。DATA 确认仅代表 accepted；不产生 delivered_at，不声称 SMTP 可保证去重。原始驱动错误、响应正文及凭据不进入外部错误。
 
 T15-09/12 仅使用工厂替身、临时私有目录、httptest 与本机合成 SMTP 监听器，不连接实际 PG/Redis、真实上游或外部邮箱。真实驱动/迁移/权限及完整部署流程在全部 P/T 通过后由 I01—I06 验证。
+
+worker 仅在 Linux 运行，持有 spool 卷内 `.worker.lock` 的进程锁；所有 worker 必须挂载同一个持久卷，禁止各自挂载独立卷同时运行。锁文件不能删除或替换。数据库连接带随机进程标识，接管前逐实例确认旧会话消失；同进程下一轮恢复须确认没有未结束事务。HTTP 超时、心跳过期和冷却到期均不能替代 SQL 结束证明。
+
+`/readyz` 分别返回 `query_ready`、`sync_ready`、`dependencies_ready`。查询就绪要求 Redis 与已确认控制元数据完整一致、当前代次可读、查询角色能连接活动业务库并读取十四表；worker 同步就绪要求启动恢复完成、依赖可用且没有正在恢复/执行的任务。空环境可同步初始化但不能查询。候选校验使用 `SET LOCAL ROLE sicp_query`，需应用 business_002/control_006 迁移；不能使用 worker 写权限代替查询权限。

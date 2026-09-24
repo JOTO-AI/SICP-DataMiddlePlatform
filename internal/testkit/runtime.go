@@ -1,12 +1,23 @@
 package testkit
 
-import "path"
+import (
+	"encoding/json"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/merge"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
+	"path"
+)
 
 // RuntimeValues contains only synthetic identities and explicit local fixture
 // endpoints. Callers supply an isolated persistent root and override endpoints
 // with the particular mock listeners they own.
 func RuntimeValues(root string) map[string]string {
+	quality := map[string]merge.Quality{}
+	for _, t := range source.Catalog() {
+		quality[t.Name] = merge.Quality{MaximumDeletedRows: 1000}
+	}
+	q, _ := json.Marshal(quality)
 	return map[string]string{
+		"SOURCE_SCOPE": "synthetic-sicp-source", "SOURCE_QUALITY": string(q),
 		"QUERY_API_KEY":        "synthetic-query-secret",
 		"DATABASE_M0_URL":      "postgres://worker:synthetic@db-m:5432/slot0?sslmode=disable",
 		"DATABASE_M1_URL":      "postgres://worker:synthetic@db-m:5432/slot1?sslmode=disable",

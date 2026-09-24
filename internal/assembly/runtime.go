@@ -4,7 +4,9 @@ package assembly
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"sync"
 	"time"
@@ -40,6 +42,7 @@ type Mail interface {
 	ports.Resource
 }
 type FileSet struct {
+	WorkerExclusive  bool
 	Journal          observability.Journal
 	Staging, Targets *staging.QuotaFiles
 	close            func(context.Context) error
@@ -60,6 +63,7 @@ type Factories struct {
 	Mail     func(context.Context, config.Runtime) (Mail, error)
 }
 type Runtime struct {
+	ProcessID string
 	Database  Database
 	Redis     Redis
 	Files     *FileSet
@@ -78,7 +82,7 @@ type Runtime struct {
 func RealFactories() Factories {
 	return Factories{
 		Postgres: func(ctx context.Context, c config.Runtime) (Database, error) {
-			p, e := adapters.OpenPostgres(ctx, c.Databases, c.DependencyTimeout)
+			p, e := adapters.OpenPostgres(ctx, c.Databases, c.DependencyTimeout, c.ProcessID)
 			if p == nil {
 				return nil, e
 			}
@@ -117,6 +121,12 @@ func Open(ctx context.Context, c config.Runtime, f Factories) (*Runtime, []lifec
 		return nil, nil, errors.New("required dependency factory missing")
 	}
 	r := &Runtime{}
+	var random [16]byte
+	if _, e := rand.Read(random[:]); e != nil {
+		return nil, nil, errors.New("process identity unavailable")
+	}
+	r.ProcessID = hex.EncodeToString(random[:])
+	c.ProcessID = r.ProcessID
 	key := sha256.Sum256([]byte(c.AuditKey))
 	secrets := []string{}
 	for _, v := range []string{c.Service.APIKey, c.SourceToken, c.SnapshotKey, c.AuditKey, c.MailPassword} {

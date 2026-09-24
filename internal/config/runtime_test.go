@@ -12,6 +12,7 @@ import (
 func TestT15_09RuntimeRejectsIncompleteOrConflictingDeployment(t *testing.T) {
 	for _, tc := range []struct{ key, value string }{
 		{"DATABASE_M1_URL", ""}, {"SOURCE_ORIGIN", ""}, {"SOURCE_ORIGIN", "http://mock.invalid/production-path"}, {"SOURCE_TOKEN", ""}, {"MAIL_ADDRESS", ""}, {"MAIL_TLS", ""}, {"MAIL_TO", "attacker\r\nBcc:someone"},
+		{"SOURCE_SCOPE", ""}, {"SOURCE_QUALITY", ""}, {"SOURCE_QUALITY", "{}"}, {"SOURCE_QUALITY", "null"},
 		{"REDIS_URL", "redis://redis:6379/0?read_timeout=0"}, {"REDIS_URL", "redis://redis:6379/1"}, {"AUDIT_KEY", "short"}, {"SNAPSHOT_KEY", "synthetic-audit-key-0000000000000"},
 		{"TARGET_DIRECTORY", "/data/staging/child"}, {"SPOOL_DIRECTORY", "relative"}, {"LOG_MAX_FILES", "0"}, {"STAGING_MAX_BYTES", "0"}, {"TARGET_MAX_BYTES", "-1"}, {"SPOOL_MAX_BYTES", "invalid"},
 		{"MANAGEMENT_CREDENTIALS", `[{"operator":"op","token":"synthetic-query-secret","actions":["status"]}]`}, {"MANAGEMENT_CREDENTIALS", `[] {}`}, {"DEPENDENCY_TIMEOUT", "0s"}, {"ENVIRONMENT", "production"},

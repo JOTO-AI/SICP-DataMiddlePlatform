@@ -42,6 +42,14 @@ func openFiles(ctx context.Context, c config.Runtime) (*FileSet, error) {
 		}
 		resolved = append(resolved, canonical)
 	}
+	if c.Service.Role == config.Worker {
+		unlock, e := lockWorker(c.SpoolDirectory)
+		if e != nil {
+			return f, e
+		}
+		closers = append(closers, unlock)
+		f.WorkerExclusive = true
+	}
 	for _, p := range paths {
 		probe, e := os.CreateTemp(p, ".probe-")
 		if e != nil {
