@@ -51,7 +51,7 @@ func (w *changedWorld) Validate(ctx context.Context, t source.Target, m candidat
 	if err := w.step("ready-" + t.CandidateID); err != nil {
 		return candidate.Evidence{}, err
 	}
-	fake := &initialWorld{t: w.t}
+	fake := &initialWorld{t: w.t, input: m}
 	return fake.Validate(ctx, t, m)
 }
 func (w *changedWorld) Check(_ context.Context, p control.UpdatePlan, next, old update.Copy) (update.ReadabilityProof, error) {
