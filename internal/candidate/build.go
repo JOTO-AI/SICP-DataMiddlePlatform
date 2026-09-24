@@ -100,6 +100,7 @@ type Builder struct {
 type Report struct {
 	Reused, Rebuilt []string
 	StorageComplete bool
+	WrittenRows     int64
 }
 
 func validTarget(target source.Target, s source.BuildState) bool {
@@ -158,6 +159,7 @@ func (b Builder) Build(ctx context.Context, target source.Target, m Manifest, fo
 		iterator := newChecked(table, rows)
 		var report source.Report
 		report, err = b.Writer.Rebuild(ctx, target, table.Table, iterator, b.BatchSize)
+		out.WrittenRows += int64(report.WrittenRows)
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		err = errors.Join(err, rows.Close(cleanup))
 		cancel()

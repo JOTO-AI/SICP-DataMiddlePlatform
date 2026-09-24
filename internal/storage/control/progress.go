@@ -20,10 +20,11 @@ type ProgressPlan struct {
 	TaskID, BundleID, Mode string
 	StartedAt, CheckedAt   time.Time
 	Ends                   map[string]time.Time
+	Summary                Document
 }
 
 func (p ProgressPlan) valid() bool {
-	if strings.TrimSpace(p.TaskID) == "" || strings.TrimSpace(p.BundleID) == "" || len(p.TaskID) > 128 || len(p.BundleID) > 256 || p.StartedAt.IsZero() || p.CheckedAt.Before(p.StartedAt) || len(p.Ends) != len(source.Catalog()) {
+	if strings.TrimSpace(p.TaskID) == "" || strings.TrimSpace(p.BundleID) == "" || len(p.TaskID) > 128 || len(p.BundleID) > 256 || p.StartedAt.IsZero() || p.CheckedAt.Before(p.StartedAt) || len(p.Ends) != len(source.Catalog()) || !validSummary(p.Summary) {
 		return false
 	}
 	if p.Mode != "initialize" && p.Mode != "force_full" && p.Mode != "incremental" {
@@ -46,7 +47,7 @@ func normalizePlan(p ProgressPlan) ProgressPlan {
 	return p
 }
 func samePlan(a, b ProgressPlan) bool {
-	return a.TaskID == b.TaskID && a.BundleID == b.BundleID && a.Mode == b.Mode && a.StartedAt.Equal(b.StartedAt) && a.CheckedAt.Equal(b.CheckedAt) && maps.EqualFunc(a.Ends, b.Ends, time.Time.Equal)
+	return a.TaskID == b.TaskID && a.BundleID == b.BundleID && a.Mode == b.Mode && a.StartedAt.Equal(b.StartedAt) && a.CheckedAt.Equal(b.CheckedAt) && maps.EqualFunc(a.Ends, b.Ends, time.Time.Equal) && a.Summary == b.Summary
 }
 func loadTask(ctx context.Context, tx storage.Transaction, id string) (Task, error) {
 	d, _ := describe(&Task{})
@@ -246,6 +247,6 @@ func (r Repository) CompletePublished(ctx context.Context, offered Publication, 
 		if err = exactlyOne(tx.Exec(ctx, "UPDATE control.bundles SET checked_at=$2 WHERE id=$1 AND published_at IS NOT NULL AND (checked_at IS NULL OR checked_at<=$2)", plan.BundleID, plan.CheckedAt)); err != nil {
 			return err
 		}
-		return exactlyOne(tx.Exec(ctx, "UPDATE control.tasks SET status='success_published',checked_at=$2,finished_at=$3 WHERE id=$1 AND status='published_pending_progress'", plan.TaskID, plan.CheckedAt, at))
+		return exactlyOne(tx.Exec(ctx, "UPDATE control.tasks SET status='success_published',checked_at=$2,finished_at=$3,summary=COALESCE($4::jsonb,summary) WHERE id=$1 AND status='published_pending_progress'", plan.TaskID, plan.CheckedAt, at, optionalSummary(plan.Summary)))
 	})
 }

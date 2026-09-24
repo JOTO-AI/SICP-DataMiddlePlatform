@@ -53,6 +53,14 @@ type targetDocument struct {
 	Manifest Manifest
 	Base     *Manifest
 	Tables   []targetTable
+	Changes  map[string]ChangeCounts `json:",omitempty"`
+}
+
+// ChangeCounts counts logical source-row changes once, independently of how
+// many physical copies are subsequently written.
+type ChangeCounts struct {
+	Before, After, Added, Modified, Removed int64
+	DeletionsKnown                          bool
 }
 
 func (f TargetFiles) valid() bool {
@@ -128,7 +136,7 @@ func (f TargetFiles) Prepare(ctx context.Context, o PrepareOptions, input *stagi
 			base[table.Table] = table
 		}
 	}
-	doc := targetDocument{Version: 1, Manifest: Manifest{Combination: o.Combination, Input: input.Reference()}}
+	doc := targetDocument{Version: 1, Manifest: Manifest{Combination: o.Combination, Input: input.Reference()}, Changes: map[string]ChangeCounts{}}
 	if o.Base != nil {
 		copy := *o.Base
 		copy.Tables = append([]TableVersion(nil), o.Base.Tables...)
@@ -167,6 +175,7 @@ func (f TargetFiles) Prepare(ctx context.Context, o PrepareOptions, input *stagi
 			return Manifest{}, ErrBuild
 		}
 		version := TableVersion{Table: table.Name, Scope: o.Scope, SHA256: summary.SHA256, Rows: summary.AfterRows}
+		doc.Changes[table.Name] = ChangeCounts{Before: summary.BeforeRows, After: summary.AfterRows, Added: summary.Added, Modified: summary.Modified, Removed: summary.Removed, DeletionsKnown: summary.DeletionsKnown}
 		doc.Manifest.Tables = append(doc.Manifest.Tables, version)
 		doc.Tables = append(doc.Tables, targetTable{Version: version, Chunks: sink.chunks})
 		totalChunks += len(sink.chunks)
@@ -299,6 +308,23 @@ func (f TargetFiles) Validate(ctx context.Context, m Manifest) error {
 	}
 	return ctx.Err()
 }
+func (f TargetFiles) Changes(ctx context.Context, m Manifest) (map[string]ChangeCounts, error) {
+	doc, err := f.document(ctx, m)
+	if err != nil {
+		return nil, err
+	}
+	if len(doc.Changes) != len(m.Tables) {
+		return nil, ErrBuild
+	}
+	for _, v := range m.Tables {
+		c, ok := doc.Changes[v.Table]
+		if !ok || c.Before < 0 || c.After != v.Rows || c.Added < 0 || c.Modified < 0 || c.Removed < 0 || c.Removed > c.Before || c.Added > c.After || c.Modified > c.After-c.Added || c.Before-c.Removed != c.After-c.Added || (!c.DeletionsKnown && c.Removed != 0) {
+			return nil, ErrBuild
+		}
+	}
+	return doc.Changes, nil
+}
+
 func (f TargetFiles) Open(ctx context.Context, m Manifest, v TableVersion) (Rows, error) {
 	doc, err := f.document(ctx, m)
 	if err != nil {

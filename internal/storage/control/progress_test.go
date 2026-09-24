@@ -95,6 +95,17 @@ func (t *progressTx) Exec(ctx context.Context, sql string, args ...any) (int64, 
 	case strings.HasPrefix(sql, "UPDATE control.bundles SET checked_at="):
 	case strings.HasPrefix(sql, "UPDATE control.tasks SET status='success_published'"):
 		t.task.Status = "success_published"
+		if len(args) > 3 && args[3] != nil {
+			t.task.Summary = control.Document(args[3].(string))
+		}
+		checked, finished := args[1].(time.Time), args[2].(time.Time)
+		t.task.CheckedAt = &checked
+		t.task.FinishedAt = &finished
+	case strings.HasPrefix(sql, "UPDATE control.tasks SET status='success_unchanged'"):
+		t.task.Status = "success_unchanged"
+		if len(args) > 3 && args[3] != nil {
+			t.task.Summary = control.Document(args[3].(string))
+		}
 		checked, finished := args[1].(time.Time), args[2].(time.Time)
 		t.task.CheckedAt = &checked
 		t.task.FinishedAt = &finished
