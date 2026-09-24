@@ -83,7 +83,7 @@ func (r Repository) Dispatch(ctx context.Context, request Request, worker string
 		if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.publication_outbox WHERE status='pending')").Scan(&pending); err != nil {
 			return err
 		}
-		if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.tasks WHERE status IN ('accepted','running','published_pending_progress','recovery_pending'))").Scan(&unfinished); err != nil {
+		if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.tasks WHERE status NOT IN ('failed','success_published','success_unchanged'))").Scan(&unfinished); err != nil {
 			return err
 		}
 		if owner.TaskID != "" || pending || unfinished || s.CooldownUntil != nil && at.Before(*s.CooldownUntil) {

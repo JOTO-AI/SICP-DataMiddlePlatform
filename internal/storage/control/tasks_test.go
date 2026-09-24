@@ -141,11 +141,12 @@ func (x *taskTx) QueryRow(_ context.Context, sql string, args ...any) storage.Ro
 	if strings.Contains(sql, "SELECT EXISTS (SELECT 1 FROM control.publication_outbox") {
 		return result{raw: []any{x.db.pending}}
 	}
-	if strings.Contains(sql, "SELECT EXISTS (SELECT 1 FROM control.tasks WHERE status IN") {
+	if strings.Contains(sql, "SELECT EXISTS (SELECT 1 FROM control.tasks WHERE status NOT IN") {
 		busy := false
 		for _, row := range x.records {
 			switch row[3] {
-			case "accepted", "running", "published_pending_progress", "recovery_pending":
+			case "failed", "success_published", "success_unchanged":
+			default:
 				busy = true
 			}
 		}
