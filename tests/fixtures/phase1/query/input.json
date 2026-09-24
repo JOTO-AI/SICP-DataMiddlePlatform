@@ -1,0 +1,17 @@
+{
+ "dwd_bzksjbsjzlb":[{"XH":"001","XM":"Mock Student","ETL_TIME":"2026-08-05 07:50:00"}],
+ "dwd_bzksxjjbsjzlb":[{"XH":"001","YXSH":"D1","SZBH":"B1","ETL_TIME":"2026-08-05 07:50:00"}],
+ "dwd_yxsdwjbsjzlb":[{"DWH":"D1","DWMC":"Mock Department","ETL_TIME":"2026-08-05 07:50:00"}],
+ "dwd_bzksbjsjzlb":[{"BH":"B1","BJMC":"Mock Class","ETL_TIME":"2026-08-05 07:50:00"}],
+ "dwd_bzkskcsjzlb":[{"KCH":"C1","KCMC":"Mock Course","XF":3,"ZXS":48,"KCSXM":"MOCK","KCXZM":"MOCK","KCLXM":"MOCK","KKXY":"D1","SFCXKC":"0","ETL_TIME":"2026-08-05 07:50:00"}],
+ "dwd_bzkscjzlb":[
+  {"ID":"G01","XH":"001","XN":"2026-2027","XQM":"1","KCH":"C1","KCCJ":70,"JD":3,"XF":3,"ETL_TIME":"2026-08-05 07:50:00"},
+  {"ID":"G02","XH":"001","XN":"2026-2027","XQM":"1","KCH":"C1","KCCJ":90,"JD":4,"XF":3,"ETL_TIME":"2026-08-05 07:50:00"}
+ ],
+ "dwd_bzkskbsjzlb":[{"ID":"R1","XH":"001","JHKCH":"C1","JXBH":"J1","ETL_TIME":"2026-08-05 07:50:00"}],
+ "dwd_jzgjcsjzlb":[{"JGH":"001","XM":"Mock Teacher","ETL_TIME":"2026-08-05 07:50:00"}],
+ "dwd_bzkspksjzlb":[
+  {"PKH":"P1","JHKCH":"C1","JXBH":"J1","JXBMC":"Mock Teaching Class","JSJGH":"001","JSXM":"Mock Teacher","KKXND":"2026-2027","KKXQM":"1","XDRS":1,"SKJSH":"ROOM1","JXDD":"Mock Room","XQJ":"星期一","SKJC":"1","ZC":"1","SKRQ":"20260907","ETL_TIME":"2026-08-05 07:50:00"},
+  {"PKH":"P2","JHKCH":"C1","JXBH":"J1","JXBMC":"Mock Teaching Class","JSJGH":"001","JSXM":"Mock Teacher","KKXND":"2026-2027","KKXQM":"1","XDRS":1,"SKJSH":"ROOM1","JXDD":"Mock Room","XQJ":"星期一","SKJC":"2","ZC":"1","SKRQ":"20260907","ETL_TIME":"2026-08-05 07:50:00"}
+ ]
+}

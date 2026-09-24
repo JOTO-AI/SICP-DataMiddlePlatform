@@ -1,0 +1,7 @@
+{
+ "grade_id":"G02",
+ "student":{"student_number":"001","name":"Mock Student","department_code":"D1","department_name":"Mock Department","class_code":"B1","class_name":"Mock Class"},
+ "academic_year":"2026-2027","semester":"1",
+ "course":{"course_code":"C1","course_name":"Mock Course","attribute_code":"MOCK","attribute_name":null,"nature_code":"MOCK","nature_name":null,"type_code":"MOCK","type_name":null,"department":{"organization_code":"D1","organization_name":"Mock Department"},"total_hours":48,"retake_flag":"0","retake_course_code":null,"retake_course_name":null},
+ "score":90,"grade_point":4,"credits":3,"source_updated_at":"2026-08-05T07:50:00+08:00"
+}

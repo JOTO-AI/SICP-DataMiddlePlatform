@@ -1,0 +1,4 @@
+[
+ {"course_code":"C1","course_name":"Mock Course","planned_course_code":"C1","teaching_class_number":"J1","teaching_class_name":"Mock Teaching Class","enrolled_count":1,"teacher_staff_numbers":["001"],"room_code":"ROOM1","credits":3,"teacher_names":["Mock Teacher"],"location":"Mock Room","weekday":1,"sections":[1],"weeks":[1],"dates":["2026-09-07"],"source_updated_at":"2026-08-05T07:50:00+08:00"},
+ {"course_code":"C1","course_name":"Mock Course","planned_course_code":"C1","teaching_class_number":"J1","teaching_class_name":"Mock Teaching Class","enrolled_count":1,"teacher_staff_numbers":["001"],"room_code":"ROOM1","credits":3,"teacher_names":["Mock Teacher"],"location":"Mock Room","weekday":1,"sections":[2],"weeks":[1],"dates":["2026-09-07"],"source_updated_at":"2026-08-05T07:50:00+08:00"}
+]

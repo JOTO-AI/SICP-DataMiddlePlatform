@@ -62,7 +62,7 @@ jobs:
           bash scripts/sicp.sh infra
           # Internal-only bridges do not publish host ports. The Linux host
           # can address this job's containers directly through their bridge.
-          for entry in M:db-m S:db-s LOG:db-log; do
+          for entry in M:db-m S:db-s LOG:db-log REDIS:redis; do
             key=${entry%%:*}
             service=${entry#*:}
             container=$(docker compose -p "$SICP_PROJECT" -f deploy/compose.yaml ps -q "$service")
@@ -73,10 +73,12 @@ jobs:
         run: |
           mkdir -p artifacts/integration
           set +e
-          go test -tags=integration -race -count=1 -parallel=1 -timeout=20m -json ./tests/integration | tee artifacts/integration/results.jsonl
-          result=${PIPESTATUS[0]}
-          printf '%s\n' "$result" > artifacts/integration/exit-code.txt
-          exit "$result"
+          for group in I01 I02 I03; do
+            go test -tags=integration -race -count=1 -parallel=1 -timeout=15m -run "^Test${group}_" -json ./tests/integration | tee "artifacts/integration/$group.jsonl"
+            result=${PIPESTATUS[0]}
+            printf '%s\n' "$result" > "artifacts/integration/$group-exit-code.txt"
+            if ((result != 0)); then exit "$result"; fi
+          done
       - name: Collect dependency logs and remove isolated volumes
         if: always()
         run: |

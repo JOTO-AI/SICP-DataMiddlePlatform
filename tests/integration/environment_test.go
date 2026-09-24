@@ -31,7 +31,7 @@ func newEnvironment(t *testing.T) *environment {
 	if os.Getenv("SICP_INTEGRATION") != "1" || os.Getenv("GITHUB_ACTIONS") != "true" {
 		t.Fatal("integration requires the isolated GitHub Actions runner")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	t.Cleanup(cancel)
 	e := &environment{ctx: ctx}
 	prefix := fmt.Sprintf("it_%x", rand.Text()[:12])
