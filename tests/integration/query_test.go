@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 )
 
 const allGrades = `{"student_number":"001","academic_year":"all","page":1,"page_size":100}`
@@ -66,7 +67,15 @@ func TestI03_02(t *testing.T) {
 }
 func TestI03_03(t *testing.T) {
 	f := newRuntime(t, true)
-	conn := f.e.connection(t, 0)
+	active, exists, err := f.wr.Active.Read(f.e.ctx)
+	if err != nil || !exists {
+		t.Fatalf("active route: %v", err)
+	}
+	index := active.Position.Position.Slot
+	if active.Position.Position.Instance == storage.Standby {
+		index += 2
+	}
+	conn := f.e.connection(t, index)
 	t.Cleanup(func() {
 		if _, err := conn.Exec(context.Background(), "ALTER TABLE source.integration_hidden_grades RENAME TO dwd_bzkscjzlb"); err != nil {
 			t.Error(err)

@@ -153,8 +153,7 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 	if e != nil {
 		return e
 	}
-	targets := candidate.TargetFiles{Files: r.Files.Targets, MaxChunkBytes: 8 << 20, MaxChunks: 100000}
-	options := candidate.PrepareOptions{Combination: "C" + task.ID, Scope: c.SourceScope, SpoolDirectory: c.SpoolDirectory, Quality: c.Quality, Limits: merge.Limits{BatchRows: 1000, FanIn: 8, MaxRuns: 100000, BatchBytes: 8 << 20, MaxSpoolBytes: c.SpoolBytes, InputPageRows: 1000, InputPageBytes: 64 << 20}}
+	targets, options := targetPreparation(c, r.Files.Targets, "C"+task.ID)
 	writer := source.Repository{Registry: c.Databases, Database: r.Database, Gate: store}
 	reader := source.Repository{Registry: c.Databases, Database: adapters.QueryDatabase{Database: r.Database}}
 	candidateReads := read.Repository{Storage: reader, Gate: store}
@@ -257,4 +256,13 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 	unchanged := update.Unchanged{Copies: store, Verifier: readability, Progress: repo, Clock: w.Clock, CodeVersion: c.CodeVersion}
 	_, e = (update.Runner{Source: fetcher, Unchanged: unchanged, Changed: changed}).Run(ctx, active)
 	return e
+}
+
+func targetPreparation(c config.Runtime, files *staging.QuotaFiles, combination string) (candidate.TargetFiles, candidate.PrepareOptions) {
+	targets := candidate.TargetFiles{Files: files, MaxChunkBytes: 8 << 20, MaxChunks: 100000}
+	const rows = 1000
+	// Merge counts canonical JSON bytes; target chunks append a newline per row.
+	// Reserve framing inside the same limit used by the persistent file writer.
+	options := candidate.PrepareOptions{Combination: combination, Scope: c.SourceScope, SpoolDirectory: c.SpoolDirectory, Quality: c.Quality, Limits: merge.Limits{BatchRows: rows, FanIn: 8, MaxRuns: 100000, BatchBytes: targets.MaxChunkBytes - rows, MaxSpoolBytes: c.SpoolBytes, InputPageRows: 1000, InputPageBytes: 64 << 20}}
+	return targets, options
 }
