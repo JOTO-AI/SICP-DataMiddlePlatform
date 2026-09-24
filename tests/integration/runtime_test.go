@@ -32,13 +32,19 @@ import (
 // Namespace changes transport keys only; Redis still executes production Lua
 // and cache operations. Each case owns a prefix and never flushes shared Redis.
 type scopedRedis struct {
-	raw    *adapters.Redis
-	prefix string
+	raw       *adapters.Redis
+	prefix    string
+	beforeSet func(context.Context, string) error
 }
 
 func (r *scopedRedis) Close(context.Context) error { return nil }
 func (r *scopedRedis) Do(ctx context.Context, command string, args ...any) (any, error) {
 	args = append([]any(nil), args...)
+	if command == "SET" && r.beforeSet != nil {
+		if err := r.beforeSet(ctx, args[0].(string)); err != nil {
+			return nil, err
+		}
+	}
 	switch command {
 	case "GET", "SET":
 		args[0] = r.prefix + args[0].(string)
