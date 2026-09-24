@@ -27,6 +27,18 @@ type ShiftResult struct {
 	Drained bool
 }
 
+// ResumeShift never resubmits a new intent with a different discovery time.
+// DrainShift rechecks the confirmed event, current route, ownership and ALL SQL.
+func (s Shifter) ResumeShift(ctx context.Context, event control.Publication) (ShiftResult, error) {
+	out := ShiftResult{Event: event}
+	if s.Store == nil || event.Status != "confirmed" || event.Kind != "route_shift" || event.ConfirmedAt == nil {
+		return out, ErrRecoveryPending
+	}
+	var err error
+	out.Drained, err = s.Store.DrainShift(ctx, event)
+	return out, err
+}
+
 // Shift keeps the durable event even on an unknown reply. No SQL drain or
 // candidate write is attempted until the route is durably confirmed.
 func (s Shifter) Shift(ctx context.Context, p ReadabilityProof) (out ShiftResult, err error) {

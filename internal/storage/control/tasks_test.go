@@ -56,6 +56,20 @@ func (x *taskTx) Exec(_ context.Context, sql string, args ...any) (int64, error)
 		return 0, errors.New("injected SQL failure")
 	}
 	switch {
+	case strings.HasPrefix(sql, "UPDATE control.tasks SET status='failed'"):
+		for _, row := range x.records {
+			if row[0] == args[0] && row[3] == "running" {
+				row[3] = "failed"
+				at := args[1].(*time.Time)
+				row[11] = nil
+				if at != nil {
+					row[11] = *at
+				}
+				row[15] = args[2]
+				return 1, nil
+			}
+		}
+		return 0, nil
 	case strings.HasPrefix(sql, "UPDATE control.schedule SET deferred=TRUE"):
 		x.deferred = true
 		return 1, nil

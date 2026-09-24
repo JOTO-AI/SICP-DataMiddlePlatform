@@ -43,6 +43,9 @@ type Changed struct {
 	Progress    ProgressStore
 	Clock       ports.Clock
 	CodeVersion string
+	Journal     interface {
+		SaveLocal(context.Context, ChangeResult) error
+	}
 }
 type ChangeResult struct {
 	Prepared PreparedUpdate
@@ -64,6 +67,22 @@ func (c Changed) Run(ctx context.Context, active control.ActiveMetadata) (out Ch
 }
 
 func (c Changed) RunPrepared(ctx context.Context, prepared PreparedUpdate) (out ChangeResult, err error) {
+	return c.continuePrepared(ctx, prepared, nil)
+}
+
+// Resume uses verified durable input. A confirmed shift means the first
+// instance is already serving; never run its builder or old-copy check again.
+func (c Changed) Resume(ctx context.Context, saved ChangeResult) (ChangeResult, error) {
+	if saved.Event.ID != "" {
+		return ChangeResult{}, ErrRecoveryPending
+	}
+	if saved.Shift.Event.ID == "" {
+		return c.RunPrepared(ctx, saved.Prepared)
+	}
+	return c.continuePrepared(ctx, saved.Prepared, &saved)
+}
+
+func (c Changed) continuePrepared(ctx context.Context, prepared PreparedUpdate, saved *ChangeResult) (out ChangeResult, err error) {
 	if c.Store == nil || c.Builder == nil || c.Validator == nil || c.Readability == nil || c.Shifter == nil || c.Outbox == nil || c.Delivery == nil || c.Progress == nil || c.Clock == nil || c.CodeVersion == "" {
 		return out, ErrInitialization
 	}
@@ -87,6 +106,19 @@ func (c Changed) RunPrepared(ctx context.Context, prepared PreparedUpdate) (out 
 		}
 		out.Copies[n] = Copy{Target: t, Manifest: m}
 	}
+	save := func() error {
+		if c.Journal != nil {
+			return c.Journal.SaveLocal(ctx, out)
+		}
+		return nil
+	}
+	// Save immutable roles/targets before any physical build. During resume the
+	// first completed copy is retained before the checkpoint is advanced.
+	if saved == nil {
+		if err = save(); err != nil {
+			return out, err
+		}
+	}
 	build := func(n int) error {
 		var e error
 		out.Reports[n], e = c.Builder.Build(ctx, targets[n], m, p.Mode == "force_full")
@@ -102,14 +134,46 @@ func (c Changed) RunPrepared(ctx context.Context, prepared PreparedUpdate) (out 
 		}
 		return out.Copies[n].Evidence.Validate(targets[n], m, c.CodeVersion)
 	}
-	if err = build(0); err != nil {
-		return out, err
+	var destination control.SlotIdentity
+	if saved == nil {
+		if err = build(0); err != nil {
+			return out, err
+		}
+		if err = save(); err != nil {
+			return out, err
+		}
+		proof, e := c.Readability.Check(ctx, p, out.Copies[0], old)
+		if e != nil {
+			return out, e
+		}
+		destination = proof.Destination
+		out.Shift, err = c.Shifter.Shift(ctx, proof)
+	} else {
+		shifted, e := control.DecodeActive(saved.Shift.Event.Target)
+		if e != nil || saved.Event.ID != "" || saved.Shift.Event.Status != "confirmed" || saved.Shift.Event.Kind != "route_shift" || saved.Shift.Event.TaskID != p.TaskID || saved.Shift.Event.Expected == nil || shifted.TaskID != p.TaskID || shifted.EventID != saved.Shift.Event.ID || shifted.Sequence != saved.Shift.Event.Sequence {
+			return out, ErrRecoveryPending
+		}
+		expected, e := control.DecodeActive(*saved.Shift.Event.Expected)
+		if e != nil || expected != p.Origin || shifted.Position.Position.Instance != p.First || shifted.Position.BundleID != p.Origin.Position.BundleID || shifted.Position.Position == targets[0].Position {
+			return out, ErrRecoveryPending
+		}
+		if saved.Copies[0].Target != targets[0] || !sameManifest(saved.Copies[0].Manifest, m) || saved.Copies[0].Evidence.Validate(targets[0], m, c.CodeVersion) != nil || !saved.Reports[0].StorageComplete {
+			return out, ErrRecoveryPending
+		}
+		resume, ok := c.Shifter.(interface {
+			ResumeShift(context.Context, control.Publication) (ShiftResult, error)
+		})
+		if !ok {
+			return out, ErrInitialization
+		}
+		out.Copies[0] = saved.Copies[0]
+		out.Reports[0] = saved.Reports[0]
+		destination = shifted.Position
+		out.Shift, err = resume.ResumeShift(ctx, saved.Shift.Event)
 	}
-	proof, err := c.Readability.Check(ctx, p, out.Copies[0], old)
-	if err != nil {
-		return out, err
+	if checkpointErr := save(); checkpointErr != nil {
+		return out, errors.Join(err, checkpointErr)
 	}
-	out.Shift, err = c.Shifter.Shift(ctx, proof)
 	if err != nil {
 		return out, err
 	}
@@ -121,10 +185,13 @@ func (c Changed) RunPrepared(ctx context.Context, prepared PreparedUpdate) (out 
 	if err != nil {
 		return out, err
 	}
-	if out.Shift.Event.Status != "confirmed" || out.Shift.Event.Kind != "route_shift" || shifted.Position != proof.Destination || shifted.TaskID != p.TaskID {
+	if out.Shift.Event.Status != "confirmed" || out.Shift.Event.Kind != "route_shift" || shifted.Position != destination || shifted.TaskID != p.TaskID {
 		return out, ErrInitialization
 	}
 	if err = build(1); err != nil {
+		return out, err
+	}
+	if err = save(); err != nil {
 		return out, err
 	}
 	if err = c.Store.ConfirmCopies(ctx, p, out.Copies); err != nil {

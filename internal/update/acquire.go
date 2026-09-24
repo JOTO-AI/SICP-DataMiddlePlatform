@@ -48,7 +48,7 @@ type Fetcher struct {
 type PreparedUpdate struct {
 	Plan     control.UpdatePlan
 	Manifest candidate.Manifest
-	Lease    *staging.Lease
+	Lease    *staging.Lease `json:"-"`
 	Changes  map[string]candidate.ChangeCounts
 }
 
