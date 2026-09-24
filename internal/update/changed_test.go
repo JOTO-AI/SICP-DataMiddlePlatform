@@ -108,6 +108,10 @@ func changedFixture(t *testing.T) (update.Changed, *changedWorld) {
 	next := copyFixture(t, "C101", 1)
 	old := copyFixture(t, "C100", 0)
 	w := &changedWorld{t: t, prepared: update.PreparedUpdate{Plan: p, Manifest: next.Manifest}, old: old, active: p.Origin}
+	w.prepared.Changes = map[string]candidate.ChangeCounts{}
+	for _, v := range next.Manifest.Tables {
+		w.prepared.Changes[v.Table] = candidate.ChangeCounts{Before: v.Rows, After: v.Rows}
+	}
 	c := update.Changed{Source: w, Store: w, Builder: w, Validator: w, Readability: w, Shifter: w, Outbox: w, Delivery: w, Progress: w, Clock: testkit.FakeClock{Time: p.StartedAt.Add(13 * time.Minute)}, CodeVersion: "v1"}
 	return c, w
 }

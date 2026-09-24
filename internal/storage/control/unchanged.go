@@ -80,6 +80,6 @@ func (r Repository) CompleteUnchanged(ctx context.Context, expected ActiveMetada
 		if err = exactlyOne(tx.Exec(ctx, "UPDATE control.bundles SET checked_at=$2 WHERE id=$1 AND published_at IS NOT NULL AND (checked_at IS NULL OR checked_at<=$2)", plan.BundleID, plan.CheckedAt)); err != nil {
 			return err
 		}
-		return exactlyOne(tx.Exec(ctx, "UPDATE control.tasks SET status='success_unchanged',checked_at=$2,finished_at=$3 WHERE id=$1 AND status='running'", plan.TaskID, plan.CheckedAt, at))
+		return exactlyOne(tx.Exec(ctx, "UPDATE control.tasks SET status='success_unchanged',checked_at=$2,finished_at=$3,summary=COALESCE($4::jsonb,summary) WHERE id=$1 AND status='running'", plan.TaskID, plan.CheckedAt, at, optionalSummary(plan.Summary)))
 	})
 }

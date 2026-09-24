@@ -33,6 +33,14 @@ func TestT13_16FullDeletionAndIncrementalRetentionUseSameVerifiedBaseline(t *tes
 			if got := targetObjects(t, files, m); !reflect.DeepEqual(got, want) {
 				t.Fatal(got, want)
 			}
+			counts, err := files.Changes(t.Context(), m)
+			if err != nil {
+				t.Fatal(err)
+			}
+			c := counts["dwd_bzkscjzlb"]
+			if c.Before != 2 || c.After != int64(len(want)) || c.Added != 0 || c.Modified != 0 || c.Removed != int64(2-len(want)) || c.DeletionsKnown != (mode == ingest.ForceFull) {
+				t.Fatal(c)
+			}
 		})
 	}
 }

@@ -134,6 +134,10 @@ func (c Changed) RunPrepared(ctx context.Context, prepared PreparedUpdate) (out 
 	for _, table := range m.Tables {
 		progress.Ends[table.Table] = p.StartedAt
 	}
+	progress.Summary, err = resultCounts(out.Prepared, out.Reports)
+	if err != nil {
+		return out, err
+	}
 	if err = c.Progress.StageProgress(ctx, progress); err != nil {
 		return out, err
 	}

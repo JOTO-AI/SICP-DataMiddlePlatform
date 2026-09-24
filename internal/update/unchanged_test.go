@@ -3,6 +3,7 @@ package update_test
 import (
 	"context"
 	"errors"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/candidate"
 	"testing"
 	"time"
 
@@ -48,6 +49,10 @@ func noChangeFixture(t *testing.T) (update.Unchanged, *unchangedWorld, update.Pr
 	w := &unchangedWorld{copies: [2]update.Copy{a, b}}
 	u := update.Unchanged{Copies: w, Verifier: w, Progress: w, Clock: testkit.FakeClock{Time: updatePlan().StartedAt.Add(2 * time.Minute)}, CodeVersion: "v1"}
 	in := update.PreparedUpdate{Plan: updatePlan(), Manifest: copyFixture(t, "C101", 1).Manifest}
+	in.Changes = map[string]candidate.ChangeCounts{}
+	for _, v := range in.Manifest.Tables {
+		in.Changes[v.Table] = candidate.ChangeCounts{Before: v.Rows, After: v.Rows}
+	}
 	return u, w, in
 }
 func TestT13_13EmptyOrSameContentUsesBothCopiesWithoutNewCombination(t *testing.T) {
@@ -55,6 +60,7 @@ func TestT13_13EmptyOrSameContentUsesBothCopiesWithoutNewCombination(t *testing.
 		t.Run(time.Duration(rows).String(), func(t *testing.T) {
 			u, w, in := noChangeFixture(t)
 			in.Manifest.Tables[0].Rows = rows
+			in.Changes[in.Manifest.Tables[0].Table] = candidate.ChangeCounts{Before: rows, After: rows}
 			for n := range w.copies {
 				w.copies[n].Manifest.Tables[0].Rows = rows
 			}

@@ -2,12 +2,14 @@ package update_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/candidate"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/update"
 )
@@ -82,6 +84,10 @@ func TestT13_15SameContentForcedRoundActuallyRebuildsBothFourteenTableCopies(t *
 	}
 	c, w := changedFixture(t)
 	w.prepared = update.PreparedUpdate{Plan: p, Manifest: m, Lease: l}
+	w.prepared.Changes, err = i.Preparer.(candidate.TargetFiles).Changes(t.Context(), m)
+	if err != nil {
+		t.Fatal(err)
+	}
 	w.active = p.Origin
 	w.old.Manifest = initial.Manifest
 	fake := &initialWorld{t: t, input: initial.Manifest}
@@ -106,6 +112,15 @@ func TestT13_15SameContentForcedRoundActuallyRebuildsBothFourteenTableCopies(t *
 	for _, report := range out.Change.Reports {
 		if len(report.Rebuilt) != 14 || len(report.Reused) != 0 {
 			t.Fatal(report)
+		}
+	}
+	var summary control.ResultSummary
+	if json.Unmarshal([]byte(w.progress.Summary), &summary) != nil || summary.Copies[0].WrittenRows != 3 || summary.Copies[1].WrittenRows != 3 {
+		t.Fatal(w.progress.Summary)
+	}
+	for _, counts := range summary.Sources {
+		if counts.Added != 0 || counts.Modified != 0 || counts.Removed != 0 {
+			t.Fatal("physical writes counted as source change", counts)
 		}
 	}
 }

@@ -92,6 +92,10 @@ func (u Unchanged) Try(ctx context.Context, in PreparedUpdate) (bool, error) {
 	for name := range in.Plan.Windows {
 		p.Ends[name] = in.Plan.StartedAt
 	}
+	p.Summary, err = resultCounts(in, [2]candidate.Report{})
+	if err != nil {
+		return false, err
+	}
 	if err = u.Progress.StageProgress(ctx, p); err != nil {
 		return false, err
 	}

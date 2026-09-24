@@ -36,6 +36,10 @@ type preparationSpy struct {
 	next  update.TargetPreparer
 }
 
+func (s *preparationSpy) Changes(ctx context.Context, m candidate.Manifest) (map[string]candidate.ChangeCounts, error) {
+	return s.next.(update.ChangeCounter).Changes(ctx, m)
+}
+
 func (s *preparationSpy) Prepare(ctx context.Context, o candidate.PrepareOptions, l *staging.Lease) (candidate.Manifest, error) {
 	s.calls++
 	return s.next.Prepare(ctx, o, l)

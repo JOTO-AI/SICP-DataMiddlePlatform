@@ -49,6 +49,11 @@ type PreparedUpdate struct {
 	Plan     control.UpdatePlan
 	Manifest candidate.Manifest
 	Lease    *staging.Lease
+	Changes  map[string]candidate.ChangeCounts
+}
+
+type ChangeCounter interface {
+	Changes(context.Context, candidate.Manifest) (map[string]candidate.ChangeCounts, error)
 }
 
 // Prepare is the acquisition barrier: comparison/merge sees only a verified
@@ -103,5 +108,13 @@ func (f Fetcher) Prepare(ctx context.Context, active control.ActiveMetadata) (Pr
 	if m.Validate() != nil || m.Combination != o.Combination || m.Input != l.Reference() {
 		return PreparedUpdate{}, ErrInitialization
 	}
-	return PreparedUpdate{Plan: p, Manifest: m, Lease: l}, nil
+	counter, ok := f.Preparer.(ChangeCounter)
+	if !ok {
+		return PreparedUpdate{}, ErrInitialization
+	}
+	counts, err := counter.Changes(ctx, m)
+	if err != nil {
+		return PreparedUpdate{}, err
+	}
+	return PreparedUpdate{Plan: p, Manifest: m, Lease: l, Changes: counts}, nil
 }
