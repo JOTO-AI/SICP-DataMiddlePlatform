@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -35,11 +36,20 @@ func newEnvironment(t *testing.T) *environment {
 	e := &environment{ctx: ctx}
 	prefix := fmt.Sprintf("it_%x", rand.Text()[:12])
 	keys := []string{"DATABASE_M0_URL", "DATABASE_M1_URL", "DATABASE_S0_URL", "DATABASE_S1_URL", "DATABASE_CONTROL_URL", "DATABASE_LOG_URL"}
-	ports := []int{15432, 15432, 15433, 15433, 15432, 15434}
+	hosts := map[string]string{}
+	for _, cluster := range []string{"M", "S", "LOG"} {
+		host := os.Getenv("SICP_TEST_" + cluster + "_HOST")
+		if ip := net.ParseIP(host); ip == nil || !ip.IsPrivate() {
+			t.Fatal("integration requires an explicit private Compose container address")
+		}
+		hosts[cluster] = host
+	}
+	clusters := []string{"M", "M", "S", "S", "M", "LOG"}
 	values := map[string]string{}
 	for i, key := range keys {
 		name := fmt.Sprintf("%s_%d", prefix, i)
-		admin := fmt.Sprintf("postgres://postgres:synthetic@127.0.0.1:%d/postgres?sslmode=disable", ports[i])
+		endpoint := net.JoinHostPort(hosts[clusters[i]], "5432")
+		admin := fmt.Sprintf("postgres://postgres:synthetic@%s/postgres?sslmode=disable", endpoint)
 		// Register recovery before CREATE, including an ambiguous creation response.
 		t.Cleanup(func() {
 			cleanup, stop := context.WithTimeout(context.Background(), 10*time.Second)
@@ -63,7 +73,7 @@ func newEnvironment(t *testing.T) *environment {
 		if err != nil {
 			t.Fatal(err)
 		}
-		dsn := fmt.Sprintf("postgres://postgres:synthetic@127.0.0.1:%d/%s?sslmode=disable", ports[i], name)
+		dsn := fmt.Sprintf("postgres://postgres:synthetic@%s/%s?sslmode=disable", endpoint, name)
 		values[key] = dsn
 		e.dsns = append(e.dsns, dsn)
 	}

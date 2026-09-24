@@ -60,6 +60,15 @@ jobs:
           bash scripts/sicp.sh prepare
           docker compose -p "$SICP_PROJECT" -f deploy/compose.yaml build mock
           bash scripts/sicp.sh infra
+          # Internal-only bridges do not publish host ports. The Linux host
+          # can address this job's containers directly through their bridge.
+          for entry in M:db-m S:db-s LOG:db-log; do
+            key=${entry%%:*}
+            service=${entry#*:}
+            container=$(docker compose -p "$SICP_PROJECT" -f deploy/compose.yaml ps -q "$service")
+            address=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container")
+            printf 'SICP_TEST_%s_HOST=%s\n' "$key" "$address" >> "$GITHUB_ENV"
+          done
       - name: Run integration cases sequentially
         run: |
           mkdir -p artifacts/integration
