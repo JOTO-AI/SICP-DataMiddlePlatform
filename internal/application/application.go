@@ -52,6 +52,9 @@ type Application struct {
 	cancel       context.CancelFunc
 	done         chan struct{}
 	start        sync.Once
+	closeOnce    sync.Once
+	closed       chan struct{}
+	closeErr     error
 }
 
 func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
@@ -116,9 +119,13 @@ func (a *Application) Start(ctx context.Context) {
 		ctx, a.cancel = context.WithCancel(ctx)
 		go func() {
 			var group sync.WaitGroup
-			group.Go(func() { _ = a.Logs.Run(ctx) })
+			if a.Logs != nil {
+				group.Go(func() { _ = a.Logs.Run(ctx) })
+			}
 			if a.Engine != nil {
 				group.Go(func() { a.Engine.Run(ctx, func(error) { a.observations.Add(1) }) })
+			}
+			if a.Sender != nil {
 				group.Go(func() {
 					for {
 						_, e := a.Sender.Pump(ctx)
@@ -141,6 +148,21 @@ func (a *Application) Start(ctx context.Context) {
 	})
 }
 func (a *Application) Close(ctx context.Context) error {
+	if _, ok := ctx.Deadline(); !ok {
+		return errors.New("shutdown deadline required")
+	}
+	a.closeOnce.Do(func() {
+		a.closed = make(chan struct{})
+		go func() { a.closeErr = a.drain(ctx); close(a.closed) }()
+	})
+	select {
+	case <-ctx.Done():
+		return errors.New("application shutdown incomplete")
+	case <-a.closed:
+		return a.closeErr
+	}
+}
+func (a *Application) drain(ctx context.Context) error {
 	if a.cancel != nil {
 		a.cancel()
 		select {
@@ -153,7 +175,10 @@ func (a *Application) Close(ctx context.Context) error {
 	if a.Flights != nil {
 		err = errors.Join(err, a.Flights.Close(ctx))
 	}
-	return errors.Join(err, a.Logs.Close(ctx))
+	if a.Logs != nil {
+		err = errors.Join(err, a.Logs.Close(ctx))
+	}
+	return err
 }
 func (a *Application) Status(ctx context.Context) map[string]bool {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)

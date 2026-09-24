@@ -29,4 +29,6 @@ T15-09/12 仅使用工厂替身、临时私有目录、httptest 与本机合成 
 
 worker 仅在 Linux 运行，持有 spool 卷内 `.worker.lock` 的进程锁；所有 worker 必须挂载同一个持久卷，禁止各自挂载独立卷同时运行。锁文件不能删除或替换。数据库连接带随机进程标识，接管前逐实例确认旧会话消失；同进程下一轮恢复须确认没有未结束事务。HTTP 超时、心跳过期和冷却到期均不能替代 SQL 结束证明。
 
+SIGTERM/SIGINT 停止 HTTP 准入及后台新任务，HTTP → application → runtime 按逆序使用同一份 SHUTDOWN_TIMEOUT 总预算。超时返回非零退出及 incomplete 资源状态；保留控制事实与未确认日志文件，不自动删 reader/owner、不伪造结束时间。容器 stop_grace_period 必须大于该预算，入口直接 exec Go 服务。不得依据容器退出耗时推断实际 SQL 已结束，重启仍执行数据库侧证明。
+
 `/readyz` 分别返回 `query_ready`、`sync_ready`、`dependencies_ready`。查询就绪要求 Redis 与已确认控制元数据完整一致、当前代次可读、查询角色能连接活动业务库并读取十四表；worker 同步就绪要求启动恢复完成、依赖可用且没有正在恢复/执行的任务。空环境可同步初始化但不能查询。候选校验使用 `SET LOCAL ROLE sicp_query`，需应用 business_002/control_006 迁移；不能使用 worker 写权限代替查询权限。

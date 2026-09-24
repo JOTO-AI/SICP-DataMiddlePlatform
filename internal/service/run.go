@@ -158,12 +158,18 @@ func RunConfigured(ctx context.Context, cfg config.Runtime, factories assembly.F
 	if err != nil {
 		return err
 	}
+	owned := false
 	defer func() {
+		// Once the lifecycle manager owns runtime, its single shutdown budget
+		// is authoritative even when it could not reach dependency cleanup.
+		if owned {
+			return
+		}
 		cleanup, cancel := context.WithTimeout(context.Background(), cfg.Service.ShutdownTimeout)
 		defer cancel()
 		err = errors.Join(err, runtime.Close(cleanup))
 	}()
-	deps.Factories = append([]lifecycle.Factory{{Name: "runtime", Open: func(context.Context) (ports.Resource, error) { return runtime, nil }}}, deps.Factories...)
+	deps.Factories = append([]lifecycle.Factory{{Name: "runtime", Open: func(context.Context) (ports.Resource, error) { owned = true; return runtime, nil }}}, deps.Factories...)
 	app, err := application.New(cfg, runtime)
 	if err != nil {
 		return err
