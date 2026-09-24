@@ -27,6 +27,11 @@ jobs:
         run: |
           docker build --platform linux/amd64 -f deploy/Dockerfile --build-arg SERVICE=query-service -t sicp-query:p01 .
           docker build --platform linux/amd64 -f deploy/Dockerfile --build-arg SERVICE=sync-worker -t sicp-worker:p01 .
+      - name: Validate deployment template without starting integration services
+        run: |
+          bash scripts/sicp.sh prepare
+          docker compose -f deploy/compose.yaml config --quiet
+          docker build --platform linux/amd64 -f deploy/Mock.Dockerfile -t sicp-mock:p15 deploy
       - uses: actions/upload-artifact@v4
         if: always()
         with:

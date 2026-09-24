@@ -1,0 +1,147 @@
+# Isolated synthetic environment. Production endpoints and credentials must be
+# supplied explicitly; this file never connects to an upstream school service.
+x-service: &service
+  platform: linux/amd64
+  restart: unless-stopped
+  read_only: true
+  user: "65532:65532"
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  stop_grace_period: 35s
+  tmpfs: ["/tmp:size=16m,mode=1777"]
+  networks: [sicp]
+
+x-postgres: &postgres
+  image: postgres:16-bookworm
+  platform: linux/amd64
+  restart: unless-stopped
+  env_file:
+    - path: runtime/stack.env
+      format: raw
+  healthcheck:
+    test: [CMD-SHELL, "pg_isready -U postgres -d postgres"]
+    interval: 2s
+    timeout: 2s
+    retries: 40
+  networks: [sicp]
+  shm_size: 128mb
+  stop_grace_period: 35s
+
+services:
+  db-m:
+    <<: *postgres
+    environment: {SICP_CLUSTER: M}
+    volumes:
+      - pg-m:/var/lib/postgresql/data
+      - ./init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
+    ports: ["127.0.0.1:${SICP_M_PORT:-15432}:5432"]
+  db-s:
+    <<: *postgres
+    environment: {SICP_CLUSTER: S}
+    volumes:
+      - pg-s:/var/lib/postgresql/data
+      - ./init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
+    ports: ["127.0.0.1:${SICP_S_PORT:-15433}:5432"]
+  db-log:
+    <<: *postgres
+    environment: {SICP_CLUSTER: log}
+    volumes:
+      - pg-log:/var/lib/postgresql/data
+      - ./init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
+    ports: ["127.0.0.1:${SICP_LOG_PORT:-15434}:5432"]
+  redis:
+    image: redis:7.4-bookworm
+    platform: linux/amd64
+    restart: unless-stopped
+    command: [redis-server, --appendonly, "yes", --appendfsync, always]
+    volumes: ["redis:/data"]
+    ports: ["127.0.0.1:${SICP_REDIS_PORT:-16379}:6379"]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 2s
+      retries: 40
+    networks: [sicp]
+  volumes:
+    image: busybox:1.37
+    platform: linux/amd64
+    profiles: [tools]
+    network_mode: none
+    volumes: ["query-logs:/query-logs", "worker-logs:/worker-logs", "staging:/staging", "targets:/targets", "spool:/spool", "mock-mail:/mock-mail"]
+    command: [sh, -c, "chown 65532:65532 /query-logs /worker-logs /staging /targets /spool /mock-mail && chmod 700 /query-logs /worker-logs /staging /targets /spool /mock-mail"]
+  mock:
+    <<: *service
+    build: {context: ., dockerfile: Mock.Dockerfile}
+    image: sicp-mock:phase1
+    volumes:
+      - ../mock_data:/app/mock_data:ro
+      - mock-mail:/mail
+    environment:
+      MOCK_TOKEN: synthetic-source-token
+      MOCK_CONTROL_TOKEN: synthetic-mock-control-token
+      PYTHONDONTWRITEBYTECODE: "1"
+    ports: ["127.0.0.1:${SICP_MOCK_PORT:-18090}:8090"]
+    networks:
+      sicp:
+        aliases: [mock-source, mock-mail]
+  query:
+    <<: *service
+    build: {context: .., dockerfile: deploy/Dockerfile, args: {SERVICE: query-service}}
+    image: sicp-query:phase1
+    env_file:
+      - path: runtime/query.env
+        format: raw
+    volumes: ["query-logs:/var/lib/sicp/logs"]
+    ports: ["127.0.0.1:${SICP_QUERY_PORT:-18080}:8080"]
+    healthcheck:
+      test: [CMD, /usr/local/bin/sicpctl, health, "http://127.0.0.1:8080/livez"]
+      interval: 5s
+      timeout: 6s
+      retries: 10
+  worker:
+    <<: *service
+    build: {context: .., dockerfile: deploy/Dockerfile, args: {SERVICE: sync-worker}}
+    image: sicp-worker:phase1
+    env_file:
+      - path: runtime/worker.env
+        format: raw
+    volumes: ["worker-logs:/var/lib/sicp/logs", "staging:/var/lib/sicp/staging", "targets:/var/lib/sicp/targets", "spool:/var/lib/sicp/spool"]
+    ports: ["127.0.0.1:${SICP_WORKER_PORT:-18081}:8081"]
+    healthcheck:
+      test: [CMD, /usr/local/bin/sicpctl, health, "http://127.0.0.1:8081/livez"]
+      interval: 5s
+      timeout: 6s
+      retries: 10
+  migrate:
+    <<: *service
+    image: sicp-worker:phase1
+    restart: "no"
+    profiles: [tools]
+    entrypoint: [/usr/local/bin/sicpctl, migrate]
+    env_file:
+      - path: runtime/migrate.env
+        format: raw
+  ctl:
+    <<: *service
+    image: sicp-worker:phase1
+    restart: "no"
+    profiles: [tools]
+    entrypoint: [/usr/local/bin/sicpctl, admin]
+    env_file:
+      - path: runtime/admin.env
+        format: raw
+
+networks:
+  sicp:
+    internal: true
+volumes:
+  pg-m:
+  pg-s:
+  pg-log:
+  redis:
+  query-logs:
+  worker-logs:
+  staging:
+  targets:
+  spool:
+  mock-mail:
