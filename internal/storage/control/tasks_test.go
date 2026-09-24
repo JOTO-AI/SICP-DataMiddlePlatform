@@ -21,6 +21,7 @@ type taskDB struct {
 	lastStarted, nextDue *time.Time
 	revision             int64
 	deferred, pending    bool
+	initialized          bool
 	cooldown             *time.Time
 	failSQL              string
 	failCommit, failRead bool
@@ -160,6 +161,9 @@ func (x *taskTx) QueryRow(_ context.Context, sql string, args ...any) storage.Ro
 		return result{raw: []any{ok}}
 	}
 	if strings.Contains(sql, "SELECT EXISTS (SELECT 1 FROM control.publication_outbox") {
+		if strings.Contains(sql, "status='confirmed' AND kind='bundle_publish'") {
+			return result{raw: []any{x.db.initialized}}
+		}
 		return result{raw: []any{x.db.pending}}
 	}
 	if strings.Contains(sql, "SELECT EXISTS (SELECT 1 FROM control.tasks WHERE status NOT IN") {
