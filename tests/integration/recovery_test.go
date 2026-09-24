@@ -20,6 +20,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/update"
 )
 
 // Reconstruct every worker dependency with the same persistent files/databases
@@ -152,6 +153,81 @@ func TestI05_02(t *testing.T) {
 		}
 	}
 }
+func TestI05_03(t *testing.T) {
+	f := newRuntime(t, true)
+	changedGrade(f)
+	f.redis.afterDo = func(command string, args []any, value any, err error) (any, error) {
+		if command == "EVAL" && strings.Contains(args[4].(string), `"event_id":"next-publish"`) && err == nil {
+			if _, err := f.redis.raw.Do(f.e.ctx, "DEL", f.redis.prefix+publication.ActiveKey); err != nil {
+				return nil, err
+			}
+			return nil, errors.New("synthetic Redis data loss before acknowledgement")
+		}
+		return value, err
+	}
+	admitTask(t, f, "force_full", "next")
+	if err := f.worker.Engine.Cycle(f.e.ctx); err == nil {
+		t.Fatal("missing metadata fault not reached")
+	}
+	f.redis.afterDo = nil
+	restartWorker(t, f)
+	state, err := f.wr.Control.RecoveryState(f.e.ctx)
+	if err != nil || state.Pending == nil || state.Confirmed == nil || state.Pending.ID != "next-publish" {
+		t.Fatal("pending candidate not persisted", err)
+	}
+	confirmed := *state.Confirmed
+	requests := sourceRequests(f)
+	// A stale inspection or a live different Redis value must not be replaced.
+	stale := confirmed
+	stale.Sequence++
+	if err := f.wr.Control.RestoreConfirmed(f.e.ctx, state.Owner, stale, f.wr.Active.Restore); !errors.Is(err, control.ErrIdempotency) {
+		t.Fatal("stale confirmation accepted", err)
+	}
+	if _, err := f.redis.Do(f.e.ctx, "SET", publication.ActiveKey, string(state.Pending.Target)); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.wr.Control.RestoreConfirmed(f.e.ctx, state.Owner, confirmed, f.wr.Active.Restore); !errors.Is(err, publication.ErrConflict) {
+		t.Fatal("different live metadata overwritten", err)
+	}
+	if _, err := f.redis.raw.Do(f.e.ctx, "DEL", f.redis.prefix+publication.ActiveKey); err != nil {
+		t.Fatal(err)
+	}
+	// Confirmed history alone is insufficient when its slot is no longer open.
+	conn := f.e.connection(t, 4)
+	setAdmission := func(open bool) {
+		t.Helper()
+		if _, err := conn.Exec(f.e.ctx, "UPDATE control.slots SET admission_open=$1 WHERE instance=$2 AND slot=$3", open, string(confirmed.Position.Position.Instance), confirmed.Position.Position.Slot); err != nil {
+			t.Fatal(err)
+		}
+	}
+	setAdmission(false)
+	if err := f.worker.Engine.Cycle(f.e.ctx); !errors.Is(err, update.ErrRecoveryPending) {
+		t.Fatal("unreadable confirmed route accepted", err)
+	}
+	if _, exists, err := f.wr.Active.Read(f.e.ctx); err != nil || exists {
+		t.Fatal("unreadable route restored", err)
+	}
+	setAdmission(true)
+	decision, err := f.worker.Engine.Recovery.Inspect(f.e.ctx)
+	if !errors.Is(err, update.ErrRecoveryPending) || decision.Action != "restored_confirmed" || activeMetadata(t, f) != confirmed {
+		t.Fatal("confirmed route not restored separately", decision.Action, err)
+	}
+	if countControl(t, f, "SELECT count(*) FROM control.slots WHERE bundle_id='Cnext' AND admission_open") != 0 || countControl(t, f, "SELECT count(*) FROM control.publication_outbox WHERE id='next-publish' AND status='pending'") != 1 || loadTask(t, f, "next").PublishedAt != nil || sourceRequests(f) != requests {
+		t.Fatal("restoration opened or executed pending candidate")
+	}
+	data, _ := f.queryOK(t, contract.StudentGrades, allGrades, "")
+	if data["items"].([]any)[1].(map[string]any)["score"] != float64(90) {
+		t.Fatal("restored route exposed pending data")
+	}
+	if err := f.worker.Engine.Cycle(f.e.ctx); err != nil {
+		t.Fatal("separate publication recovery", err)
+	}
+	if loadTask(t, f, "next").Status != "success_published" || sourceRequests(f) != requests {
+		t.Fatal("publication recovery fetched another round")
+	}
+	assertProgress(t, f, "next")
+}
+
 func TestI05_04(t *testing.T) {
 	f := newRuntime(t, true)
 	until := realClock{}.Now().Add(time.Minute)

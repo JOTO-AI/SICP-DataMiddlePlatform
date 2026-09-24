@@ -18,6 +18,17 @@ type Commander interface {
 }
 type Atomic struct{ Client Commander }
 
+// Restore fills missing metadata without overwriting any different live value.
+// The control repository must authorize the confirmed readable route and hold
+// its execution/slot locks for the duration of this call.
+func (a Atomic) Restore(ctx context.Context, confirmed control.ActiveMetadata) error {
+	doc, err := control.ActiveDocument(confirmed)
+	if err != nil {
+		return err
+	}
+	return a.Apply(ctx, control.Publication{ID: confirmed.EventID, TaskID: confirmed.TaskID, Sequence: confirmed.Sequence, Target: doc, Status: "pending"})
+}
+
 // Expected/target are canonical complete metadata, not partial field updates.
 // Sequences are decimal strings: length+lexical ordering is exact above 2^53.
 const compareAndSwap = `local current = redis.call('GET', KEYS[1])

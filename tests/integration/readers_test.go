@@ -19,12 +19,40 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/update"
 )
 
 type queryProcessConfig struct {
 	URLs    map[string]string
 	Handle  read.Handle
 	Process string
+}
+
+func TestI05_06(t *testing.T) {
+	f := newRuntime(t, true)
+	p := startQueryProcess(t, f, nonServingHandle(t, f))
+	admitTask(t, f, "incremental", "interrupted")
+	launch, err := f.wr.Control.StartAccepted(f.e.ctx, "interrupted", p.process, realClock{}.Now())
+	if err != nil || !launch.Started {
+		t.Fatal("old executor acquisition", err)
+	}
+	before := sourceRequests(f)
+	p.command(t, "release_http", "blocked")
+	if err := p.cmd.Process.Signal(syscall.SIGSTOP); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.worker.Engine.Recovery.Claim(f.e.ctx, f.wr.ProcessID); !errors.Is(err, update.ErrRecoveryPending) {
+		t.Fatal("claimed while old process still held actual SQL", err)
+	}
+	state, err := f.wr.Control.RecoveryState(f.e.ctx)
+	if err != nil || state.Owner != launch.Owner || sourceRequests(f) != before {
+		t.Fatal("blocked takeover mutated ownership or called source", err)
+	}
+	p.finish(t)
+	owner, err := f.worker.Engine.Recovery.Claim(f.e.ctx, f.wr.ProcessID)
+	if err != nil || owner.TaskID != launch.Owner.TaskID || owner.OwnerID != f.wr.ProcessID || owner.Generation != launch.Owner.Generation+1 {
+		t.Fatal("stopped executor could not be fenced and taken over", err)
+	}
 }
 
 // This helper runs only through an explicitly selected child test. It uses the
@@ -145,6 +173,7 @@ type queryProcess struct {
 	done     chan error
 	finished bool
 	pid      int
+	process  string
 }
 
 func startQueryProcess(t *testing.T, f *runtimeFixture, h read.Handle) *queryProcess {
@@ -197,7 +226,8 @@ func startQueryProcess(t *testing.T, f *runtimeFixture, h read.Handle) *queryPro
 			urls[fmt.Sprintf("DATABASE_%s%d_URL", instance, slot)] = c.DSN()
 		}
 	}
-	if err := p.in.Encode(queryProcessConfig{URLs: urls, Handle: h, Process: "child-" + rand.Text()}); err != nil {
+	p.process = "child-" + rand.Text()
+	if err := p.in.Encode(queryProcessConfig{URLs: urls, Handle: h, Process: p.process}); err != nil {
 		t.Fatal(err)
 	}
 	if err := p.out.Decode(&p.pid); err != nil {

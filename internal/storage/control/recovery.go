@@ -15,6 +15,42 @@ type RecoveryState struct {
 	Confirmed *ActiveMetadata
 }
 
+// RestoreConfirmed holds the execution fence and physical slot gate through
+// the conditional Redis write. A stale inspection cannot restore an older
+// route after another owner publishes or reuses its slot. The caller must first
+// prove termination of the old executor, and apply must only fill an absent key.
+func (r Repository) RestoreConfirmed(ctx context.Context, owner Ownership, expected ActiveMetadata, apply func(context.Context, ActiveMetadata) error) error {
+	if expected.Validate() != nil || apply == nil {
+		return ErrEntity
+	}
+	return r.transaction(ctx, func(tx storage.Transaction) error {
+		current, err := readExecution(ctx, tx)
+		if err != nil {
+			return err
+		}
+		if current != owner {
+			return ErrOwnership
+		}
+		var raw *string
+		if err = tx.QueryRow(ctx, "SELECT (SELECT target::text FROM control.publication_outbox WHERE status='confirmed' ORDER BY sequence DESC LIMIT 1)").Scan(&raw); err != nil {
+			return err
+		}
+		if raw == nil {
+			return ErrBusy
+		}
+		confirmed, err := DecodeActive(Document(*raw))
+		if err != nil || confirmed != expected {
+			return ErrIdempotency
+		}
+		// The route-shift target checks also require a published bundle and
+		// an open, ready slot with matching generation and validation evidence.
+		if err = publicationTarget(ctx, tx, PublicationIntent{Kind: "route_shift", Target: confirmed.Position, CodeVersion: confirmed.CodeVersion}, confirmed.TaskID); err != nil {
+			return err
+		}
+		return apply(ctx, confirmed)
+	})
+}
+
 func (r Repository) RecoveryState(ctx context.Context) (RecoveryState, error) {
 	var out RecoveryState
 	err := r.transaction(ctx, func(tx storage.Transaction) error {

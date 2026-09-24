@@ -74,6 +74,22 @@ func event(t *testing.T) (control.Publication, control.ActiveMetadata) {
 	}
 	return control.Publication{ID: next.EventID, TaskID: next.TaskID, Sequence: next.Sequence, Kind: "route_shift", Expected: &expected, Target: target, Status: "pending", CreatedAt: time.Date(2026, 9, 18, 2, 0, 0, 0, time.UTC)}, old
 }
+
+func TestT14_09RestorationOnlyFillsMissingMetadata(t *testing.T) {
+	e, old := event(t)
+	memory := &atomicMemory{}
+	atomic := publication.Atomic{Client: memory}
+	if err := atomic.Restore(t.Context(), old); err != nil || memory.writes != 1 || memory.raw != string(*e.Expected) {
+		t.Fatal("missing confirmed route not restored", err)
+	}
+	if err := atomic.Restore(t.Context(), old); err != nil || memory.writes != 1 {
+		t.Fatal("restoration not idempotent", err)
+	}
+	memory.raw = string(e.Target)
+	if err := atomic.Restore(t.Context(), old); !errors.Is(err, publication.ErrConflict) || memory.raw != string(e.Target) || memory.writes != 1 {
+		t.Fatal("restoration overwrote live metadata", err)
+	}
+}
 func TestT12_09AtomicWholeMetadataSwapIsExactIdempotentAndRejectsLateEvents(t *testing.T) {
 	e, old := event(t)
 	memory := &atomicMemory{raw: string(*e.Expected)}
