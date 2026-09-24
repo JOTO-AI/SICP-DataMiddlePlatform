@@ -61,7 +61,7 @@ func emptyBody(w http.ResponseWriter, r *http.Request) bool {
 }
 func (a Admission) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	operator, action, ok := Identity(r.Context())
-	if !ok || (action != Initialize && action != Sync && action != ForceFull) {
+	if !ok || (action != Initialize && action != Sync && action != ForceFull && action != Rerun) {
 		respond(w, 403, "forbidden", "Action not permitted", nil)
 		return
 	}
@@ -88,7 +88,23 @@ func (a Admission) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if action == Sync {
 		mode = "incremental"
 	}
-	result, err := a.Store.Admit(r.Context(), control.Request{ID: hex.EncodeToString(random[:]), IdempotencyKey: key, Mode: mode, RequestedBy: operator, AcceptedAt: a.Clock.Now()})
+	request := control.Request{ID: hex.EncodeToString(random[:]), IdempotencyKey: key, Mode: mode, RequestedBy: operator, AcceptedAt: a.Clock.Now()}
+	var result control.Acceptance
+	if action == Rerun {
+		store, ok := a.Store.(interface {
+			RerunTask(context.Context, control.Request) (control.Acceptance, error)
+		})
+		if !ok {
+			respond(w, 503, "unavailable", "Task rerun unavailable", nil)
+			return
+		}
+		predecessor := r.PathValue("task_id")
+		request.PredecessorID = &predecessor
+		request.Mode = ""
+		result, err = store.RerunTask(r.Context(), request)
+	} else {
+		result, err = a.Store.Admit(r.Context(), request)
+	}
 	if err != nil {
 		writeAdmissionError(w, err)
 		return
@@ -102,6 +118,10 @@ func (a Admission) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 func writeAdmissionError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, control.ErrMissing):
+		respond(w, 404, "not_found", "Task not found", nil)
+	case errors.Is(err, control.ErrNotFailed):
+		respond(w, 409, "not_failed", "Only failed tasks can be rerun", nil)
 	case errors.Is(err, control.ErrInitializeRequired):
 		respond(w, 409, "initialize_required", "Use the initialization endpoint before requesting updates", nil)
 	case errors.Is(err, control.ErrAlreadyInitialized):

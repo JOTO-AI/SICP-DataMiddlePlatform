@@ -12,11 +12,24 @@ import (
 
 var ErrInitializeRequired = errors.New("initialize complete data before requesting an update")
 var ErrAlreadyInitialized = errors.New("complete data is already initialized")
+var ErrNotFailed = errors.New("only failed tasks can be rerun")
 
 // Admit persists acceptance only. Client cancellation after commit cannot
 // cancel the separately owned worker task.
 func (r Repository) Admit(ctx context.Context, request Request) (Acceptance, error) {
-	if strings.TrimSpace(request.ID) == "" || len(request.ID) > 64 || strings.TrimSpace(request.IdempotencyKey) == "" || len(request.IdempotencyKey) > 128 || strings.TrimSpace(request.RequestedBy) == "" || request.AcceptedAt.IsZero() || request.PredecessorID != nil || (request.Mode != "initialize" && request.Mode != "incremental" && request.Mode != "force_full") {
+	if request.PredecessorID != nil {
+		return Acceptance{}, ErrEntity
+	}
+	return r.admit(ctx, request, false)
+}
+func (r Repository) RerunTask(ctx context.Context, request Request) (Acceptance, error) {
+	if request.PredecessorID == nil || strings.TrimSpace(*request.PredecessorID) == "" || len(*request.PredecessorID) > 64 || *request.PredecessorID == request.ID || request.Mode != "" {
+		return Acceptance{}, ErrEntity
+	}
+	return r.admit(ctx, request, true)
+}
+func (r Repository) admit(ctx context.Context, request Request, rerun bool) (Acceptance, error) {
+	if strings.TrimSpace(request.ID) == "" || len(request.ID) > 64 || strings.TrimSpace(request.IdempotencyKey) == "" || len(request.IdempotencyKey) > 128 || strings.TrimSpace(request.RequestedBy) == "" || request.AcceptedAt.IsZero() || (!rerun && request.Mode != "initialize" && request.Mode != "incremental" && request.Mode != "force_full") {
 		return Acceptance{}, ErrEntity
 	}
 	var out Acceptance
@@ -24,6 +37,19 @@ func (r Repository) Admit(ctx context.Context, request Request) (Acceptance, err
 		owner, err := readExecution(ctx, tx)
 		if err != nil {
 			return err
+		}
+		if rerun {
+			old, err := existingTask(ctx, tx, *request.PredecessorID)
+			if err != nil {
+				return err
+			}
+			if old.Status != "failed" {
+				return ErrNotFailed
+			}
+			if request.AcceptedAt.Before(old.AcceptedAt) {
+				return ErrTime
+			}
+			request.Mode = old.Mode
 		}
 		var exists bool
 		if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.tasks WHERE idempotency_key=$1)", request.IdempotencyKey).Scan(&exists); err != nil {
@@ -61,7 +87,7 @@ func (r Repository) Admit(ctx context.Context, request Request) (Acceptance, err
 		if initialized && request.Mode == "initialize" {
 			return ErrAlreadyInitialized
 		}
-		if err = exactlyOne(tx.Exec(ctx, "INSERT INTO control.tasks (id,idempotency_key,mode,status,requested_by,predecessor_id,accepted_at) VALUES ($1,$2,$3,'accepted',$4,$5,$6) ON CONFLICT (idempotency_key) DO NOTHING", request.ID, request.IdempotencyKey, request.Mode, request.RequestedBy, nil, request.AcceptedAt)); err != nil {
+		if err = exactlyOne(tx.Exec(ctx, "INSERT INTO control.tasks (id,idempotency_key,mode,status,requested_by,predecessor_id,accepted_at) VALUES ($1,$2,$3,'accepted',$4,$5,$6) ON CONFLICT (idempotency_key) DO NOTHING", request.ID, request.IdempotencyKey, request.Mode, request.RequestedBy, optionalString(request.PredecessorID), request.AcceptedAt)); err != nil {
 			return err
 		}
 		task, err := loadTask(ctx, tx, request.ID)

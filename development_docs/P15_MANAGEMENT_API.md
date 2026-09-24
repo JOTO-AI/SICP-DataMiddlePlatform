@@ -18,4 +18,8 @@
 
 已有执行/待恢复任务/未决发布返回 409 `busy`；首次没有完整数据时同步或强制全量返回 409 `initialize_required`，提示初始化；已有完整数据时初始化返回 `already_initialized`。幂等参数冲突为 `idempotency_conflict`，提交未确认返回 503 `unavailable`，可携相同键重试。
 
-P15.01/P15.02 已提供认证/路由及受理边界；状态与重跑处理器在 P15.03 接入，服务启动配置与部署在后续小步完成，当前不宣称端到端管理服务已就绪。
+状态返回 task_id、mode、status、operator、predecessor_id，以及独立的 accepted_at、started_at、ready_at、published_at、checked_at、finished_at；未知时间显式为 null。progress_confirmed 仅在任务完成成功进度事务后为 true，confirmed_until 来自该任务自身的不可变十四类进度检查点，不读取后续任务已推进的全局进度。counts 只输出经过校验的 SourceCounts/CopyCounts；failure 只输出固定失败码。不返回原始摘要、幂等键、执行者或源数据。
+
+失败任务重跑使用相同的空正文和 Idempotency-Key 规则；模式由服务器从旧任务读取，新建任务并保留 predecessor_id，旧历史包括未知结束时间均不改写。不存在返回 404 not_found，非失败任务返回 409 not_failed；旧执行仍未释放或存在其他未决工作时返回 busy。同一重跑键返回原先受理的新任务。
+
+P15.01—P15.03 已提供管理边界；服务启动配置与部署在后续小步完成，当前不宣称端到端管理服务已就绪。
