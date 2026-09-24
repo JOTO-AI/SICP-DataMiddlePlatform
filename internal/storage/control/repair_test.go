@@ -87,11 +87,12 @@ func TestT14_12RepairIsolationDrainGenerationAndReadinessGates(t *testing.T) {
 	if err := r.IsolateRepair(t.Context(), active, h); err != nil || d.slot.AdmissionOpen {
 		t.Fatal(err)
 	}
-	d.readers = 1
+	now := time.Now()
+	d.records = map[string]control.Reader{"held": {ID: "held", ReleasedAt: &now}} // HTTP ended; actual SQL has not.
 	if _, err := r.PlanRepair(t.Context(), active, h, "repair"); err == nil || d.slot.Generation != h.Generation {
 		t.Fatal("repair with reader", err)
 	}
-	d.readers = 0
+	d.records["held"] = control.Reader{ID: "held", ReleasedAt: &now, SQLFinishedAt: &now}
 	target, err := r.PlanRepair(t.Context(), active, h, "repair")
 	if err != nil || target.Generation != h.Generation+1 || d.slot.BundleID == nil || *d.slot.BundleID != h.BundleID || d.slot.AdmissionOpen {
 		t.Fatal(target, err)
