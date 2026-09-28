@@ -1,0 +1,12 @@
+# Optional console, layered on the existing Phase 1 stack.
+services:
+  console:
+    build: {context: ../frontend}
+    image: sicp-console:phase1
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    ports: ["127.0.0.1:${SICP_CONSOLE_PORT:-18082}:8080"]
+    networks: [ingress]

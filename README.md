@@ -21,6 +21,10 @@
 
 详细操作见[部署说明](deploy/README.md)和[运行配置](development_docs/P15_RUNTIME_CONFIGURATION.md)。
 
+## 简易前端控制台
+
+`frontend/` 提供 Phase 1 中文控制台，支持服务状态、四个业务查询接口、更新任务提交与追踪。启动后端后，在 `frontend` 执行 `npm ci`、`npm run dev`，访问 `http://127.0.0.1:5173/console/` 并填写业务与管理凭据。Windows PowerShell 可使用 `npm.cmd`。可选 Docker 部署及使用说明见 [前端 README](frontend/README.md)。
+
 ## 验证与文档
 
 [Linux CI](.github/workflows/ci.yml) 先运行 `scripts/check.sh`（单元测试、race、vet、语法检查、Linux 构建）及生命周期重复回归，再构建镜像、串行执行 I01—I06。普通单测不启用 integration 标签；集成测试仅在 GitHub 的隔离 PG/Redis/Mock 环境中运行。以下为工作流中的检查和构建入口：
