@@ -145,7 +145,7 @@ func (d *deployment) mockMail(t *testing.T) []map[string]any {
 
 func TestI06_07(t *testing.T) {
 	d := newDeployment(t, true)
-	d.mockPatch(t, `{"fail_table":"dwd_bzksbjsjzlb","fail_remaining":3}`)
+	d.mockPatch(t, `{"unknown_table":"dwd_bzksbjsjzlb"}`)
 	id := d.submit(t, "force-full", "audit-failure")
 	d.waitTask(t, id, "failed")
 	deadline := time.Now().Add(20 * time.Second)
