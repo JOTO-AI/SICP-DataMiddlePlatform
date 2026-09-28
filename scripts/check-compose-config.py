@@ -67,13 +67,13 @@ def entrypoint(environment, success=True):
     return dict(line.split("=", 1) for line in result.stdout.splitlines() if "=" in line)
 
 
-def render(env_file, success=True, tools=False):
+def render(env_file, success=True, all_profiles=False):
     # CI project/port overrides should not change the sample contract check.
     environment = {k: v for k, v in os.environ.items() if k not in values(EXAMPLE)}
     result = subprocess.run(
         ["docker", "compose", "--project-directory", str(ROOT),
          "--file", str(ROOT / "compose.yaml"), "--env-file", str(env_file),
-         *(["--profile", "tools"] if tools else []), "config", "--format", "json"],
+         *(["--profile", "*"] if all_profiles else []), "config", "--format", "json"],
         env=environment, capture_output=True, text=True, check=False,
     )
     if not success:
@@ -162,7 +162,17 @@ def main(directory):
         "DATABASE_S1_URL", "DATABASE_CONTROL_URL", "DATABASE_LOG_URL",
         "DATABASE_USER", "DATABASE_PASSWORD", "DATABASE_LOG_USER", "DATABASE_LOG_PASSWORD",
     }
-    assert "ctl" not in render(env_file, tools=True)["services"]
+    all_services = render(env_file, all_profiles=True)["services"]
+    assert "ctl" not in all_services
+    assert services["migrate"]["entrypoint"] == ["/usr/local/bin/db-migrate"]
+    assert services["migrate"]["restart"] == "no"
+    assert "MANAGEMENT_URL" not in values(EXAMPLE)
+    for service in all_services.values():
+        assert "tools" not in service.get("profiles", [])
+        assert "MANAGEMENT_URL" not in service.get("environment", {})
+    for role in ("query", "worker"):
+        assert services[role]["healthcheck"]["test"] == ["CMD", "/usr/local/bin/service", "--healthcheck"]
+        assert services[role]["environment"]["DATABASE_USER"] != services["migrate"]["environment"]["DATABASE_USER"]
     for name, cluster in (("db-m", "M"), ("db-s", "S"), ("db-log", "log")):
         assert services[name]["environment"]["SICP_CLUSTER"] == cluster
         assert services[name]["environment"]["POSTGRES_USER"] == "postgres"

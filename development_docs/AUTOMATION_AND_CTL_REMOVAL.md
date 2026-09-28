@@ -95,3 +95,17 @@
 本次实现对应以上方案。具体本地验证结果以变更交付记录为准；编译集成测试不代表已运行真实 PostgreSQL/Redis/Docker 场景。
 
 2026-09-28 本地验证：Linux Go 全量单元测试通过；后续管理、控制存储、应用装配与 worker 变更的回归测试通过；Go vet、三个部署程序构建、集成测试编译通过；前端生产构建和 10 项 Playwright 测试通过；Compose 配置解析与模式检查、Bash 语法检查通过。当前本机 Docker 引擎不可连接，未执行真实容器集成测试和 race 检查，需由 Linux CI 补充。
+
+### 本轮补充实现与复核（2026-09-28）
+
+已逐项核对仓库中的自动初始化、持久调度、维护接口、管理会话、任务列表、前端展示及 ctl 移除实现。本轮补齐以下事项：
+
+- 修复服务 `--healthcheck` 写死端口的问题：读取 `HTTP_ADDRESS`，支持 IPv4/IPv6 通配监听地址转换为回环地址，始终请求 `/livez`。检查不依赖数据库或上游凭据，拒绝跟随重定向。
+- 补充健康探测单元测试，覆盖自定义端口、默认地址、非法端口、存活失败及重定向响应。后续代码审查发现并修复 IPv4 映射通配地址的回环地址选择，以及 IPv6 网卡区域标识的 URL 转义；两项回归测试均先复现失败再验证修复。
+- 加强 Compose 检查：启用所有 profiles 后确认无 ctl/tools 入口，校验迁移程序、服务健康探测命令、迁移账号隔离和 `MANAGEMENT_URL` 移除。
+- 新增 `TestI01_08AutomaticBootstrapRequiresPristineControl`，在隔离 PostgreSQL 中验证历史数据组合、槽位使用、调度使用和执行代次阻止自动初始化，以及并发唯一受理、失败后不自动重建和人工关联重跑。
+- 新增 `TestI01_09RecentAutomaticTasksAreBoundedAndRedacted`，验证空列表、最近 50 条上限、同一受理时间下的稳定排序、调度状态和内部字段隔离。两项用例由现有 Linux CI 的 I01 组执行。
+
+本轮实际验证：Windows Go 1.26.8 交叉编译并通过 WSL Ubuntu 执行全部 Linux 单元测试；最终服务回归、Go vet、三个 Linux 部署程序构建、集成测试编译、前端生产构建、使用本机 Chrome 的 10 项 Playwright 测试、Compose 配置与模式检查、四份 Bash 脚本语法检查均通过。变更已完成代码复核和差异检查。
+
+本轮未运行真实 PostgreSQL/Redis/Docker 集成用例及 race 检查：本机 Docker 引擎不可连接，当前测试使用无 CGO 的交叉编译工具链。新增集成测试已编译通过，实际运行结果仍需 Linux CI 确认；没有改动历史迁移文件。

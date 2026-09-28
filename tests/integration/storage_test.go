@@ -337,3 +337,118 @@ func TestI01_07(t *testing.T) {
 		t.Fatalf("stale release: %v", err)
 	}
 }
+
+// Exercise the bootstrap SQL against PostgreSQL, including slot/schedule facts
+// that cannot be represented by the admission unit tests' task-only substitute.
+func TestI01_08AutomaticBootstrapRequiresPristineControl(t *testing.T) {
+	e := newEnvironment(t)
+	e.migrate(t)
+	r := control.Repository{Registry: e.registry, Database: e.db}
+	conn := e.connection(t, 4)
+	req := control.Request{ID: "automatic", IdempotencyKey: "system-initialize-v1", Mode: "initialize", RequestedBy: "scheduler", AcceptedAt: time.Now().UTC()}
+	for _, tc := range []struct{ name, setup, undo string }{
+		{"bundle", "INSERT INTO control.bundles (id,tables,created_at) VALUES ('old','{}',now())", "DELETE FROM control.bundles WHERE id='old'"},
+		{"slot_generation", "UPDATE control.slots SET generation=1 WHERE instance='M' AND slot=0", "UPDATE control.slots SET generation=0"},
+		{"slot_state", "UPDATE control.slots SET state='building' WHERE instance='S' AND slot=1", "UPDATE control.slots SET state='empty'"},
+		{"slot_readers", "UPDATE control.slots SET admission_open=TRUE WHERE instance='M' AND slot=1", "UPDATE control.slots SET admission_open=FALSE"},
+		{"missing_slot", "DELETE FROM control.slots WHERE instance='S' AND slot=0", "INSERT INTO control.slots (instance,slot,state) VALUES ('S',0,'empty')"},
+		{"schedule_revision", "UPDATE control.schedule SET revision=1", "UPDATE control.schedule SET revision=0"},
+		{"schedule_start", "UPDATE control.schedule SET last_started_at=now()", "UPDATE control.schedule SET last_started_at=NULL"},
+		{"schedule_due", "UPDATE control.schedule SET next_due_at=now()", "UPDATE control.schedule SET next_due_at=NULL"},
+		{"schedule_deferred", "UPDATE control.schedule SET deferred=TRUE", "UPDATE control.schedule SET deferred=FALSE"},
+		{"expired_cooldown", "UPDATE control.schedule SET cooldown_until=now()-interval '1 day'", "UPDATE control.schedule SET cooldown_until=NULL"},
+		{"execution_generation", "UPDATE control.execution SET generation=1", "UPDATE control.execution SET generation=0"},
+	} {
+		if !t.Run(tc.name, func(t *testing.T) {
+			if _, err := conn.Exec(e.ctx, tc.setup); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if _, err := conn.Exec(e.ctx, tc.undo); err != nil {
+					t.Error(err)
+				}
+			})
+			if result, err := r.Bootstrap(e.ctx, req); err != nil || result.Created {
+				t.Fatalf("used environment admitted: %+v %v", result, err)
+			}
+			var count int
+			if err := conn.QueryRow(e.ctx, "SELECT count(*) FROM control.tasks").Scan(&count); err != nil || count != 0 {
+				t.Fatalf("unexpected bootstrap records: %d %v", count, err)
+			}
+		}) {
+			t.FailNow()
+		}
+	}
+	// Once every fixture is restored, independent worker requests must compete
+	// on the real execution lock and produce exactly one accepted record.
+	var group sync.WaitGroup
+	for i := range 8 {
+		group.Go(func() {
+			request := req
+			request.ID = fmt.Sprintf("automatic-%d", i)
+			if _, err := r.Bootstrap(e.ctx, request); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	group.Wait()
+	var id string
+	var count int
+	if err := conn.QueryRow(e.ctx, "SELECT min(id),count(*) FROM control.tasks").Scan(&id, &count); err != nil || count != 1 {
+		t.Fatalf("concurrent bootstrap: count=%d err=%v", count, err)
+	}
+	if _, err := conn.Exec(e.ctx, "UPDATE control.tasks SET status='failed',finished_at=now()"); err != nil {
+		t.Fatal(err)
+	}
+	if result, err := r.Bootstrap(e.ctx, req); err != nil || result.Created {
+		t.Fatalf("failed initialization automatically retried: %+v %v", result, err)
+	}
+	rerun := control.Request{ID: "rerun", IdempotencyKey: "manual-rerun", RequestedBy: "admin", AcceptedAt: time.Now().UTC(), PredecessorID: &id}
+	result, err := r.RerunTask(e.ctx, rerun)
+	if err != nil || !result.Created || result.Task.Mode != "initialize" || result.Task.PredecessorID == nil || *result.Task.PredecessorID != id {
+		t.Fatalf("failed initialization cannot be rerun: %+v %v", result, err)
+	}
+}
+
+func TestI01_09RecentAutomaticTasksAreBoundedAndRedacted(t *testing.T) {
+	e := newEnvironment(t)
+	e.migrate(t)
+	r := control.Repository{Registry: e.registry, Database: e.db}
+	empty, err := r.RecentTasks(e.ctx)
+	if err != nil || empty.Items == nil || len(empty.Items) != 0 || empty.Initialized || empty.NextDueAt != nil || empty.CooldownUntil != nil || empty.IntervalSeconds != 7200 {
+		t.Fatalf("empty overview: %+v %v", empty, err)
+	}
+	conn := e.connection(t, 4)
+	at := time.Date(2026, 9, 28, 10, 0, 0, 0, time.UTC)
+	if _, err := conn.Exec(e.ctx, `INSERT INTO control.tasks (id,idempotency_key,mode,status,requested_by,accepted_at,summary)
+ SELECT 'task-' || lpad(n::text,2,'0'), 'private-key-' || n, 'incremental', 'failed', 'scheduler', $1, '{"private_evidence":"sensitive"}'::jsonb
+ FROM generate_series(1,55) AS n`, at); err != nil {
+		t.Fatal(err)
+	}
+	due, cooldown := at.Add(control.SyncInterval), at.Add(time.Minute)
+	if _, err := conn.Exec(e.ctx, "UPDATE control.schedule SET next_due_at=$1,cooldown_until=$2", due, cooldown); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec(e.ctx, `INSERT INTO control.publication_outbox (id,task_id,kind,target,status,created_at)
+ VALUES ('publication','task-01','bundle_publish','{}','confirmed',$1)`, at); err != nil {
+		t.Fatal(err)
+	}
+	out, err := r.RecentTasks(e.ctx)
+	if err != nil || len(out.Items) != 50 || !out.Initialized || out.NextDueAt == nil || !out.NextDueAt.Equal(due) || out.CooldownUntil == nil || !out.CooldownUntil.Equal(cooldown) {
+		t.Fatalf("overview: %+v %v", out, err)
+	}
+	for i, item := range out.Items {
+		if item.ID != fmt.Sprintf("task-%02d", 55-i) || item.Operator != "scheduler" || !item.AcceptedAt.Equal(at) {
+			t.Fatalf("unstable recent task order: %+v", item)
+		}
+	}
+	raw, err := json.Marshal(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, private := range []string{"private-key", "private_evidence", "sensitive", "summary", "owner_id", "idempotency_key"} {
+		if strings.Contains(string(raw), private) {
+			t.Fatalf("overview exposed %s", private)
+		}
+	}
+}

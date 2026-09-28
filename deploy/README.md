@@ -29,6 +29,8 @@ docker compose down
 
 首次数据初始化自动执行，`up --wait` 只等待应用存活，不代表已经发布可查询的数据。`volumes` 和 `migrate` 是一次性任务，成功后显示 `Exited (0)` 属于正常状态。`down` 保留全部持久卷；重新执行启动命令可复用数据，不要加 `--volumes`，除非确实要销毁数据。
 
+容器通过服务自身的 `--healthcheck` 检查 `/livez`，探测地址跟随服务进程的 `HTTP_ADDRESS`；通配监听地址会转换为对应的本机回环地址。初始化、更新或恢复期间 `/readyz` 暂时不就绪属于正常状态，不应将它用作容器存活检查。宿主机发布端口仍由 `SICP_QUERY_PORT`、`SICP_WORKER_PORT` 设置。
+
 统一配置模板为根目录 `.env.example`，实际部署只维护根目录 `.env`。六个 `DATABASE_*_URL` 只配置共享端点和库名，不含账号密码；`POSTGRES_PASSWORD`、`QUERY_PASSWORD`、`WORKER_PASSWORD`、`LOGGER_PASSWORD` 各填写一次。Compose 按服务分配账号与密码，进程自动编码特殊字符并构造完整连接串；query 不会获得 worker 或迁移账号密码。已有 PG 卷不会因修改环境变量而自动修改角色密码，轮换时仍需先在数据库内修改，再更新 `.env`。
 
 项目名和端口也统一在 `.env` 设置：`SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`、`SICP_CONSOLE_PORT`。终端同名环境变量优先。只需后端时可指定服务：`docker compose up -d --build --wait --wait-timeout 300 query worker`。
