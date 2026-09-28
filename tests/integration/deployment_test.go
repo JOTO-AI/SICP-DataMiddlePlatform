@@ -30,7 +30,7 @@ type deployment struct {
 	client                                               *http.Client
 }
 
-func newDeployment(t *testing.T, initialize bool) *deployment {
+func newDeployment(t *testing.T, initialize bool, workerValues ...map[string]string) *deployment {
 	t.Helper()
 	if os.Getenv("GITHUB_ACTIONS") != "true" || os.Getenv("SICP_INTEGRATION") != "1" {
 		t.Fatal("deployment tests run only in GitHub Linux integration")
@@ -45,6 +45,29 @@ func newDeployment(t *testing.T, initialize bool) *deployment {
 	transport.Proxy = nil
 	t.Cleanup(transport.CloseIdleConnections)
 	d := &deployment{ctx: ctx, root: root, project: "sicp-i06-" + strings.ToLower(rand.Text()[:10]), queryURL: "http://127.0.0.1:18080", workerURL: "http://127.0.0.1:18081", client: &http.Client{Transport: transport, Timeout: 8 * time.Second}}
+	d.script(t, "prepare")
+	if len(workerValues) > 0 {
+		path := filepath.Join(root, "deploy", "runtime", "worker.env")
+		original, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := os.WriteFile(path, original, 0600); err != nil {
+				t.Error(err)
+			}
+		})
+		lines := strings.Split(string(original), "\n")
+		for i, line := range lines {
+			key, _, _ := strings.Cut(line, "=")
+			if value, ok := workerValues[0][key]; ok {
+				lines[i] = key + "=" + value
+			}
+		}
+		if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	t.Cleanup(func() {
 		cleanup, stop := context.WithTimeout(context.Background(), time.Minute)
 		defer stop()
@@ -61,7 +84,7 @@ func newDeployment(t *testing.T, initialize bool) *deployment {
 	})
 	// Image builds run once in this same job from its clean checkout. Every
 	// numbered case gets a distinct project and brand-new named volumes.
-	for _, operation := range []string{"prepare", "validate", "infra", "migrate", "start"} {
+	for _, operation := range []string{"validate", "infra", "migrate", "start"} {
 		d.script(t, operation)
 	}
 	id := strings.TrimSpace(d.compose(t, "ps", "-q", "mock"))
