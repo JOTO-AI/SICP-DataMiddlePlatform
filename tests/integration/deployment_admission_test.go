@@ -144,7 +144,14 @@ func (d *deployment) mockMail(t *testing.T) []map[string]any {
 }
 
 func TestI06_07(t *testing.T) {
-	d := newDeployment(t, true)
+	// Development must ignore configured upstream/SMTP credentials, including
+	// values present in Docker Config.Env before the entrypoint runs.
+	d := newDeployment(t, true, map[string]string{
+		"SOURCE_ORIGIN": "https://unused-upstream.example.invalid",
+		"SOURCE_APP_ID": "synthetic-unused-app", "SOURCE_APP_SECRET": "synthetic-unused-secret",
+		"MAIL_ADDRESS":  "unused-smtp.example.invalid:587",
+		"MAIL_USERNAME": "synthetic-unused-user", "MAIL_PASSWORD": "synthetic-unused-password",
+	})
 	d.mockPatch(t, `{"unknown_table":"dwd_bzksbjsjzlb"}`)
 	id := d.submit(t, "force-full", "audit-failure")
 	d.waitTask(t, id, "failed")
@@ -194,7 +201,6 @@ func TestI06_07(t *testing.T) {
 		container := strings.TrimSpace(d.compose(t, "ps", "-q", service))
 		raw := commandOutput(t, exec.CommandContext(d.ctx, "docker", "inspect", container))
 		var inspected []struct {
-			Config struct{ Env []string }
 			Mounts []struct {
 				Source, Destination string
 				RW                  bool
@@ -212,20 +218,41 @@ func TestI06_07(t *testing.T) {
 			}
 		}
 		if service == "worker" {
+			// Docker inspect reports the original container configuration. Read
+			// PID 1 after the entrypoint's exec to audit what the worker uses.
+			environment := d.compose(t, "exec", "-T", "worker", "cat", "/proc/1/environ")
 			values := map[string]string{}
-			for _, item := range inspected[0].Config.Env {
-				k, v, _ := strings.Cut(item, "=")
-				values[k] = v
+			for _, item := range strings.Split(environment, "\x00") {
+				if k, v, ok := strings.Cut(item, "="); ok {
+					values[k] = v
+				}
 			}
-			if values["SOURCE_ORIGIN"] != "http://mock-source:8090" || values["MAIL_ADDRESS"] != "mock-mail:1025" || values["MAIL_TO"] != "operator@example.invalid" {
-				t.Fatal("worker used unexpected endpoint configuration")
+			for key, expected := range map[string]string{
+				"ENVIRONMENT": "development", "SOURCE_ORIGIN": "http://mock-source:8090",
+				"SOURCE_TOKEN": "synthetic-source-token", "SOURCE_SCOPE": "synthetic-sicp-source",
+				"MAIL_ADDRESS": "mock-mail:1025", "MAIL_TO": "operator@example.invalid",
+				"MAIL_FROM": "worker@example.invalid", "MAIL_TLS": "none",
+				"DATABASE_USER": "sicp_worker", "DATABASE_LOG_USER": "sicp_logger",
+			} {
+				if values[key] != expected {
+					t.Fatal("worker used unexpected runtime configuration", key)
+				}
 			}
-			for key, value := range values {
-				if strings.HasPrefix(key, "DATABASE_") || key == "REDIS_URL" {
-					u, err := url.Parse(value)
-					if err != nil || !map[string]bool{"db-m": true, "db-s": true, "db-log": true, "redis": true}[u.Hostname()] {
-						t.Fatal("external dependency configured", key)
-					}
+			for _, key := range []string{"SOURCE_APP_ID", "SOURCE_APP_SECRET", "MAIL_USERNAME", "MAIL_PASSWORD"} {
+				if values[key] != "" {
+					t.Fatal("development retained external credentials", key)
+				}
+			}
+			// Credentials are separate values now; only endpoint keys are URLs.
+			// Enumerate required URLs so a missing dependency cannot pass silently.
+			for key, host := range map[string]string{
+				"DATABASE_M0_URL": "db-m", "DATABASE_M1_URL": "db-m",
+				"DATABASE_S0_URL": "db-s", "DATABASE_S1_URL": "db-s",
+				"DATABASE_CONTROL_URL": "db-m", "DATABASE_LOG_URL": "db-log", "REDIS_URL": "redis",
+			} {
+				u, err := url.Parse(values[key])
+				if err != nil || u.Hostname() != host {
+					t.Fatal("missing or unexpected dependency endpoint", key)
 				}
 			}
 		}

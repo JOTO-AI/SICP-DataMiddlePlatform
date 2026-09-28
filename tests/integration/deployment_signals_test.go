@@ -182,7 +182,7 @@ func (d *deployment) directConfig(t *testing.T, role string) (string, []string) 
 		hosts[service] = d.privateIP(t, service)
 	}
 	for key, value := range values {
-		if strings.HasPrefix(key, "DATABASE_") || key == "REDIS_URL" {
+		if (strings.HasPrefix(key, "DATABASE_") && strings.HasSuffix(key, "_URL")) || key == "REDIS_URL" {
 			u, err := url.Parse(value)
 			if err != nil || hosts[u.Hostname()] == "" || u.Port() == "" {
 				t.Fatal("unexpected direct-process fixture endpoint", key)
