@@ -80,3 +80,58 @@ func TestRuntimeApplicationCredentials(t *testing.T) {
 		})
 	}
 }
+
+func TestRuntimeOptionalMail(t *testing.T) {
+	mail := map[string]string{
+		"MAIL_ADDRESS": "smtp.example.invalid:587", "MAIL_TLS": "starttls",
+		"MAIL_FROM": "worker@example.invalid", "MAIL_TO": "operator@example.invalid",
+		"MAIL_USERNAME": "synthetic-user", "MAIL_PASSWORD": "synthetic-password",
+	}
+	for _, environment := range []string{"production", "staging", "test", "development"} {
+		t.Run(environment, func(t *testing.T) {
+			v := testkit.RuntimeValues("/data")
+			v["ENVIRONMENT"] = environment
+			v["SOURCE_APP_ID"], v["SOURCE_APP_SECRET"], v["SOURCE_TOKEN"] = "synthetic-app", "synthetic-secret", ""
+			load := func() (config.Runtime, error) {
+				return config.LoadRuntime(config.Worker, func(k string) (string, bool) { s, ok := v[k]; return s, ok })
+			}
+			for _, unset := range []bool{false, true} {
+				for key := range mail {
+					v[key] = ""
+					if unset {
+						delete(v, key)
+					}
+				}
+				c, err := load()
+				if err != nil || c.MailEnabled() {
+					t.Fatal("empty mail configuration should disable mail", err)
+				}
+			}
+			for key, value := range mail {
+				v[key] = value
+				if _, err := load(); err == nil {
+					t.Fatalf("single mail setting %s accepted", key)
+				}
+				delete(v, key)
+			}
+			for key, value := range mail {
+				v[key] = value
+			}
+			c, err := load()
+			if err != nil || !c.MailEnabled() {
+				t.Fatal("complete mail configuration should enable mail", err)
+			}
+			for _, key := range []string{"MAIL_ADDRESS", "MAIL_TLS", "MAIL_FROM", "MAIL_TO", "MAIL_USERNAME", "MAIL_PASSWORD"} {
+				v[key] = ""
+				if _, err := load(); err == nil {
+					t.Fatalf("incomplete mail setting %s accepted", key)
+				}
+				v[key] = mail[key]
+			}
+			v["MAIL_USERNAME"], v["MAIL_PASSWORD"] = "", ""
+			if _, err := load(); err != nil {
+				t.Fatal("SMTP without authentication rejected", err)
+			}
+		})
+	}
+}

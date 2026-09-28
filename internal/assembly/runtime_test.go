@@ -3,6 +3,7 @@ package assembly
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -174,6 +175,36 @@ func TestT15_09SuccessfulAssemblyHasNoFallbackAndClosesOnce(t *testing.T) {
 	}
 	if len(trace) != 10 || trace[5] != "close:mail" || trace[9] != "close:postgres" {
 		t.Fatal(trace)
+	}
+}
+
+func TestWorkerWithoutMailSkipsMailDependency(t *testing.T) {
+	for _, missingFactory := range []bool{false, true} {
+		t.Run(fmt.Sprint(missingFactory), func(t *testing.T) {
+			c, _ := fixture(t)
+			c.MailAddress, c.MailTLS, c.MailFrom, c.MailTo, c.MailUser, c.MailPassword = "", "", "", "", "", ""
+			var trace []string
+			f := trackedFactories(&trace, "mail")
+			if missingFactory {
+				f.Mail = nil
+			}
+			r, _, err := Open(t.Context(), c, f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if r.Mail != nil || r.Source == nil || r.Logs == nil {
+				t.Fatal("unexpected optional mail wiring")
+			}
+			ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+			defer cancel()
+			if err := r.Close(ctx); err != nil {
+				t.Fatal(err)
+			}
+			want := []string{"open:postgres", "open:redis", "open:files", "open:source", "close:source", "close:files", "close:redis", "close:postgres"}
+			if !reflect.DeepEqual(trace, want) {
+				t.Fatal(trace)
+			}
+		})
 	}
 }
 func TestT15_09MissingPersistentDirectoryFailsAndReleasesEarlierResources(t *testing.T) {

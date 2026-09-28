@@ -117,7 +117,7 @@ func Open(ctx context.Context, c config.Runtime, f Factories) (*Runtime, []lifec
 	if e := c.Validate(); e != nil {
 		return nil, nil, e
 	}
-	if f.Postgres == nil || f.Redis == nil || f.Files == nil || c.Service.Role == config.Worker && (f.Source == nil || f.Mail == nil) {
+	if f.Postgres == nil || f.Redis == nil || f.Files == nil || c.Service.Role == config.Worker && (f.Source == nil || c.MailEnabled() && f.Mail == nil) {
 		return nil, nil, errors.New("required dependency factory missing")
 	}
 	r := &Runtime{}
@@ -161,8 +161,10 @@ func Open(ctx context.Context, c config.Runtime, f Factories) (*Runtime, []lifec
 	if c.Service.Role == config.Worker {
 		steps = append(steps,
 			lifecycle.Factory{Name: "source", Open: func(ctx context.Context) (ports.Resource, error) { v, e := f.Source(ctx, c); r.Source = v; return v, e }},
-			lifecycle.Factory{Name: "mail", Open: func(ctx context.Context) (ports.Resource, error) { v, e := f.Mail(ctx, c); r.Mail = v; return v, e }},
 		)
+		if c.MailEnabled() {
+			steps = append(steps, lifecycle.Factory{Name: "mail", Open: func(ctx context.Context) (ports.Resource, error) { v, e := f.Mail(ctx, c); r.Mail = v; return v, e }})
+		}
 	}
 	startup, cancel := context.WithTimeout(ctx, c.Service.StartupTimeout)
 	defer cancel()

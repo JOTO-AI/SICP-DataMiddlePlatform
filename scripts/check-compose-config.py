@@ -41,6 +41,9 @@ def fixture_text(mode):
             "MAIL_FROM": "worker@example.invalid", "MAIL_TO": "operator@example.invalid",
             "MAIL_USERNAME": "fixture-mail-user", "MAIL_PASSWORD": "fixture-mail-password",
         })
+    else:
+        # Integration fixtures explicitly opt in to synthetic mail delivery.
+        overrides["MAIL_ADDRESS"] = "mock-mail:1025"
     return "\n".join(
         f"{key}={overrides[key]}" if (key := line.split("=", 1)[0]) in overrides else line
         for line in EXAMPLE.read_text(encoding="utf-8").splitlines()
@@ -107,6 +110,17 @@ def check_modes(env_file):
     assert ignored["SOURCE_TOKEN"] == "synthetic-source-token"
     assert ignored["MAIL_ADDRESS"] == "mock-mail:1025"
     assert ignored["MAIL_USERNAME"] == ignored["MAIL_PASSWORD"] == ""
+    mail_keys = ("MAIL_ADDRESS", "MAIL_TLS", "MAIL_FROM", "MAIL_TO", "MAIL_USERNAME", "MAIL_PASSWORD")
+    assert all(values(EXAMPLE)[key] == "" for key in mail_keys)
+    for mode in ("production", "staging", "test", "development"):
+        disabled = {**services["worker"]["environment"], "ENVIRONMENT": mode, **dict.fromkeys(mail_keys, "")}
+        assert all(entrypoint(disabled).get(key, "") == "" for key in mail_keys)
+        for key in mail_keys:
+            disabled.pop(key)
+        assert all(entrypoint(disabled).get(key, "") == "" for key in mail_keys)
+        if mode != "development":
+            for key in mail_keys:
+                entrypoint({**disabled, key: services["worker"]["environment"][key]}, success=False)
     env_file.write_text(fixture_text("development"), encoding="utf-8")
     development = render(env_file)
     assert development["services"]["mock"]["profiles"] == ["development"]
