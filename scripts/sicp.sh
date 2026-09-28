@@ -21,7 +21,7 @@ case "$operation" in
     "${compose[@]}" run --rm --no-deps --entrypoint /usr/local/bin/sicpctl worker validate sync-worker
     ;;
   build)
-    for service in query worker mock; do "${compose[@]}" build "$service"; done
+    for service in query worker migrate mock; do "${compose[@]}" build "$service"; done
     ;;
   infra)
     "${compose[@]}" run --rm --no-deps volumes

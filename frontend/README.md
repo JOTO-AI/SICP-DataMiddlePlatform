@@ -31,7 +31,7 @@ SICP_WORKER_TARGET=http://127.0.0.1:18081
 
 ## 使用
 
-1. 在连接设置中填写业务 `QUERY_API_KEY` 和管理令牌（令牌本身，不带 `Bearer `）。本地合成部署中分别对应 `deploy/runtime/query.env` 的 `QUERY_API_KEY` 和 `deploy/runtime/admin.env` 的 `MANAGEMENT_TOKEN`；不在页面预填任何凭据。
+1. 在连接设置中填写业务 `QUERY_API_KEY` 和管理令牌（令牌本身，不带 `Bearer `）。本地合成部署默认分别为 `synthetic-query-secret` 与 `synthetic-management-token`。自定义业务密钥对应 `deploy/runtime/query.env` 的 `QUERY_API_KEY`；管理令牌对应 `deploy/runtime/worker.env` 的 `MANAGEMENT_CREDENTIALS`，并需同步 `deploy/runtime/admin.env` 的 `MANAGEMENT_TOKEN` 供命令行使用。不在页面预填任何凭据。
 2. 在运行总览检查 query 和 worker 的存活与就绪状态。空数据环境通过更新任务中的“首次初始化”建立数据。
 3. 在业务查询中选择学生成绩、批量成绩、学生课表或教师课表，填参查询。课表必填学年与学期；批量成绩不填学号表示查询所选学年内符合条件的成绩。高级 JSON 支持页面列出的其他筛选字段，最终合法性由后端校验。
 4. 成绩上下翻页回传 `X-Query-Snapshot`；改筛选条件或点击“查询数据”开启新查询。遇到 409 请重新查询。
@@ -42,10 +42,12 @@ SICP_WORKER_TARGET=http://127.0.0.1:18081
 
 ## 可选 Docker 部署
 
-先完成 Phase 1 后端部署。以下命令从仓库根目录执行，并与后端使用相同 Compose 项目名（默认部署为 `sicp-phase1`；如部署时设置了 `SICP_PROJECT`，将 `sicp-phase1` 替换为该值）：
+根目录运行 `docker compose up -d --build --wait --wait-timeout 300` 即可同时部署后端与控制台，详见[部署说明](../deploy/README.md)。
+
+已有后端的情况下，也可单独添加控制台。以下命令从仓库根目录执行，并与后端使用相同 Compose 项目名（默认部署为 `sicp-phase1`；如部署时设置了 `SICP_PROJECT`，将 `sicp-phase1` 替换为该值）：
 
 ```sh
-docker compose -p sicp-phase1 -f deploy/compose.yaml -f deploy/compose.console.yaml up -d --build console
+docker compose -p sicp-phase1 -f deploy/compose.yaml -f deploy/compose.console.yaml up -d --build --no-deps console
 ```
 
 打开 <http://127.0.0.1:18082/console/>。镜像内 Nginx 同源代理至 `query:8080` 和 `worker:8081`，业务、管理凭据分别透传；宿主机仅监听回环地址。`SICP_CONSOLE_PORT` 可覆盖端口。

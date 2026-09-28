@@ -4,7 +4,9 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 expected="go$(awk '$1 == "go" { print $2 }' go.mod)"
 test "$(go env GOVERSION)" = "$expected"
 test -z "$(gofmt -l cmd internal tests/integration)"
-bash -n scripts/sicp.sh deploy/init-postgres.sh
+for script in scripts/sicp.sh scripts/check-compose.sh deploy/init-postgres.sh; do
+  bash -n "$script"
+done
 python3 -c 'import ast; from pathlib import Path; ast.parse(Path("deploy/mock.py").read_text())'
 go vet ./...
 mkdir -p artifacts

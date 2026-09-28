@@ -1,0 +1,6 @@
+# One-command synthetic deployment, including the web console.
+name: ${SICP_PROJECT:-sicp-phase1}
+include:
+  - path:
+      - ./deploy/compose.yaml
+      - ./deploy/compose.console.yaml

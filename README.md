@@ -2,9 +2,33 @@
 
 第一阶段 P01—P15 已实现：四个业务查询接口、十四类源采集、双份构建与发布、增量/强制全量、未决恢复、日志通知、独立管理认证及 Linux 部署。单元测试和 I01—I06 集成测试在 GitHub Actions Linux runner 上串行验收，结果见[第一阶段验收报告](development_docs/PHASE1_ACCEPTANCE.md)。
 
-## 启动合成环境（Linux / Bash）
+## Docker Compose 一键部署
 
-要求 Linux amd64、Docker Engine、Compose ≥ 2.30 和 Bash。服务、CI 与镜像统一使用 Go **1.26.8**。
+要求 Docker Engine 或 Docker Desktop（Linux 容器模式），Compose ≥ 2.30；镜像使用 linux/amd64。无需本机安装 Go、Node.js 或 Bash，Windows PowerShell 也可运行。在仓库根目录执行：
+
+```sh
+docker compose up -d --build --wait --wait-timeout 300
+```
+
+打开控制台 <http://127.0.0.1:18082/console/>。Compose 自动启动 PostgreSQL、Redis、Mock、查询服务、同步服务和前端，完成卷权限初始化与数据库迁移后才启动应用。首次构建需要联网拉取基础镜像与依赖。
+
+默认使用仓库中的合成数据与示例凭据：业务密钥 `synthetic-query-secret`，管理令牌 `synthetic-management-token`。在控制台填写凭据后，通过“更新任务 → 首次初始化”导入数据，并查看任务完成状态。也可使用命令：
+
+```sh
+docker compose run --rm --no-deps ctl initialize initialization-001
+docker compose run --rm --no-deps ctl status <返回的任务ID>
+docker compose ps
+docker compose logs -f query worker
+docker compose down
+```
+
+`up` 只部署，不自动提交数据初始化任务；首次初始化完成前 query `/readyz` 未就绪属于预期，Compose 使用 `/livez` 检查应用是否启动。`down` 保留命名卷，再次执行启动命令可复用数据。默认项目名为 `sicp-phase1`，与旧脚本一致。已有部署升级前先停应用并备份，详见[部署说明](deploy/README.md)。
+
+无需复制配置即可启动；如需自定义，将 `deploy/examples/*.env.example` 复制为 `deploy/runtime/*.env`（去掉 `.example`），已有 runtime 值覆盖示例默认值。默认仅监听本机，示例配置仅用于合成环境。Compose 配置合并规则见 [Docker 文档](https://docs.docker.com/reference/compose-file/services/#env_file)。
+
+## Bash 部署入口
+
+原有 Linux / Bash 脚本仍可用于分步运维和仅后端部署。服务、CI 与镜像统一使用 Go **1.26.8**。
 
 ```bash
 ./scripts/sicp.sh deploy

@@ -1,4 +1,39 @@
-# Linux 部署与运维
+# Docker Compose 部署与运维
+
+## 一键启动（推荐）
+
+安装 Docker Engine 或 Docker Desktop（Linux 容器模式）和 Compose ≥ 2.30，在仓库根目录执行，Windows PowerShell 与 Linux/macOS 终端通用：
+
+```sh
+docker compose up -d --build --wait --wait-timeout 300
+```
+
+根目录 `compose.yaml` 合并后端与控制台配置，默认项目名 `sicp-phase1`。启动顺序由 Compose 依赖关系保证：数据库完成空卷初始化并可通过 TCP 访问后执行迁移；卷目录权限初始化成功、迁移成功且 Redis 健康后启动 query/worker（worker 同时等待 Mock 健康）；两服务存活后启动控制台。初始化或迁移失败会阻止依赖服务启动，可用 `docker compose logs volumes migrate db-m db-s db-log` 排查。
+
+| 服务 | 本机入口 |
+| --- | --- |
+| 控制台 | http://127.0.0.1:18082/console/ |
+| 查询 API | http://127.0.0.1:18080 |
+| 管理 API | http://127.0.0.1:18081 |
+
+控制台使用业务密钥 `synthetic-query-secret`、管理令牌 `synthetic-management-token`（仅合成示例）。通过“更新任务 → 首次初始化”建立首份数据，或执行：
+
+```sh
+docker compose run --rm --no-deps ctl initialize initialization-001
+docker compose run --rm --no-deps ctl status <返回的任务ID>
+docker compose logs -f query worker
+docker compose down
+```
+
+首次数据初始化仍需明确提交，`up --wait` 只等待应用存活，不代表已经发布可查询的数据。`volumes` 和 `migrate` 是一次性任务，成功后显示 `Exited (0)` 属于正常状态。`down` 保留全部持久卷；重新执行启动命令可复用数据，不要加 `--volumes`，除非确实要销毁数据。
+
+默认读取 `deploy/examples/*.env.example`，然后以可选的 `deploy/runtime/*.env` 覆盖同名变量。无需预先运行 Bash 或创建 runtime 目录。自定义时复制对应示例为 `query.env`、`worker.env`、`stack.env`、`migrate.env`、`admin.env`；修改数据库密码时需同步相关连接串，已有 PG 卷不会因修改环境变量而自动修改密码。完整配置和 raw 格式要求见下文。
+
+可在根目录 `.env` 或终端环境变量中设置 `SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`、`SICP_CONSOLE_PORT`。`.env` 只用于 Compose 插值，不替代 `deploy/runtime/*.env`。仅部署后端可使用 `docker compose -p sicp-phase1 -f deploy/compose.yaml up -d --build --wait --wait-timeout 300`。
+
+升级已有部署时先 `docker compose stop console query worker` 并备份全部卷，再运行上述启动命令；如需要明确重跑迁移，先执行 `docker compose build`、`docker compose run --rm migrate`。重复迁移校验已应用版本与 checksum。不要在旧服务仍运行时直接进行结构升级。
+
+## Bash 分步运维
 
 此模板用于本机隔离的合成验收环境。要求 Linux amd64、Bash、Docker Engine 与 Compose ≥ 2.30；各服务进程使用 UID/GID 65532，配置/日志时区按 `Asia/Shanghai` 解析源时间，数据库会话使用 UTC。M、S、日志分别为独立 PostgreSQL 容器，控制库固定在 M；服务不能通过活动路由选择控制或日志库。
 
