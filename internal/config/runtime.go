@@ -28,6 +28,7 @@ type Runtime struct {
 	Service                                                         Config
 	Databases                                                       storage.Registry
 	RedisURL, SourceURL, SourceToken                                string
+	SourceAppID, SourceAppSecret                                    string
 	MailAddress, MailTLS, MailUser, MailPassword, MailFrom, MailTo  string
 	LogDirectory, StagingDirectory, TargetDirectory, SpoolDirectory string
 	LogBytes, LogFiles, StagingBytes, TargetBytes, SpoolBytes       int64
@@ -53,6 +54,7 @@ func LoadRuntime(role Role, lookup func(string) (string, bool)) (Runtime, error)
 		p *string
 	}{
 		{"REDIS_URL", &c.RedisURL}, {"SOURCE_ORIGIN", &c.SourceURL}, {"SOURCE_TOKEN", &c.SourceToken},
+		{"SOURCE_APP_ID", &c.SourceAppID}, {"SOURCE_APP_SECRET", &c.SourceAppSecret},
 		{"SOURCE_SCOPE", &c.SourceScope},
 		{"MAIL_ADDRESS", &c.MailAddress}, {"MAIL_TLS", &c.MailTLS}, {"MAIL_USERNAME", &c.MailUser}, {"MAIL_PASSWORD", &c.MailPassword}, {"MAIL_FROM", &c.MailFrom}, {"MAIL_TO", &c.MailTo},
 		{"LOG_DIRECTORY", &c.LogDirectory}, {"STAGING_DIRECTORY", &c.StagingDirectory}, {"TARGET_DIRECTORY", &c.TargetDirectory}, {"SPOOL_DIRECTORY", &c.SpoolDirectory},
@@ -165,8 +167,16 @@ func (c Runtime) Validate() error {
 			return bad("MANAGEMENT_CREDENTIALS")
 		}
 		u, ok = endpoint(c.SourceURL, "http", "https")
-		if !ok || u.User != nil || (u.Path != "" && u.Path != "/") || strings.TrimSpace(c.SourceToken) == "" {
-			return bad("SOURCE_ORIGIN/SOURCE_TOKEN")
+		if !ok || u.User != nil || (u.Path != "" && u.Path != "/") {
+			return bad("SOURCE_ORIGIN")
+		}
+		if c.SourceAppID != "" || c.SourceAppSecret != "" {
+			if strings.TrimSpace(c.SourceAppID) == "" || strings.TrimSpace(c.SourceAppSecret) == "" || c.SourceToken != "" {
+				return bad("SOURCE_APP_ID/SOURCE_APP_SECRET/SOURCE_TOKEN")
+			}
+		} else if (c.Environment != "development" && c.Environment != "test") || strings.TrimSpace(c.SourceToken) == "" {
+			// Static tokens are only supported by synthetic development/test sources.
+			return bad("SOURCE_APP_ID/SOURCE_APP_SECRET")
 		}
 		if !validAddress(c.MailAddress) || (c.MailTLS != "starttls" && c.MailTLS != "tls" && c.MailTLS != "none") {
 			return bad("MAIL_ADDRESS/MAIL_TLS")

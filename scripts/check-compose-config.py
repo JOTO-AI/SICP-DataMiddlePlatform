@@ -36,7 +36,7 @@ def fixture_text(mode):
     if mode == "production":
         overrides.update({
             "SOURCE_ORIGIN": "https://upstream.example.invalid",
-            "SOURCE_TOKEN": "fixture-upstream-token", "SOURCE_SCOPE": "fixture-school",
+            "SOURCE_APP_ID": "fixture-app-id", "SOURCE_APP_SECRET": "fixture-app-secret", "SOURCE_SCOPE": "fixture-school",
             "MAIL_ADDRESS": "smtp.example.invalid:587", "MAIL_TLS": "starttls",
             "MAIL_FROM": "worker@example.invalid", "MAIL_TO": "operator@example.invalid",
             "MAIL_USERNAME": "fixture-mail-user", "MAIL_PASSWORD": "fixture-mail-password",
@@ -91,9 +91,11 @@ def check_modes(env_file):
     for service in services.values():
         assert not any("mock" in volume.get("source", "") for volume in service.get("volumes", []))
     runtime = entrypoint(services["worker"]["environment"])
-    for key in ("SOURCE_ORIGIN", "SOURCE_TOKEN", "SOURCE_SCOPE", "MAIL_ADDRESS", "MAIL_TLS", "MAIL_USERNAME", "MAIL_PASSWORD"):
+    assert "SOURCE_TOKEN" not in runtime
+    assert "SOURCE_APP_SECRET" not in services["query"]["environment"]
+    for key in ("SOURCE_ORIGIN", "SOURCE_APP_ID", "SOURCE_APP_SECRET", "SOURCE_SCOPE", "MAIL_ADDRESS", "MAIL_TLS", "MAIL_USERNAME", "MAIL_PASSWORD"):
         assert runtime[key] == services["worker"]["environment"][key]
-    for missing in ("SOURCE_ORIGIN", "SOURCE_TOKEN", "SOURCE_SCOPE", "MAIL_ADDRESS", "MAIL_FROM", "MAIL_TO"):
+    for missing in ("SOURCE_ORIGIN", "SOURCE_APP_ID", "SOURCE_APP_SECRET", "SOURCE_SCOPE", "MAIL_ADDRESS", "MAIL_FROM", "MAIL_TO"):
         entrypoint({**services["worker"]["environment"], missing: ""}, success=False)
     for address in ("http://mock-source:8090", "http://mock-source", "https://MOCK-SOURCE/"):
         entrypoint({**services["worker"]["environment"], "SOURCE_ORIGIN": address}, success=False)
@@ -101,6 +103,8 @@ def check_modes(env_file):
     entrypoint({**services["worker"]["environment"], "ENVIRONMENT": "typo"}, success=False)
     ignored = entrypoint({**services["worker"]["environment"], "ENVIRONMENT": "development"})
     assert ignored["SOURCE_ORIGIN"] == "http://mock-source:8090"
+    assert ignored["SOURCE_APP_ID"] == ignored["SOURCE_APP_SECRET"] == ""
+    assert ignored["SOURCE_TOKEN"] == "synthetic-source-token"
     assert ignored["MAIL_ADDRESS"] == "mock-mail:1025"
     assert ignored["MAIL_USERNAME"] == ignored["MAIL_PASSWORD"] == ""
     env_file.write_text(fixture_text("development"), encoding="utf-8")
@@ -160,6 +164,7 @@ def main(directory):
                             "SICP_PROJECT=compose-config-test\n"
                             "SICP_CONSOLE_PORT=28082\n"
                             "QUERY_API_KEY='literal-$value-#-secret'\n"
+                            "SOURCE_APP_SECRET='app-@:/?#%$value'\n"
                             "POSTGRES_USER=custom_admin\n"
                             "POSTGRES_PASSWORD='admin-@:/?#%$value'\n"
                             "QUERY_PASSWORD='query-@:/?#%$value'\n"
@@ -168,6 +173,7 @@ def main(directory):
         custom = render(env_file)
         assert custom["name"] == "compose-config-test"
         assert custom["services"]["console"]["ports"][0]["published"] == "28082"
+        assert entrypoint(custom["services"]["worker"]["environment"])["SOURCE_APP_SECRET"] == "app-@:/?#%$value"
         # Compose escapes dollars when rendering reusable configuration.
         for role in ("query", "worker"):
             assert custom["services"][role]["environment"]["QUERY_API_KEY"] == "literal-$$value-#-secret"

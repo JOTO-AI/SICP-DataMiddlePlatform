@@ -14,9 +14,15 @@ type Source struct {
 	transport *http.Transport
 }
 
-func OpenSource(origin, token string, timeout time.Duration) (*Source, error) {
+func OpenSource(origin, token, appID, secret string, timeout time.Duration) (*Source, error) {
 	t := &http.Transport{DialContext: (&net.Dialer{Timeout: timeout, KeepAlive: 30 * time.Second}).DialContext, TLSHandshakeTimeout: timeout, ResponseHeaderTimeout: timeout, IdleConnTimeout: time.Minute, MaxIdleConnsPerHost: 2, MaxConnsPerHost: 4}
-	c, e := ingest.NewClient(origin, token, t, 64<<20)
+	var c *ingest.Client
+	var e error
+	if appID != "" || secret != "" {
+		c, e = ingest.NewAuthenticatedClient(origin, appID, secret, t, 64<<20, timeout)
+	} else {
+		c, e = ingest.NewClient(origin, token, t, 64<<20)
+	}
 	if e != nil {
 		t.CloseIdleConnections()
 		return nil, e

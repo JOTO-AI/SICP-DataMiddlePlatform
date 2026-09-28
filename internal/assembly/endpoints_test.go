@@ -13,8 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/config"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/notification"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/testkit"
 )
 
 func TestT15_12AssemblyUsesExplicitSourceAndMailTargets(t *testing.T) {
@@ -124,6 +126,48 @@ func TestT15_12RedirectDoesNotSendSourceTokenToOtherTarget(t *testing.T) {
 	defer s.Close(context.Background())
 	if _, e = s.Fetch(t.Context(), ingest.PageRequest{Table: "dwd_xqjbsjzlb", Mode: ingest.Full, Page: 1, PageSize: 2}); e == nil || unexpected.Load() != 0 {
 		t.Fatal(e, unexpected.Load())
+	}
+}
+
+func TestAssemblyObtainsSourceTokenFromApplicationCredentials(t *testing.T) {
+	v := testkit.RuntimeValues("/data")
+	v["SOURCE_TOKEN"] = ""
+	v["SOURCE_APP_ID"], v["SOURCE_APP_SECRET"] = "synthetic-app", "synthetic-app-secret"
+	v["ENVIRONMENT"], v["MAIL_TLS"] = "production", "starttls"
+	c, err := config.LoadRuntime(config.Worker, func(k string) (string, bool) { value, ok := v[k]; return value, ok })
+	if err != nil {
+		t.Fatal(err)
+	}
+	var auth, pages atomic.Int32
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/apizt/opentoken/oauth/token" {
+			auth.Add(1)
+			if r.URL.Query().Get("appId") != c.SourceAppID || r.URL.Query().Get("secret") != c.SourceAppSecret {
+				t.Error("application credentials not wired")
+			}
+			io.WriteString(w, `{"code":200,"data":{"access_token":"issued-token","expires_in":3600}}`)
+			return
+		}
+		pages.Add(1)
+		if r.URL.Query().Get("access_token") != "issued-token" {
+			t.Error("issued token not wired")
+		}
+		io.WriteString(w, `{"code":200,"message":"ok","data":{"total":0,"list":[]}}`)
+	}))
+	defer source.Close()
+	c.SourceURL = source.URL
+	s, err := RealFactories().Source(t.Context(), c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close(context.Background())
+	for page := 1; page <= 2; page++ {
+		if _, err := s.Fetch(t.Context(), ingest.PageRequest{Table: "dwd_xqjbsjzlb", Mode: ingest.Full, Page: page, PageSize: 2}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if auth.Load() != 1 || pages.Load() != 2 {
+		t.Fatal("unexpected authentication/page calls")
 	}
 }
 func TestT15_12MailCancellationAndDestinationOverrideCannotSucceed(t *testing.T) {

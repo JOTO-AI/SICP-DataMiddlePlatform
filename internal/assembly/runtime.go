@@ -97,7 +97,7 @@ func RealFactories() Factories {
 		},
 		Files: openFiles,
 		Source: func(_ context.Context, c config.Runtime) (Source, error) {
-			s, e := adapters.OpenSource(c.SourceURL, c.SourceToken, c.DependencyTimeout)
+			s, e := adapters.OpenSource(c.SourceURL, c.SourceToken, c.SourceAppID, c.SourceAppSecret, c.DependencyTimeout)
 			if s == nil {
 				return nil, e
 			}
@@ -129,7 +129,7 @@ func Open(ctx context.Context, c config.Runtime, f Factories) (*Runtime, []lifec
 	c.ProcessID = r.ProcessID
 	key := sha256.Sum256([]byte(c.AuditKey))
 	secrets := []string{}
-	for _, v := range []string{c.Service.APIKey, c.SourceToken, c.SnapshotKey, c.AuditKey, c.MailPassword} {
+	for _, v := range []string{c.Service.APIKey, c.SourceToken, c.SourceAppID, c.SourceAppSecret, c.SnapshotKey, c.AuditKey, c.MailPassword} {
 		if len(v) >= 8 && len(v) <= 4096 {
 			secrets = append(secrets, v)
 		}

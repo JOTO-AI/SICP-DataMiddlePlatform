@@ -51,3 +51,32 @@ func TestT15_09RoleSpecificConfigurationAndSafeFormatting(t *testing.T) {
 		t.Fatal("query unnecessarily requires worker dependencies", e)
 	}
 }
+
+func TestRuntimeApplicationCredentials(t *testing.T) {
+	for _, tc := range []struct {
+		name, environment, appID, secret, token string
+		valid                                   bool
+	}{
+		{"production", "production", "synthetic-app", "synthetic-secret", "", true},
+		{"staging", "staging", "synthetic-app", "synthetic-secret", "", true},
+		{"missing-id", "production", "", "synthetic-secret", "", false},
+		{"missing-secret", "production", "synthetic-app", "", "", false},
+		{"mixed-auth", "production", "synthetic-app", "synthetic-secret", "synthetic-token", false},
+		{"static-production", "production", "", "", "synthetic-token", false},
+		{"static-staging", "staging", "", "", "synthetic-token", false},
+		{"static-development", "development", "", "", "synthetic-token", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			v := testkit.RuntimeValues("/data")
+			v["ENVIRONMENT"], v["MAIL_TLS"] = tc.environment, "starttls"
+			v["SOURCE_APP_ID"], v["SOURCE_APP_SECRET"], v["SOURCE_TOKEN"] = tc.appID, tc.secret, tc.token
+			c, err := config.LoadRuntime(config.Worker, func(k string) (string, bool) { s, ok := v[k]; return s, ok })
+			if (err == nil) != tc.valid {
+				t.Fatal("unexpected validation", err)
+			}
+			if strings.Contains(fmt.Sprintf("%+v %#v %v", c, c, err), "synthetic") {
+				t.Fatal("credentials leaked")
+			}
+		})
+	}
+}

@@ -4,6 +4,7 @@ set -eu
 case "${ENVIRONMENT:-production}" in
   development)
     export SOURCE_ORIGIN=http://mock-source:8090 SOURCE_TOKEN=synthetic-source-token
+    export SOURCE_APP_ID= SOURCE_APP_SECRET=
     export SOURCE_SCOPE=synthetic-sicp-source
     export SOURCE_QUALITY='{"dwd_bzksbjsjzlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false},"dwd_bzkscjzlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false},"dwd_bzksgrtxsjzlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false},"dwd_bzksjbsjzlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false},"dwd_bzkskbsjzlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false},"dwd_bzkskcsjzlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false},"dwd_bzksnjzysjzlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false},"dwd_bzkspksjzlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false},"dwd_bzksxjjbsjzlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false},"dwd_bzkszyxxsjzlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false},"dwd_grtxfszlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false},"dwd_jzgjcsjzlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false},"dwd_xqjbsjzlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false},"dwd_yxsdwjbsjzlb":{"MinimumRows":1,"MaximumDeletedRows":1000,"AllowEmpty":false}}'
     export MAIL_ADDRESS=mock-mail:1025 MAIL_TLS=none
@@ -12,7 +13,9 @@ case "${ENVIRONMENT:-production}" in
     ;;
   production|staging|test)
     : "${SOURCE_ORIGIN:?Configure the real upstream SOURCE_ORIGIN}"
-    : "${SOURCE_TOKEN:?Configure the real upstream SOURCE_TOKEN}"
+    : "${SOURCE_APP_ID:?Configure the upstream SOURCE_APP_ID}"
+    : "${SOURCE_APP_SECRET:?Configure the upstream SOURCE_APP_SECRET}"
+    unset SOURCE_TOKEN
     : "${SOURCE_SCOPE:?Configure the real upstream SOURCE_SCOPE}"
     : "${SOURCE_QUALITY:?Configure the real upstream SOURCE_QUALITY}"
     : "${MAIL_ADDRESS:?Configure the real SMTP MAIL_ADDRESS}"

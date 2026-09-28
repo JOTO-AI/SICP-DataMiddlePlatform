@@ -41,7 +41,9 @@ docker compose down
 
 ## 正式与开发环境切换
 
-根目录 `.env.example` 默认为 `ENVIRONMENT=production`。先填写四个数据库密码、`QUERY_API_KEY`、`SNAPSHOT_KEY`、`AUDIT_KEY`、`MANAGEMENT_CREDENTIALS` 和 `MANAGEMENT_TOKEN`，再配置真实 `SOURCE_ORIGIN/TOKEN/SCOPE/QUALITY` 与 SMTP。正式环境不会启动或挂载 Mock 服务；缺少上游配置、误填开发源地址或邮件配置不完整会报错，不会回退模拟数据。
+根目录 `.env.example` 默认为 `ENVIRONMENT=production`。先填写四个数据库密码、`QUERY_API_KEY`、`SNAPSHOT_KEY`、`AUDIT_KEY`、`MANAGEMENT_CREDENTIALS` 和 `MANAGEMENT_TOKEN`，再配置真实 `SOURCE_ORIGIN`、`SOURCE_APP_ID`、`SOURCE_APP_SECRET`、`SOURCE_SCOPE`、`SOURCE_QUALITY` 与 SMTP。正式环境不会启动或挂载 Mock 服务；缺少上游配置、误填开发源地址或邮件配置不完整会报错，不会回退模拟数据。
+
+`SOURCE_APP_ID` 与 `SOURCE_APP_SECRET` 来自上游开发者首页。worker 在首次采集时向同一 origin 的 `GET /apizt/opentoken/oauth/token` 传入 `appId`、`secret`，读取 `data.access_token`。Token 仅保存在内存；有效 `data.expires_in`（秒，整数或整数字符串）存在时提前 10% 有效期（最多 30 秒）重新获取；没有可用有效期时每次分页前获取，不假定固定时长。同一客户端串行获取和使用 Token，避免新 Token 使并发中的旧 Token 失效。HTTP 或业务码 401/403 会触发一次重新获取及当前页重试，其他业务码按原失败策略处理；上游专有的失效码尚待完整合同确认。认证请求受 `DEPENDENCY_TIMEOUT` 限制，失败不会回退静态令牌或模拟数据，也不会记录凭据、Token 或响应正文。已有 `.env` 应删除 `SOURCE_TOKEN` 并填写上述两个应用凭据；直接运行进程时，静态 `SOURCE_TOKEN` 仅允许在 development/test 环境使用。
 
 邮件配置包括 `MAIL_ADDRESS`、`MAIL_TLS`（tls/starttls）、`MAIL_FROM`、`MAIL_TO`；需要登录时成对填写 `MAIL_USERNAME`、`MAIL_PASSWORD`，Compose 会传给 worker。
 

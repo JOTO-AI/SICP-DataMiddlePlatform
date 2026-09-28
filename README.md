@@ -16,6 +16,8 @@ Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执�
 
 打开控制台 <http://127.0.0.1:18082/console/>。默认 `ENVIRONMENT=production`，Compose 启动 PostgreSQL、Redis、查询服务、同步服务和前端，完成卷权限初始化与数据库迁移后才启动应用。首次构建需要联网拉取基础镜像与依赖。
 
+上游认证填写 `SOURCE_APP_ID` 和 `SOURCE_APP_SECRET`（上游开发者首页获取），无需填写临时 `SOURCE_TOKEN`。worker 自动获取 Token；响应带有效 `expires_in`（秒）时在到期前更新，否则每次分页前获取。HTTP 或业务码 401/403 时重新获取并重试当前页一次。已有 `.env` 请将 `SOURCE_TOKEN` 替换为这两个应用凭据。
+
 在控制台填写 `.env` 中配置的业务密钥和管理令牌，通过“更新任务 → 首次初始化”从真实上游导入数据，并查看任务完成状态。也可使用命令：
 
 ```sh

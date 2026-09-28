@@ -74,6 +74,7 @@ type Client struct {
 	token    string
 	http     *http.Client
 	maxBytes int64
+	auth     *sourceAuth
 }
 
 type closeErrorTransport struct{ next http.RoundTripper }
@@ -108,6 +109,20 @@ func NewClient(origin, token string, transport http.RoundTripper, maxBytes int64
 }
 
 func (c *Client) Fetch(ctx context.Context, input PageRequest) (Page, error) {
+	if c != nil && c.auth != nil {
+		return c.fetchAuthenticated(ctx, input)
+	}
+	return c.fetch(ctx, input, c.staticToken())
+}
+
+func (c *Client) staticToken() string {
+	if c == nil {
+		return ""
+	}
+	return c.token
+}
+
+func (c *Client) fetch(ctx context.Context, input PageRequest, token string) (Page, error) {
 	a := Attempt{}
 	retryAfter := ""
 	fail := func(kind FailureKind, cause error) (Page, error) {
@@ -120,7 +135,7 @@ func (c *Client) Fetch(ctx context.Context, input PageRequest) (Page, error) {
 	if c == nil || !ok || input.Page < 1 || input.PageSize < 1 {
 		return fail(ConfigurationFailure, nil)
 	}
-	q := url.Values{"access_token": {c.token}, "page": {strconv.Itoa(input.Page)}, "pageSize": {strconv.Itoa(input.PageSize)}}
+	q := url.Values{"access_token": {token}, "page": {strconv.Itoa(input.Page)}, "pageSize": {strconv.Itoa(input.PageSize)}}
 	switch input.Mode {
 	case Full, ForceFull:
 	case Incremental:
