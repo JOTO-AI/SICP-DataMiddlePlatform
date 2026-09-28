@@ -22,6 +22,9 @@ type Mail struct {
 }
 
 func NewMail(c config.Runtime) (*Mail, error) {
+	if !c.MailEnabled() {
+		return nil, ErrMail
+	}
 	if e := c.Validate(); e != nil {
 		return nil, ErrMail
 	}

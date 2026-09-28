@@ -8,7 +8,7 @@
 
 ```sh
 cp .env.example .env
-# 编辑 .env：填写数据库密码、业务/管理密钥、真实上游与 SMTP 配置
+# 编辑 .env：填写数据库密码、业务/管理密钥、真实上游；SMTP 按需配置
 docker compose up -d --build --wait --wait-timeout 300
 ```
 
@@ -34,7 +34,7 @@ docker compose down
 
 ## 开发模式
 
-在同一份 `.env` 将 `ENVIRONMENT=production` 改为 `ENVIRONMENT=development`，保留 `COMPOSE_PROFILES=${ENVIRONMENT}` 和 `SICP_PROJECT=sicp-${ENVIRONMENT}`，再执行相同启动命令。数据库密码、业务/管理密钥仍需填写；真实上游和邮件字段可留空。开发模式自动启动 Mock，读取仓库中的合成数据并在本地接收邮件，不访问已填写的真实上游或 SMTP。
+在同一份 `.env` 将 `ENVIRONMENT=production` 改为 `ENVIRONMENT=development`，保留 `COMPOSE_PROFILES=${ENVIRONMENT}` 和 `SICP_PROJECT=sicp-${ENVIRONMENT}`，再执行相同启动命令。数据库密码、业务/管理密钥仍需填写；真实上游和邮件字段可留空。开发模式自动启动 Mock，读取仓库中的合成数据，不访问已填写的真实上游或 SMTP。六个 `MAIL_*` 参数全空时关闭邮件；需要测试邮件时设置 `MAIL_ADDRESS=mock-mail:1025`，由本地接收器接收。
 
 切换前先在原环境执行 `docker compose down`，再修改环境值，避免端口冲突；数据卷保留且按默认项目名隔离。旧版 `sicp-phase1` 项目不会自动改名或搬迁数据，升级前按[部署说明](deploy/README.md)确认目标环境。
 
@@ -49,7 +49,7 @@ Linux / Bash 脚本用于同一套 Compose 的分步运维，`deploy` 同样包�
 ./scripts/sicp.sh status
 ```
 
-`deploy` 准备配置、构建镜像、创建持久卷、迁移数据库并启动服务；数据初始化通过管理入口显式受理，使用 task 命令确认最终完成。默认 query、worker 分别向宿主机 `127.0.0.1:18080`、`127.0.0.1:18081` 提供 HTTP 服务。PG 和 Redis 仅连接内部网络；正式模式的 worker 使用配置的真实上游与 SMTP。Mock 仅在开发模式启用。
+`deploy` 准备配置、构建镜像、创建持久卷、迁移数据库并启动服务；数据初始化通过管理入口显式受理，使用 task 命令确认最终完成。默认 query、worker 分别向宿主机 `127.0.0.1:18080`、`127.0.0.1:18081` 提供 HTTP 服务。PG 和 Redis 仅连接内部网络；正式模式的 worker 使用配置的真实上游，邮件通知按需配置 SMTP；六个 `MAIL_*` 参数全部留空时关闭。Mock 仅在开发模式启用。
 
 `prepare` 仅在根目录 `.env` 不存在时复制 `.env.example`，保留已有配置。`.env` 被 Git 忽略，由 Compose 解析，不要作为 Shell 脚本执行。
 

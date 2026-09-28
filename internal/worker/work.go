@@ -227,11 +227,14 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 		if e != nil {
 			return e
 		}
-		consumer, e := notification.NewConsumer(repo, r.Sanitizer, c.Environment)
-		if e != nil {
-			return e
+		acquirer = update.Acquirer{Collector: collector, Staging: files, Budget: budget, Limits: ingest.PageLimits{MaxPages: 10000, MaxRecords: 10000000, MaxBytes: c.StagingBytes}, PageSize: 1000, Owner: task.ID, Observe: w.Observe}
+		if c.MailEnabled() {
+			consumer, e := notification.NewConsumer(repo, r.Sanitizer, c.Environment)
+			if e != nil {
+				return e
+			}
+			acquirer.Notify = func(ctx context.Context, f *ingest.FailureEvent) error { _, _, e := consumer.Consume(ctx, f); return e }
 		}
-		acquirer = update.Acquirer{Collector: collector, Staging: files, Budget: budget, Limits: ingest.PageLimits{MaxPages: 10000, MaxRecords: 10000000, MaxBytes: c.StagingBytes}, PageSize: 1000, Owner: task.ID, Observe: w.Observe, Notify: func(ctx context.Context, f *ingest.FailureEvent) error { _, _, e := consumer.Consume(ctx, f); return e }}
 		full = acquirer
 	}
 	if task.Mode == "initialize" {

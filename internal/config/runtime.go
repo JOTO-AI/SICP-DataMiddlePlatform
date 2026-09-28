@@ -41,6 +41,12 @@ type Runtime struct {
 func (Runtime) String() string     { return "[runtime configuration redacted]" }
 func (c Runtime) GoString() string { return c.String() }
 
+// MailEnabled reports whether any SMTP setting was supplied. Partial settings
+// still require validation; only a completely empty configuration disables mail.
+func (c Runtime) MailEnabled() bool {
+	return c.MailAddress != "" || c.MailTLS != "" || c.MailUser != "" || c.MailPassword != "" || c.MailFrom != "" || c.MailTo != ""
+}
+
 func LoadRuntime(role Role, lookup func(string) (string, bool)) (Runtime, error) {
 	c := Runtime{DependencyTimeout: 10 * time.Second}
 	var err error
@@ -181,16 +187,18 @@ func (c Runtime) Validate() error {
 			// Static tokens are only supported by synthetic development/test sources.
 			return bad("SOURCE_APP_ID/SOURCE_APP_SECRET")
 		}
-		if !validAddress(c.MailAddress) || (c.MailTLS != "starttls" && c.MailTLS != "tls" && c.MailTLS != "none") {
-			return bad("MAIL_ADDRESS/MAIL_TLS")
-		}
-		if (c.MailUser == "") != (c.MailPassword == "") || (c.MailTLS == "none" && (c.Environment == "production" || c.MailUser != "")) {
-			return bad("MAIL_CREDENTIALS")
-		}
-		for _, s := range []string{c.MailFrom, c.MailTo} {
-			a, e := mail.ParseAddress(s)
-			if e != nil || a.Address != s || strings.ContainsAny(s, "\r\n") || len(s) > 254 {
-				return bad("MAIL_FROM/MAIL_TO")
+		if c.MailEnabled() {
+			if !validAddress(c.MailAddress) || (c.MailTLS != "starttls" && c.MailTLS != "tls" && c.MailTLS != "none") {
+				return bad("MAIL_ADDRESS/MAIL_TLS")
+			}
+			if (c.MailUser == "") != (c.MailPassword == "") || (c.MailTLS == "none" && (c.Environment == "production" || c.MailUser != "")) {
+				return bad("MAIL_CREDENTIALS")
+			}
+			for _, s := range []string{c.MailFrom, c.MailTo} {
+				a, e := mail.ParseAddress(s)
+				if e != nil || a.Address != s || strings.ContainsAny(s, "\r\n") || len(s) > 254 {
+					return bad("MAIL_FROM/MAIL_TO")
+				}
 			}
 		}
 		for _, v := range []int64{c.StagingBytes, c.TargetBytes, c.SpoolBytes} {

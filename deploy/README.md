@@ -6,7 +6,7 @@
 
 ```sh
 cp .env.example .env
-# 编辑 .env，填写所有必填凭据、真实上游及 SMTP 配置
+# 编辑 .env，填写所有必填凭据和真实上游；SMTP 按需配置
 docker compose up -d --build --wait --wait-timeout 300
 ```
 
@@ -41,11 +41,11 @@ docker compose down
 
 ## 正式与开发环境切换
 
-根目录 `.env.example` 默认为 `ENVIRONMENT=production`。先填写四个数据库密码、`QUERY_API_KEY`、`SNAPSHOT_KEY`、`AUDIT_KEY`、`ADMIN_USERNAME` 和 `ADMIN_PASSWORD`，再配置真实 `SOURCE_ORIGIN`、`SOURCE_APP_ID`、`SOURCE_APP_SECRET`、`SOURCE_SCOPE`、`SOURCE_QUALITY` 与 SMTP。正式环境不会启动或挂载 Mock 服务；缺少上游配置、误填开发源地址或邮件配置不完整会报错，不会回退模拟数据。
+根目录 `.env.example` 默认为 `ENVIRONMENT=production`。先填写四个数据库密码、`QUERY_API_KEY`、`SNAPSHOT_KEY`、`AUDIT_KEY`、`ADMIN_USERNAME` 和 `ADMIN_PASSWORD`，再配置真实 `SOURCE_ORIGIN`、`SOURCE_APP_ID`、`SOURCE_APP_SECRET`、`SOURCE_SCOPE`、`SOURCE_QUALITY`；SMTP 按需配置。正式环境不会启动或挂载 Mock 服务；缺少上游配置、误填开发源地址或邮件配置不完整会报错，不会回退模拟数据。
 
 `SOURCE_APP_ID` 与 `SOURCE_APP_SECRET` 来自上游开发者首页。worker 在首次采集时向同一 origin 的 `GET /apizt/opentoken/oauth/token` 传入 `appId`、`secret`，读取 `data.access_token`。Token 仅保存在内存；有效 `data.expires_in`（秒，整数或整数字符串）存在时提前 10% 有效期（最多 30 秒）重新获取；没有可用有效期时每次分页前获取，不假定固定时长。同一客户端串行获取和使用 Token，避免新 Token 使并发中的旧 Token 失效。HTTP 或业务码 401/403 会触发一次重新获取及当前页重试，其他业务码按原失败策略处理；上游专有的失效码尚待完整合同确认。认证请求受 `DEPENDENCY_TIMEOUT` 限制，失败不会回退静态令牌或模拟数据，也不会记录凭据、Token 或响应正文。已有 `.env` 应删除 `SOURCE_TOKEN` 并填写上述两个应用凭据；直接运行进程时，静态 `SOURCE_TOKEN` 仅允许在 development/test 环境使用。
 
-邮件配置包括 `MAIL_ADDRESS`、`MAIL_TLS`（tls/starttls）、`MAIL_FROM`、`MAIL_TO`；需要登录时成对填写 `MAIL_USERNAME`、`MAIL_PASSWORD`，Compose 会传给 worker。
+邮件通知默认关闭：`MAIL_ADDRESS`、`MAIL_TLS`、`MAIL_FROM`、`MAIL_TO`、`MAIL_USERNAME`、`MAIL_PASSWORD` 六项全部留空或未设置时，worker 正常启动，不创建 SMTP 客户端、不启动邮件发送任务，也不新增待发邮件。正式环境启用时必须完整填写前四项，`MAIL_TLS` 为 `tls` 或 `starttls`；需要登录时成对填写用户名和密码。部分配置缺失仍会报错。已有 `.env` 若保留 `MAIL_TLS=starttls`，关闭邮件时也需清空该项。
 
 开发时只改环境值：
 
@@ -55,7 +55,7 @@ COMPOSE_PROFILES=${ENVIRONMENT}
 SICP_PROJECT=sicp-${ENVIRONMENT}
 ```
 
-第二、三行保持模板写法即可。开发环境仍需填写数据库和 API 凭据，但真实上游/邮件可以留空；worker 自动使用合成数据源、测试质量门禁和本地邮件接收器，忽略真实上游/邮件配置并清空 SMTP 登录凭据。Mock 及其卷初始化服务只属于 development profile；其测试控制令牌为固定合成值，不用于正式部署。开发依赖使用 [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/) 按需启用。
+第二、三行保持模板写法即可。开发环境仍需填写数据库和 API 凭据，但真实上游/邮件可以留空；worker 自动使用合成数据源和测试质量门禁。六个邮件参数全空时同样关闭邮件；需要测试邮件时设置 `MAIL_ADDRESS=mock-mail:1025`，入口自动填充测试邮件配置并清空 SMTP 登录凭据，不访问真实 SMTP。Mock 及其卷初始化服务只属于 development profile；其测试控制令牌为固定合成值，不用于正式部署。开发依赖使用 [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/) 按需启用。
 
 默认项目名随环境变为 `sicp-production` / `sicp-development`，对应数据卷隔离。切换前先运行旧环境的 `docker compose down` 再改 `.env`；若同时运行两套环境，还需使用不同的宿主机端口。已有固定项目名不会自动隔离，请勿让两种环境共享项目名。
 
