@@ -97,6 +97,10 @@ func TestI06_05(t *testing.T) {
 	d.compose(t, "stop", "query", "worker")
 	d.compose(t, "restart", "db-m", "db-s", "db-log", "redis", "mock")
 	d.compose(t, "up", "-d", "--wait", "--wait-timeout", "90", "db-m", "db-s", "db-log", "redis")
+	// Restarting several containers can reassign bridge addresses. Resolve the
+	// new Mock address and wait for HTTP readiness before auditing recovery.
+	d.mockURL = "http://" + d.privateIP(t, "mock") + ":8090"
+	d.waitLive(t, d.mockURL)
 	// Named volumes retain the trigger and unresolved publication through restart.
 	if d.active(t) != active || d.progress(t) != progress {
 		t.Fatal("dependency restart lost durable publication or progress")
