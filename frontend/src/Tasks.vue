@@ -1,9 +1,21 @@
 <script setup lang="ts">
-import { computed, ref, onDeactivated, onUnmounted } from 'vue'
+import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, type Envelope } from './api'
 interface Task { task_id: string; mode: string; status: string; operator?: string; predecessor_id?: string; accepted_at: string; started_at?: string; ready_at?: string; published_at?: string; checked_at?: string; finished_at?: string; progress_confirmed?: boolean; confirmed_until?: Record<string, string>; counts?: Record<string, number>; failure?: string }
-const actions = [{ id: 'sync', title: '增量同步', text: '采集源数据变化，完成校验后发布。' }, { id: 'force-full', title: '强制全量', text: '重新采集并构建完整数据，即使内容未变化。' }, { id: 'initialize', title: '首次初始化', text: '仅用于尚未建立完整数据的环境。' }, { id: 'rerun', title: '失败重跑', text: '根据失败任务创建关联的新任务。' }]
-const action = ref('sync'), predecessor = ref(''), key = ref(crypto.randomUUID()), lookup = ref('')
+const actions = [{ id: 'force-full', title: '强制全量', text: '维护操作：重新采集并构建完整数据，即使内容未变化。' }, { id: 'rerun', title: '失败重跑', text: '排除故障后，根据失败任务创建关联的新任务。' }]
+const action = ref('force-full'), predecessor = ref(''), key = ref(crypto.randomUUID()), lookup = ref('')
+interface Overview { items: Task[]; initialized: boolean; next_due_at?: string; cooldown_until?: string; interval_seconds: number }
+const overview = ref<Overview | null>(null), historyError = ref(''), historyBusy = ref(false)
+let historyTimer: ReturnType<typeof setTimeout> | undefined
+async function refreshHistory() {
+  if (historyBusy.value) return
+  clearTimeout(historyTimer); historyBusy.value = true; historyError.value = ''
+  try { overview.value = (await request<Envelope<Overview>>('worker', '/admin/v1/tasks/')).body.data }
+  catch (e) { historyError.value = describe(e) }
+  finally { historyBusy.value = false; if (active) historyTimer = setTimeout(refreshHistory, 10000) }
+}
+function selectTask(id: string) { stop(); lookup.value = id; void fetchTask() }
+const modeLabels: Record<string, string> = { initialize: '初始化', incremental: '增量同步', force_full: '强制全量' }
 const task = ref<Task | null>(null), busy = ref(false), loading = ref(false), error = ref(''), taskError = ref(''), receipt = ref(''), auto = ref(false)
 const dialog = ref<HTMLDialogElement | null>(null)
 const selected = computed(() => actions.find(a => a.id === action.value)!)
@@ -15,8 +27,9 @@ const terminal = computed(() => !!task.value?.finished_at || ['success_published
 const statusLabels: Record<string, string> = { accepted: '已受理', running: '执行中', success_published: '发布成功', success_unchanged: '检查完成，无变化', failed: '执行失败' }
 const stages = computed(() => task.value ? [{ name: '已受理', at: task.value.accepted_at }, { name: '开始执行', at: task.value.started_at }, { name: '构建就绪', at: task.value.ready_at }, { name: '发布完成', at: task.value.published_at }, { name: '检查完成', at: task.value.checked_at }, { name: '任务结束', at: task.value.finished_at }] : [])
 function stop() { auto.value = false; clearTimeout(timer) }
-onDeactivated(() => { active = false; stop() })
-onUnmounted(() => { active = false; stop() })
+onActivated(() => { active = true; void refreshHistory() })
+onDeactivated(() => { active = false; stop(); clearTimeout(historyTimer) })
+onUnmounted(() => { active = false; stop(); clearTimeout(historyTimer) })
 function confirm() {
   stop()
   error.value = ''
@@ -36,12 +49,13 @@ async function submit() {
     receipt.value = `任务已受理：${lookup.value}。受理不代表执行完成。`
     pending.value = null; key.value = crypto.randomUUID()
     await fetchTask()
+    await refreshHistory()
   } catch (e) { error.value = `${describe(e)} 原请求已保留；再次提交将使用相同操作与幂等键。` }
   finally { busy.value = false }
 }
 async function fetchTask() {
   if (loading.value || !lookup.value.trim()) return
-  clearTimeout(timer); active = true; loading.value = true; taskError.value = ''; task.value = null
+  clearTimeout(timer); loading.value = true; taskError.value = ''; task.value = null
   try {
     const response = await request<Envelope<Task>>('worker', `/admin/v1/tasks/${encodeURIComponent(lookup.value.trim())}`)
     task.value = response.body.data
@@ -53,10 +67,28 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
 </script>
 <template>
   <section>
-    <div class="page-heading"><div><h1>更新任务</h1><p>提交数据更新，并按任务号追踪后端执行结果。</p></div><span class="tag">管理权限</span></div>
+    <div class="page-heading"><div><h1>更新任务</h1><p>初始化和日常同步由系统自动执行，此处查看记录与处理异常。</p></div><button @click="refreshHistory" :disabled="historyBusy">刷新记录</button></div>
+    <div class="section-note">
+      <h2>自动更新</h2>
+      <p v-if="overview">{{ overview.initialized ? '初始化已完成，系统按两小时间隔调度增量同步。' : '尚未完成初始化。全新环境自动开始；若任务失败，请排除故障后重跑。' }}</p>
+      <p v-else>正在读取自动更新状态。</p>
+      <p v-if="overview?.initialized">下次计划时间：{{ time(overview.next_due_at) }}。执行中或恢复中会顺延。</p>
+      <p v-if="overview?.cooldown_until">冷却截止时间：{{ time(overview.cooldown_until) }}</p>
+    </div>
+    <div class="section-bar next-heading"><h2>最近任务</h2><span class="muted">最近 50 条，每 10 秒刷新</span></div>
+    <p v-if="historyError" class="error" role="alert">{{ historyError }}</p>
+    <div class="link-list">
+      <button v-for="item in overview?.items" :key="item.task_id" class="history-task" @click="selectTask(item.task_id)" :disabled="busy || loading">
+        <span>{{ modeLabels[item.mode] || item.mode }} · {{ statusLabels[item.status] || item.status }}</span>
+        <small>{{ time(item.accepted_at) }} · {{ item.operator === 'scheduler' ? '系统调度' : item.operator }}</small>
+        <code>{{ item.task_id }}</code>
+      </button>
+      <p v-if="overview && !overview.items.length" class="muted">暂无任务。全新环境启动后会自动创建初始化任务。</p>
+    </div>
+    <div class="section-bar next-heading"><h2>维护与详情</h2><span class="muted">日常运行无需手动操作</span></div>
     <div class="task-layout">
       <form class="panel" @submit.prevent="confirm">
-        <h2>发起更新</h2><p class="muted">每次更新由后台异步执行。</p>
+        <h2>人工维护</h2><p class="muted">仅在需要完整重建或排除故障后使用。</p>
         <fieldset :disabled="busy || !!pending"><legend>更新方式</legend><label v-for="item in actions" :key="item.id" class="radio-row"><input v-model="action" type="radio" :value="item.id" name="action"><span><strong>{{ item.title }}</strong><small>{{ item.text }}</small></span></label>
         <label v-if="action === 'rerun'">原失败任务号 *<input v-model="predecessor" required placeholder="输入失败任务号"></label>
         <label class="key-label">幂等键<input v-model="key" required maxlength="128" spellcheck="false"></label></fieldset>
@@ -67,13 +99,13 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
       </form>
       <div class="task-detail">
         <form class="lookup" @submit.prevent="stop(); fetchTask()"><label for="task-id">查找任务</label><div class="actions"><input id="task-id" v-model="lookup" required :disabled="loading || busy" placeholder="输入完整任务号" @input="stop(); task = null; taskError = ''"><button :disabled="loading || busy">{{ loading ? '查询中…' : '查看任务' }}</button></div></form>
-        <p class="hint">当前接口按任务号查询。本页面不提供服务器历史任务列表。</p>
+        <p class="hint">点击最近任务查看详情，也可输入历史任务号。</p>
         <p v-if="taskError" class="error" role="alert">{{ taskError }}</p>
         <template v-if="task">
           <div class="section-bar"><h2>执行详情</h2><span class="tag" :class="{ warning: task.status === 'failed', success: task.status.startsWith('success_') }">{{ statusLabels[task.status] || task.status }}</span></div>
           <p class="task-id">{{ task.task_id }}</p>
           <label class="check-row"><input type="checkbox" v-model="auto" :disabled="terminal || busy || loading" @change="toggleAuto">每 5 秒刷新，任务结束或查询失败后停止</label>
-          <dl class="facts"><div><dt>更新模式</dt><dd>{{ task.mode }}</dd></div><div><dt>操作人</dt><dd>{{ task.operator || '未提供' }}</dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed ? '已确认' : '未确认' }}</dd></div><div v-if="task.predecessor_id"><dt>前序任务</dt><dd>{{ task.predecessor_id }}</dd></div></dl>
+          <dl class="facts"><div><dt>更新模式</dt><dd>{{ modeLabels[task.mode] || task.mode }}</dd></div><div><dt>操作人</dt><dd>{{ task.operator === 'scheduler' ? '系统调度' : task.operator || '未提供' }}</dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed ? '已确认' : '未确认' }}</dd></div><div v-if="task.predecessor_id"><dt>前序任务</dt><dd>{{ task.predecessor_id }}</dd></div></dl>
           <p v-if="task.failure" class="error">失败原因：{{ task.failure }}</p>
           <ol class="timeline"><li v-for="stage in stages" :key="stage.name" :class="{ done: stage.at }"><span class="timeline-dot" aria-hidden="true"></span><span>{{ stage.name }}</span><time>{{ time(stage.at) }}</time></li></ol>
           <p class="hint">未发生的阶段不代表失败；无变化检查可能无需重新发布。</p>

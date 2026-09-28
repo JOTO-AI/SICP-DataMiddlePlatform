@@ -20,15 +20,25 @@ func (r Repository) Admit(ctx context.Context, request Request) (Acceptance, err
 	if request.PredecessorID != nil {
 		return Acceptance{}, ErrEntity
 	}
-	return r.admit(ctx, request, false)
+	return r.admit(ctx, request, false, false)
+}
+
+// Bootstrap admits the first task only in a pristine control database. The
+// execution lock serializes this check with every admission and publication.
+// A failed first task requires an explicit rerun; it must not loop each second.
+func (r Repository) Bootstrap(ctx context.Context, request Request) (Acceptance, error) {
+	if request.Mode != "initialize" || request.RequestedBy != "scheduler" || request.PredecessorID != nil {
+		return Acceptance{}, ErrEntity
+	}
+	return r.admit(ctx, request, false, true)
 }
 func (r Repository) RerunTask(ctx context.Context, request Request) (Acceptance, error) {
 	if request.PredecessorID == nil || strings.TrimSpace(*request.PredecessorID) == "" || len(*request.PredecessorID) > 64 || *request.PredecessorID == request.ID || request.Mode != "" {
 		return Acceptance{}, ErrEntity
 	}
-	return r.admit(ctx, request, true)
+	return r.admit(ctx, request, true, false)
 }
-func (r Repository) admit(ctx context.Context, request Request, rerun bool) (Acceptance, error) {
+func (r Repository) admit(ctx context.Context, request Request, rerun, bootstrap bool) (Acceptance, error) {
 	if strings.TrimSpace(request.ID) == "" || len(request.ID) > 64 || strings.TrimSpace(request.IdempotencyKey) == "" || len(request.IdempotencyKey) > 128 || strings.TrimSpace(request.RequestedBy) == "" || request.AcceptedAt.IsZero() || (!rerun && request.Mode != "initialize" && request.Mode != "incremental" && request.Mode != "force_full") {
 		return Acceptance{}, ErrEntity
 	}
@@ -37,6 +47,21 @@ func (r Repository) admit(ctx context.Context, request Request, rerun bool) (Acc
 		owner, err := readExecution(ctx, tx)
 		if err != nil {
 			return err
+		}
+		if bootstrap {
+			var pristine bool
+			if err = tx.QueryRow(ctx, `SELECT
+ NOT EXISTS (SELECT 1 FROM control.tasks)
+ AND NOT EXISTS (SELECT 1 FROM control.bundles)
+ AND NOT EXISTS (SELECT 1 FROM control.publication_outbox)
+ AND NOT EXISTS (SELECT 1 FROM control.source_progress)
+ AND (SELECT count(*) FROM control.slots WHERE state='empty' AND generation=0 AND bundle_id IS NULL AND NOT admission_open)=4
+ AND EXISTS (SELECT 1 FROM control.schedule WHERE singleton=TRUE AND revision=0 AND last_started_at IS NULL AND next_due_at IS NULL AND cooldown_until IS NULL AND NOT deferred)`).Scan(&pristine); err != nil {
+				return err
+			}
+			if !pristine || owner.TaskID != "" || owner.Generation != 0 {
+				return nil
+			}
 		}
 		if rerun {
 			old, err := existingTask(ctx, tx, *request.PredecessorID)

@@ -162,7 +162,7 @@ def main(directory):
         "DATABASE_S1_URL", "DATABASE_CONTROL_URL", "DATABASE_LOG_URL",
         "DATABASE_USER", "DATABASE_PASSWORD", "DATABASE_LOG_USER", "DATABASE_LOG_PASSWORD",
     }
-    assert set(render(env_file, tools=True)["services"]["ctl"]["environment"]) == {"MANAGEMENT_URL", "ADMIN_USERNAME", "ADMIN_PASSWORD"}
+    assert "ctl" not in render(env_file, tools=True)["services"]
     for name, cluster in (("db-m", "M"), ("db-s", "S"), ("db-log", "log")):
         assert services[name]["environment"]["SICP_CLUSTER"] == cluster
         assert services[name]["environment"]["POSTGRES_USER"] == "postgres"

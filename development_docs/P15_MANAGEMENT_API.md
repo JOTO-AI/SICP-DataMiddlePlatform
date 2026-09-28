@@ -10,22 +10,23 @@
 
 | 方法与路径 | 权限 |
 |---|---|
-| POST /admin/v1/tasks/initialize | initialize |
-| POST /admin/v1/tasks/sync | sync |
+| GET /admin/v1/tasks/ | 已登录，只读最近任务与调度状态 |
 | POST /admin/v1/tasks/force-full | force_full |
 | POST /admin/v1/tasks/{task_id}/rerun | rerun |
 | GET /admin/v1/tasks/{task_id} | status |
 
 缺失、错误、过期或重复会话 Cookie 返回 401；缺失或错误的防跨站请求凭据返回 403。认证通过后操作者取配置中的管理员账号，请求正文、查询参数和 X-Operator 均不能指定审计身份。响应禁止缓存，错误正文只包含固定 code/message，不回显秘密。
 
-初始化、手动同步及强制全量提交必须带唯一 `Idempotency-Key`（1—128 个无空白/逗号的可见 ASCII 字符）；正文为空或 `{}`，其他字段拒绝。相同操作者/模式/幂等键重试返回原任务；不能用相同键执行不同动作或查询另一操作者的任务。
+强制全量提交必须带唯一 `Idempotency-Key`（1—128 个无空白/逗号的可见 ASCII 字符）；正文为空或 `{}`，其他字段拒绝。相同操作者/模式/幂等键重试返回原任务；不能用相同键执行不同动作或查询另一操作者的任务。
 
 事务提交后返回 HTTP 202，data 含 `task_id`、持久 `status`、`accepted_at`、`created`，Location 指向状态接口。`accepted` 仅表示已持久受理，尚未设置 `started_at`；工作进程使用自己的生命周期开始执行，客户端断连不会取消已提交任务。重复请求可能返回原任务当前 running/终态。
 
-已有执行/待恢复任务/未决发布返回 409 `busy`；首次没有完整数据时同步或强制全量返回 409 `initialize_required`，提示初始化；已有完整数据时初始化返回 `already_initialized`。幂等参数冲突为 `idempotency_conflict`，提交未确认返回 503 `unavailable`，可携相同键重试。
+已有执行/待恢复任务/未决发布返回 409 `busy`；首次没有完整数据时强制全量返回 409 `initialize_required`，提示查看自动初始化进度。幂等参数冲突为 `idempotency_conflict`，提交未确认返回 503 `unavailable`，可携相同键重试。
 
 状态返回 task_id、mode、status、operator、predecessor_id，以及独立的 accepted_at、started_at、ready_at、published_at、checked_at、finished_at；未知时间显式为 null。progress_confirmed 仅在任务完成成功进度事务后为 true，confirmed_until 来自该任务自身的不可变十四类进度检查点，不读取后续任务已推进的全局进度。counts 只输出经过校验的 SourceCounts/CopyCounts；failure 只输出固定失败码。不返回原始摘要、幂等键、执行者或源数据。
 
 失败任务重跑使用相同的空正文和 Idempotency-Key 规则；模式由服务器从旧任务读取，新建任务并保留 predecessor_id，旧历史包括未知结束时间均不改写。不存在返回 404 not_found，非失败任务返回 409 not_failed；旧执行仍未释放或存在其他未决工作时返回 busy。同一重跑键返回原先受理的新任务。
 
-`sicpctl admin` 使用相同账号登录、携带会话提交请求，结束时退出登录；不再使用 MANAGEMENT_TOKEN。
+初始化和增量同步仅由 worker 内部调度，原 POST initialize/sync 路由已删除，不提供兼容入口。`GET /admin/v1/tasks/` 返回 `items`（按受理时间倒序，最多 50 条，仅含 task_id/mode/status/operator/accepted_at）、`initialized`、`next_due_at`、`cooldown_until` 和 `interval_seconds`（7200）。下一次时间是计划时间，执行、恢复及冷却会推迟实际开始。初始化失败后可通过失败重跑恢复。
+
+完整设计见 [自动运行与 ctl 移除方案](AUTOMATION_AND_CTL_REMOVAL.md)。

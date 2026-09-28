@@ -45,9 +45,9 @@ func TestSessionLoginAuthorizationLogoutAndExpiry(t *testing.T) {
 		t.Fatal("HTTPS cookie not secure")
 	}
 	calls := 0
-	h, err := s.Protect(Initialize, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h, err := s.Protect(ForceFull, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		operator, action, ok := Identity(r.Context())
-		if !ok || operator != "admin" || action != Initialize {
+		if !ok || operator != "admin" || action != ForceFull {
 			t.Error("missing audit identity")
 		}
 		calls++

@@ -14,15 +14,13 @@ import (
 type Action string
 
 const (
-	Initialize Action = "initialize"
-	Sync       Action = "sync"
-	ForceFull  Action = "force_full"
-	Rerun      Action = "rerun"
-	Status     Action = "status"
+	ForceFull Action = "force_full"
+	Rerun     Action = "rerun"
+	Status    Action = "status"
 )
 
 func validAction(a Action) bool {
-	return a == Initialize || a == Sync || a == ForceFull || a == Rerun || a == Status
+	return a == ForceFull || a == Rerun || a == Status
 }
 
 type Credential struct {

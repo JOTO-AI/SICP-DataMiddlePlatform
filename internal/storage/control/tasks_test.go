@@ -147,6 +147,9 @@ func (x *taskTx) Exec(_ context.Context, sql string, args ...any) (int64, error)
 }
 func (x *taskTx) QueryRow(_ context.Context, sql string, args ...any) storage.Row {
 	x.db.calls = append(x.db.calls, dbCall{sql, args})
+	if strings.Contains(sql, "NOT EXISTS (SELECT 1 FROM control.tasks)") {
+		return result{raw: []any{len(x.records) == 0 && !x.db.initialized && !x.db.pending && x.revision == 0 && x.lastStarted == nil && x.nextDue == nil && x.db.cooldown == nil}, fail: x.db.failRead}
+	}
 	if strings.HasPrefix(sql, "SELECT revision,last_started_at") {
 		value := func(at *time.Time) any {
 			if at == nil {

@@ -6,9 +6,9 @@ export class ApiError extends Error {
 }
 const messages: Record<string, string> = {
   unauthenticated: '登录已过期，请重新登录。', forbidden: '当前请求未获授权，请刷新页面后重试。',
-  not_ready: '服务尚未就绪，请检查运行状态或完成初始化。', conflict: '查询快照已失效，请重新查询。',
-  busy: '已有更新或恢复任务正在执行。', initialize_required: '请先执行首次初始化。',
-  already_initialized: '数据已初始化，请使用增量或强制全量更新。', not_failed: '只有失败任务可以重跑。',
+  not_ready: '服务尚未就绪，请查看运行状态和自动初始化进度。', conflict: '查询快照已失效，请重新查询。',
+  busy: '已有更新或恢复任务正在执行。', initialize_required: '自动初始化尚未完成，请查看任务记录。',
+  already_initialized: '数据已初始化。', not_failed: '只有失败任务可以重跑。',
   idempotency_conflict: '此幂等键已用于其他请求，请核对操作。', invalid_argument: '请求参数不符合接口约定。',
   resource_exhausted: '查询超过资源限制，请缩小查询范围。', unavailable: '管理服务暂不可用，受理结果可能未确认。',
   not_found: '未找到该任务。', deadline_exceeded: '查询超时，请缩小范围后重试。',

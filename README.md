@@ -18,17 +18,15 @@ Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执�
 
 上游认证填写 `SOURCE_APP_ID` 和 `SOURCE_APP_SECRET`（上游开发者首页获取），无需填写临时 `SOURCE_TOKEN`。worker 自动获取 Token；响应带有效 `expires_in`（秒）时在到期前更新，否则每次分页前获取。HTTP 或业务码 401/403 时重新获取并重试当前页一次。已有 `.env` 请将 `SOURCE_TOKEN` 替换为这两个应用凭据。
 
-使用 `.env` 中的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 登录控制台，通过“更新任务 → 首次初始化”从真实上游导入数据，并查看任务完成状态。控制台无需填写业务密钥或管理令牌。也可使用命令：
+worker 会自动初始化全新环境，之后每两小时自动调度增量同步。使用 `.env` 中的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 登录控制台，在“更新任务”查看记录与进度；人工维护仅保留强制全量和失败重跑。控制台无需填写业务密钥或管理令牌。容器状态和日志可通过以下命令查看：
 
 ```sh
-docker compose run --rm --no-deps ctl initialize initialization-001
-docker compose run --rm --no-deps ctl status <返回的任务ID>
 docker compose ps
 docker compose logs -f query worker
 docker compose down
 ```
 
-`up` 只部署，不自动提交数据初始化任务；首次初始化完成前 query `/readyz` 未就绪属于预期，Compose 使用 `/livez` 检查应用是否启动。`down` 保留命名卷，再次执行启动命令可复用数据。默认项目名为 `sicp-production`；开发模式为 `sicp-development`，两者使用不同数据卷。已有部署升级前先停应用并备份，详见[部署说明](deploy/README.md)。
+`up` 启动后会自动初始化全新环境；完成前 query `/readyz` 未就绪属于预期，Compose 使用 `/livez` 检查应用是否启动。`down` 保留命名卷，再次执行启动命令可复用数据。默认项目名为 `sicp-production`；开发模式为 `sicp-development`，两者使用不同数据卷。已有部署升级前先停应用并备份，详见[部署说明](deploy/README.md)。
 
 所有服务（包括 console）定义在根目录唯一的 `compose.yaml` 中，统一配置模板为根目录 `.env.example`，实际部署只编辑 `.env`。Compose 按服务传入各自需要的变量。旧的 `deploy/runtime/*.env` 不再读取，升级前请将自定义值迁入 `.env`；数据库端点使用共享的 `DATABASE_*_URL`（不含账号密码），四个账号密码各配置一次，服务自动复用。默认仅监听本机，外部入口可另行配置反向代理和 HTTPS。
 
@@ -44,12 +42,12 @@ Linux / Bash 脚本用于同一套 Compose 的分步运维，`deploy` 同样包�
 
 ```bash
 ./scripts/sicp.sh deploy
-./scripts/sicp.sh initialize initialization-001
-./scripts/sicp.sh task <返回的任务ID>
 ./scripts/sicp.sh status
 ```
 
-`deploy` 准备配置、构建镜像、创建持久卷、迁移数据库并启动服务；数据初始化通过管理入口显式受理，使用 task 命令确认最终完成。默认 query、worker 分别向宿主机 `127.0.0.1:18080`、`127.0.0.1:18081` 提供 HTTP 服务。PG 和 Redis 仅连接内部网络；正式模式的 worker 使用配置的真实上游，邮件通知按需配置 SMTP；六个 `MAIL_*` 参数全部留空时关闭。Mock 仅在开发模式启用。
+`deploy` 准备配置、构建镜像、创建持久卷、迁移数据库并启动服务；数据初始化和同步由后台自动执行，前端提供运行记录与维护入口。默认 query、worker 分别向宿主机 `127.0.0.1:18080`、`127.0.0.1:18081` 提供 HTTP 服务。PG 和 Redis 仅连接内部网络；正式模式的 worker 使用配置的真实上游，邮件通知按需配置 SMTP；六个 `MAIL_*` 参数全部留空时关闭。Mock 仅在开发模式启用。
+
+完整职责划分、失败处理及验收方案见[自动运行与 ctl 移除方案](development_docs/AUTOMATION_AND_CTL_REMOVAL.md)。
 
 `prepare` 仅在根目录 `.env` 不存在时复制 `.env.example`，保留已有配置。`.env` 被 Git 忽略，由 Compose 解析，不要作为 Shell 脚本执行。
 

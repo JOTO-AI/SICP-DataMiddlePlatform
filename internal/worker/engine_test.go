@@ -34,6 +34,13 @@ func (w *world) Claim(context.Context, string) (control.Ownership, error) {
 	o.Generation++
 	return o, w.claimError
 }
+func (w *world) Bootstrap(_ context.Context, r control.Request) (control.Acceptance, error) {
+	w.trace = append(w.trace, "bootstrap")
+	if r.Mode != "initialize" || r.RequestedBy != "scheduler" || r.IdempotencyKey != "system-initialize-v1" {
+		return control.Acceptance{}, errors.New("incorrect bootstrap request")
+	}
+	return control.Acceptance{}, nil
+}
 func (w *world) CurrentSchedule(context.Context) (control.Schedule, error) {
 	w.trace = append(w.trace, "schedule")
 	return w.schedule, nil
@@ -141,6 +148,9 @@ func TestT15_10OnlyIdleConfirmedEnvironmentCanDispatchDueTimer(t *testing.T) {
 			want := []string{"inspect"}
 			if scenario != "unresolved" {
 				want = append(want, "schedule")
+			}
+			if scenario == "uninitialized" {
+				want = append(want, "bootstrap")
 			}
 			if scenario == "due" {
 				want = append(want, "dispatch", "work")

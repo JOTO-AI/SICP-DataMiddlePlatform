@@ -28,6 +28,7 @@ test('expired session returns to login and removes protected pages', async ({ pa
 
 async function setup(page: Page) {
   await mockAuth(page)
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { items: [], initialized: true, interval_seconds: 7200 } } }))
   await page.route('**/console-api/**/livez', route => route.fulfill({ json: { live: true } }))
   await page.route('**/console-api/**/readyz', route => route.fulfill({ status: 503, json: { ready: false, data_ready: false } }))
   await page.goto('./')
@@ -96,7 +97,7 @@ test('grade pagination preserves snapshot in both directions and clears on filte
 test('unknown admission retries original operation with the same idempotency key', async ({ page }) => {
   await setup(page)
   const keys: string[] = []
-  await page.route('**/admin/v1/tasks/sync', async route => {
+  await page.route('**/admin/v1/tasks/force-full', async route => {
     const headers = route.request().headers()
     expect(headers.authorization).toBeUndefined()
     expect(headers['x-sicp-csrf']).toBe('synthetic-csrf')
@@ -117,6 +118,22 @@ test('unknown admission retries original operation with the same idempotency key
   expect(keys).toHaveLength(2)
   expect(keys[1]).toBe(keys[0])
   await expect(page.getByRole('checkbox')).toBeDisabled()
+})
+
+test('automatic tasks are discoverable without initialization or sync controls', async ({ page }, testInfo) => {
+  await setup(page)
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, interval_seconds: 7200, items: [{ task_id: 'automatic-initial-task', mode: 'initialize', status: 'failed', operator: 'scheduler', accepted_at: '2026-09-28T10:00:00Z' }] } } }))
+  await page.route('**/admin/v1/tasks/automatic-initial-task', route => route.fulfill({ json: { code: 'ok', data: { task_id: 'automatic-initial-task', mode: 'initialize', status: 'failed', operator: 'scheduler', accepted_at: '2026-09-28T10:00:00Z', failure: 'acquisition_failed' } } }))
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await expect(page.getByRole('radio')).toHaveCount(2)
+  await expect(page.getByRole('radio', { name: /首次初始化|增量同步/ })).toHaveCount(0)
+  await page.getByRole('button', { name: /automatic-initial-task/ }).click()
+  await expect(page.getByText('失败原因：acquisition_failed')).toBeVisible()
+  await expect(page.getByText('系统调度', { exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('automatic-tasks-desktop.png'), fullPage: true })
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+  await page.screenshot({ path: testInfo.outputPath('automatic-tasks-mobile.png'), fullPage: true })
 })
 
 test('query failures display request ID and mobile pages fit viewport', async ({ page }, testInfo) => {

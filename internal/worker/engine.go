@@ -17,6 +17,7 @@ import (
 )
 
 type Store interface {
+	Bootstrap(context.Context, control.Request) (control.Acceptance, error)
 	CurrentSchedule(context.Context) (control.Schedule, error)
 	StartAccepted(context.Context, string, string, time.Time) (control.Launch, error)
 	Dispatch(context.Context, control.Request, string, time.Time, *int64) (control.Launch, error)
@@ -86,9 +87,17 @@ func (e *Engine) Cycle(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	e.ready.Store(true)
 	now := e.Clock.Now()
-	if state.Confirmed == nil || schedule.NextDueAt == nil || now.Before(*schedule.NextDueAt) || schedule.CooldownUntil != nil && now.Before(*schedule.CooldownUntil) {
+	if state.Confirmed == nil {
+		var id [16]byte
+		if _, err = io.ReadFull(e.Random, id[:]); err != nil {
+			return err
+		}
+		_, err = e.Store.Bootstrap(ctx, control.Request{ID: hex.EncodeToString(id[:]), IdempotencyKey: "system-initialize-v1", Mode: "initialize", RequestedBy: "scheduler", AcceptedAt: now})
+		return err
+	}
+	e.ready.Store(true)
+	if schedule.NextDueAt == nil || now.Before(*schedule.NextDueAt) || schedule.CooldownUntil != nil && now.Before(*schedule.CooldownUntil) {
 		return nil
 	}
 	var id [16]byte

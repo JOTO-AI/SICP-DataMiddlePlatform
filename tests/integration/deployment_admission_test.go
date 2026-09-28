@@ -57,8 +57,8 @@ func (d *deployment) acceptAndDisconnect(t *testing.T, action, key string) strin
 }
 
 func TestI06_02(t *testing.T) {
-	d := newDeployment(t, false)
-	for _, action := range []string{"initialize", "sync", "force-full", "00000000000000000000000000000000/rerun"} {
+	d := newDeployment(t, true)
+	for _, action := range []string{"force-full", "00000000000000000000000000000000/rerun"} {
 		status, _ := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/"+action, "synthetic-query-secret", "denied", "{}")
 		if status != 401 {
 			t.Fatal("business credential accepted as admin", action, status)
@@ -75,7 +75,7 @@ func TestI06_02(t *testing.T) {
 			t.Fatal("missing CSRF allowed mutation", action, response.StatusCode)
 		}
 	}
-	req, _ := http.NewRequestWithContext(d.ctx, "POST", d.workerURL+"/admin/v1/tasks/initialize", strings.NewReader("{}"))
+	req, _ := http.NewRequestWithContext(d.ctx, "POST", d.workerURL+"/admin/v1/tasks/force-full", strings.NewReader("{}"))
 	req.Header.Set("X-API-Key", "synthetic-query-secret")
 	req.Header.Set("Idempotency-Key", "query-header")
 	response, err := d.client.Do(req)
@@ -86,12 +86,12 @@ func TestI06_02(t *testing.T) {
 	if response.StatusCode != 401 {
 		t.Fatal("business header accepted for management")
 	}
-	if d.sql(t, "SELECT count(*) FROM control.tasks") != "0" {
+	if d.sql(t, "SELECT count(*) FROM control.tasks") != "1" {
 		t.Fatal("unauthorized task admitted")
 	}
 	id := d.initialize(t)
 	status, envelope := d.request(t, "GET", d.workerURL+"/admin/v1/tasks/"+id, managementSession, "", "")
-	if status != 200 || envelope["data"].(map[string]any)["operator"] != "synthetic-admin" {
+	if status != 200 || envelope["data"].(map[string]any)["operator"] != "scheduler" {
 		t.Fatal("status permission or recorded operator incorrect")
 	}
 }
@@ -127,9 +127,9 @@ func TestI06_04(t *testing.T) {
 	if d.sql(t, "SELECT count(*) FROM control.tasks WHERE idempotency_key='disconnected-client'") != "1" {
 		t.Fatal("task missing after disconnect")
 	}
-	var cli map[string]any
-	if err := json.Unmarshal([]byte(d.script(t, "task", id)), &cli); err != nil || cli["data"].(map[string]any)["status"] != "success_published" {
-		t.Fatal("Bash task tracking", err)
+	status, result := d.request(t, "GET", d.workerURL+"/admin/v1/tasks/", managementSession, "", "")
+	if status != 200 || len(result["data"].(map[string]any)["items"].([]any)) < 2 {
+		t.Fatal("console history missing tasks")
 	}
 }
 

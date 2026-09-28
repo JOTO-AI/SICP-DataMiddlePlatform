@@ -8,7 +8,7 @@ import (
 func Routes(auth interface {
 	Protect(Action, http.Handler) (http.Handler, error)
 }, handlers map[Action]http.Handler) (http.Handler, error) {
-	if len(handlers) != 5 {
+	if len(handlers) != 3 {
 		return nil, errors.New("all management actions must be configured")
 	}
 	mux := http.NewServeMux()
@@ -16,8 +16,6 @@ func Routes(auth interface {
 		action  Action
 		pattern string
 	}{
-		{Initialize, "POST /admin/v1/tasks/initialize"},
-		{Sync, "POST /admin/v1/tasks/sync"},
 		{ForceFull, "POST /admin/v1/tasks/force-full"},
 		{Rerun, "POST /admin/v1/tasks/{task_id}/rerun"},
 		{Status, "GET /admin/v1/tasks/{task_id}"},

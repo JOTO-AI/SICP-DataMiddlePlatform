@@ -47,7 +47,8 @@ func receipt(t *testing.T, w *httptest.ResponseRecorder) admin.Receipt {
 
 func TestT15_02And03HTTPAcceptanceAndLostReplyRetryReturnSameDurableTask(t *testing.T) {
 	r, d, req := taskRepository(t)
-	h := management(t, r, req.AcceptedAt, admin.Initialize)
+	d.initialized = true
+	h := management(t, r, req.AcceptedAt, admin.ForceFull)
 	first := httptest.NewRecorder()
 	h.ServeHTTP(first, managementRequest(t.Context()))
 	one := receipt(t, first)
@@ -73,10 +74,11 @@ func TestT15_02And03HTTPAcceptanceAndLostReplyRetryReturnSameDurableTask(t *test
 }
 
 func TestT15_04And05And13AcceptanceFailuresCreateNoTask(t *testing.T) {
-	for _, failure := range []string{"commit", "pending", "owner", "unfinished", "uninitialized-full", "uninitialized-sync", "initialized-init"} {
+	for _, failure := range []string{"commit", "pending", "owner", "unfinished", "uninitialized-full"} {
 		t.Run(failure, func(t *testing.T) {
 			r, d, req := taskRepository(t)
-			action := admin.Initialize
+			d.initialized = true
+			action := admin.ForceFull
 			expected := 409
 			before := 0
 			switch failure {
@@ -93,11 +95,7 @@ func TestT15_04And05And13AcceptanceFailuresCreateNoTask(t *testing.T) {
 				}
 				before = 1
 			case "uninitialized-full":
-				action = admin.ForceFull
-			case "uninitialized-sync":
-				action = admin.Sync
-			case "initialized-init":
-				d.initialized = true
+				d.initialized = false
 			}
 			h := management(t, r, req.AcceptedAt, action)
 			w := httptest.NewRecorder()
@@ -128,7 +126,8 @@ func TestT15_06ClientDisconnectAfterCommitDoesNotCancelPersistedWorkerTask(t *te
 	r, d, req := taskRepository(t)
 	client, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	h := management(t, canceledAdmission{r: r, cancel: cancel}, req.AcceptedAt, admin.Initialize)
+	d.initialized = true
+	h := management(t, canceledAdmission{r: r, cancel: cancel}, req.AcceptedAt, admin.ForceFull)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, managementRequest(client))
 	accepted := receipt(t, w)

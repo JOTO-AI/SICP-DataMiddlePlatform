@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/admin"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 )
 
@@ -100,9 +99,6 @@ func newDeployment(t *testing.T, initialize bool, workerValues ...map[string]str
 		t.Fatal("mock is not on a private bridge")
 	}
 	d.mockURL = "http://" + ip.String() + ":8090"
-	if got := d.sql(t, "SELECT count(*) FROM control.tasks"); got != "0" {
-		t.Fatal("empty volume already contains tasks", got)
-	}
 	if initialize {
 		d.initial = d.initialize(t)
 	}
@@ -216,15 +212,37 @@ func (d *deployment) submit(t *testing.T, action, key string) string {
 }
 func (d *deployment) initialize(t *testing.T) string {
 	t.Helper()
-	raw := d.script(t, "initialize", "initial")
-	var envelope struct {
-		Data admin.Receipt `json:"data"`
+	deadline := time.Now().Add(90 * time.Second)
+	for {
+		id := d.sql(t, "SELECT id FROM control.tasks WHERE idempotency_key='system-initialize-v1'")
+		if id != "" {
+			d.waitTask(t, id, "success_published")
+			return id
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("automatic initialization not created")
+		}
+		time.Sleep(200 * time.Millisecond)
 	}
-	if err := json.Unmarshal([]byte(raw), &envelope); err != nil || envelope.Data.TaskID == "" {
-		t.Fatal("Bash initialization receipt", err)
+}
+
+// Advance the persisted timer in the isolated test database. No public sync
+// endpoint exists; the production scheduler must observe and dispatch it.
+func (d *deployment) scheduledSync(t *testing.T) string {
+	t.Helper()
+	previous := d.sql(t, "SELECT id FROM control.tasks WHERE mode='incremental' ORDER BY accepted_at DESC LIMIT 1")
+	d.sql(t, "UPDATE control.schedule SET next_due_at=clock_timestamp(),revision=revision+1 WHERE singleton=TRUE")
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		id := d.sql(t, "SELECT id FROM control.tasks WHERE mode='incremental' AND requested_by='scheduler' ORDER BY accepted_at DESC LIMIT 1")
+		if id != "" && id != previous {
+			return id
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("timer did not dispatch")
+		}
+		time.Sleep(200 * time.Millisecond)
 	}
-	d.waitTask(t, envelope.Data.TaskID, "success_published")
-	return envelope.Data.TaskID
 }
 func (d *deployment) waitTask(t *testing.T, id, want string) map[string]any {
 	t.Helper()
@@ -320,18 +338,36 @@ func TestI06_01(t *testing.T) {
 }
 
 func TestI06_08(t *testing.T) {
-	d := newDeployment(t, false)
-	status, envelope := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/force-full", managementSession, "before-initialization", "{}")
-	if status != 409 || envelope["code"] != "initialize_required" {
-		t.Fatal("empty environment accepted force-full", status, envelope["code"])
-	}
-	for _, table := range []string{"tasks", "candidates", "bundles", "publication_outbox"} {
-		if d.sql(t, "SELECT count(*) FROM control."+table) != "0" {
-			t.Fatal("rejected force-full mutated", table)
+	d := newDeployment(t, true)
+	d.compose(t, "restart", "worker")
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		req, _ := http.NewRequestWithContext(d.ctx, "GET", d.workerURL+"/livez", nil)
+		response, err := d.client.Do(req)
+		if err == nil {
+			response.Body.Close()
+			if response.StatusCode == 200 {
+				break
+			}
 		}
+		if time.Now().After(deadline) {
+			t.Fatal("worker restart timed out")
+		}
+		time.Sleep(200 * time.Millisecond)
 	}
 	d.initialize(t)
-	if d.sql(t, "SELECT count(*) FROM control.tasks WHERE mode='initialize' AND status='success_published'") != "1" {
-		t.Fatal("explicit initialization failed")
+	if d.sql(t, "SELECT count(*) FROM control.tasks WHERE mode='initialize'") != "1" {
+		t.Fatal("restart duplicated bootstrap")
+	}
+	for _, action := range []string{"initialize", "sync"} {
+		req, _ := http.NewRequestWithContext(d.ctx, "POST", d.workerURL+"/admin/v1/tasks/"+action, strings.NewReader("{}"))
+		response, err := d.client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		if response.StatusCode != 404 && response.StatusCode != 405 {
+			t.Fatal("removed route available", action, response.StatusCode)
+		}
 	}
 }

@@ -27,7 +27,7 @@ Docker Compose 的统一配置模板位于根目录 `.env.example`，复制为 `
 | SOURCE_SCOPE、SOURCE_QUALITY | worker 必填；scope 为稳定源范围标识，最多 256 字节；quality 是十四个源表名对应的 JSON 对象，每项含 MinimumRows、MaximumDeletedRows、AllowEmpty，计数不可负，不提供隐式宽松策略 |
 | ADMIN_USERNAME、ADMIN_PASSWORD | worker 必填；单管理员账号，密码 12—1024 字节，不能与 QUERY_API_KEY 相同；账号用于任务操作者记录 |
 | CONSOLE_QUERY_URL | worker 必填；仅允许 http/https origin；Compose 固定为 http://query:8080，浏览器无法覆盖上游目标 |
-| CONSOLE_COOKIE_SECURE | 默认 false，适用于本机 HTTP；HTTPS 部署设为 true，命令行管理地址也必须使用 HTTPS |
+| CONSOLE_COOKIE_SECURE | 默认 false，适用于本机 HTTP；HTTPS 部署设为 true |
 | MAIL_ADDRESS、MAIL_TLS、MAIL_FROM、MAIL_TO | 邮件启用时必填；六个 MAIL_* 参数全空时关闭邮件，不创建客户端、发送任务或新通知；SMTP host:port、tls/starttls/none 和明确发件/收件地址；无默认外部目标 |
 | MAIL_USERNAME、MAIL_PASSWORD | 必须成对配置；none 不允许认证，production 不允许 none |
 
@@ -41,4 +41,4 @@ worker 仅在 Linux 运行，持有 spool 卷内 `.worker.lock` 的进程锁；�
 
 SIGTERM/SIGINT 停止 HTTP 准入及后台新任务，HTTP → application → runtime 按逆序使用同一份 SHUTDOWN_TIMEOUT 总预算。超时返回非零退出及 incomplete 资源状态；保留控制事实与未确认日志文件，不自动删 reader/owner、不伪造结束时间。容器 stop_grace_period 必须大于该预算，入口直接 exec Go 服务。不得依据容器退出耗时推断实际 SQL 已结束，重启仍执行数据库侧证明。
 
-`/readyz` 分别返回 `query_ready`、`sync_ready`、`dependencies_ready`。查询就绪要求 Redis 与已确认控制元数据完整一致、当前代次可读、查询角色能连接活动业务库并读取十四表；worker 同步就绪要求启动恢复完成、依赖可用且没有正在恢复/执行的任务。空环境可同步初始化但不能查询。候选校验使用 `SET LOCAL ROLE sicp_query`，需应用 business_002/control_006 迁移；不能使用 worker 写权限代替查询权限。
+`/readyz` 分别返回 `query_ready`、`sync_ready`、`dependencies_ready`。查询就绪要求 Redis 与已确认控制元数据完整一致、当前代次可读、查询角色能连接活动业务库并读取十四表；worker 同步就绪要求启动恢复完成、依赖可用且没有正在恢复/执行的任务。全新环境自动初始化，完成前同步和查询均未就绪。候选校验使用 `SET LOCAL ROLE sicp_query`，需应用 business_002/control_006 迁移；不能使用 worker 写权限代替查询权限。

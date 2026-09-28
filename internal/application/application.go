@@ -102,7 +102,7 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 			return nil, e
 		}
 		admission := admin.Admission{Store: r.Control, Clock: clock, Random: rand.Reader}
-		a.Management, e = admin.Routes(auth, map[admin.Action]http.Handler{admin.Initialize: admission, admin.Sync: admission, admin.ForceFull: admission, admin.Rerun: admission, admin.Status: admin.StatusHandler{Store: r.Control}})
+		a.Management, e = admin.Routes(auth, map[admin.Action]http.Handler{admin.ForceFull: admission, admin.Rerun: admission, admin.Status: admin.StatusHandler{Store: r.Control}})
 		if e != nil {
 			return nil, e
 		}
@@ -112,6 +112,7 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 		}
 		console := http.NewServeMux()
 		console.Handle("/admin/", a.Management)
+		console.Handle("GET /admin/v1/tasks/{$}", auth.Require(admin.TaskListHandler{Store: r.Control}))
 		console.HandleFunc("POST /console-api/login", auth.Login)
 		console.HandleFunc("GET /console-api/session", auth.Current)
 		console.HandleFunc("POST /console-api/logout", auth.Logout)

@@ -28,7 +28,7 @@ func TestT15_01InvalidOrBusinessCredentialsNeverReachManagement(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			calls := 0
 			next := http.HandlerFunc(func(http.ResponseWriter, *http.Request) { calls++ })
-			h, err := administrator(t, admin.Initialize).Protect(admin.Initialize, next)
+			h, err := administrator(t, admin.ForceFull).Protect(admin.ForceFull, next)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -47,7 +47,7 @@ func TestT15_01And02EachRouteRequiresItsOwnPermissionAndTrustedOperator(t *testi
 	routes := []struct {
 		action       admin.Action
 		method, path string
-	}{{admin.Initialize, "POST", "/admin/v1/tasks/initialize"}, {admin.Sync, "POST", "/admin/v1/tasks/sync"}, {admin.ForceFull, "POST", "/admin/v1/tasks/force-full"}, {admin.Rerun, "POST", "/admin/v1/tasks/failed-task/rerun"}, {admin.Status, "GET", "/admin/v1/tasks/task-123"}}
+	}{{admin.ForceFull, "POST", "/admin/v1/tasks/force-full"}, {admin.Rerun, "POST", "/admin/v1/tasks/failed-task/rerun"}, {admin.Status, "GET", "/admin/v1/tasks/task-123"}}
 	for _, allowed := range routes {
 		t.Run(string(allowed.action), func(t *testing.T) {
 			calls := 0

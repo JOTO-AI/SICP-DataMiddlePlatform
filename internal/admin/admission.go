@@ -61,7 +61,7 @@ func emptyBody(w http.ResponseWriter, r *http.Request) bool {
 }
 func (a Admission) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	operator, action, ok := Identity(r.Context())
-	if !ok || (action != Initialize && action != Sync && action != ForceFull && action != Rerun) {
+	if !ok || (action != ForceFull && action != Rerun) {
 		respond(w, 403, "forbidden", "Action not permitted", nil)
 		return
 	}
@@ -85,9 +85,6 @@ func (a Admission) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	mode := string(action)
-	if action == Sync {
-		mode = "incremental"
-	}
 	request := control.Request{ID: hex.EncodeToString(random[:]), IdempotencyKey: key, Mode: mode, RequestedBy: operator, AcceptedAt: a.Clock.Now()}
 	var result control.Acceptance
 	if action == Rerun {
@@ -123,7 +120,7 @@ func writeAdmissionError(w http.ResponseWriter, err error) {
 	case errors.Is(err, control.ErrNotFailed):
 		respond(w, 409, "not_failed", "Only failed tasks can be rerun", nil)
 	case errors.Is(err, control.ErrInitializeRequired):
-		respond(w, 409, "initialize_required", "Use the initialization endpoint before requesting updates", nil)
+		respond(w, 409, "initialize_required", "Automatic initialization is not complete", nil)
 	case errors.Is(err, control.ErrAlreadyInitialized):
 		respond(w, 409, "already_initialized", "Complete data is already initialized", nil)
 	case errors.Is(err, control.ErrBusy):

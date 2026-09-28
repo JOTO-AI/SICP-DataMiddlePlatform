@@ -6,4 +6,4 @@ import (
 	"os"
 )
 
-func main() { os.Exit(service.Main(config.Worker)) }
+func main() { os.Exit(service.Entrypoint(config.Worker, os.Args[1:])) }

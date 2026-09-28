@@ -28,10 +28,7 @@ login() {
 curl --fail --silent --show-error "$console/console/" > /dev/null
 login
 curl --fail --silent --show-error -b "$cookies" "$console/console-api/query/livez"
-curl --fail --silent --show-error -b "$cookies" --retry 30 --retry-delay 2 "$console/console-api/worker/readyz"
-# A fresh deployment must not silently import source data.
-test "$(curl --silent -b "$cookies" --output /dev/null --write-out '%{http_code}' "$console/console-api/query/readyz")" = 503
-docker compose run --rm --no-deps ctl initialize compose-smoke-initialization
+# A fresh deployment imports source data automatically, without a management request.
 for ((attempt=0; attempt<120; attempt++)); do
   if curl --fail --silent -b "$cookies" "$console/console-api/query/readyz" > /dev/null; then
     break

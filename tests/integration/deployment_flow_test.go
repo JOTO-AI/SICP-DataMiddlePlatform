@@ -134,13 +134,13 @@ func TestI06_06(t *testing.T) {
 	}
 	stamp := time.Now().Add(-time.Second).In(zone).Format("2006-01-02 15:04:05.000000")
 	d.mockPatch(t, fmt.Sprintf(`{"snapshot":"updated","stamp":"%s"}`, stamp))
-	changed := d.submit(t, "sync", "flow-changed")
+	changed := d.scheduledSync(t)
 	d.waitTask(t, changed, "success_published")
 	active := d.assertFlowState(t, changed, changed, storage.Main, 88.5, 13, false)
 	if d.progress(t) == initialProgress {
 		t.Fatal("changed flow failed to advance progress")
 	}
-	unchanged := d.submit(t, "sync", "flow-unchanged")
+	unchanged := d.scheduledSync(t)
 	result := d.waitTask(t, unchanged, "success_unchanged")
 	if result["published_at"] != nil || result["checked_at"] == nil || d.assertFlowState(t, unchanged, changed, storage.Main, 88.5, 13, false) != active {
 		t.Fatal("unchanged flow republished or moved")

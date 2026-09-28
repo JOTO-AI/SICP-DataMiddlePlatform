@@ -20,16 +20,14 @@ Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执�
 | 查询 API | http://127.0.0.1:18080 |
 | 管理 API | http://127.0.0.1:18081 |
 
-控制台使用 `.env` 中的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 登录，不提供默认密码。业务密钥保留在服务端；前端无需填写 API Key 或管理 Token。原有部署需删除 `MANAGEMENT_CREDENTIALS`、`MANAGEMENT_TOKEN` 并填写新的账号密码。会话有效 8 小时，worker 重启后需重新登录。HTTPS 入口设 `CONSOLE_COOKIE_SECURE=true`；此时命令行 `MANAGEMENT_URL` 也应使用同一 HTTPS 网关地址。通过“更新任务 → 首次初始化”从当前环境的数据源建立数据，或执行：
+控制台使用 `.env` 中的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 登录，不提供默认密码。业务密钥保留在服务端；前端无需填写 API Key 或管理 Token。原有部署需删除 `MANAGEMENT_CREDENTIALS`、`MANAGEMENT_TOKEN` 并填写新的账号密码。会话有效 8 小时，worker 重启后需重新登录。HTTPS 入口设 `CONSOLE_COOKIE_SECURE=true`。全新环境由 worker 自动初始化，之后每两小时自动调度增量同步。在“更新任务”查看记录，仅强制全量和失败重跑需要人工操作。
 
 ```sh
-docker compose run --rm --no-deps ctl initialize initialization-001
-docker compose run --rm --no-deps ctl status <返回的任务ID>
 docker compose logs -f query worker
 docker compose down
 ```
 
-首次数据初始化仍需明确提交，`up --wait` 只等待应用存活，不代表已经发布可查询的数据。`volumes` 和 `migrate` 是一次性任务，成功后显示 `Exited (0)` 属于正常状态。`down` 保留全部持久卷；重新执行启动命令可复用数据，不要加 `--volumes`，除非确实要销毁数据。
+首次数据初始化自动执行，`up --wait` 只等待应用存活，不代表已经发布可查询的数据。`volumes` 和 `migrate` 是一次性任务，成功后显示 `Exited (0)` 属于正常状态。`down` 保留全部持久卷；重新执行启动命令可复用数据，不要加 `--volumes`，除非确实要销毁数据。
 
 统一配置模板为根目录 `.env.example`，实际部署只维护根目录 `.env`。六个 `DATABASE_*_URL` 只配置共享端点和库名，不含账号密码；`POSTGRES_PASSWORD`、`QUERY_PASSWORD`、`WORKER_PASSWORD`、`LOGGER_PASSWORD` 各填写一次。Compose 按服务分配账号与密码，进程自动编码特殊字符并构造完整连接串；query 不会获得 worker 或迁移账号密码。已有 PG 卷不会因修改环境变量而自动修改角色密码，轮换时仍需先在数据库内修改，再更新 `.env`。
 
@@ -67,30 +65,23 @@ SICP_PROJECT=sicp-${ENVIRONMENT}
 
 ```bash
 ./scripts/sicp.sh deploy
-# deploy 不获取源数据。无完整组合时 query ready=false 是预期行为。
-./scripts/sicp.sh initialize initialization-001
-./scripts/sicp.sh task <返回的任务ID>
 ./scripts/sicp.sh status
 ```
 
-`deploy` 依次 prepare → build → validate → infra → migrate → start。也可逐项执行；迁移在服务首次启动前运行，重复迁移校验原版本与 checksum，不修改已应用脚本。数据库角色与空数据库由 `init-postgres.sh` 在空 PG 卷第一次启动时创建，后续结构更新由 `sicpctl migrate` 完成。升级先停应用，备份全部卷，构建、校验、迁移，再启动应用；不删除旧迁移记录。
+`deploy` 依次 prepare → build → validate → infra → migrate → start。也可逐项执行；迁移在服务首次启动前运行，重复迁移校验原版本与 checksum，不修改已应用脚本。数据库角色与空数据库由 `init-postgres.sh` 在空 PG 卷第一次启动时创建，后续结构更新由 一次性 `db-migrate` 部署任务 完成。升级先停应用，备份全部卷，构建、校验、迁移，再启动应用；不删除旧迁移记录。
 
 `prepare` 只在根目录 `.env` 缺失时复制 `.env.example`，生成文件权限受 umask 077 约束；已有 `.env` 保持不变。`.env` 被 Git 和镜像构建上下文排除。文件使用 Compose dotenv 语法，不作为 Shell 脚本执行；包含字面量 `$` 或 `#` 的值使用单引号，JSON 保持单行。参数列表详见 [运行配置](../development_docs/P15_RUNTIME_CONFIGURATION.md)。
 
-部署凭据由操作者填写。query 使用 sicp_query，worker 使用 sicp_worker，日志使用 sicp_logger；配置文件统一管理凭据，但迁移账号只传给 migrate，管理 token 只传给 ctl 和 worker。查询与管理服务同时连接内部依赖网络和入口网络，仅向宿主机的 127.0.0.1 发布 18080、18081。数据库、Redis 和开发模式的 Mock 仅连接 internal 网络，不发布宿主端口，可通过 `docker compose exec` 在对应容器内排查。仅开发模式的 Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
+部署凭据由操作者填写。query 使用 sicp_query，worker 使用 sicp_worker，日志使用 sicp_logger；配置文件统一管理凭据，但迁移账号只传给 migrate，管理员账号密码只传给 worker。查询与管理服务同时连接内部依赖网络和入口网络，仅向宿主机的 127.0.0.1 发布 18080、18081。数据库、Redis 和开发模式的 Mock 仅连接 internal 网络，不发布宿主端口，可通过 `docker compose exec` 在对应容器内排查。仅开发模式的 Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
 
 ```bash
-./scripts/sicp.sh sync round-002
-./scripts/sicp.sh force-full full-003
-./scripts/sicp.sh rerun retry-004 <失败任务ID>
-./scripts/sicp.sh task <任务ID>
 ./scripts/sicp.sh stop
 ./scripts/sicp.sh start
 ./scripts/sicp.sh restart
 ./scripts/sicp.sh down     # 保留所有命名卷
 ```
 
-幂等键由操作者为一次动作确定，丢失响应时使用同一个键重试。受理成功仅表示任务持久存在，不表示构建/发布成功。首次强制全量明确要求先初始化；失败重跑新建关联任务，旧历史不变。定时任务按实际 started_at 修订为下一次两小时后，持久冷却未结束时不会提前调用源。
+幂等键由操作者为一次动作确定，丢失响应时使用同一个键重试。受理成功仅表示任务持久存在，不表示构建/发布成功。强制全量要求自动初始化已完成；失败重跑新建关联任务，旧历史不变。定时任务按实际 started_at 修订为下一次两小时后，持久冷却未结束时不会提前调用源。
 
 卷初始化工具只设置各挂载根目录的 UID/GID 与 0700，不递归改写已有文件。query/worker 日志各自隔离；worker 的 staging、完整 targets 与 spool 分卷，全部需要可写、fsync 和配置容量。不要共享两服务日志目录，不要删除 `.worker.lock` 或启动挂载不同 spool 卷的第二个 worker。实际数据库 SQL 未确认结束时，不得人工清空 owner/readers 来强行接管。
 
@@ -100,4 +91,4 @@ SICP_PROJECT=sicp-${ENVIRONMENT}
 
 自定义本机项目/端口可显式设置 `SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`。脚本不提供自动删卷命令；销毁仅限操作者已核对的独立测试项目。
 
-GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 语法和镜像构建，再串行执行 I01—I06。I06 从同一 job 的干净 checkout 构建镜像，每个编号独立创建项目与空卷，通过 Bash 脚本迁移、启动及受控初始化；实际通过项见开发计划和 verification/I06.md。集成 JSON 结果及容器日志保存在 linux-integration-evidence artifact。
+GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 语法和镜像构建，再串行执行 I01—I06。I06 从同一 job 的干净 checkout 构建镜像，每个编号独立创建项目与空卷，通过 Bash 脚本迁移、启动并等待自动初始化；定时同步测试在隔离数据库推进计划时间。历史验收记录见 verification/I06.md，本次行为变更需以新一轮 CI 结果为准。集成 JSON 结果及容器日志保存在 linux-integration-evidence artifact。

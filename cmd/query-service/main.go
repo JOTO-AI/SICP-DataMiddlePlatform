@@ -6,4 +6,4 @@ import (
 	"os"
 )
 
-func main() { os.Exit(service.Main(config.Query)) }
+func main() { os.Exit(service.Entrypoint(config.Query, os.Args[1:])) }

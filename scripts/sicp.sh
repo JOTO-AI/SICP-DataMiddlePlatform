@@ -12,8 +12,8 @@ case "$operation" in
     ;;
   validate)
     "${compose[@]}" config --quiet
-    "${compose[@]}" run --rm --no-deps --entrypoint /usr/local/bin/sicpctl query validate query-service
-    "${compose[@]}" run --rm --no-deps worker /usr/local/bin/sicpctl validate sync-worker
+    "${compose[@]}" run --rm --no-deps --entrypoint /usr/local/bin/service query --check-config
+    "${compose[@]}" run --rm --no-deps worker /usr/local/bin/service --check-config
     ;;
   build)
     "${compose[@]}" build
@@ -35,20 +35,11 @@ case "$operation" in
     "$0" migrate
     "$0" start
     ;;
-  initialize|sync|force-full|rerun)
-    [[ $# -ge 1 ]] || { printf '%s\n' 'Supply a stable idempotency key; rerun also needs the old task ID.' >&2; exit 1; }
-    "${compose[@]}" run --rm --no-deps ctl "$operation" "$@"
-    ;;
-  task) [[ $# == 1 ]] || exit 1; "${compose[@]}" run --rm --no-deps ctl status "$1" ;;
   status)
     "${compose[@]}" ps
-    for service in query worker; do
-      port=8080; if [[ "$service" == worker ]]; then port=8081; fi
-      "${compose[@]}" exec -T "$service" /usr/local/bin/sicpctl health "http://127.0.0.1:$port/readyz" || true
-    done
     ;;
   stop) "${compose[@]}" stop ;;
   restart) "${compose[@]}" restart query worker ;;
   down) "${compose[@]}" down ;; # Volumes deliberately retained.
-  *) printf '%s\n' 'Usage: scripts/sicp.sh prepare|build|validate|infra|migrate|start|deploy|initialize KEY|sync KEY|force-full KEY|rerun KEY TASK|task TASK|status|stop|restart|down'; exit 2 ;;
+  *) printf '%s\n' 'Usage: scripts/sicp.sh prepare|build|validate|infra|migrate|start|deploy|status|stop|restart|down'; exit 2 ;;
 esac

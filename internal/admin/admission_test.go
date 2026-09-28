@@ -24,7 +24,7 @@ func TestT15_02MalformedAdmissionNeverReachesControlTransaction(t *testing.T) {
 		t.Run(body[:min(len(body), 20)], func(t *testing.T) {
 			spy := &admissionSpy{}
 			a := admin.Admission{Store: spy, Clock: testkit.FakeClock{Time: time.Now()}, Random: testkit.FixedRandom(1)}
-			h, err := administrator(t, admin.Initialize).Protect(admin.Initialize, a)
+			h, err := administrator(t, admin.ForceFull).Protect(admin.ForceFull, a)
 			if err != nil {
 				t.Fatal(err)
 			}
