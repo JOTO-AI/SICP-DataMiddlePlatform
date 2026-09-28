@@ -230,7 +230,10 @@ func TestI06_07(t *testing.T) {
 			}
 		}
 	}
-	for d.sql(t, fmt.Sprintf("SELECT count(*) FROM control.notification_outbox WHERE task_id='%s' AND status='sent'", id)) != "1" {
+	for d.sql(t, fmt.Sprintf(`SELECT count(*) FROM control.notification_outbox
+WHERE task_id='%s' AND status='accepted' AND sent_at IS NOT NULL AND attempts=1
+AND payload->'delivery'->'attempts'->0->>'result'='accepted'
+AND NOT (payload->'delivery' ? 'delivered_at')`, id)) != "1" {
 		if time.Now().After(deadline) {
 			t.Fatal("notification acknowledgement not persisted")
 		}
