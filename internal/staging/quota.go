@@ -46,6 +46,12 @@ func (q *QuotaFiles) List(ctx context.Context, prefix string) ([]string, error) 
 }
 func (q *QuotaFiles) Usage(ctx context.Context) (int64, error) { return q.files.Usage(ctx) }
 
+// RemoveRetired is for a caller holding committed control retirement and
+// exclusive worker ownership. It does not establish collection eligibility.
+func (q *QuotaFiles) RemoveRetired(ctx context.Context, name string) error {
+	return q.remove(ctx, name)
+}
+
 func (q *QuotaFiles) remove(ctx context.Context, name string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()

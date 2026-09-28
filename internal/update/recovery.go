@@ -31,6 +31,9 @@ type Recovery struct {
 	Store     RecoveryReader
 	Active    ActiveReader
 	Execution Termination
+	Restorer  interface {
+		Restore(context.Context, control.RecoveryState) error
+	}
 }
 
 // Claim repeats discovery and termination checks immediately before the
@@ -73,6 +76,24 @@ func (r Recovery) Inspect(ctx context.Context) (RecoveryDecision, error) {
 			return out, ErrRecoveryPending
 		}
 		out.Active = &actual
+	}
+	if !present && state.Confirmed != nil && r.Restorer != nil {
+		if state.Owner.TaskID != "" {
+			if state.Task == nil || state.Task.ID != state.Owner.TaskID {
+				return out, ErrRecoveryPending
+			}
+			stopped, err := r.Execution.Stopped(ctx, state.Owner)
+			if err != nil || !stopped {
+				return out, errors.Join(ErrRecoveryPending, err)
+			}
+		}
+		if err := r.Restorer.Restore(ctx, state); err != nil {
+			return out, errors.Join(ErrRecoveryPending, err)
+		}
+		// Always rediscover on the next cycle. Restoring a confirmed route does
+		// not authorize confirming, opening or running any pending candidate.
+		out.Action = "restored_confirmed"
+		return out, ErrRecoveryPending
 	}
 	if state.Pending != nil {
 		e := state.Pending

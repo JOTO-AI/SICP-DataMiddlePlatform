@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from mock_data.source import MockSource, TABLES, dumps
+from mock_data.source import ROOT, TABLES, dumps, read
 
 TOKEN = os.environ["MOCK_TOKEN"]
 CONTROL_TOKEN = os.environ["MOCK_CONTROL_TOKEN"]
@@ -21,6 +21,7 @@ LOCK = threading.Lock()
 STATE = {"snapshot": "initial", "stamp": None, "unknown_table": None,
          "fail_table": None, "fail_remaining": 0, "delay": 0, "mail_fail": False}
 REQUESTS = []
+DATA_LOADS = []
 
 
 def date(value):
@@ -54,7 +55,7 @@ class HTTP(BaseHTTPRequestHandler):
         path = urlsplit(self.path)
         if path.path == "/livez":
             return self.send(200, {"live": True})
-        if path.path in ("/test/requests", "/test/mail", "/test/state"):
+        if path.path in ("/test/requests", "/test/mail", "/test/state", "/test/audit"):
             if not self.controlled():
                 return self.send(403, {"error": "forbidden"})
             with LOCK:
@@ -62,6 +63,8 @@ class HTTP(BaseHTTPRequestHandler):
                     value = list(REQUESTS)
                 elif path.path == "/test/state":
                     value = dict(STATE)
+                elif path.path == "/test/audit":
+                    value = {"requests": list(REQUESTS), "data_loads": list(DATA_LOADS)}
                 else:
                     value = [{"id": p.stem, "body": p.read_text()} for p in sorted(MAIL.glob("*.eml"))]
             return self.send(200, value)
@@ -76,7 +79,7 @@ class HTTP(BaseHTTPRequestHandler):
             return self.send(400, {"error": "parameters"})
         with LOCK:
             state = dict(STATE)
-            REQUESTS.append({"table": table, "parameters": {k: v[0] for k, v in q.items() if k != "access_token"}, "snapshot": state["snapshot"]})
+            REQUESTS.append({"host": self.headers.get("Host", ""), "table": table, "parameters": {k: v[0] for k, v in q.items() if k != "access_token"}, "snapshot": state["snapshot"]})
             del REQUESTS[:-100000]
             fail = state["fail_table"] == table and state["fail_remaining"] > 0
             if fail:
@@ -89,7 +92,13 @@ class HTTP(BaseHTTPRequestHandler):
             page, size = int(q["page"][0]), int(q["pageSize"][0])
             if not 1 <= page <= 100000 or not 1 <= size <= 10000:
                 raise ValueError()
-            rows = MockSource(state["snapshot"]).rows(table)
+            source_path = (ROOT / "snapshots" / state["snapshot"] / f"{table}.json").resolve()
+            if not source_path.is_relative_to(ROOT.resolve()):
+                raise ValueError()
+            rows = read(source_path)
+            with LOCK:
+                DATA_LOADS.append(str(source_path))
+                del DATA_LOADS[:-100000]
             if state["stamp"]:
                 for row in rows:
                     row["ETL_TIME"] = state["stamp"]

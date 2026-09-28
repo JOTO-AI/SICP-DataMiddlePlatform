@@ -12,6 +12,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/coord"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -55,6 +56,10 @@ func OpenPostgres(ctx context.Context, r storage.Registry, timeout time.Duration
 		cfg.MaxConns = 16
 		cfg.MinConns = 0
 		cfg.ConnConfig.RuntimeParams["timezone"] = "UTC"
+		cfg.AfterConnect = func(_ context.Context, conn *pgx.Conn) error {
+			configureTimeCodecs(conn.TypeMap())
+			return nil
+		}
 		if len(process) == 1 {
 			cfg.ConnConfig.RuntimeParams["application_name"] = "sicp-" + process[0]
 		}
@@ -73,6 +78,14 @@ func OpenPostgres(ctx context.Context, r storage.Registry, timeout time.Duration
 		}
 	}
 	return p, nil
+}
+
+// Session timezone controls server rendering, not pgx's Go scan location.
+// Persisted JSON checkpoints use UTC; keep driver values in the same location
+// so immutable state comparisons survive SQL and JSON round trips.
+func configureTimeCodecs(types *pgtype.Map) {
+	types.RegisterType(&pgtype.Type{Name: "timestamptz", OID: pgtype.TimestamptzOID, Codec: &pgtype.TimestamptzCodec{ScanLocation: time.UTC}})
+	types.RegisterType(&pgtype.Type{Name: "timestamp", OID: pgtype.TimestampOID, Codec: &pgtype.TimestampCodec{ScanLocation: time.UTC}})
 }
 func (p *Postgres) Begin(ctx context.Context, c storage.Connection) (storage.Transaction, error) {
 	pool := p.pools[c]

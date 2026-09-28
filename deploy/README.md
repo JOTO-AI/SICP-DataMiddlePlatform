@@ -14,7 +14,7 @@
 
 `prepare` 只复制缺失的示例，保留已有 `deploy/runtime/*.env`，生成文件权限受 umask 077 约束。该目录被 Git 和镜像构建上下文排除。环境文件使用 raw `KEY=value`：不加外围引号，不写 export，不做变量替换，不执行 Shell。JSON 保持单行原文；路径、源地址、邮件收发目标、十四源质量策略均明确配置。参数列表详见 [运行配置](../development_docs/P15_RUNTIME_CONFIGURATION.md)。Compose 的 raw 文件格式见 [Docker 官方文档](https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/)；PG 空卷初始化行为见 [官方镜像说明](https://hub.docker.com/_/postgres)。
 
-示例凭据都是公开合成值，仅供隔离验收。query 使用 sicp_query，worker 使用 sicp_worker，日志使用 sicp_logger；迁移账号仅出现在独立 migrate 工具配置，管理 token 只在 admin 工具配置和 worker 中存在。数据库、Redis、查询、管理和 Mock 的宿主端口仅绑定 127.0.0.1，网络设为 internal，Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
+示例凭据都是公开合成值，仅供隔离验收。query 使用 sicp_query，worker 使用 sicp_worker，日志使用 sicp_logger；迁移账号仅出现在独立 migrate 工具配置，管理 token 只在 admin 工具配置和 worker 中存在。查询与管理服务同时连接内部依赖网络和入口网络，仅向宿主机的 127.0.0.1 发布 18080、18081。数据库、Redis 和 Mock 仅连接 internal 网络，不发布宿主端口，可通过 `docker compose exec` 在对应容器内排查。Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
 
 ```bash
 ./scripts/sicp.sh sync round-002
@@ -35,6 +35,6 @@
 
 生产部署须替换示例凭据、TLS、上游/邮箱、网络规则、持久存储和备份方案，并将 M/S/日志布置到满足故障隔离要求的实例。当前容量是合成样例预算，尚不代表生产容量/吞吐验收；部署前需测量源规模、十四表全量封存和双候选峰值、spool 外排空间、日志断网积压、查询并发及快照保留窗口。禁止通过降低质量门禁或删除恢复引用绕过空间不足。
 
-自定义本机项目/端口可显式设置 `SICP_PROJECT`、`SICP_M_PORT`、`SICP_S_PORT`、`SICP_LOG_PORT`、`SICP_REDIS_PORT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`、`SICP_MOCK_PORT`。脚本不提供自动删卷命令；销毁仅限操作者已核对的独立测试项目。
+自定义本机项目/端口可显式设置 `SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`。脚本不提供自动删卷命令；销毁仅限操作者已核对的独立测试项目。
 
-本步骤的 CI 检查配置解析/装配、Bash/Python 语法、Compose 配置和镜像构建，不启动集成服务。实际空卷迁移、权限、查询、双份发布、故障恢复及容器信号在全部 P/T 验收后由 I01—I06 串行执行并单独记录证据。
+GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 语法和镜像构建，再串行执行 I01—I06。I06 从同一 job 的干净 checkout 构建镜像，每个编号独立创建项目与空卷，通过 Bash 脚本迁移、启动及受控初始化；实际通过项见开发计划和 verification/I06.md。集成 JSON 结果及容器日志保存在 linux-integration-evidence artifact。

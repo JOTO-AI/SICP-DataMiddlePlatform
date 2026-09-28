@@ -106,7 +106,7 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 			return nil, e
 		}
 		termination := worker.Termination{Runtime: r}
-		a.Engine = &worker.Engine{Store: r.Control, Recovery: update.Recovery{Store: r.Control, Active: r.Active, Execution: termination}, Work: worker.Executor{Runtime: r, Config: c, Clock: clock, Recorder: recorder, Sink: guard, Observe: observe}, Clock: clock, Random: rand.Reader, Process: r.ProcessID}
+		a.Engine = &worker.Engine{Store: r.Control, Recovery: update.Recovery{Store: r.Control, Active: r.Active, Execution: termination, Restorer: worker.Restorer{Runtime: r}}, Work: worker.Executor{Runtime: r, Config: c, Clock: clock, Recorder: recorder, Sink: guard, Observe: observe}, Clock: clock, Random: rand.Reader, Process: r.ProcessID}
 		a.Sender, e = notification.NewSender(r.Control, r.Mail, clock, r.Sanitizer, notification.DeliveryConfig{From: c.MailFrom, To: c.MailTo, MaxAttempts: 8, Batch: 20, RetryDelay: time.Minute, SendTimeout: c.DependencyTimeout, StoreTimeout: c.DependencyTimeout, Lease: 3*c.DependencyTimeout + time.Second})
 		if e != nil {
 			return nil, e

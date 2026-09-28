@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 expected="go$(awk '$1 == "go" { print $2 }' go.mod)"
 test "$(go env GOVERSION)" = "$expected"
-test -z "$(gofmt -l cmd internal)"
+test -z "$(gofmt -l cmd internal tests/integration)"
 bash -n scripts/sicp.sh deploy/init-postgres.sh
 python3 -c 'import ast; from pathlib import Path; ast.parse(Path("deploy/mock.py").read_text())'
 go vet ./...

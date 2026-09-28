@@ -55,6 +55,50 @@ func recoveryFixture() (update.Recovery, *recoveryWorld) {
 	return update.Recovery{Store: w, Active: w, Execution: w}, w
 }
 
+type confirmedRestorer struct{ world *recoveryWorld }
+
+func (s confirmedRestorer) Restore(_ context.Context, state control.RecoveryState) error {
+	s.world.calls = append(s.world.calls, "restore")
+	if s.world.fail == "restore" {
+		return errors.New("conditional restoration failed")
+	}
+	s.world.active, s.world.present = *state.Confirmed, true
+	return nil
+}
+
+func TestT14_09MissingMetadataRestoresOnlyAfterTerminationAndRediscovery(t *testing.T) {
+	for _, fault := range []string{"none", "running_sql", "stopped", "restore", "orphan_owner"} {
+		t.Run(fault, func(t *testing.T) {
+			r, w := recoveryFixture()
+			w.present, w.fail = false, fault
+			r.Restorer = confirmedRestorer{w}
+			if fault == "running_sql" {
+				w.stopped = false
+			}
+			if fault == "orphan_owner" {
+				w.state.Task = nil
+			}
+			decision, err := r.Inspect(t.Context())
+			if !errors.Is(err, update.ErrRecoveryPending) || decision.Action == "idle" {
+				t.Fatal("restoration allowed scheduling", decision, err)
+			}
+			if fault != "none" {
+				if w.present || decision.Action != "pending" {
+					t.Fatal("uncertain restoration proceeded", decision)
+				}
+				return
+			}
+			if decision.Action != "restored_confirmed" || w.active != *w.state.Confirmed || !w.present {
+				t.Fatal("restored a pending candidate", decision)
+			}
+			decision, err = r.Inspect(t.Context())
+			if err != nil || decision.Action != "deliver_publication" {
+				t.Fatal("restored route did not permit separate recovery", decision, err)
+			}
+		})
+	}
+}
+
 func TestT14_05OverdueRestartRecoversBeforeNewScheduling(t *testing.T) {
 	r, w := recoveryFixture()
 	out, err := r.Inspect(t.Context())

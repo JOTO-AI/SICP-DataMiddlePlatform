@@ -38,3 +38,67 @@ jobs:
           name: linux-unit-evidence
           path: artifacts/
           if-no-files-found: error
+  integration:
+    needs: unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      GOTOOLCHAIN: local
+      SICP_INTEGRATION: '1'
+      SICP_PROJECT: sicp-integration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Prepare isolated synthetic dependencies
+        run: |
+          bash scripts/sicp.sh prepare
+          docker compose -p "$SICP_PROJECT" -f deploy/compose.yaml build mock
+          bash scripts/sicp.sh infra
+          # Internal-only bridges do not publish host ports. The Linux host
+          # can address this job's containers directly through their bridge.
+          for entry in M:db-m S:db-s LOG:db-log REDIS:redis; do
+            key=${entry%%:*}
+            service=${entry#*:}
+            container=$(docker compose -p "$SICP_PROJECT" -f deploy/compose.yaml ps -q "$service")
+            address=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container")
+            printf 'SICP_TEST_%s_HOST=%s\n' "$key" "$address" >> "$GITHUB_ENV"
+          done
+      - name: Run integration cases sequentially
+        run: |
+          mkdir -p artifacts/integration
+          set +e
+          for group in I01 I02 I03 I04 I05; do
+            go test -tags=integration -race -count=1 -parallel=1 -timeout=15m -run "^Test${group}_" -json ./tests/integration | tee "artifacts/integration/$group.jsonl"
+            result=${PIPESTATUS[0]}
+            printf '%s\n' "$result" > "artifacts/integration/$group-exit-code.txt"
+            if ((result != 0)); then exit "$result"; fi
+          done
+      - name: Collect dependency logs and remove isolated volumes
+        if: always()
+        run: |
+          mkdir -p artifacts/integration
+          docker compose -p "$SICP_PROJECT" -f deploy/compose.yaml logs --no-color > artifacts/integration/compose.log 2>&1 || true
+          docker compose -p "$SICP_PROJECT" -f deploy/compose.yaml down --volumes --remove-orphans
+      - name: Build deployment images from clean checkout
+        run: |
+          test -z "$(git status --porcelain --untracked-files=no)"
+          bash scripts/sicp.sh build
+      - name: Run deployment integration cases sequentially
+        run: |
+          set +e
+          go test -tags=integration -race -count=1 -parallel=1 -timeout=15m -run '^TestI06_' -json ./tests/integration | tee artifacts/integration/I06.jsonl
+          result=${PIPESTATUS[0]}
+          printf '%s\n' "$result" > artifacts/integration/I06-exit-code.txt
+          exit "$result"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-integration-evidence
+          path: artifacts/integration/
+          if-no-files-found: error

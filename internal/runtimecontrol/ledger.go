@@ -93,7 +93,17 @@ func (s Store) activate(ctx context.Context, tx storage.Transaction, t source.Ta
 			index = n
 		}
 	}
-	if index < 0 || !reflect.DeepEqual(v, p.Previous[index]) || t.Generation <= v.Generation {
+	if index < 0 || t.Generation <= v.Generation {
+		return control.ErrEntity
+	}
+	previous := p.Previous[index]
+	// DrainShift closes both slots of the original query instance after the
+	// immutable plan is saved. Closing admission preserves physical identity;
+	// reopening it, changing content/state, or advancing generation does not.
+	if !v.AdmissionOpen {
+		previous.AdmissionOpen = false
+	}
+	if !reflect.DeepEqual(v, previous) {
 		return control.ErrEntity
 	}
 	var busy bool
