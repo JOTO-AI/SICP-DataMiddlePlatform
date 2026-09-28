@@ -1,0 +1,276 @@
+//go:build integration && linux
+
+package integration
+
+import (
+	"bytes"
+	"context"
+	"crypto/rand"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/admin"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
+)
+
+const managementToken = "synthetic-management-token"
+
+type deployment struct {
+	ctx                                                  context.Context
+	root, project, queryURL, workerURL, mockURL, initial string
+	client                                               *http.Client
+}
+
+func newDeployment(t *testing.T, initialize bool) *deployment {
+	t.Helper()
+	if os.Getenv("GITHUB_ACTIONS") != "true" || os.Getenv("SICP_INTEGRATION") != "1" {
+		t.Fatal("deployment tests run only in GitHub Linux integration")
+	}
+	root, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	t.Cleanup(cancel)
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil
+	t.Cleanup(transport.CloseIdleConnections)
+	d := &deployment{ctx: ctx, root: root, project: "sicp-i06-" + strings.ToLower(rand.Text()[:10]), queryURL: "http://127.0.0.1:18080", workerURL: "http://127.0.0.1:18081", client: &http.Client{Transport: transport, Timeout: 8 * time.Second}}
+	t.Cleanup(func() {
+		cleanup, stop := context.WithTimeout(context.Background(), time.Minute)
+		defer stop()
+		cmd := d.composeCommand(cleanup, "logs", "--no-color")
+		logs, _ := cmd.CombinedOutput()
+		dir := filepath.Join(d.root, "artifacts", "integration")
+		_ = os.MkdirAll(dir, 0700)
+		if err := os.WriteFile(filepath.Join(dir, d.project+".log"), logs, 0600); err != nil {
+			t.Error(err)
+		}
+		if out, err := d.composeCommand(cleanup, "down", "--volumes", "--remove-orphans").CombinedOutput(); err != nil {
+			t.Errorf("isolated deployment cleanup: %v: %s", err, out)
+		}
+	})
+	// Image builds run once in this same job from its clean checkout. Every
+	// numbered case gets a distinct project and brand-new named volumes.
+	for _, operation := range []string{"prepare", "validate", "infra", "migrate", "start"} {
+		d.script(t, operation)
+	}
+	id := strings.TrimSpace(d.compose(t, "ps", "-q", "mock"))
+	cmd := exec.CommandContext(ctx, "docker", "inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", id)
+	raw, err := cmd.Output()
+	if err != nil {
+		t.Fatal("mock network inspection", err)
+	}
+	ip := net.ParseIP(strings.TrimSpace(string(raw)))
+	if ip == nil || !ip.IsPrivate() {
+		t.Fatal("mock is not on a private bridge")
+	}
+	d.mockURL = "http://" + ip.String() + ":8090"
+	if got := d.sql(t, "SELECT count(*) FROM control.tasks"); got != "0" {
+		t.Fatal("empty volume already contains tasks", got)
+	}
+	if initialize {
+		d.initial = d.initialize(t)
+	}
+	return d
+}
+
+func (d *deployment) composeCommand(ctx context.Context, args ...string) *exec.Cmd {
+	all := append([]string{"compose", "-p", d.project, "-f", filepath.Join(d.root, "deploy", "compose.yaml")}, args...)
+	cmd := exec.CommandContext(ctx, "docker", all...)
+	cmd.Dir = d.root
+	return cmd
+}
+func commandOutput(t *testing.T, cmd *exec.Cmd) string {
+	t.Helper()
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("deployment command: %v: %s", err, stderr.String())
+	}
+	return string(out)
+}
+func (d *deployment) compose(t *testing.T, args ...string) string {
+	t.Helper()
+	return commandOutput(t, d.composeCommand(d.ctx, args...))
+}
+func (d *deployment) script(t *testing.T, args ...string) string {
+	t.Helper()
+	cmd := exec.CommandContext(d.ctx, "bash", append([]string{"scripts/sicp.sh"}, args...)...)
+	cmd.Dir = d.root
+	for _, env := range os.Environ() {
+		if !strings.HasPrefix(env, "SICP_PROJECT=") {
+			cmd.Env = append(cmd.Env, env)
+		}
+	}
+	cmd.Env = append(cmd.Env, "SICP_PROJECT="+d.project)
+	return commandOutput(t, cmd)
+}
+func (d *deployment) sql(t *testing.T, query string) string {
+	t.Helper()
+	return strings.TrimSpace(d.compose(t, "exec", "-T", "db-m", "psql", "-U", "postgres", "-d", "control", "-At", "-c", query))
+}
+func (d *deployment) request(t *testing.T, method, endpoint, token, key, body string) (int, map[string]any) {
+	t.Helper()
+	req, err := http.NewRequestWithContext(d.ctx, method, endpoint, strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	if key != "" {
+		req.Header.Set("Idempotency-Key", key)
+	}
+	response, err := d.client.Do(req)
+	if err != nil {
+		t.Fatal("local deployment request", err)
+	}
+	defer response.Body.Close()
+	var envelope map[string]any
+	if err := json.NewDecoder(io.LimitReader(response.Body, 2<<20)).Decode(&envelope); err != nil {
+		t.Fatal(err)
+	}
+	return response.StatusCode, envelope
+}
+func (d *deployment) submit(t *testing.T, action, key string) string {
+	t.Helper()
+	status, envelope := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/"+action, managementToken, key, "{}")
+	if status != 202 {
+		t.Fatalf("admission %s: %d %v", action, status, envelope["code"])
+	}
+	data := envelope["data"].(map[string]any)
+	return data["task_id"].(string)
+}
+func (d *deployment) initialize(t *testing.T) string {
+	t.Helper()
+	raw := d.script(t, "initialize", "initial")
+	var envelope struct {
+		Data admin.Receipt `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(raw), &envelope); err != nil || envelope.Data.TaskID == "" {
+		t.Fatal("Bash initialization receipt", err)
+	}
+	d.waitTask(t, envelope.Data.TaskID, "success_published")
+	return envelope.Data.TaskID
+}
+func (d *deployment) waitTask(t *testing.T, id, want string) map[string]any {
+	t.Helper()
+	deadline := time.Now().Add(90 * time.Second)
+	for {
+		status, envelope := d.request(t, "GET", d.workerURL+"/admin/v1/tasks/"+id, managementToken, "", "")
+		if status != 200 {
+			t.Fatalf("task status: %d %v", status, envelope["code"])
+		}
+		data := envelope["data"].(map[string]any)
+		state := data["status"].(string)
+		if state == want {
+			return data
+		}
+		if strings.HasPrefix(state, "success_") || state == "failed" || time.Now().After(deadline) {
+			t.Fatalf("task %s state=%s wanted=%s", id, state, want)
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+func (d *deployment) query(t *testing.T, operation contract.Operation, body string) map[string]any {
+	t.Helper()
+	var path string
+	for _, definition := range contract.Definitions() {
+		if definition.Operation == operation {
+			path = definition.Path
+		}
+	}
+	req, err := http.NewRequestWithContext(d.ctx, "POST", d.queryURL+path, strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", "synthetic-query-secret")
+	response, err := d.client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	var envelope map[string]any
+	if err := json.NewDecoder(io.LimitReader(response.Body, 2<<20)).Decode(&envelope); err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != 200 {
+		t.Fatalf("deployed query %s: %d %v", operation, response.StatusCode, envelope["code"])
+	}
+	return envelope["data"].(map[string]any)
+}
+
+func TestI06_01(t *testing.T) {
+	d := newDeployment(t, true)
+	for _, service := range []string{"query", "worker"} {
+		id := strings.TrimSpace(d.compose(t, "ps", "-q", service))
+		cmd := exec.CommandContext(d.ctx, "docker", "inspect", "--format", "{{.Config.User}} {{.HostConfig.ReadonlyRootfs}}", id)
+		if got := strings.TrimSpace(commandOutput(t, cmd)); got != "65532:65532 true" {
+			t.Fatal("runtime isolation", got)
+		}
+	}
+	for _, path := range []string{"logs", "staging", "targets", "spool"} {
+		if got := strings.TrimSpace(d.compose(t, "exec", "-T", "worker", "stat", "-c", "%u:%g:%a", "/var/lib/sicp/"+path)); got != "65532:65532:700" {
+			t.Fatal("volume ownership", path, got)
+		}
+	}
+	for _, op := range []contract.Operation{contract.StudentGrades, contract.BatchGrades} {
+		identity := `"student_number":"00202600001"`
+		if op == contract.BatchGrades {
+			identity = `"student_numbers":["00202600001"]`
+		}
+		data := d.query(t, op, `{`+identity+`,"academic_year":"all","page":1,"page_size":100}`)
+		items := data["items"].([]any)
+		if data["total"] != float64(4) || len(items) != 4 {
+			t.Fatal("deployed grade count", data["total"])
+		}
+		for i, score := range []float64{95, 70.5, 80, 63} {
+			item := items[i].(map[string]any)
+			if item["grade_id"] != []string{"G000001", "G000002", "G000013", "G000025"}[i] || item["score"] != score {
+				t.Fatal("deployed grade answer mismatch")
+			}
+		}
+	}
+	for _, tc := range []struct {
+		op        contract.Operation
+		field, id string
+	}{{contract.StudentTimetable, "student_number", "00202600001"}, {contract.StaffTimetable, "staff_number", "001"}} {
+		data := d.query(t, tc.op, fmt.Sprintf(`{"%s":"%s","academic_year":"2026-2027","semester":"1"}`, tc.field, tc.id))
+		if len(data["items"].([]any)) == 0 || data[tc.field] != tc.id {
+			t.Fatal("deployed timetable empty or wrong identity")
+		}
+	}
+	if d.sql(t, "SELECT count(*) FROM control.source_progress") != "14" {
+		t.Fatal("initialization did not confirm fourteen sources")
+	}
+}
+
+func TestI06_08(t *testing.T) {
+	d := newDeployment(t, false)
+	status, envelope := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/force-full", managementToken, "before-initialization", "{}")
+	if status != 409 || envelope["code"] != "initialize_required" {
+		t.Fatal("empty environment accepted force-full", status, envelope["code"])
+	}
+	for _, table := range []string{"tasks", "candidates", "bundles", "publication_outbox"} {
+		if d.sql(t, "SELECT count(*) FROM control."+table) != "0" {
+			t.Fatal("rejected force-full mutated", table)
+		}
+	}
+	d.initialize(t)
+	if d.sql(t, "SELECT count(*) FROM control.tasks WHERE mode='initialize' AND status='success_published'") != "1" {
+		t.Fatal("explicit initialization failed")
+	}
+}

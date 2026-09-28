@@ -20,7 +20,9 @@ case "$operation" in
     "${compose[@]}" run --rm --no-deps --entrypoint /usr/local/bin/sicpctl query validate query-service
     "${compose[@]}" run --rm --no-deps --entrypoint /usr/local/bin/sicpctl worker validate sync-worker
     ;;
-  build) "${compose[@]}" build query worker mock ;;
+  build)
+    for service in query worker mock; do "${compose[@]}" build "$service"; done
+    ;;
   infra)
     "${compose[@]}" run --rm --no-deps volumes
     "${compose[@]}" up -d --wait --wait-timeout 120 db-m db-s db-log redis
