@@ -1,6 +1,5 @@
-# Isolated synthetic environment. Production endpoints and credentials must be
-# supplied explicitly; this file never connects to an upstream school service.
-name: ${SICP_PROJECT:-sicp-phase1}
+# Production by default. The development profile alone enables synthetic source/mail services.
+name: ${SICP_PROJECT:-sicp-production}
 
 x-database-environment: &database-environment
   DATABASE_M0_URL: "${DATABASE_M0_URL:?Set DATABASE_M0_URL in .env (copy .env.example)}"
@@ -100,20 +99,29 @@ services:
     platform: linux/amd64
     restart: "no"
     network_mode: none
-    volumes: ["query-logs:/query-logs", "worker-logs:/worker-logs", "staging:/staging", "targets:/targets", "spool:/spool", "mock-mail:/mock-mail"]
-    command: [sh, -c, "chown 65532:65532 /query-logs /worker-logs /staging /targets /spool /mock-mail && chmod 700 /query-logs /worker-logs /staging /targets /spool /mock-mail"]
+    volumes: ["query-logs:/query-logs", "worker-logs:/worker-logs", "staging:/staging", "targets:/targets", "spool:/spool"]
+    command: [sh, -c, "chown 65532:65532 /query-logs /worker-logs /staging /targets /spool && chmod 700 /query-logs /worker-logs /staging /targets /spool"]
+  mock-volumes:
+    image: busybox:1.37
+    platform: linux/amd64
+    profiles: [development]
+    restart: "no"
+    network_mode: none
+    volumes: ["mock-mail:/mock-mail"]
+    command: [sh, -c, "chown 65532:65532 /mock-mail && chmod 700 /mock-mail"]
   mock:
     <<: *service
+    profiles: [development]
     depends_on:
-      volumes: {condition: service_completed_successfully}
+      mock-volumes: {condition: service_completed_successfully}
     build: {context: ./deploy, dockerfile: Mock.Dockerfile}
     image: sicp-mock:phase1
     volumes:
       - ./mock_data:/app/mock_data:ro
       - mock-mail:/mail
     environment:
-      MOCK_TOKEN: "${SOURCE_TOKEN:?Set SOURCE_TOKEN in .env (copy .env.example)}"
-      MOCK_CONTROL_TOKEN: "${MOCK_CONTROL_TOKEN:?Set MOCK_CONTROL_TOKEN in .env (copy .env.example)}"
+      MOCK_TOKEN: synthetic-source-token
+      MOCK_CONTROL_TOKEN: synthetic-mock-control-token
       PYTHONDONTWRITEBYTECODE: "1"
     healthcheck:
       test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/livez', timeout=3).read()"]
@@ -152,10 +160,11 @@ services:
       volumes: {condition: service_completed_successfully}
       migrate: {condition: service_completed_successfully}
       redis: {condition: service_healthy}
-      mock: {condition: service_healthy}
+      mock: {condition: service_healthy, required: false}
     networks: [sicp, ingress]
     build: {context: ., dockerfile: deploy/Dockerfile, args: {SERVICE: sync-worker}}
     image: sicp-worker:phase1
+    entrypoint: [/bin/sh, /usr/local/bin/worker-entrypoint.sh]
     environment:
       <<: *runtime-environment
       HTTP_ADDRESS: 0.0.0.0:8081
@@ -169,14 +178,16 @@ services:
       STAGING_MAX_BYTES: "${STAGING_MAX_BYTES:?Set STAGING_MAX_BYTES in .env (copy .env.example)}"
       TARGET_MAX_BYTES: "${TARGET_MAX_BYTES:?Set TARGET_MAX_BYTES in .env (copy .env.example)}"
       SPOOL_MAX_BYTES: "${SPOOL_MAX_BYTES:?Set SPOOL_MAX_BYTES in .env (copy .env.example)}"
-      SOURCE_ORIGIN: "${SOURCE_ORIGIN:?Set SOURCE_ORIGIN in .env (copy .env.example)}"
-      SOURCE_TOKEN: "${SOURCE_TOKEN:?Set SOURCE_TOKEN in .env (copy .env.example)}"
-      SOURCE_SCOPE: "${SOURCE_SCOPE:?Set SOURCE_SCOPE in .env (copy .env.example)}"
-      SOURCE_QUALITY: "${SOURCE_QUALITY:?Set SOURCE_QUALITY in .env (copy .env.example)}"
-      MAIL_ADDRESS: "${MAIL_ADDRESS:?Set MAIL_ADDRESS in .env (copy .env.example)}"
-      MAIL_TLS: "${MAIL_TLS:?Set MAIL_TLS in .env (copy .env.example)}"
-      MAIL_FROM: "${MAIL_FROM:?Set MAIL_FROM in .env (copy .env.example)}"
-      MAIL_TO: "${MAIL_TO:?Set MAIL_TO in .env (copy .env.example)}"
+      SOURCE_ORIGIN: "${SOURCE_ORIGIN:-}"
+      SOURCE_TOKEN: "${SOURCE_TOKEN:-}"
+      SOURCE_SCOPE: "${SOURCE_SCOPE:-}"
+      SOURCE_QUALITY: "${SOURCE_QUALITY:-}"
+      MAIL_ADDRESS: "${MAIL_ADDRESS:-}"
+      MAIL_TLS: "${MAIL_TLS:-}"
+      MAIL_FROM: "${MAIL_FROM:-}"
+      MAIL_TO: "${MAIL_TO:-}"
+      MAIL_USERNAME: "${MAIL_USERNAME:-}"
+      MAIL_PASSWORD: "${MAIL_PASSWORD:-}"
       MANAGEMENT_CREDENTIALS: "${MANAGEMENT_CREDENTIALS:?Set MANAGEMENT_CREDENTIALS in .env (copy .env.example)}"
     volumes: ["worker-logs:/var/lib/sicp/logs", "staging:/var/lib/sicp/staging", "targets:/var/lib/sicp/targets", "spool:/var/lib/sicp/spool"]
     ports: ["127.0.0.1:${SICP_WORKER_PORT:-18081}:8081"]

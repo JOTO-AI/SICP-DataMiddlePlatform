@@ -13,7 +13,7 @@ case "$operation" in
   validate)
     "${compose[@]}" config --quiet
     "${compose[@]}" run --rm --no-deps --entrypoint /usr/local/bin/sicpctl query validate query-service
-    "${compose[@]}" run --rm --no-deps --entrypoint /usr/local/bin/sicpctl worker validate sync-worker
+    "${compose[@]}" run --rm --no-deps worker /usr/local/bin/sicpctl validate sync-worker
     ;;
   build)
     "${compose[@]}" build
@@ -21,7 +21,9 @@ case "$operation" in
   infra)
     "${compose[@]}" run --rm --no-deps volumes
     "${compose[@]}" up -d --wait --wait-timeout 120 db-m db-s db-log redis
-    "${compose[@]}" up -d mock
+    for service in $("${compose[@]}" config --services); do
+      if [[ "$service" == mock ]]; then "${compose[@]}" up -d --wait --wait-timeout 120 mock; fi
+    done
     ;;
   migrate) "${compose[@]}" run --rm --no-deps migrate ;;
   start) "${compose[@]}" up -d --wait --wait-timeout 90 query worker console ;;

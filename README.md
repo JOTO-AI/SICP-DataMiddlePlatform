@@ -8,14 +8,15 @@
 
 ```sh
 cp .env.example .env
+# 编辑 .env：填写数据库密码、业务/管理密钥、真实上游与 SMTP 配置
 docker compose up -d --build --wait --wait-timeout 300
 ```
 
 Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执行，已有 `.env` 时直接修改。
 
-打开控制台 <http://127.0.0.1:18082/console/>。Compose 自动启动 PostgreSQL、Redis、Mock、查询服务、同步服务和前端，完成卷权限初始化与数据库迁移后才启动应用。首次构建需要联网拉取基础镜像与依赖。
+打开控制台 <http://127.0.0.1:18082/console/>。默认 `ENVIRONMENT=production`，Compose 启动 PostgreSQL、Redis、查询服务、同步服务和前端，完成卷权限初始化与数据库迁移后才启动应用。首次构建需要联网拉取基础镜像与依赖。
 
-默认使用仓库中的合成数据与示例凭据：业务密钥 `synthetic-query-secret`，管理令牌 `synthetic-management-token`。在控制台填写凭据后，通过“更新任务 → 首次初始化”导入数据，并查看任务完成状态。也可使用命令：
+在控制台填写 `.env` 中配置的业务密钥和管理令牌，通过“更新任务 → 首次初始化”从真实上游导入数据，并查看任务完成状态。也可使用命令：
 
 ```sh
 docker compose run --rm --no-deps ctl initialize initialization-001
@@ -25,9 +26,15 @@ docker compose logs -f query worker
 docker compose down
 ```
 
-`up` 只部署，不自动提交数据初始化任务；首次初始化完成前 query `/readyz` 未就绪属于预期，Compose 使用 `/livez` 检查应用是否启动。`down` 保留命名卷，再次执行启动命令可复用数据。默认项目名为 `sicp-phase1`，与旧脚本一致。已有部署升级前先停应用并备份，详见[部署说明](deploy/README.md)。
+`up` 只部署，不自动提交数据初始化任务；首次初始化完成前 query `/readyz` 未就绪属于预期，Compose 使用 `/livez` 检查应用是否启动。`down` 保留命名卷，再次执行启动命令可复用数据。默认项目名为 `sicp-production`；开发模式为 `sicp-development`，两者使用不同数据卷。已有部署升级前先停应用并备份，详见[部署说明](deploy/README.md)。
 
-所有服务（包括 console）定义在根目录唯一的 `compose.yaml` 中，统一配置模板为根目录 `.env.example`，实际部署只编辑 `.env`。Compose 按服务传入各自需要的变量。旧的 `deploy/runtime/*.env` 不再读取，升级前请将自定义值迁入 `.env`；数据库端点使用共享的 `DATABASE_*_URL`（不含账号密码），四个账号密码各配置一次，服务自动复用。默认仅监听本机，示例配置仅用于合成环境。
+所有服务（包括 console）定义在根目录唯一的 `compose.yaml` 中，统一配置模板为根目录 `.env.example`，实际部署只编辑 `.env`。Compose 按服务传入各自需要的变量。旧的 `deploy/runtime/*.env` 不再读取，升级前请将自定义值迁入 `.env`；数据库端点使用共享的 `DATABASE_*_URL`（不含账号密码），四个账号密码各配置一次，服务自动复用。默认仅监听本机，外部入口可另行配置反向代理和 HTTPS。
+
+## 开发模式
+
+在同一份 `.env` 将 `ENVIRONMENT=production` 改为 `ENVIRONMENT=development`，保留 `COMPOSE_PROFILES=${ENVIRONMENT}` 和 `SICP_PROJECT=sicp-${ENVIRONMENT}`，再执行相同启动命令。数据库密码、业务/管理密钥仍需填写；真实上游和邮件字段可留空。开发模式自动启动 Mock，读取仓库中的合成数据并在本地接收邮件，不访问已填写的真实上游或 SMTP。
+
+切换前先在原环境执行 `docker compose down`，再修改环境值，避免端口冲突；数据卷保留且按默认项目名隔离。旧版 `sicp-phase1` 项目不会自动改名或搬迁数据，升级前按[部署说明](deploy/README.md)确认目标环境。
 
 ## Bash 部署入口
 
@@ -40,7 +47,7 @@ Linux / Bash 脚本用于同一套 Compose 的分步运维，`deploy` 同样包�
 ./scripts/sicp.sh status
 ```
 
-`deploy` 准备配置、构建镜像、创建持久卷、迁移数据库并启动服务；数据初始化通过管理入口显式受理，使用 task 命令确认最终完成。默认 query、worker 分别向宿主机 `127.0.0.1:18080`、`127.0.0.1:18081` 提供 HTTP 服务。PG、Redis 和 Mock 仅连接内部网络。源数据来自只读 `mock_data`，邮件由本地 Mock SMTP 接收。
+`deploy` 准备配置、构建镜像、创建持久卷、迁移数据库并启动服务；数据初始化通过管理入口显式受理，使用 task 命令确认最终完成。默认 query、worker 分别向宿主机 `127.0.0.1:18080`、`127.0.0.1:18081` 提供 HTTP 服务。PG 和 Redis 仅连接内部网络；正式模式的 worker 使用配置的真实上游与 SMTP。Mock 仅在开发模式启用。
 
 `prepare` 仅在根目录 `.env` 不存在时复制 `.env.example`，保留已有配置。`.env` 被 Git 忽略，由 Compose 解析，不要作为 Shell 脚本执行。
 

@@ -6,12 +6,13 @@
 
 ```sh
 cp .env.example .env
+# 编辑 .env，填写所有必填凭据、真实上游及 SMTP 配置
 docker compose up -d --build --wait --wait-timeout 300
 ```
 
 Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执行，不覆盖已有配置。
 
-根目录唯一的 `compose.yaml` 直接定义所有服务（含 console），默认项目名 `sicp-phase1`。启动顺序由 Compose 依赖关系保证：数据库完成空卷初始化并可通过 TCP 访问后执行迁移；卷目录权限初始化成功、迁移成功且 Redis 健康后启动 query/worker（worker 同时等待 Mock 健康）；两服务存活后启动控制台。初始化或迁移失败会阻止依赖服务启动，可用 `docker compose logs volumes migrate db-m db-s db-log` 排查。
+根目录唯一的 `compose.yaml` 直接定义所有服务（含 console），正式环境默认项目名 `sicp-production`。启动顺序由 Compose 依赖关系保证：数据库完成空卷初始化并可通过 TCP 访问后执行迁移；卷目录权限初始化成功、迁移成功且 Redis 健康后启动 query/worker（开发模式的 worker 同时等待 Mock 健康）；两服务存活后启动控制台。初始化或迁移失败会阻止依赖服务启动，可用 `docker compose logs volumes migrate db-m db-s db-log` 排查。
 
 | 服务 | 本机入口 |
 | --- | --- |
@@ -19,7 +20,7 @@ Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执�
 | 查询 API | http://127.0.0.1:18080 |
 | 管理 API | http://127.0.0.1:18081 |
 
-控制台使用业务密钥 `synthetic-query-secret`、管理令牌 `synthetic-management-token`（仅合成示例）。通过“更新任务 → 首次初始化”建立首份数据，或执行：
+控制台使用 `.env` 中的 `QUERY_API_KEY` 和 `MANAGEMENT_CREDENTIALS` 内的 token，不再提供默认部署凭据。通过“更新任务 → 首次初始化”从当前环境的数据源建立数据，或执行：
 
 ```sh
 docker compose run --rm --no-deps ctl initialize initialization-001
@@ -34,13 +35,33 @@ docker compose down
 
 项目名和端口也统一在 `.env` 设置：`SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`、`SICP_CONSOLE_PORT`。终端同名环境变量优先。只需后端时可指定服务：`docker compose up -d --build --wait --wait-timeout 300 query worker`。
 
-旧版 `deploy/compose*.yaml`、`deploy/examples/*.env.example` 和 `configs/*.env.example` 已移除。原有 `deploy/runtime/*.env` 不再加载，请先将自定义值迁入根目录 `.env`；旧文件不会自动改写。上一版的 `QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 也不再读取：请将相同的端点与库名合并为六个不含凭据的 `DATABASE_*_URL`，账号密码填写到上方对应变量。项目名和卷名保持一致，使用相同项目名可继续使用已有数据。
+旧版 `deploy/compose*.yaml`、`deploy/examples/*.env.example` 和 `configs/*.env.example` 已移除。原有 `deploy/runtime/*.env` 不再加载，请先将自定义值迁入根目录 `.env`；旧文件不会自动改写。上一版的 `QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 也不再读取：请将相同的端点与库名合并为六个不含凭据的 `DATABASE_*_URL`，账号密码填写到上方对应变量。旧项目 `sicp-phase1` 的卷不会自动迁移。仅在确认旧卷数据属于目标环境后，才显式设置相同 `SICP_PROJECT` 复用数据；不要将含合成数据的卷直接用于正式环境。
 
 升级已有部署时先 `docker compose stop console query worker` 并备份全部卷，再运行上述启动命令；如需要明确重跑迁移，先执行 `docker compose build`、`docker compose run --rm migrate`。重复迁移校验已应用版本与 checksum。不要在旧服务仍运行时直接进行结构升级。
 
+## 正式与开发环境切换
+
+根目录 `.env.example` 默认为 `ENVIRONMENT=production`。先填写四个数据库密码、`QUERY_API_KEY`、`SNAPSHOT_KEY`、`AUDIT_KEY`、`MANAGEMENT_CREDENTIALS` 和 `MANAGEMENT_TOKEN`，再配置真实 `SOURCE_ORIGIN/TOKEN/SCOPE/QUALITY` 与 SMTP。正式环境不会启动或挂载 Mock 服务；缺少上游配置、误填开发源地址或邮件配置不完整会报错，不会回退模拟数据。
+
+邮件配置包括 `MAIL_ADDRESS`、`MAIL_TLS`（tls/starttls）、`MAIL_FROM`、`MAIL_TO`；需要登录时成对填写 `MAIL_USERNAME`、`MAIL_PASSWORD`，Compose 会传给 worker。
+
+开发时只改环境值：
+
+```dotenv
+ENVIRONMENT=development
+COMPOSE_PROFILES=${ENVIRONMENT}
+SICP_PROJECT=sicp-${ENVIRONMENT}
+```
+
+第二、三行保持模板写法即可。开发环境仍需填写数据库和 API 凭据，但真实上游/邮件可以留空；worker 自动使用合成数据源、测试质量门禁和本地邮件接收器，忽略真实上游/邮件配置并清空 SMTP 登录凭据。Mock 及其卷初始化服务只属于 development profile；其测试控制令牌为固定合成值，不用于正式部署。开发依赖使用 [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/) 按需启用。
+
+默认项目名随环境变为 `sicp-production` / `sicp-development`，对应数据卷隔离。切换前先运行旧环境的 `docker compose down` 再改 `.env`；若同时运行两套环境，还需使用不同的宿主机端口。已有固定项目名不会自动隔离，请勿让两种环境共享项目名。
+
+不要单独覆盖 `COMPOSE_PROFILES` 或给启动命令额外传 `--profile` 来替代环境开关；显式启用 development profile 只控制容器选择，worker 数据源仍由 `ENVIRONMENT` 决定。原先的 `ENVIRONMENT=test` 也不会自动启用 Mock，旧演示部署升级时须明确切换为 development。
+
 ## Bash 分步运维
 
-此模板用于本机隔离的合成验收环境。要求 Linux amd64、Bash、Docker Engine 与 Compose ≥ 2.30；各服务进程使用 UID/GID 65532，配置/日志时区按 `Asia/Shanghai` 解析源时间，数据库会话使用 UTC。M、S、日志分别为独立 PostgreSQL 容器，控制库固定在 M；服务不能通过活动路由选择控制或日志库。
+脚本使用根目录统一配置，默认按正式环境部署。要求 Linux amd64、Bash、Docker Engine 与 Compose ≥ 2.30；各服务进程使用 UID/GID 65532，配置/日志时区按 `Asia/Shanghai` 解析源时间，数据库会话使用 UTC。M、S、日志分别为独立 PostgreSQL 容器，控制库固定在 M；服务不能通过活动路由选择控制或日志库。
 
 ```bash
 ./scripts/sicp.sh deploy
@@ -54,7 +75,7 @@ docker compose down
 
 `prepare` 只在根目录 `.env` 缺失时复制 `.env.example`，生成文件权限受 umask 077 约束；已有 `.env` 保持不变。`.env` 被 Git 和镜像构建上下文排除。文件使用 Compose dotenv 语法，不作为 Shell 脚本执行；包含字面量 `$` 或 `#` 的值使用单引号，JSON 保持单行。参数列表详见 [运行配置](../development_docs/P15_RUNTIME_CONFIGURATION.md)。
 
-示例凭据都是公开合成值，仅供隔离验收。query 使用 sicp_query，worker 使用 sicp_worker，日志使用 sicp_logger；配置文件统一管理凭据，但迁移账号只传给 migrate，管理 token 只传给 ctl 和 worker。查询与管理服务同时连接内部依赖网络和入口网络，仅向宿主机的 127.0.0.1 发布 18080、18081。数据库、Redis 和 Mock 仅连接 internal 网络，不发布宿主端口，可通过 `docker compose exec` 在对应容器内排查。Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
+部署凭据由操作者填写。query 使用 sicp_query，worker 使用 sicp_worker，日志使用 sicp_logger；配置文件统一管理凭据，但迁移账号只传给 migrate，管理 token 只传给 ctl 和 worker。查询与管理服务同时连接内部依赖网络和入口网络，仅向宿主机的 127.0.0.1 发布 18080、18081。数据库、Redis 和开发模式的 Mock 仅连接 internal 网络，不发布宿主端口，可通过 `docker compose exec` 在对应容器内排查。仅开发模式的 Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
 
 ```bash
 ./scripts/sicp.sh sync round-002
@@ -73,7 +94,7 @@ docker compose down
 
 服务收到 SIGTERM/SIGINT 后按 SHUTDOWN_TIMEOUT=20s 总预算停止准入并排空；Compose stop_grace_period=35s。启动恢复先处理 pending 发布及旧任务，未决时 sync_ready=false。query_ready 独立检查可确认的活动组合与实际查询权限。日志 PG 不可用时保留未确认日志，邮件发送失败保留控制库 outbox；不将超时当作成功或伪造任务结束时间。
 
-生产部署须替换示例凭据、TLS、上游/邮箱、网络规则、持久存储和备份方案，并将 M/S/日志布置到满足故障隔离要求的实例。当前容量是合成样例预算，尚不代表生产容量/吞吐验收；部署前需测量源规模、十四表全量封存和双候选峰值、spool 外排空间、日志断网积压、查询并发及快照保留窗口。禁止通过降低质量门禁或删除恢复引用绕过空间不足。
+生产部署须完成凭据、TLS、上游/邮箱、网络规则、持久存储和备份配置，并将 M/S/日志布置到满足故障隔离要求的实例。模板容量仅为起始预算，尚不代表生产容量/吞吐验收；部署前需测量源规模、十四表全量封存和双候选峰值、spool 外排空间、日志断网积压、查询并发及快照保留窗口。禁止通过降低质量门禁或删除恢复引用绕过空间不足。
 
 自定义本机项目/端口可显式设置 `SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`。脚本不提供自动删卷命令；销毁仅限操作者已核对的独立测试项目。
 

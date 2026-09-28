@@ -31,7 +31,7 @@ SICP_WORKER_TARGET=http://127.0.0.1:18081
 
 ## 使用
 
-1. 在连接设置中填写业务 `QUERY_API_KEY` 和管理令牌（令牌本身，不带 `Bearer `）。统一在根目录 `.env` 配置，合成示例分别为 `synthetic-query-secret` 与 `synthetic-management-token`。管理令牌须与 `MANAGEMENT_CREDENTIALS` 中的 token 一致，并同步 `MANAGEMENT_TOKEN` 供命令行使用。不在页面预填任何凭据。
+1. 在连接设置中填写业务 `QUERY_API_KEY` 和管理令牌（令牌本身，不带 `Bearer `）。统一在根目录 `.env` 配置，部署模板不提供默认凭据，请使用实际配置值。管理令牌须与 `MANAGEMENT_CREDENTIALS` 中的 token 一致，并同步 `MANAGEMENT_TOKEN` 供命令行使用。不在页面预填任何凭据。
 2. 在运行总览检查 query 和 worker 的存活与就绪状态。空数据环境通过更新任务中的“首次初始化”建立数据。
 3. 在业务查询中选择学生成绩、批量成绩、学生课表或教师课表，填参查询。课表必填学年与学期；批量成绩不填学号表示查询所选学年内符合条件的成绩。高级 JSON 支持页面列出的其他筛选字段，最终合法性由后端校验。
 4. 成绩上下翻页回传 `X-Query-Snapshot`；改筛选条件或点击“查询数据”开启新查询。遇到 409 请重新查询。
@@ -46,12 +46,13 @@ console 与后端、数据库等服务都在根目录同一份 `compose.yaml` �
 
 ```sh
 cp .env.example .env
+# 编辑 .env 中的凭据、真实上游及邮件配置（默认 production）
 docker compose up -d --build --wait --wait-timeout 300
 ```
 
 Windows PowerShell 使用 `Copy-Item .env.example .env`；已有 `.env` 不要重复覆盖。打开 <http://127.0.0.1:18082/console/>。镜像内 Nginx 同源代理至 `query:8080` 和 `worker:8081`，业务、管理凭据分别透传。端口由根目录 `.env` 的 `SICP_CONSOLE_PORT` 设置。
 
-仅重建控制台可执行 `docker compose up -d --build --no-deps console`；只停止控制台可执行 `docker compose stop console`。完整操作见[部署说明](../deploy/README.md)。
+仅重建控制台可执行 `docker compose up -d --build --no-deps console`；只停止控制台可执行 `docker compose stop console`。开发测试可将 `.env` 的 `ENVIRONMENT` 改为 `development` 以启用合成数据源。完整操作见[部署说明](../deploy/README.md)。
 
 也可以 `npm run build` 后将 `dist/` 静态资源部署到 `/console/`，参照 [nginx.conf](nginx.conf) 配置同源网关。`npm run preview` 只用于本地预览。
 

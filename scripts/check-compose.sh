@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 : "${SICP_PROJECT:?Supply an isolated Compose project name}"
 test ! -e .env
-bash scripts/sicp.sh prepare
+python3 scripts/check-compose-config.py --write-development-env .env
 # Verify one password edit reaches PostgreSQL bootstrap, migrations and both
 # services, including characters that cannot be pasted unescaped into a URL.
 python3 - <<'PY'

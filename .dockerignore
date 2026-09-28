@@ -7,3 +7,4 @@
 !internal/**
 !deploy/
 !deploy/Dockerfile
+!deploy/worker-entrypoint.sh

@@ -106,7 +106,7 @@ jobs:
           cache: false
       - name: Prepare isolated synthetic dependencies
         run: |
-          bash scripts/sicp.sh prepare
+          python3 scripts/check-compose-config.py --write-development-env .env
           docker compose -p "$SICP_PROJECT" build mock
           bash scripts/sicp.sh infra
           # Internal-only bridges do not publish host ports. The Linux host

@@ -14,6 +14,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=build /service /usr/local/bin/service
 COPY --from=build /sicpctl /usr/local/bin/sicpctl
+COPY deploy/worker-entrypoint.sh /usr/local/bin/worker-entrypoint.sh
 USER 65532:65532
 ENV HTTP_ADDRESS=0.0.0.0:8080
 EXPOSE 8080
