@@ -27,7 +27,7 @@ docker compose down
 
 `up` 只部署，不自动提交数据初始化任务；首次初始化完成前 query `/readyz` 未就绪属于预期，Compose 使用 `/livez` 检查应用是否启动。`down` 保留命名卷，再次执行启动命令可复用数据。默认项目名为 `sicp-phase1`，与旧脚本一致。已有部署升级前先停应用并备份，详见[部署说明](deploy/README.md)。
 
-所有服务（包括 console）定义在根目录唯一的 `compose.yaml` 中，统一配置模板为根目录 `.env.example`，实际部署只编辑 `.env`。Compose 按服务传入各自需要的变量。旧的 `deploy/runtime/*.env` 不再读取，升级前请将自定义值迁入 `.env`；数据库连接使用 `QUERY_`、`WORKER_`、`MIGRATE_` 前缀区分。默认仅监听本机，示例配置仅用于合成环境。
+所有服务（包括 console）定义在根目录唯一的 `compose.yaml` 中，统一配置模板为根目录 `.env.example`，实际部署只编辑 `.env`。Compose 按服务传入各自需要的变量。旧的 `deploy/runtime/*.env` 不再读取，升级前请将自定义值迁入 `.env`；数据库端点使用共享的 `DATABASE_*_URL`（不含账号密码），四个账号密码各配置一次，服务自动复用。默认仅监听本机，示例配置仅用于合成环境。
 
 ## Bash 部署入口
 

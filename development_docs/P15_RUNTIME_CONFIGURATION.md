@@ -1,6 +1,6 @@
 # 运行配置与依赖装配
 
-Docker Compose 的统一配置模板位于根目录 `.env.example`，复制为 `.env` 后使用根目录 `compose.yaml` 启动全部服务。Compose 将 `QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 分别映射为对应容器的 `DATABASE_*`；下表描述的是进程内变量名。公共配置在 `.env` 只填写一次，凭据按服务分别传入。旧 `deploy/runtime/*.env` 不再读取。
+Docker Compose 的统一配置模板位于根目录 `.env.example`，复制为 `.env` 后使用根目录 `compose.yaml` 启动全部服务。六个共享 `DATABASE_*_URL` 不含凭据，四个角色密码各配置一次；Compose 为每个服务传入 `DATABASE_USER/PASSWORD` 与 `DATABASE_LOG_USER/PASSWORD`，进程使用标准 URL 编码生成连接串。旧 `deploy/runtime/*.env` 和按角色展开的 URL 变量不再读取。
 
 双服务入口使用 `config.LoadRuntime`，先完整校验，再按 PostgreSQL → Redis → 持久文件 → worker HTTP 源 → worker 邮件创建。缺配置、缺工厂或初始化失败直接失败；释放部分结果及此前资源，顺序相反且有总预算，不回退内存存储。P15.05 接通真实查询、管理、日志、通知与串行 worker：每轮先读取恢复事实并证明旧进程/SQL 已停止，再处理任务或调度。
 
@@ -10,6 +10,8 @@ Docker Compose 的统一配置模板位于根目录 `.env.example`，复制为 `
 | QUERY_API_KEY | 两角色均要求；用于查询鉴权及与管理秘密隔离校验 |
 | DATABASE_M0_URL、DATABASE_M1_URL、DATABASE_S0_URL、DATABASE_S1_URL | 显式 postgres URL，端口/数据库/sslmode 必填；同实例槽位同端点、不同数据库，M/S 独立端点 |
 | DATABASE_CONTROL_URL、DATABASE_LOG_URL | 控制库固定 M 端点且独立数据库；日志库独立端点 |
+| DATABASE_USER、DATABASE_PASSWORD | 分离配置时成对提供非空值，供四个业务槽位及 control 使用；URL 此时不得内嵌凭据，密码填写原文、自动编码 |
+| DATABASE_LOG_USER、DATABASE_LOG_PASSWORD | 分离配置时成对提供非空值，只供日志库使用；直接运行进程仍兼容完整 URL，但不能同时提供同组分离凭据 |
 | REDIS_URL | redis/rediss URL，显式端口，固定 `/0`，禁止查询参数覆盖客户端行为 |
 | DEPENDENCY_TIMEOUT | 默认 10s，可设 1ms—1min；连接及邮件提交使用有界预算 |
 | SNAPSHOT_KEY、AUDIT_KEY | 不同的至少 32 字节秘密，与业务 key 分离；AUDIT_KEY 经 SHA-256 派生固定 32 字节日志 HMAC 密钥，重启/双服务需保持相同 |

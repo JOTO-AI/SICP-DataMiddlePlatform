@@ -5,6 +5,16 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 : "${SICP_PROJECT:?Supply an isolated Compose project name}"
 test ! -e .env
 bash scripts/sicp.sh prepare
+# Verify one password edit reaches PostgreSQL bootstrap, migrations and both
+# services, including characters that cannot be pasted unescaped into a URL.
+python3 - <<'PY'
+from pathlib import Path
+path = Path(".env")
+passwords = {"POSTGRES_PASSWORD", "QUERY_PASSWORD", "WORKER_PASSWORD", "LOGGER_PASSWORD"}
+lines = path.read_text(encoding="utf-8").splitlines()
+lines = [f"{key}='compose-{key}-@:/?#%$ space'" if (key := line.split("=", 1)[0]) in passwords else line for line in lines]
+path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
 docker compose config --quiet
 docker compose up -d --build --wait --wait-timeout 300
 

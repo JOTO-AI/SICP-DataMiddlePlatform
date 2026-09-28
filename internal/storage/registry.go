@@ -79,10 +79,9 @@ func LoadRegistry(lookup func(string) (string, bool)) (Registry, error) {
 	}
 	seen := map[string]bool{}
 	for _, entry := range entries {
-		value, _ := lookup(entry.key)
-		c, err := parseConnection(value)
+		c, err := configuredConnection(lookup, entry.key)
 		if err != nil {
-			return Registry{}, fmt.Errorf("%s: invalid explicit PostgreSQL URL", entry.key)
+			return Registry{}, fmt.Errorf("%s: invalid PostgreSQL endpoint or credentials", entry.key)
 		}
 		identity := c.endpoint + "/" + c.database
 		if seen[identity] {
@@ -104,6 +103,28 @@ func LoadRegistry(lookup func(string) (string, bool)) (Registry, error) {
 		return Registry{}, fmt.Errorf("DATABASE_LOG_URL: logs require an independent endpoint")
 	}
 	return r, nil
+}
+
+// Compose supplies password-free endpoints and role-specific credentials. Keep
+// full URLs working for direct process deployments, but reject mixed forms so a
+// stale embedded password cannot silently override the separately supplied one.
+func configuredConnection(lookup func(string) (string, bool), key string) (Connection, error) {
+	raw, _ := lookup(key)
+	prefix := "DATABASE_"
+	if key == "DATABASE_LOG_URL" {
+		prefix = "DATABASE_LOG_"
+	}
+	user, hasUser := lookup(prefix + "USER")
+	password, hasPassword := lookup(prefix + "PASSWORD")
+	if hasUser || hasPassword {
+		u, err := url.Parse(raw)
+		if !hasUser || !hasPassword || user == "" || password == "" || err != nil || u.User != nil || strings.TrimSpace(raw) != raw {
+			return Connection{}, fmt.Errorf("invalid separate database credentials or endpoint")
+		}
+		u.User = url.UserPassword(user, password)
+		raw = u.String()
+	}
+	return parseConnection(raw)
 }
 
 func parseConnection(raw string) (Connection, error) {

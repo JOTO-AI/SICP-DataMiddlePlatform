@@ -2,7 +2,16 @@
 # supplied explicitly; this file never connects to an upstream school service.
 name: ${SICP_PROJECT:-sicp-phase1}
 
+x-database-environment: &database-environment
+  DATABASE_M0_URL: "${DATABASE_M0_URL:?Set DATABASE_M0_URL in .env (copy .env.example)}"
+  DATABASE_M1_URL: "${DATABASE_M1_URL:?Set DATABASE_M1_URL in .env (copy .env.example)}"
+  DATABASE_S0_URL: "${DATABASE_S0_URL:?Set DATABASE_S0_URL in .env (copy .env.example)}"
+  DATABASE_S1_URL: "${DATABASE_S1_URL:?Set DATABASE_S1_URL in .env (copy .env.example)}"
+  DATABASE_CONTROL_URL: "${DATABASE_CONTROL_URL:?Set DATABASE_CONTROL_URL in .env (copy .env.example)}"
+  DATABASE_LOG_URL: "${DATABASE_LOG_URL:?Set DATABASE_LOG_URL in .env (copy .env.example)}"
+
 x-runtime-environment: &runtime-environment
+  <<: *database-environment
   SOURCE_TIMEZONE: "${SOURCE_TIMEZONE:?Set SOURCE_TIMEZONE in .env (copy .env.example)}"
   STARTUP_TIMEOUT: "${STARTUP_TIMEOUT:?Set STARTUP_TIMEOUT in .env (copy .env.example)}"
   SHUTDOWN_TIMEOUT: "${SHUTDOWN_TIMEOUT:?Set SHUTDOWN_TIMEOUT in .env (copy .env.example)}"
@@ -126,12 +135,10 @@ services:
     environment:
       <<: *runtime-environment
       HTTP_ADDRESS: 0.0.0.0:8080
-      DATABASE_M0_URL: "${QUERY_DATABASE_M0_URL:?Set QUERY_DATABASE_M0_URL in .env (copy .env.example)}"
-      DATABASE_M1_URL: "${QUERY_DATABASE_M1_URL:?Set QUERY_DATABASE_M1_URL in .env (copy .env.example)}"
-      DATABASE_S0_URL: "${QUERY_DATABASE_S0_URL:?Set QUERY_DATABASE_S0_URL in .env (copy .env.example)}"
-      DATABASE_S1_URL: "${QUERY_DATABASE_S1_URL:?Set QUERY_DATABASE_S1_URL in .env (copy .env.example)}"
-      DATABASE_CONTROL_URL: "${QUERY_DATABASE_CONTROL_URL:?Set QUERY_DATABASE_CONTROL_URL in .env (copy .env.example)}"
-      DATABASE_LOG_URL: "${QUERY_DATABASE_LOG_URL:?Set QUERY_DATABASE_LOG_URL in .env (copy .env.example)}"
+      DATABASE_USER: "sicp_query"
+      DATABASE_PASSWORD: "${QUERY_PASSWORD:?Set QUERY_PASSWORD in .env (copy .env.example)}"
+      DATABASE_LOG_USER: "sicp_logger"
+      DATABASE_LOG_PASSWORD: "${LOGGER_PASSWORD:?Set LOGGER_PASSWORD in .env (copy .env.example)}"
     volumes: ["query-logs:/var/lib/sicp/logs"]
     ports: ["127.0.0.1:${SICP_QUERY_PORT:-18080}:8080"]
     healthcheck:
@@ -152,12 +159,10 @@ services:
     environment:
       <<: *runtime-environment
       HTTP_ADDRESS: 0.0.0.0:8081
-      DATABASE_M0_URL: "${WORKER_DATABASE_M0_URL:?Set WORKER_DATABASE_M0_URL in .env (copy .env.example)}"
-      DATABASE_M1_URL: "${WORKER_DATABASE_M1_URL:?Set WORKER_DATABASE_M1_URL in .env (copy .env.example)}"
-      DATABASE_S0_URL: "${WORKER_DATABASE_S0_URL:?Set WORKER_DATABASE_S0_URL in .env (copy .env.example)}"
-      DATABASE_S1_URL: "${WORKER_DATABASE_S1_URL:?Set WORKER_DATABASE_S1_URL in .env (copy .env.example)}"
-      DATABASE_CONTROL_URL: "${WORKER_DATABASE_CONTROL_URL:?Set WORKER_DATABASE_CONTROL_URL in .env (copy .env.example)}"
-      DATABASE_LOG_URL: "${WORKER_DATABASE_LOG_URL:?Set WORKER_DATABASE_LOG_URL in .env (copy .env.example)}"
+      DATABASE_USER: "sicp_worker"
+      DATABASE_PASSWORD: "${WORKER_PASSWORD:?Set WORKER_PASSWORD in .env (copy .env.example)}"
+      DATABASE_LOG_USER: "sicp_logger"
+      DATABASE_LOG_PASSWORD: "${LOGGER_PASSWORD:?Set LOGGER_PASSWORD in .env (copy .env.example)}"
       STAGING_DIRECTORY: "${STAGING_DIRECTORY:?Set STAGING_DIRECTORY in .env (copy .env.example)}"
       TARGET_DIRECTORY: "${TARGET_DIRECTORY:?Set TARGET_DIRECTORY in .env (copy .env.example)}"
       SPOOL_DIRECTORY: "${SPOOL_DIRECTORY:?Set SPOOL_DIRECTORY in .env (copy .env.example)}"
@@ -191,12 +196,11 @@ services:
       db-log: {condition: service_healthy}
     entrypoint: [/usr/local/bin/sicpctl, migrate]
     environment:
-      DATABASE_M0_URL: "${MIGRATE_DATABASE_M0_URL:?Set MIGRATE_DATABASE_M0_URL in .env (copy .env.example)}"
-      DATABASE_M1_URL: "${MIGRATE_DATABASE_M1_URL:?Set MIGRATE_DATABASE_M1_URL in .env (copy .env.example)}"
-      DATABASE_S0_URL: "${MIGRATE_DATABASE_S0_URL:?Set MIGRATE_DATABASE_S0_URL in .env (copy .env.example)}"
-      DATABASE_S1_URL: "${MIGRATE_DATABASE_S1_URL:?Set MIGRATE_DATABASE_S1_URL in .env (copy .env.example)}"
-      DATABASE_CONTROL_URL: "${MIGRATE_DATABASE_CONTROL_URL:?Set MIGRATE_DATABASE_CONTROL_URL in .env (copy .env.example)}"
-      DATABASE_LOG_URL: "${MIGRATE_DATABASE_LOG_URL:?Set MIGRATE_DATABASE_LOG_URL in .env (copy .env.example)}"
+      <<: *database-environment
+      DATABASE_USER: "${POSTGRES_USER:?Set POSTGRES_USER in .env (copy .env.example)}"
+      DATABASE_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy .env.example)}"
+      DATABASE_LOG_USER: "${POSTGRES_USER:?Set POSTGRES_USER in .env (copy .env.example)}"
+      DATABASE_LOG_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy .env.example)}"
   ctl:
     <<: *service
     image: sicp-worker:phase1

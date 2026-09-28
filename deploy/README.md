@@ -30,11 +30,11 @@ docker compose down
 
 首次数据初始化仍需明确提交，`up --wait` 只等待应用存活，不代表已经发布可查询的数据。`volumes` 和 `migrate` 是一次性任务，成功后显示 `Exited (0)` 属于正常状态。`down` 保留全部持久卷；重新执行启动命令可复用数据，不要加 `--volumes`，除非确实要销毁数据。
 
-统一配置模板为根目录 `.env.example`，实际部署只维护根目录 `.env`。公共参数填写一次；`QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 分别传给查询、同步和迁移容器，并映射为进程使用的 `DATABASE_*`。查询容器不会获得管理令牌或迁移凭据。修改数据库角色密码时需同步相应连接串，URL 中的密码需百分号编码；已有 PG 卷不会因修改环境变量而自动修改密码。修改管理令牌时同步 `MANAGEMENT_CREDENTIALS` 与 `MANAGEMENT_TOKEN`。
+统一配置模板为根目录 `.env.example`，实际部署只维护根目录 `.env`。六个 `DATABASE_*_URL` 只配置共享端点和库名，不含账号密码；`POSTGRES_PASSWORD`、`QUERY_PASSWORD`、`WORKER_PASSWORD`、`LOGGER_PASSWORD` 各填写一次。Compose 按服务分配账号与密码，进程自动编码特殊字符并构造完整连接串；query 不会获得 worker 或迁移账号密码。已有 PG 卷不会因修改环境变量而自动修改角色密码，轮换时仍需先在数据库内修改，再更新 `.env`。管理令牌仍需同步 `MANAGEMENT_CREDENTIALS` 与 `MANAGEMENT_TOKEN`。
 
 项目名和端口也统一在 `.env` 设置：`SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`、`SICP_CONSOLE_PORT`。终端同名环境变量优先。只需后端时可指定服务：`docker compose up -d --build --wait --wait-timeout 300 query worker`。
 
-旧版 `deploy/compose*.yaml`、`deploy/examples/*.env.example` 和 `configs/*.env.example` 已移除。原有 `deploy/runtime/*.env` 不再加载，请先将自定义值迁入根目录 `.env`；旧文件不会自动改写。项目名和卷名保持一致，使用相同项目名可继续使用已有数据。
+旧版 `deploy/compose*.yaml`、`deploy/examples/*.env.example` 和 `configs/*.env.example` 已移除。原有 `deploy/runtime/*.env` 不再加载，请先将自定义值迁入根目录 `.env`；旧文件不会自动改写。上一版的 `QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 也不再读取：请将相同的端点与库名合并为六个不含凭据的 `DATABASE_*_URL`，账号密码填写到上方对应变量。项目名和卷名保持一致，使用相同项目名可继续使用已有数据。
 
 升级已有部署时先 `docker compose stop console query worker` 并备份全部卷，再运行上述启动命令；如需要明确重跑迁移，先执行 `docker compose build`、`docker compose run --rm migrate`。重复迁移校验已应用版本与 checksum。不要在旧服务仍运行时直接进行结构升级。
 

@@ -2,6 +2,7 @@ package storage_test
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -126,5 +127,89 @@ func TestT02_02RejectOverlappingOrMisplacedDatabases(t *testing.T) {
 	values["DATABASE_S1_URL"] = "postgres://other:secret@db-m:5432/standby1?sslmode=require"
 	if _, err := load(values); err == nil {
 		t.Fatal("M/S share an endpoint")
+	}
+}
+
+func separateConnectionValues() map[string]string {
+	values := connectionValues()
+	for key, raw := range values {
+		u, _ := url.Parse(raw)
+		u.User = nil
+		values[key] = u.String()
+	}
+	values["DATABASE_USER"] = "sicp_query"
+	values["DATABASE_PASSWORD"] = "business-@:/?#%$&=+ space-密码"
+	values["DATABASE_LOG_USER"] = "sicp_logger"
+	values["DATABASE_LOG_PASSWORD"] = "logger-@:/?#%$&=+ space-密码"
+	return values
+}
+
+func TestSeparateCredentialsEncodeAndReusePasswords(t *testing.T) {
+	for _, user := range []string{"sicp_query", "sicp_worker", "admin:@/ name"} {
+		t.Run(user, func(t *testing.T) {
+			values := separateConnectionValues()
+			values["DATABASE_USER"] = user
+			r, err := load(values)
+			if err != nil {
+				t.Fatal(err)
+			}
+			connections := []storage.Connection{r.Control(), r.Logs()}
+			for _, instance := range []storage.Instance{storage.Main, storage.Standby} {
+				for slot := 0; slot < 2; slot++ {
+					c, err := r.Business(storage.Position{Instance: instance, Slot: slot})
+					if err != nil {
+						t.Fatal(err)
+					}
+					connections = append(connections, c)
+				}
+			}
+			for i, c := range connections {
+				prefix := "DATABASE_"
+				if i == 1 {
+					prefix = "DATABASE_LOG_"
+				}
+				u, err := url.Parse(c.DSN())
+				if err != nil {
+					t.Fatal("generated URL cannot be parsed")
+				}
+				password, ok := u.User.Password()
+				if !ok || password != values[prefix+"PASSWORD"] || u.User.Username() != values[prefix+"USER"] {
+					t.Fatal("credentials did not survive URL encoding")
+				}
+				u.User = nil
+				found := false
+				for key, endpoint := range values {
+					if strings.HasSuffix(key, "_URL") && u.String() == endpoint {
+						found = true
+					}
+				}
+				if !found || strings.Contains(fmt.Sprintf("%+v", c), password) {
+					t.Fatal("endpoint changed or secret disclosed")
+				}
+			}
+		})
+	}
+}
+
+func TestSeparateCredentialsRejectIncompleteOrMixedConfiguration(t *testing.T) {
+	for _, key := range []string{"DATABASE_USER", "DATABASE_PASSWORD", "DATABASE_LOG_USER", "DATABASE_LOG_PASSWORD"} {
+		for _, empty := range []bool{false, true} {
+			values := separateConnectionValues()
+			if empty {
+				values[key] = ""
+			} else {
+				delete(values, key)
+			}
+			if _, err := load(values); err == nil || strings.Contains(err.Error(), "business-") || strings.Contains(err.Error(), "logger-") {
+				t.Fatal("incomplete credentials accepted or disclosed", key)
+			}
+		}
+	}
+	for key, embedded := range connectionValues() {
+		values := separateConnectionValues()
+		values[key] = embedded
+		if _, err := load(values); err == nil || !strings.Contains(err.Error(), key) || strings.Contains(err.Error(), "synthetic-secret") {
+			t.Fatal("mixed credentials accepted or disclosed", key)
+		}
 	}
 }
