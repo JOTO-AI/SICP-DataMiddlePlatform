@@ -17,6 +17,7 @@ __pycache__/
 *.pyc
 .env
 .env.*
+!.env.example
 artifacts/
 deploy/runtime/
 *.test

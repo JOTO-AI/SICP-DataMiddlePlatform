@@ -155,7 +155,7 @@ func (d *deployment) directConfig(t *testing.T, role string) (string, []string) 
 	if err := os.Chmod(binary, 0700); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := os.ReadFile(filepath.Join(d.root, "deploy", "examples", role+".env.example"))
+	raw, err := os.ReadFile(filepath.Join(d.root, "internal", "assembly", "testdata", "deployment", role+".env"))
 	if err != nil {
 		t.Fatal(err)
 	}

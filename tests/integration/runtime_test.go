@@ -212,7 +212,7 @@ func newRuntime(t *testing.T, initialize bool) *runtimeFixture {
 		if role == config.Query {
 			name = "query"
 		}
-		file, err := os.Open("../../deploy/examples/" + name + ".env.example")
+		file, err := os.Open("../../internal/assembly/testdata/deployment/" + name + ".env")
 		if err != nil {
 			t.Fatal(err)
 		}

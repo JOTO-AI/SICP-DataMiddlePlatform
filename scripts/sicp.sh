@@ -1,19 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-project="${SICP_PROJECT:-sicp-phase1}"
-[[ "$project" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || { printf '%s\n' 'Invalid SICP_PROJECT' >&2; exit 1; }
-compose=(docker compose --project-name "$project" --file "$root/deploy/compose.yaml")
+compose=(docker compose --project-directory "$root" --env-file "$root/.env" --file "$root/compose.yaml")
 operation="${1:-help}"
 if (($#)); then shift; fi
 case "$operation" in
   prepare)
     umask 077
-    mkdir -p "$root/deploy/runtime"
-    for name in query worker stack migrate admin; do
-      if [[ ! -e "$root/deploy/runtime/$name.env" ]]; then cp -- "$root/deploy/examples/$name.env.example" "$root/deploy/runtime/$name.env"; fi
-    done
-    printf '%s\n' 'Prepared synthetic local configuration; existing files were preserved.'
+    if [[ ! -e "$root/.env" ]]; then cp -- "$root/.env.example" "$root/.env"; fi
+    printf '%s\n' 'Prepared root .env; existing configuration was preserved.'
     ;;
   validate)
     "${compose[@]}" config --quiet
@@ -21,7 +16,7 @@ case "$operation" in
     "${compose[@]}" run --rm --no-deps --entrypoint /usr/local/bin/sicpctl worker validate sync-worker
     ;;
   build)
-    for service in query worker migrate mock; do "${compose[@]}" build "$service"; done
+    "${compose[@]}" build
     ;;
   infra)
     "${compose[@]}" run --rm --no-deps volumes
@@ -29,7 +24,7 @@ case "$operation" in
     "${compose[@]}" up -d mock
     ;;
   migrate) "${compose[@]}" run --rm --no-deps migrate ;;
-  start) "${compose[@]}" up -d --wait --wait-timeout 90 query worker ;;
+  start) "${compose[@]}" up -d --wait --wait-timeout 90 query worker console ;;
   deploy)
     "$0" prepare
     "$0" build

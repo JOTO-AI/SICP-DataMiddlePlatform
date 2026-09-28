@@ -7,7 +7,7 @@ test -z "$(gofmt -l cmd internal tests/integration)"
 for script in scripts/sicp.sh scripts/check-compose.sh deploy/init-postgres.sh; do
   bash -n "$script"
 done
-python3 -c 'import ast; from pathlib import Path; ast.parse(Path("deploy/mock.py").read_text())'
+python3 -c 'import ast; from pathlib import Path; [ast.parse(Path(p).read_text()) for p in ("deploy/mock.py", "scripts/check-compose-config.py")]'
 go vet ./...
 mkdir -p artifacts
 go test -race -count=1 -coverprofile=artifacts/coverage.out -json ./... | tee artifacts/unit-tests.jsonl

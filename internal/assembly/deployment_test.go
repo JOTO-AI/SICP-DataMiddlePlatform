@@ -14,7 +14,7 @@ import (
 
 func deploymentValues(t *testing.T, role string) map[string]string {
 	t.Helper()
-	f, err := os.Open(filepath.Join("..", "..", "deploy", "examples", role+".env.example"))
+	f, err := os.Open(filepath.Join("testdata", "deployment", role+".env"))
 	if err != nil {
 		t.Fatal(err)
 	}

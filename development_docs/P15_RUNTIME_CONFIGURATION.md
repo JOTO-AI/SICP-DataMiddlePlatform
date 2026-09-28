@@ -1,5 +1,7 @@
 # 运行配置与依赖装配
 
+Docker Compose 的统一配置模板位于根目录 `.env.example`，复制为 `.env` 后使用根目录 `compose.yaml` 启动全部服务。Compose 将 `QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 分别映射为对应容器的 `DATABASE_*`；下表描述的是进程内变量名。公共配置在 `.env` 只填写一次，凭据按服务分别传入。旧 `deploy/runtime/*.env` 不再读取。
+
 双服务入口使用 `config.LoadRuntime`，先完整校验，再按 PostgreSQL → Redis → 持久文件 → worker HTTP 源 → worker 邮件创建。缺配置、缺工厂或初始化失败直接失败；释放部分结果及此前资源，顺序相反且有总预算，不回退内存存储。P15.05 接通真实查询、管理、日志、通知与串行 worker：每轮先读取恢复事实并证明旧进程/SQL 已停止，再处理任务或调度。
 
 | 环境变量 | 约束 |

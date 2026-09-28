@@ -47,7 +47,7 @@ func newDeployment(t *testing.T, initialize bool, workerValues ...map[string]str
 	d := &deployment{ctx: ctx, root: root, project: "sicp-i06-" + strings.ToLower(rand.Text()[:10]), queryURL: "http://127.0.0.1:18080", workerURL: "http://127.0.0.1:18081", client: &http.Client{Transport: transport, Timeout: 8 * time.Second}}
 	d.script(t, "prepare")
 	if len(workerValues) > 0 {
-		path := filepath.Join(root, "deploy", "runtime", "worker.env")
+		path := filepath.Join(root, ".env")
 		original, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
@@ -108,7 +108,7 @@ func newDeployment(t *testing.T, initialize bool, workerValues ...map[string]str
 }
 
 func (d *deployment) composeCommand(ctx context.Context, args ...string) *exec.Cmd {
-	all := append([]string{"compose", "-p", d.project, "-f", filepath.Join(d.root, "deploy", "compose.yaml")}, args...)
+	all := append([]string{"compose", "-p", d.project, "-f", filepath.Join(d.root, "compose.yaml")}, args...)
 	cmd := exec.CommandContext(ctx, "docker", all...)
 	cmd.Dir = d.root
 	return cmd

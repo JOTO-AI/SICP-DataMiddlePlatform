@@ -1,6 +1,245 @@
-# One-command synthetic deployment, including the web console.
+# Isolated synthetic environment. Production endpoints and credentials must be
+# supplied explicitly; this file never connects to an upstream school service.
 name: ${SICP_PROJECT:-sicp-phase1}
-include:
-  - path:
-      - ./deploy/compose.yaml
-      - ./deploy/compose.console.yaml
+
+x-runtime-environment: &runtime-environment
+  SOURCE_TIMEZONE: "${SOURCE_TIMEZONE:?Set SOURCE_TIMEZONE in .env (copy .env.example)}"
+  STARTUP_TIMEOUT: "${STARTUP_TIMEOUT:?Set STARTUP_TIMEOUT in .env (copy .env.example)}"
+  SHUTDOWN_TIMEOUT: "${SHUTDOWN_TIMEOUT:?Set SHUTDOWN_TIMEOUT in .env (copy .env.example)}"
+  DEPENDENCY_TIMEOUT: "${DEPENDENCY_TIMEOUT:?Set DEPENDENCY_TIMEOUT in .env (copy .env.example)}"
+  QUERY_API_KEY: "${QUERY_API_KEY:?Set QUERY_API_KEY in .env (copy .env.example)}"
+  REDIS_URL: "${REDIS_URL:?Set REDIS_URL in .env (copy .env.example)}"
+  LOG_DIRECTORY: "${LOG_DIRECTORY:?Set LOG_DIRECTORY in .env (copy .env.example)}"
+  LOG_MAX_BYTES: "${LOG_MAX_BYTES:?Set LOG_MAX_BYTES in .env (copy .env.example)}"
+  LOG_MAX_FILES: "${LOG_MAX_FILES:?Set LOG_MAX_FILES in .env (copy .env.example)}"
+  SNAPSHOT_KEY: "${SNAPSHOT_KEY:?Set SNAPSHOT_KEY in .env (copy .env.example)}"
+  AUDIT_KEY: "${AUDIT_KEY:?Set AUDIT_KEY in .env (copy .env.example)}"
+  CODE_VERSION: "${CODE_VERSION:?Set CODE_VERSION in .env (copy .env.example)}"
+  ENVIRONMENT: "${ENVIRONMENT:?Set ENVIRONMENT in .env (copy .env.example)}"
+
+x-service: &service
+  platform: linux/amd64
+  restart: unless-stopped
+  read_only: true
+  user: "65532:65532"
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  stop_grace_period: 35s
+  tmpfs: ["/tmp:size=16m,mode=1777"]
+  networks: [sicp]
+
+x-postgres: &postgres
+  image: postgres:16-bookworm
+  platform: linux/amd64
+  restart: unless-stopped
+  environment: &postgres-environment
+    POSTGRES_USER: "${POSTGRES_USER:?Set POSTGRES_USER in .env (copy .env.example)}"
+    POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy .env.example)}"
+    QUERY_PASSWORD: "${QUERY_PASSWORD:?Set QUERY_PASSWORD in .env (copy .env.example)}"
+    WORKER_PASSWORD: "${WORKER_PASSWORD:?Set WORKER_PASSWORD in .env (copy .env.example)}"
+    LOGGER_PASSWORD: "${LOGGER_PASSWORD:?Set LOGGER_PASSWORD in .env (copy .env.example)}"
+  healthcheck:
+    # The temporary init server only listens on a Unix socket. Wait for TCP
+    # so migrations cannot race the first-run database/role initialization.
+    test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d postgres"]
+    interval: 2s
+    timeout: 2s
+    retries: 40
+  networks: [sicp]
+  shm_size: 128mb
+  stop_grace_period: 35s
+
+services:
+  db-m:
+    <<: *postgres
+    environment:
+      <<: *postgres-environment
+      SICP_CLUSTER: M
+    volumes:
+      - pg-m:/var/lib/postgresql/data
+      - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
+  db-s:
+    <<: *postgres
+    environment:
+      <<: *postgres-environment
+      SICP_CLUSTER: S
+    volumes:
+      - pg-s:/var/lib/postgresql/data
+      - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
+  db-log:
+    <<: *postgres
+    environment:
+      <<: *postgres-environment
+      SICP_CLUSTER: log
+    volumes:
+      - pg-log:/var/lib/postgresql/data
+      - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
+  redis:
+    image: redis:7.4-bookworm
+    platform: linux/amd64
+    restart: unless-stopped
+    command: [redis-server, --appendonly, "yes", --appendfsync, always]
+    volumes: ["redis:/data"]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 2s
+      retries: 40
+    networks: [sicp]
+  volumes:
+    image: busybox:1.37
+    platform: linux/amd64
+    restart: "no"
+    network_mode: none
+    volumes: ["query-logs:/query-logs", "worker-logs:/worker-logs", "staging:/staging", "targets:/targets", "spool:/spool", "mock-mail:/mock-mail"]
+    command: [sh, -c, "chown 65532:65532 /query-logs /worker-logs /staging /targets /spool /mock-mail && chmod 700 /query-logs /worker-logs /staging /targets /spool /mock-mail"]
+  mock:
+    <<: *service
+    depends_on:
+      volumes: {condition: service_completed_successfully}
+    build: {context: ./deploy, dockerfile: Mock.Dockerfile}
+    image: sicp-mock:phase1
+    volumes:
+      - ./mock_data:/app/mock_data:ro
+      - mock-mail:/mail
+    environment:
+      MOCK_TOKEN: "${SOURCE_TOKEN:?Set SOURCE_TOKEN in .env (copy .env.example)}"
+      MOCK_CONTROL_TOKEN: "${MOCK_CONTROL_TOKEN:?Set MOCK_CONTROL_TOKEN in .env (copy .env.example)}"
+      PYTHONDONTWRITEBYTECODE: "1"
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/livez', timeout=3).read()"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      sicp:
+        aliases: [mock-source, mock-mail]
+  query:
+    <<: *service
+    depends_on:
+      volumes: {condition: service_completed_successfully}
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    networks: [sicp, ingress]
+    build: {context: ., dockerfile: deploy/Dockerfile, args: {SERVICE: query-service}}
+    image: sicp-query:phase1
+    environment:
+      <<: *runtime-environment
+      HTTP_ADDRESS: 0.0.0.0:8080
+      DATABASE_M0_URL: "${QUERY_DATABASE_M0_URL:?Set QUERY_DATABASE_M0_URL in .env (copy .env.example)}"
+      DATABASE_M1_URL: "${QUERY_DATABASE_M1_URL:?Set QUERY_DATABASE_M1_URL in .env (copy .env.example)}"
+      DATABASE_S0_URL: "${QUERY_DATABASE_S0_URL:?Set QUERY_DATABASE_S0_URL in .env (copy .env.example)}"
+      DATABASE_S1_URL: "${QUERY_DATABASE_S1_URL:?Set QUERY_DATABASE_S1_URL in .env (copy .env.example)}"
+      DATABASE_CONTROL_URL: "${QUERY_DATABASE_CONTROL_URL:?Set QUERY_DATABASE_CONTROL_URL in .env (copy .env.example)}"
+      DATABASE_LOG_URL: "${QUERY_DATABASE_LOG_URL:?Set QUERY_DATABASE_LOG_URL in .env (copy .env.example)}"
+    volumes: ["query-logs:/var/lib/sicp/logs"]
+    ports: ["127.0.0.1:${SICP_QUERY_PORT:-18080}:8080"]
+    healthcheck:
+      test: [CMD, /usr/local/bin/sicpctl, health, "http://127.0.0.1:8080/livez"]
+      interval: 5s
+      timeout: 6s
+      retries: 10
+  worker:
+    <<: *service
+    depends_on:
+      volumes: {condition: service_completed_successfully}
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+      mock: {condition: service_healthy}
+    networks: [sicp, ingress]
+    build: {context: ., dockerfile: deploy/Dockerfile, args: {SERVICE: sync-worker}}
+    image: sicp-worker:phase1
+    environment:
+      <<: *runtime-environment
+      HTTP_ADDRESS: 0.0.0.0:8081
+      DATABASE_M0_URL: "${WORKER_DATABASE_M0_URL:?Set WORKER_DATABASE_M0_URL in .env (copy .env.example)}"
+      DATABASE_M1_URL: "${WORKER_DATABASE_M1_URL:?Set WORKER_DATABASE_M1_URL in .env (copy .env.example)}"
+      DATABASE_S0_URL: "${WORKER_DATABASE_S0_URL:?Set WORKER_DATABASE_S0_URL in .env (copy .env.example)}"
+      DATABASE_S1_URL: "${WORKER_DATABASE_S1_URL:?Set WORKER_DATABASE_S1_URL in .env (copy .env.example)}"
+      DATABASE_CONTROL_URL: "${WORKER_DATABASE_CONTROL_URL:?Set WORKER_DATABASE_CONTROL_URL in .env (copy .env.example)}"
+      DATABASE_LOG_URL: "${WORKER_DATABASE_LOG_URL:?Set WORKER_DATABASE_LOG_URL in .env (copy .env.example)}"
+      STAGING_DIRECTORY: "${STAGING_DIRECTORY:?Set STAGING_DIRECTORY in .env (copy .env.example)}"
+      TARGET_DIRECTORY: "${TARGET_DIRECTORY:?Set TARGET_DIRECTORY in .env (copy .env.example)}"
+      SPOOL_DIRECTORY: "${SPOOL_DIRECTORY:?Set SPOOL_DIRECTORY in .env (copy .env.example)}"
+      STAGING_MAX_BYTES: "${STAGING_MAX_BYTES:?Set STAGING_MAX_BYTES in .env (copy .env.example)}"
+      TARGET_MAX_BYTES: "${TARGET_MAX_BYTES:?Set TARGET_MAX_BYTES in .env (copy .env.example)}"
+      SPOOL_MAX_BYTES: "${SPOOL_MAX_BYTES:?Set SPOOL_MAX_BYTES in .env (copy .env.example)}"
+      SOURCE_ORIGIN: "${SOURCE_ORIGIN:?Set SOURCE_ORIGIN in .env (copy .env.example)}"
+      SOURCE_TOKEN: "${SOURCE_TOKEN:?Set SOURCE_TOKEN in .env (copy .env.example)}"
+      SOURCE_SCOPE: "${SOURCE_SCOPE:?Set SOURCE_SCOPE in .env (copy .env.example)}"
+      SOURCE_QUALITY: "${SOURCE_QUALITY:?Set SOURCE_QUALITY in .env (copy .env.example)}"
+      MAIL_ADDRESS: "${MAIL_ADDRESS:?Set MAIL_ADDRESS in .env (copy .env.example)}"
+      MAIL_TLS: "${MAIL_TLS:?Set MAIL_TLS in .env (copy .env.example)}"
+      MAIL_FROM: "${MAIL_FROM:?Set MAIL_FROM in .env (copy .env.example)}"
+      MAIL_TO: "${MAIL_TO:?Set MAIL_TO in .env (copy .env.example)}"
+      MANAGEMENT_CREDENTIALS: "${MANAGEMENT_CREDENTIALS:?Set MANAGEMENT_CREDENTIALS in .env (copy .env.example)}"
+    volumes: ["worker-logs:/var/lib/sicp/logs", "staging:/var/lib/sicp/staging", "targets:/var/lib/sicp/targets", "spool:/var/lib/sicp/spool"]
+    ports: ["127.0.0.1:${SICP_WORKER_PORT:-18081}:8081"]
+    healthcheck:
+      test: [CMD, /usr/local/bin/sicpctl, health, "http://127.0.0.1:8081/livez"]
+      interval: 5s
+      timeout: 6s
+      retries: 10
+  migrate:
+    <<: *service
+    build: {context: ., dockerfile: deploy/Dockerfile, args: {SERVICE: sync-worker}}
+    image: sicp-migrate:phase1
+    restart: "no"
+    depends_on:
+      db-m: {condition: service_healthy}
+      db-s: {condition: service_healthy}
+      db-log: {condition: service_healthy}
+    entrypoint: [/usr/local/bin/sicpctl, migrate]
+    environment:
+      DATABASE_M0_URL: "${MIGRATE_DATABASE_M0_URL:?Set MIGRATE_DATABASE_M0_URL in .env (copy .env.example)}"
+      DATABASE_M1_URL: "${MIGRATE_DATABASE_M1_URL:?Set MIGRATE_DATABASE_M1_URL in .env (copy .env.example)}"
+      DATABASE_S0_URL: "${MIGRATE_DATABASE_S0_URL:?Set MIGRATE_DATABASE_S0_URL in .env (copy .env.example)}"
+      DATABASE_S1_URL: "${MIGRATE_DATABASE_S1_URL:?Set MIGRATE_DATABASE_S1_URL in .env (copy .env.example)}"
+      DATABASE_CONTROL_URL: "${MIGRATE_DATABASE_CONTROL_URL:?Set MIGRATE_DATABASE_CONTROL_URL in .env (copy .env.example)}"
+      DATABASE_LOG_URL: "${MIGRATE_DATABASE_LOG_URL:?Set MIGRATE_DATABASE_LOG_URL in .env (copy .env.example)}"
+  ctl:
+    <<: *service
+    image: sicp-worker:phase1
+    restart: "no"
+    profiles: [tools]
+    entrypoint: [/usr/local/bin/sicpctl, admin]
+    environment:
+      MANAGEMENT_URL: "${MANAGEMENT_URL:?Set MANAGEMENT_URL in .env (copy .env.example)}"
+      MANAGEMENT_TOKEN: "${MANAGEMENT_TOKEN:?Set MANAGEMENT_TOKEN in .env (copy .env.example)}"
+
+  console:
+    build: {context: ./frontend}
+    image: sicp-console:phase1
+    depends_on:
+      query: {condition: service_healthy}
+      worker: {condition: service_healthy}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    ports: ["127.0.0.1:${SICP_CONSOLE_PORT:-18082}:8080"]
+    networks: [ingress]
+    healthcheck:
+      test: [CMD, wget, -q, --spider, "http://127.0.0.1:8080/console/"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+networks:
+  # Only HTTP services join the ordinary bridge needed for loopback publishing.
+  # PostgreSQL, Redis and Mock remain exclusively on the internal network.
+  ingress:
+  sicp:
+    internal: true
+volumes:
+  pg-m:
+  pg-s:
+  pg-log:
+  redis:
+  query-logs:
+  worker-logs:
+  staging:
+  targets:
+  spool:
+  mock-mail:

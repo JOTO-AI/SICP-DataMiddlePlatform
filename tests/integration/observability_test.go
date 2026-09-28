@@ -91,7 +91,7 @@ func compose(t *testing.T, args ...string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	command := exec.CommandContext(ctx, "docker", append([]string{"compose", "-p", "sicp-integration", "-f", "../../deploy/compose.yaml"}, args...)...)
+	command := exec.CommandContext(ctx, "docker", append([]string{"compose", "-p", "sicp-integration", "-f", "../../compose.yaml"}, args...)...)
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("isolated compose %v: %v\n%s", args, err, output)
 	}
@@ -285,7 +285,7 @@ func (m *mailReceiver) captured() []string {
 }
 func newSender(t *testing.T, r control.Repository, s *observability.Sanitizer, m *mailReceiver) *notification.Sender {
 	t.Helper()
-	f, err := os.Open("../../deploy/examples/worker.env.example")
+	f, err := os.Open("../../internal/assembly/testdata/deployment/worker.env")
 	if err != nil {
 		t.Fatal(err)
 	}

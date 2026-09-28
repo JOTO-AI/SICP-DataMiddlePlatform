@@ -7,8 +7,11 @@
 要求 Docker Engine 或 Docker Desktop（Linux 容器模式），Compose ≥ 2.30；镜像使用 linux/amd64。无需本机安装 Go、Node.js 或 Bash，Windows PowerShell 也可运行。在仓库根目录执行：
 
 ```sh
+cp .env.example .env
 docker compose up -d --build --wait --wait-timeout 300
 ```
+
+Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执行，已有 `.env` 时直接修改。
 
 打开控制台 <http://127.0.0.1:18082/console/>。Compose 自动启动 PostgreSQL、Redis、Mock、查询服务、同步服务和前端，完成卷权限初始化与数据库迁移后才启动应用。首次构建需要联网拉取基础镜像与依赖。
 
@@ -24,11 +27,11 @@ docker compose down
 
 `up` 只部署，不自动提交数据初始化任务；首次初始化完成前 query `/readyz` 未就绪属于预期，Compose 使用 `/livez` 检查应用是否启动。`down` 保留命名卷，再次执行启动命令可复用数据。默认项目名为 `sicp-phase1`，与旧脚本一致。已有部署升级前先停应用并备份，详见[部署说明](deploy/README.md)。
 
-无需复制配置即可启动；如需自定义，将 `deploy/examples/*.env.example` 复制为 `deploy/runtime/*.env`（去掉 `.example`），已有 runtime 值覆盖示例默认值。默认仅监听本机，示例配置仅用于合成环境。Compose 配置合并规则见 [Docker 文档](https://docs.docker.com/reference/compose-file/services/#env_file)。
+所有服务（包括 console）定义在根目录唯一的 `compose.yaml` 中，统一配置模板为根目录 `.env.example`，实际部署只编辑 `.env`。Compose 按服务传入各自需要的变量。旧的 `deploy/runtime/*.env` 不再读取，升级前请将自定义值迁入 `.env`；数据库连接使用 `QUERY_`、`WORKER_`、`MIGRATE_` 前缀区分。默认仅监听本机，示例配置仅用于合成环境。
 
 ## Bash 部署入口
 
-原有 Linux / Bash 脚本仍可用于分步运维和仅后端部署。服务、CI 与镜像统一使用 Go **1.26.8**。
+Linux / Bash 脚本用于同一套 Compose 的分步运维，`deploy` 同样包含控制台。服务、CI 与镜像统一使用 Go **1.26.8**。
 
 ```bash
 ./scripts/sicp.sh deploy
@@ -39,7 +42,7 @@ docker compose down
 
 `deploy` 准备配置、构建镜像、创建持久卷、迁移数据库并启动服务；数据初始化通过管理入口显式受理，使用 task 命令确认最终完成。默认 query、worker 分别向宿主机 `127.0.0.1:18080`、`127.0.0.1:18081` 提供 HTTP 服务。PG、Redis 和 Mock 仅连接内部网络。源数据来自只读 `mock_data`，邮件由本地 Mock SMTP 接收。
 
-完整运行配置使用 `deploy/examples/*.env.example`，首次准备后保存在忽略提交的 `deploy/runtime/`；`prepare` 保留已有配置。这些 raw 环境文件不能直接作为 Shell 脚本执行。`configs/` 下早期最小示例不足以启动最终装配服务。
+`prepare` 仅在根目录 `.env` 不存在时复制 `.env.example`，保留已有配置。`.env` 被 Git 忽略，由 Compose 解析，不要作为 Shell 脚本执行。
 
 业务请求使用 `X-API-Key`，管理入口使用独立 Bearer 凭据及动作权限。`/livez` 表示进程存活，`/readyz` 按合法活动组合、实际依赖及恢复状态判断就绪。响应丢失时使用相同幂等键重试；失败重跑生成关联的新任务，历史不改写；重启先恢复未决任务。
 
@@ -47,7 +50,7 @@ docker compose down
 
 ## 简易前端控制台
 
-`frontend/` 提供 Phase 1 中文控制台，支持服务状态、四个业务查询接口、更新任务提交与追踪。启动后端后，在 `frontend` 执行 `npm ci`、`npm run dev`，访问 `http://127.0.0.1:5173/console/` 并填写业务与管理凭据。Windows PowerShell 可使用 `npm.cmd`。可选 Docker 部署及使用说明见 [前端 README](frontend/README.md)。
+`frontend/` 提供 Phase 1 中文控制台，已包含在根目录 Compose 部署中。前端开发时可在 `frontend` 执行 `npm ci`、`npm run dev`，访问 `http://127.0.0.1:5173/console/` 并填写业务与管理凭据。Windows PowerShell 可使用 `npm.cmd`。详细使用说明见 [前端 README](frontend/README.md)。
 
 ## 验证与文档
 

@@ -3,7 +3,8 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 : "${SICP_PROJECT:?Supply an isolated Compose project name}"
-test ! -d deploy/runtime
+test ! -e .env
+bash scripts/sicp.sh prepare
 docker compose config --quiet
 docker compose up -d --build --wait --wait-timeout 300
 

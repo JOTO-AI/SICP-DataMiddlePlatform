@@ -5,10 +5,13 @@
 安装 Docker Engine 或 Docker Desktop（Linux 容器模式）和 Compose ≥ 2.30，在仓库根目录执行，Windows PowerShell 与 Linux/macOS 终端通用：
 
 ```sh
+cp .env.example .env
 docker compose up -d --build --wait --wait-timeout 300
 ```
 
-根目录 `compose.yaml` 合并后端与控制台配置，默认项目名 `sicp-phase1`。启动顺序由 Compose 依赖关系保证：数据库完成空卷初始化并可通过 TCP 访问后执行迁移；卷目录权限初始化成功、迁移成功且 Redis 健康后启动 query/worker（worker 同时等待 Mock 健康）；两服务存活后启动控制台。初始化或迁移失败会阻止依赖服务启动，可用 `docker compose logs volumes migrate db-m db-s db-log` 排查。
+Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执行，不覆盖已有配置。
+
+根目录唯一的 `compose.yaml` 直接定义所有服务（含 console），默认项目名 `sicp-phase1`。启动顺序由 Compose 依赖关系保证：数据库完成空卷初始化并可通过 TCP 访问后执行迁移；卷目录权限初始化成功、迁移成功且 Redis 健康后启动 query/worker（worker 同时等待 Mock 健康）；两服务存活后启动控制台。初始化或迁移失败会阻止依赖服务启动，可用 `docker compose logs volumes migrate db-m db-s db-log` 排查。
 
 | 服务 | 本机入口 |
 | --- | --- |
@@ -27,9 +30,11 @@ docker compose down
 
 首次数据初始化仍需明确提交，`up --wait` 只等待应用存活，不代表已经发布可查询的数据。`volumes` 和 `migrate` 是一次性任务，成功后显示 `Exited (0)` 属于正常状态。`down` 保留全部持久卷；重新执行启动命令可复用数据，不要加 `--volumes`，除非确实要销毁数据。
 
-默认读取 `deploy/examples/*.env.example`，然后以可选的 `deploy/runtime/*.env` 覆盖同名变量。无需预先运行 Bash 或创建 runtime 目录。自定义时复制对应示例为 `query.env`、`worker.env`、`stack.env`、`migrate.env`、`admin.env`；修改数据库密码时需同步相关连接串，已有 PG 卷不会因修改环境变量而自动修改密码。完整配置和 raw 格式要求见下文。
+统一配置模板为根目录 `.env.example`，实际部署只维护根目录 `.env`。公共参数填写一次；`QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 分别传给查询、同步和迁移容器，并映射为进程使用的 `DATABASE_*`。查询容器不会获得管理令牌或迁移凭据。修改数据库角色密码时需同步相应连接串，URL 中的密码需百分号编码；已有 PG 卷不会因修改环境变量而自动修改密码。修改管理令牌时同步 `MANAGEMENT_CREDENTIALS` 与 `MANAGEMENT_TOKEN`。
 
-可在根目录 `.env` 或终端环境变量中设置 `SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`、`SICP_CONSOLE_PORT`。`.env` 只用于 Compose 插值，不替代 `deploy/runtime/*.env`。仅部署后端可使用 `docker compose -p sicp-phase1 -f deploy/compose.yaml up -d --build --wait --wait-timeout 300`。
+项目名和端口也统一在 `.env` 设置：`SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`、`SICP_CONSOLE_PORT`。终端同名环境变量优先。只需后端时可指定服务：`docker compose up -d --build --wait --wait-timeout 300 query worker`。
+
+旧版 `deploy/compose*.yaml`、`deploy/examples/*.env.example` 和 `configs/*.env.example` 已移除。原有 `deploy/runtime/*.env` 不再加载，请先将自定义值迁入根目录 `.env`；旧文件不会自动改写。项目名和卷名保持一致，使用相同项目名可继续使用已有数据。
 
 升级已有部署时先 `docker compose stop console query worker` 并备份全部卷，再运行上述启动命令；如需要明确重跑迁移，先执行 `docker compose build`、`docker compose run --rm migrate`。重复迁移校验已应用版本与 checksum。不要在旧服务仍运行时直接进行结构升级。
 
@@ -47,9 +52,9 @@ docker compose down
 
 `deploy` 依次 prepare → build → validate → infra → migrate → start。也可逐项执行；迁移在服务首次启动前运行，重复迁移校验原版本与 checksum，不修改已应用脚本。数据库角色与空数据库由 `init-postgres.sh` 在空 PG 卷第一次启动时创建，后续结构更新由 `sicpctl migrate` 完成。升级先停应用，备份全部卷，构建、校验、迁移，再启动应用；不删除旧迁移记录。
 
-`prepare` 只复制缺失的示例，保留已有 `deploy/runtime/*.env`，生成文件权限受 umask 077 约束。该目录被 Git 和镜像构建上下文排除。环境文件使用 raw `KEY=value`：不加外围引号，不写 export，不做变量替换，不执行 Shell。JSON 保持单行原文；路径、源地址、邮件收发目标、十四源质量策略均明确配置。参数列表详见 [运行配置](../development_docs/P15_RUNTIME_CONFIGURATION.md)。Compose 的 raw 文件格式见 [Docker 官方文档](https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/)；PG 空卷初始化行为见 [官方镜像说明](https://hub.docker.com/_/postgres)。
+`prepare` 只在根目录 `.env` 缺失时复制 `.env.example`，生成文件权限受 umask 077 约束；已有 `.env` 保持不变。`.env` 被 Git 和镜像构建上下文排除。文件使用 Compose dotenv 语法，不作为 Shell 脚本执行；包含字面量 `$` 或 `#` 的值使用单引号，JSON 保持单行。参数列表详见 [运行配置](../development_docs/P15_RUNTIME_CONFIGURATION.md)。
 
-示例凭据都是公开合成值，仅供隔离验收。query 使用 sicp_query，worker 使用 sicp_worker，日志使用 sicp_logger；迁移账号仅出现在独立 migrate 工具配置，管理 token 只在 admin 工具配置和 worker 中存在。查询与管理服务同时连接内部依赖网络和入口网络，仅向宿主机的 127.0.0.1 发布 18080、18081。数据库、Redis 和 Mock 仅连接 internal 网络，不发布宿主端口，可通过 `docker compose exec` 在对应容器内排查。Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
+示例凭据都是公开合成值，仅供隔离验收。query 使用 sicp_query，worker 使用 sicp_worker，日志使用 sicp_logger；配置文件统一管理凭据，但迁移账号只传给 migrate，管理 token 只传给 ctl 和 worker。查询与管理服务同时连接内部依赖网络和入口网络，仅向宿主机的 127.0.0.1 发布 18080、18081。数据库、Redis 和 Mock 仅连接 internal 网络，不发布宿主端口，可通过 `docker compose exec` 在对应容器内排查。Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
 
 ```bash
 ./scripts/sicp.sh sync round-002
