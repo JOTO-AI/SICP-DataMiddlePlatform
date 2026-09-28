@@ -22,12 +22,14 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 )
 
-const managementToken = "synthetic-management-token"
+const managementSession = "administrator-session"
 
 type deployment struct {
 	ctx                                                  context.Context
 	root, project, queryURL, workerURL, mockURL, initial string
 	client                                               *http.Client
+	cookie                                               *http.Cookie
+	csrf                                                 string
 }
 
 func newDeployment(t *testing.T, initialize bool, workerValues ...map[string]string) *deployment {
@@ -150,7 +152,9 @@ func (d *deployment) request(t *testing.T, method, endpoint, token, key, body st
 		t.Fatal(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if token != "" {
+	if token == managementSession {
+		d.authorize(t, req)
+	} else if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	if key != "" {
@@ -160,6 +164,19 @@ func (d *deployment) request(t *testing.T, method, endpoint, token, key, body st
 	if err != nil {
 		t.Fatal("local deployment request", err)
 	}
+	if response.StatusCode == 401 && token == managementSession {
+		response.Body.Close()
+		d.cookie = nil
+		req.Header.Del("Cookie")
+		if req.GetBody != nil {
+			req.Body, _ = req.GetBody()
+		}
+		d.authorize(t, req)
+		response, err = d.client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 	defer response.Body.Close()
 	var envelope map[string]any
 	if err := json.NewDecoder(io.LimitReader(response.Body, 2<<20)).Decode(&envelope); err != nil {
@@ -167,9 +184,30 @@ func (d *deployment) request(t *testing.T, method, endpoint, token, key, body st
 	}
 	return response.StatusCode, envelope
 }
+func (d *deployment) authorize(t *testing.T, req *http.Request) {
+	t.Helper()
+	if d.cookie == nil {
+		login, _ := http.NewRequestWithContext(d.ctx, "POST", d.workerURL+"/console-api/login", strings.NewReader(`{"username":"synthetic-admin","password":"synthetic-admin-password"}`))
+		login.Header.Set("Content-Type", "application/json")
+		login.Header.Set("X-SICP-Request", "console")
+		response, err := d.client.Do(login)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer response.Body.Close()
+		var envelope struct{ Data struct{ CSRF string } }
+		if err := json.NewDecoder(response.Body).Decode(&envelope); err != nil || response.StatusCode != 200 || len(response.Cookies()) != 1 {
+			t.Fatal("login failed", err, response.StatusCode)
+		}
+		d.cookie, d.csrf = response.Cookies()[0], envelope.Data.CSRF
+	}
+	req.AddCookie(d.cookie)
+	req.Header.Set("X-SICP-Request", "console")
+	req.Header.Set("X-SICP-CSRF", d.csrf)
+}
 func (d *deployment) submit(t *testing.T, action, key string) string {
 	t.Helper()
-	status, envelope := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/"+action, managementToken, key, "{}")
+	status, envelope := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/"+action, managementSession, key, "{}")
 	if status != 202 {
 		t.Fatalf("admission %s: %d %v", action, status, envelope["code"])
 	}
@@ -192,7 +230,7 @@ func (d *deployment) waitTask(t *testing.T, id, want string) map[string]any {
 	t.Helper()
 	deadline := time.Now().Add(90 * time.Second)
 	for {
-		status, envelope := d.request(t, "GET", d.workerURL+"/admin/v1/tasks/"+id, managementToken, "", "")
+		status, envelope := d.request(t, "GET", d.workerURL+"/admin/v1/tasks/"+id, managementSession, "", "")
 		if status != 200 {
 			t.Fatalf("task status: %d %v", status, envelope["code"])
 		}
@@ -283,7 +321,7 @@ func TestI06_01(t *testing.T) {
 
 func TestI06_08(t *testing.T) {
 	d := newDeployment(t, false)
-	status, envelope := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/force-full", managementToken, "before-initialization", "{}")
+	status, envelope := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/force-full", managementSession, "before-initialization", "{}")
 	if status != 409 || envelope["code"] != "initialize_required" {
 		t.Fatal("empty environment accepted force-full", status, envelope["code"])
 	}

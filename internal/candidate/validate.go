@@ -19,14 +19,14 @@ type QueryEvidence struct {
 	SHA256       string
 }
 type Evidence struct {
-	Target                   source.Target
-	Combination, CodeVersion string
-	CheckedAt                time.Time
-	Queries                  map[contract.Operation]QueryEvidence
+	Target      source.Target
+	Combination string
+	CheckedAt   time.Time
+	Queries     map[contract.Operation]QueryEvidence
 }
 
-func (e Evidence) Validate(target source.Target, m Manifest, code string) error {
-	if m.Validate() != nil || e.Target != target || e.Combination != m.Combination || e.CodeVersion != code || e.CheckedAt.IsZero() || len(e.Queries) != len(contract.Definitions()) {
+func (e Evidence) Validate(target source.Target, m Manifest) error {
+	if m.Validate() != nil || e.Target != target || e.Combination != m.Combination || e.CheckedAt.IsZero() || len(e.Queries) != len(contract.Definitions()) {
 		return ErrBuild
 	}
 	for _, definition := range contract.Definitions() {
@@ -60,11 +60,10 @@ type Queries interface {
 	Check(context.Context, read.Handle, contract.Operation, time.Time) (int, string, error)
 }
 type Validator struct {
-	Store       ValidationStore
-	Checks      Checks
-	Queries     Queries
-	Clock       ports.Clock
-	CodeVersion string
+	Store   ValidationStore
+	Checks  Checks
+	Queries Queries
+	Clock   ports.Clock
 }
 
 func dependencies(m Manifest, op contract.Operation) (map[string]string, error) {
@@ -88,7 +87,7 @@ func dependencies(m Manifest, op contract.Operation) (map[string]string, error) 
 }
 
 func (v Validator) Validate(ctx context.Context, target source.Target, m Manifest) (result Evidence, err error) {
-	if v.Store == nil || v.Checks == nil || v.Queries == nil || v.Clock == nil || v.CodeVersion == "" || len(v.CodeVersion) > 256 || m.Validate() != nil {
+	if v.Store == nil || v.Checks == nil || v.Queries == nil || v.Clock == nil || m.Validate() != nil {
 		return result, ErrBuild
 	}
 	h := read.Handle{Position: target.Position, Generation: target.Generation, Combination: m.Combination}
@@ -119,7 +118,7 @@ func (v Validator) Validate(ctx context.Context, target source.Target, m Manifes
 		err = ErrBuild
 		return
 	}
-	result = Evidence{Target: target, Combination: m.Combination, CodeVersion: v.CodeVersion, CheckedAt: at, Queries: map[contract.Operation]QueryEvidence{}}
+	result = Evidence{Target: target, Combination: m.Combination, CheckedAt: at, Queries: map[contract.Operation]QueryEvidence{}}
 	for _, definition := range contract.Definitions() {
 		if err = ctx.Err(); err != nil {
 			return
@@ -131,7 +130,7 @@ func (v Validator) Validate(ctx context.Context, target source.Target, m Manifes
 			return
 		}
 		old, ok := previous.Queries[op]
-		if ok && previous.Target == target && previous.Combination == m.Combination && previous.CodeVersion == v.CodeVersion && !previous.CheckedAt.IsZero() && old.Cases > 0 && digest(old.SHA256) && maps.Equal(old.Dependencies, deps) {
+		if ok && previous.Target == target && previous.Combination == m.Combination && !previous.CheckedAt.IsZero() && old.Cases > 0 && digest(old.SHA256) && maps.Equal(old.Dependencies, deps) {
 			old.Dependencies = maps.Clone(old.Dependencies)
 			result.Queries[op] = old
 			continue

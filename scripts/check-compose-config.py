@@ -29,9 +29,9 @@ def fixture_text(mode):
         "POSTGRES_PASSWORD": "synthetic", "QUERY_PASSWORD": "synthetic",
         "WORKER_PASSWORD": "synthetic", "LOGGER_PASSWORD": "synthetic",
         "QUERY_API_KEY": query["QUERY_API_KEY"], "SNAPSHOT_KEY": query["SNAPSHOT_KEY"],
-        "AUDIT_KEY": query["AUDIT_KEY"], "CODE_VERSION": "phase1-synthetic",
-        "MANAGEMENT_CREDENTIALS": worker["MANAGEMENT_CREDENTIALS"],
-        "MANAGEMENT_TOKEN": "synthetic-management-token",
+        "AUDIT_KEY": query["AUDIT_KEY"],
+        "ADMIN_USERNAME": worker["ADMIN_USERNAME"],
+        "ADMIN_PASSWORD": worker["ADMIN_PASSWORD"],
     }
     if mode == "production":
         overrides.update({
@@ -141,14 +141,14 @@ def main(directory):
             assert services[role]["depends_on"][dependency]["condition"] == "service_completed_successfully"
         assert Path(services[role]["build"]["context"]) == ROOT
     assert "POSTGRES_PASSWORD" not in services["query"]["environment"]
-    assert "MANAGEMENT_TOKEN" not in services["query"]["environment"]
-    assert "MANAGEMENT_CREDENTIALS" not in services["query"]["environment"]
+    assert "ADMIN_USERNAME" not in services["query"]["environment"]
+    assert "ADMIN_PASSWORD" not in services["query"]["environment"]
     assert set(services["migrate"]["environment"]) == {
         "DATABASE_M0_URL", "DATABASE_M1_URL", "DATABASE_S0_URL",
         "DATABASE_S1_URL", "DATABASE_CONTROL_URL", "DATABASE_LOG_URL",
         "DATABASE_USER", "DATABASE_PASSWORD", "DATABASE_LOG_USER", "DATABASE_LOG_PASSWORD",
     }
-    assert set(render(env_file, tools=True)["services"]["ctl"]["environment"]) == {"MANAGEMENT_URL", "MANAGEMENT_TOKEN"}
+    assert set(render(env_file, tools=True)["services"]["ctl"]["environment"]) == {"MANAGEMENT_URL", "ADMIN_USERNAME", "ADMIN_PASSWORD"}
     for name, cluster in (("db-m", "M"), ("db-s", "S"), ("db-log", "log")):
         assert services[name]["environment"]["SICP_CLUSTER"] == cluster
         assert services[name]["environment"]["POSTGRES_USER"] == "postgres"

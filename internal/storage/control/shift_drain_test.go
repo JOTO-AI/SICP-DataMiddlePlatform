@@ -63,7 +63,7 @@ func drainFixture(t *testing.T) (control.Repository, *drainDB, control.Publicati
 	t.Helper()
 	r, base, _ := publicationFixture(t)
 	at := time.Date(2100, 1, 1, 10, 0, 0, 0, time.UTC)
-	origin := control.ActiveMetadata{Sequence: 1, EventID: "old", TaskID: "old-task", OwnerGeneration: 1, CodeVersion: "v1", Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 1, BundleID: "C100"}}
+	origin := control.ActiveMetadata{Sequence: 1, EventID: "old", TaskID: "old-task", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 1, BundleID: "C100"}}
 	expected, _ := control.ActiveDocument(origin)
 	next := origin
 	next.Sequence = 2

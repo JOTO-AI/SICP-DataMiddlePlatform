@@ -8,6 +8,16 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; }
+.login-page { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
+.login-panel { width: 100%; max-width: 420px; padding: 36px; background: var(--white); border: 1px solid var(--line); border-radius: 12px; }
+.login-panel .brand { padding: 0; }
+.login-heading { margin: 32px 0 24px; }
+.login-heading p { margin-top: 8px; }
+.login-panel fieldset { display: flex; flex-direction: column; gap: 20px; }
+.login-panel > .hint { margin-top: 24px; }
+.account-actions { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.operator-name { max-width: 18ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 480px) { .login-page { padding: 16px; } .login-panel { padding: 24px; } .operator-name { max-width: 9ch; } }
 a { color: var(--brand); text-underline-offset: 3px; }
 button, input, select, textarea { font: inherit; }
 button, input, select, textarea { border: 1px solid var(--control); border-radius: 6px; background: var(--white); color: var(--ink); min-height: 38px; }

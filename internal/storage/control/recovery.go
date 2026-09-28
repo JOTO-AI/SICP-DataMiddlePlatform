@@ -44,7 +44,7 @@ func (r Repository) RestoreConfirmed(ctx context.Context, owner Ownership, expec
 		}
 		// The route-shift target checks also require a published bundle and
 		// an open, ready slot with matching generation and validation evidence.
-		if err = publicationTarget(ctx, tx, PublicationIntent{Kind: "route_shift", Target: confirmed.Position, CodeVersion: confirmed.CodeVersion}, confirmed.TaskID); err != nil {
+		if err = publicationTarget(ctx, tx, PublicationIntent{Kind: "route_shift", Target: confirmed.Position}, confirmed.TaskID); err != nil {
 			return err
 		}
 		return apply(ctx, confirmed)

@@ -24,12 +24,12 @@ type FixedAdmission interface {
 	AcquireFixed(context.Context, read.Handle) (read.RequestLease, error)
 }
 type ReadabilityProof struct {
-	TaskID                   string
-	Origin                   control.ActiveMetadata
-	Destination              control.SlotIdentity
-	Candidate                source.Target
-	Combination, CodeVersion string
-	CheckedAt                time.Time
+	TaskID      string
+	Origin      control.ActiveMetadata
+	Destination control.SlotIdentity
+	Candidate   source.Target
+	Combination string
+	CheckedAt   time.Time
 }
 
 // RecordReadability must fence the task, recheck both physical identities and
@@ -39,32 +39,31 @@ type ReadabilityStore interface {
 	RecordReadability(context.Context, ReadabilityProof, Copy, Copy) error
 }
 type Readability struct {
-	Admission   FixedAdmission
-	Checks      candidate.Checks
-	Queries     candidate.Queries
-	Store       ReadabilityStore
-	Clock       ports.Clock
-	CodeVersion string
+	Admission FixedAdmission
+	Checks    candidate.Checks
+	Queries   candidate.Queries
+	Store     ReadabilityStore
+	Clock     ports.Clock
 }
 
 // Check verifies the OLD published copy independently of the ready NEW copy.
 // It uses ordinary read admission and the query principal, never the candidate
 // validation path that revokes readiness on unpublished replacement slots.
 func (v Readability) Check(ctx context.Context, p control.UpdatePlan, next, old Copy) (proof ReadabilityProof, err error) {
-	if v.Admission == nil || v.Checks == nil || v.Queries == nil || v.Store == nil || v.Clock == nil || v.CodeVersion == "" || p.Validate() != nil {
+	if v.Admission == nil || v.Checks == nil || v.Queries == nil || v.Store == nil || v.Clock == nil || p.Validate() != nil {
 		return proof, ErrOldCopy
 	}
-	if next.Target.Position.Validate() != nil || next.Target.Generation < 1 || next.Target.CandidateID == "" || next.Target.Position.Instance != p.First || next.Manifest.Combination == p.Origin.Position.BundleID || next.Evidence.Validate(next.Target, next.Manifest, v.CodeVersion) != nil {
+	if next.Target.Position.Validate() != nil || next.Target.Generation < 1 || next.Target.CandidateID == "" || next.Target.Position.Instance != p.First || next.Manifest.Combination == p.Origin.Position.BundleID || next.Evidence.Validate(next.Target, next.Manifest) != nil {
 		return proof, ErrOldCopy
 	}
-	if old.Target.Position.Validate() != nil || old.Target.Generation < 1 || old.Target.CandidateID == "" || old.Target.Position.Instance != p.First || old.Target.Position == next.Target.Position || old.Manifest.Combination != p.Origin.Position.BundleID || old.Evidence.Validate(old.Target, old.Manifest, v.CodeVersion) != nil {
+	if old.Target.Position.Validate() != nil || old.Target.Generation < 1 || old.Target.CandidateID == "" || old.Target.Position.Instance != p.First || old.Target.Position == next.Target.Position || old.Manifest.Combination != p.Origin.Position.BundleID || old.Evidence.Validate(old.Target, old.Manifest) != nil {
 		return proof, ErrOldCopy
 	}
 	at, err := v.VerifyPublished(ctx, p, old)
 	if err != nil {
 		return proof, err
 	}
-	proof = ReadabilityProof{TaskID: p.TaskID, Origin: p.Origin, Destination: control.SlotIdentity{Position: old.Target.Position, Generation: old.Target.Generation, BundleID: old.Manifest.Combination}, Candidate: next.Target, Combination: next.Manifest.Combination, CodeVersion: v.CodeVersion, CheckedAt: at}
+	proof = ReadabilityProof{TaskID: p.TaskID, Origin: p.Origin, Destination: control.SlotIdentity{Position: old.Target.Position, Generation: old.Target.Generation, BundleID: old.Manifest.Combination}, Candidate: next.Target, Combination: next.Manifest.Combination, CheckedAt: at}
 	if err = v.Store.RecordReadability(ctx, proof, next, old); err != nil {
 		return ReadabilityProof{}, err
 	}
@@ -74,7 +73,7 @@ func (v Readability) Check(ctx context.Context, p control.UpdatePlan, next, old 
 // VerifyPublished performs ordinary pinned reads without changing readiness or
 // publication state. It is shared by old-copy transfer checks and no-change rounds.
 func (v Readability) VerifyPublished(ctx context.Context, p control.UpdatePlan, old Copy) (checked time.Time, err error) {
-	if v.Admission == nil || v.Checks == nil || v.Queries == nil || v.Clock == nil || p.Validate() != nil || old.Target.Position.Validate() != nil || old.Target.Generation < 1 || old.Target.CandidateID == "" || old.Manifest.Combination != p.Origin.Position.BundleID || old.Evidence.Validate(old.Target, old.Manifest, v.CodeVersion) != nil {
+	if v.Admission == nil || v.Checks == nil || v.Queries == nil || v.Clock == nil || p.Validate() != nil || old.Target.Position.Validate() != nil || old.Target.Generation < 1 || old.Target.CandidateID == "" || old.Manifest.Combination != p.Origin.Position.BundleID || old.Evidence.Validate(old.Target, old.Manifest) != nil {
 		return checked, ErrOldCopy
 	}
 	h := read.Handle{Position: old.Target.Position, Generation: old.Target.Generation, Combination: old.Manifest.Combination}
@@ -131,7 +130,7 @@ func (v Readability) VerifyPublished(ctx context.Context, p control.UpdatePlan, 
 			evidence.Queries[op] = value
 		}
 		evidence.Queries[def.Operation] = q
-		if evidence.Validate(old.Target, old.Manifest, v.CodeVersion) != nil {
+		if evidence.Validate(old.Target, old.Manifest) != nil {
 			return checked, ErrOldCopy
 		}
 	}

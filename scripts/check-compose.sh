@@ -19,24 +19,33 @@ docker compose config --quiet
 docker compose up -d --build --wait --wait-timeout 300
 
 console="http://127.0.0.1:${SICP_CONSOLE_PORT:-18082}"
+mkdir -p artifacts/compose
+cookies="artifacts/compose/session.cookies"
+login() {
+  curl --fail --silent --show-error -c "$cookies" -H 'Content-Type: application/json' -H 'X-SICP-Request: console' \
+    -d '{"username":"synthetic-admin","password":"synthetic-admin-password"}' "$console/console-api/login" > /dev/null
+}
 curl --fail --silent --show-error "$console/console/" > /dev/null
-curl --fail --silent --show-error "$console/gateway/query/livez"
-curl --fail --silent --show-error --retry 30 --retry-delay 2 "$console/gateway/worker/readyz"
+login
+curl --fail --silent --show-error -b "$cookies" "$console/console-api/query/livez"
+curl --fail --silent --show-error -b "$cookies" --retry 30 --retry-delay 2 "$console/console-api/worker/readyz"
 # A fresh deployment must not silently import source data.
-test "$(curl --silent --output /dev/null --write-out '%{http_code}' "$console/gateway/query/readyz")" = 503
+test "$(curl --silent -b "$cookies" --output /dev/null --write-out '%{http_code}' "$console/console-api/query/readyz")" = 503
 docker compose run --rm --no-deps ctl initialize compose-smoke-initialization
 for ((attempt=0; attempt<120; attempt++)); do
-  if curl --fail --silent "$console/gateway/query/readyz" > /dev/null; then
+  if curl --fail --silent -b "$cookies" "$console/console-api/query/readyz" > /dev/null; then
     break
   fi
   sleep 2
 done
-curl --fail --silent --show-error "$console/gateway/query/readyz"
+curl --fail --silent --show-error -b "$cookies" "$console/console-api/query/readyz"
 
 # Exercise repeated up and a full container recreation with retained volumes.
 docker compose up -d --wait --wait-timeout 300
 docker compose down
 docker compose up -d --wait --wait-timeout 300
 curl --fail --silent --show-error "$console/console/" > /dev/null
-curl --fail --silent --show-error --retry 30 --retry-delay 2 "$console/gateway/query/readyz"
-curl --fail --silent --show-error --retry 30 --retry-delay 2 "$console/gateway/worker/readyz"
+login
+curl --fail --silent --show-error -b "$cookies" --retry 30 --retry-delay 2 "$console/console-api/query/readyz"
+curl --fail --silent --show-error -b "$cookies" --retry 30 --retry-delay 2 "$console/console-api/worker/readyz"
+rm -f "$cookies"

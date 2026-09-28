@@ -1,14 +1,11 @@
-import { reactive } from 'vue'
-
-// Credentials intentionally live only in memory, never storage or URLs.
-export const credentials = reactive({ query: '', worker: '' })
+import { session, clearSession } from './session'
 export interface Envelope<T> { code: string; message: string; request_id?: string; data: T }
 export interface Result<T> { body: T; status: number; requestID: string; snapshot: string }
 export class ApiError extends Error {
   constructor(message: string, public code = '', public requestID = '', public status = 0) { super(message) }
 }
 const messages: Record<string, string> = {
-  unauthenticated: '凭据无效，请检查连接设置。', forbidden: '当前凭据没有此操作权限。',
+  unauthenticated: '登录已过期，请重新登录。', forbidden: '当前请求未获授权，请刷新页面后重试。',
   not_ready: '服务尚未就绪，请检查运行状态或完成初始化。', conflict: '查询快照已失效，请重新查询。',
   busy: '已有更新或恢复任务正在执行。', initialize_required: '请先执行首次初始化。',
   already_initialized: '数据已初始化，请使用增量或强制全量更新。', not_failed: '只有失败任务可以重跑。',
@@ -17,16 +14,19 @@ const messages: Record<string, string> = {
   not_found: '未找到该任务。', deadline_exceeded: '查询超时，请缩小范围后重试。',
 }
 export async function request<T>(service: 'query' | 'worker', path: string, options: { body?: unknown; snapshot?: string; key?: string; health?: boolean } = {}): Promise<Result<T>> {
-  if (!options.health && !credentials[service]) throw new ApiError('请先在连接设置中填写对应凭据。')
-  const headers: Record<string, string> = { Accept: 'application/json' }
-  if (!options.health) headers[service === 'query' ? 'X-API-Key' : 'Authorization'] = service === 'query' ? credentials.query : `Bearer ${credentials.worker}`
+  if (!session.operator) throw new ApiError('请先登录。')
+  const epoch = session.epoch
+  const headers: Record<string, string> = { Accept: 'application/json', 'X-SICP-Request': 'console', 'X-SICP-CSRF': session.csrf }
   if (options.body !== undefined) headers['Content-Type'] = 'application/json'
   if (options.snapshot) headers['X-Query-Snapshot'] = options.snapshot
   if (options.key) headers['Idempotency-Key'] = options.key
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 30000)
   try {
-    const response = await fetch(`/gateway/${service}${path}`, { method: options.body === undefined ? 'GET' : 'POST', headers, body: options.body === undefined ? undefined : JSON.stringify(options.body), signal: controller.signal, cache: 'no-store', credentials: 'omit', redirect: 'error' })
+    const endpoint = service === 'worker' && !options.health ? path : `/console-api/${service}${path}`
+    const response = await fetch(endpoint, { method: options.body === undefined ? 'GET' : 'POST', headers, body: options.body === undefined ? undefined : JSON.stringify(options.body), signal: controller.signal, cache: 'no-store', credentials: 'same-origin', redirect: 'error' })
+    if (epoch !== session.epoch) throw new ApiError('登录状态已变化，请重新操作。')
+    if (response.status === 401) { clearSession('登录已过期，请重新登录。'); throw new ApiError('登录已过期，请重新登录。') }
     const requestID = response.headers.get('X-Request-ID') || ''
     let body: any
     try {

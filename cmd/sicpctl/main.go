@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"strings"
@@ -49,7 +50,7 @@ func run(args []string) error {
 		if len(args) != 2 {
 			return errors.New("explicit health URL required")
 		}
-		return request(args[1], "GET", "", "", false)
+		return request(args[1], "GET", "", false)
 	case "admin":
 		if len(args) < 2 || len(args) > 4 {
 			return errors.New("admin action required")
@@ -59,9 +60,8 @@ func run(args []string) error {
 		if err != nil || u == nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.Path != "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
 			return errors.New("invalid MANAGEMENT_URL")
 		}
-		token := os.Getenv("MANAGEMENT_TOKEN")
-		if strings.TrimSpace(token) == "" {
-			return errors.New("MANAGEMENT_TOKEN required")
+		if os.Getenv("ADMIN_USERNAME") == "" || os.Getenv("ADMIN_PASSWORD") == "" {
+			return errors.New("ADMIN_USERNAME and ADMIN_PASSWORD required")
 		}
 		path := "/admin/v1/tasks/"
 		method := "POST"
@@ -91,7 +91,7 @@ func run(args []string) error {
 		if method == "POST" && !identifier(key) {
 			return errors.New("invalid idempotency key")
 		}
-		return request(base+path, method, token, key, true)
+		return request(base+path, method, key, true)
 	default:
 		return errors.New("unknown operation")
 	}
@@ -107,7 +107,7 @@ func identifier(s string) bool {
 	}
 	return true
 }
-func request(address, method, token, key string, output bool) error {
+func request(address, method, key string, output bool) error {
 	u, e := url.Parse(address)
 	if e != nil || u == nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil {
 		return errors.New("invalid endpoint")
@@ -118,9 +118,6 @@ func request(address, method, token, key string, output bool) error {
 	if e != nil {
 		return errors.New("invalid request")
 	}
-	if token != "" {
-		r.Header.Set("Authorization", "Bearer "+token)
-	}
 	if key != "" {
 		r.Header.Set("Idempotency-Key", key)
 	}
@@ -128,6 +125,40 @@ func request(address, method, token, key string, output bool) error {
 	transport.Proxy = nil
 	defer transport.CloseIdleConnections()
 	client := http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	if output {
+		jar, err := cookiejar.New(nil)
+		if err != nil {
+			return errors.New("login unavailable")
+		}
+		client.Jar = jar
+		payload, _ := json.Marshal(map[string]string{"username": os.Getenv("ADMIN_USERNAME"), "password": os.Getenv("ADMIN_PASSWORD")})
+		base := u.Scheme + "://" + u.Host
+		login, _ := http.NewRequestWithContext(ctx, "POST", base+"/console-api/login", strings.NewReader(string(payload)))
+		login.Header.Set("Content-Type", "application/json")
+		login.Header.Set("X-SICP-Request", "console")
+		response, err := client.Do(login)
+		if err != nil {
+			return errors.New("login unavailable")
+		}
+		var envelope struct{ Data struct{ CSRF string } }
+		err = json.NewDecoder(io.LimitReader(response.Body, 8192)).Decode(&envelope)
+		response.Body.Close()
+		if err != nil || response.StatusCode != 200 || envelope.Data.CSRF == "" {
+			return errors.New("administrator login failed")
+		}
+		r.Header.Set("X-SICP-Request", "console")
+		r.Header.Set("X-SICP-CSRF", envelope.Data.CSRF)
+		defer func() {
+			cleanup, stop := context.WithTimeout(context.Background(), 3*time.Second)
+			defer stop()
+			logout, _ := http.NewRequestWithContext(cleanup, "POST", base+"/console-api/logout", nil)
+			logout.Header.Set("X-SICP-Request", "console")
+			logout.Header.Set("X-SICP-CSRF", envelope.Data.CSRF)
+			if response, err := client.Do(logout); err == nil {
+				response.Body.Close()
+			}
+		}()
+	}
 	resp, e := client.Do(r)
 	if e != nil {
 		return errors.New("management or health endpoint unavailable")

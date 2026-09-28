@@ -14,7 +14,6 @@ type Routes struct {
 	Registry     storage.Registry
 	Database     storage.Database
 	ActiveReader update.ActiveReader
-	CodeVersion  string
 }
 
 func (r Routes) transaction(ctx context.Context, fn func(storage.Transaction) error) error {
@@ -28,9 +27,9 @@ func (r Routes) transaction(ctx context.Context, fn func(storage.Transaction) er
 	}
 	return tx.Commit(ctx)
 }
-func readable(ctx context.Context, tx storage.Transaction, h read.Handle, code string) error {
+func readable(ctx context.Context, tx storage.Transaction, h read.Handle) error {
 	var yes bool
-	e := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.slots s JOIN control.bundles b ON b.id=s.bundle_id JOIN control.candidates c ON c.instance=s.instance AND c.slot=s.slot AND c.generation=s.generation AND c.bundle_id=s.bundle_id WHERE s.instance=$1 AND s.slot=$2 AND s.generation=$3 AND s.bundle_id=$4 AND s.state='ready' AND s.admission_open=TRUE AND b.published_at IS NOT NULL AND c.state='ready' AND c.ready_at IS NOT NULL AND c.evidence->>'CodeVersion'=$5)", string(h.Position.Instance), int16(h.Position.Slot), h.Generation, h.Combination, code).Scan(&yes)
+	e := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.slots s JOIN control.bundles b ON b.id=s.bundle_id JOIN control.candidates c ON c.instance=s.instance AND c.slot=s.slot AND c.generation=s.generation AND c.bundle_id=s.bundle_id WHERE s.instance=$1 AND s.slot=$2 AND s.generation=$3 AND s.bundle_id=$4 AND s.state='ready' AND s.admission_open=TRUE AND b.published_at IS NOT NULL AND c.state='ready' AND c.ready_at IS NOT NULL AND c.evidence IS NOT NULL)", string(h.Position.Instance), int16(h.Position.Slot), h.Generation, h.Combination).Scan(&yes)
 	if e != nil {
 		return e
 	}
@@ -43,14 +42,14 @@ func (r Routes) Validate(ctx context.Context, h read.Handle) error {
 	if h.Validate() != nil {
 		return read.ErrHandle
 	}
-	return r.transaction(ctx, func(tx storage.Transaction) error { return readable(ctx, tx, h, r.CodeVersion) })
+	return r.transaction(ctx, func(tx storage.Transaction) error { return readable(ctx, tx, h) })
 }
 func (r Routes) Active(ctx context.Context) (read.Handle, error) {
 	a, exists, e := r.ActiveReader.Read(ctx)
 	if e != nil {
 		return read.Handle{}, e
 	}
-	if !exists || a.CodeVersion != r.CodeVersion {
+	if !exists {
 		return read.Handle{}, read.ErrHandle
 	}
 	h := read.Handle{Position: a.Position.Position, Generation: a.Position.Generation, Combination: a.Position.BundleID}
@@ -62,7 +61,7 @@ func (r Routes) Active(ctx context.Context) (read.Handle, error) {
 		if confirmed == nil || *confirmed != a {
 			return read.ErrHandle
 		}
-		return readable(ctx, tx, h, r.CodeVersion)
+		return readable(ctx, tx, h)
 	})
 	if e != nil {
 		return read.Handle{}, e
@@ -81,7 +80,7 @@ func (r Routes) ForCombination(ctx context.Context, id string) (h read.Handle, e
 		}
 		if a != nil && a.Position.BundleID == id {
 			h = read.Handle{Position: a.Position.Position, Generation: a.Position.Generation, Combination: id}
-			if e = readable(ctx, tx, h, r.CodeVersion); e == nil {
+			if e = readable(ctx, tx, h); e == nil {
 				return nil
 			} else if !errors.Is(e, read.ErrHandle) {
 				return e
@@ -95,7 +94,7 @@ func (r Routes) ForCombination(ctx context.Context, id string) (h read.Handle, e
 				}
 				if generation != nil {
 					h = read.Handle{Position: storage.Position{Instance: i, Slot: n}, Generation: *generation, Combination: id}
-					if e = readable(ctx, tx, h, r.CodeVersion); e == nil {
+					if e = readable(ctx, tx, h); e == nil {
 						return nil
 					} else if !errors.Is(e, read.ErrHandle) {
 						return e

@@ -58,7 +58,7 @@ func (w *changedWorld) Check(_ context.Context, p control.UpdatePlan, next, old 
 	if err := w.step("old-readable"); err != nil {
 		return update.ReadabilityProof{}, err
 	}
-	return update.ReadabilityProof{TaskID: p.TaskID, Origin: p.Origin, Destination: control.SlotIdentity{Position: old.Target.Position, Generation: old.Target.Generation, BundleID: old.Manifest.Combination}, Candidate: next.Target, Combination: next.Manifest.Combination, CodeVersion: "v1", CheckedAt: p.StartedAt}, nil
+	return update.ReadabilityProof{TaskID: p.TaskID, Origin: p.Origin, Destination: control.SlotIdentity{Position: old.Target.Position, Generation: old.Target.Generation, BundleID: old.Manifest.Combination}, Candidate: next.Target, Combination: next.Manifest.Combination, CheckedAt: p.StartedAt}, nil
 }
 func (w *changedWorld) Shift(_ context.Context, p update.ReadabilityProof) (update.ShiftResult, error) {
 	if err := w.step("shift"); err != nil {
@@ -113,7 +113,7 @@ func changedFixture(t *testing.T) (update.Changed, *changedWorld) {
 	for _, v := range next.Manifest.Tables {
 		w.prepared.Changes[v.Table] = candidate.ChangeCounts{Before: v.Rows, After: v.Rows}
 	}
-	c := update.Changed{Source: w, Store: w, Builder: w, Validator: w, Readability: w, Shifter: w, Outbox: w, Delivery: w, Progress: w, Clock: testkit.FakeClock{Time: p.StartedAt.Add(13 * time.Minute)}, CodeVersion: "v1"}
+	c := update.Changed{Source: w, Store: w, Builder: w, Validator: w, Readability: w, Shifter: w, Outbox: w, Delivery: w, Progress: w, Clock: testkit.FakeClock{Time: p.StartedAt.Add(13 * time.Minute)}}
 	return c, w
 }
 func TestT13_07ChangedRoundBuildsAndPublishesInStrictOrderBothDirections(t *testing.T) {

@@ -5,7 +5,9 @@ import (
 	"net/http"
 )
 
-func Routes(auth *Auth, handlers map[Action]http.Handler) (http.Handler, error) {
+func Routes(auth interface {
+	Protect(Action, http.Handler) (http.Handler, error)
+}, handlers map[Action]http.Handler) (http.Handler, error) {
 	if len(handlers) != 5 {
 		return nil, errors.New("all management actions must be configured")
 	}

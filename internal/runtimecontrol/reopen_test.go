@@ -54,7 +54,7 @@ func TestT15_10ClosedPublishedStandbyRequiresSuccessfulFixedQueryChecks(t *testi
 				m.Tables = append(m.Tables, candidate.TableVersion{Table: table.Name, Scope: "synthetic", SHA256: strings.Repeat("a", 64)})
 			}
 			target := source.Target{Position: storage.Position{Instance: storage.Standby, Slot: 0}, Generation: 1, CandidateID: "old-copy"}
-			ev := candidate.Evidence{Target: target, Combination: "C100", CodeVersion: "v1", CheckedAt: base.at, Queries: map[contract.Operation]candidate.QueryEvidence{}}
+			ev := candidate.Evidence{Target: target, Combination: "C100", CheckedAt: base.at, Queries: map[contract.Operation]candidate.QueryEvidence{}}
 			for _, def := range contract.Definitions() {
 				names, _ := metadata.Dependencies(def.Operation)
 				deps := map[string]string{}
@@ -66,7 +66,7 @@ func TestT15_10ClosedPublishedStandbyRequiresSuccessfulFixedQueryChecks(t *testi
 			d := &reopenDB{database: base, copy: update.Copy{Target: target, Manifest: m, Evidence: ev}, missing: scenario == "unpublished"}
 			s.Repository.Database = d
 			base.pending = scenario == "pending"
-			origin := control.ActiveMetadata{Sequence: 1, EventID: "old", TaskID: "old-task", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 1, BundleID: "C100"}, CodeVersion: "v1"}
+			origin := control.ActiveMetadata{Sequence: 1, EventID: "old", TaskID: "old-task", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 1, BundleID: "C100"}}
 			p := control.UpdatePlan{TaskID: "task", Mode: "incremental", StartedAt: base.at, Origin: origin, First: storage.Standby, Second: storage.Main, Overlap: time.Minute, Windows: map[string]control.SourceWindow{}}
 			for _, table := range source.Catalog() {
 				p.Windows[table.Name] = control.SourceWindow{ConfirmedUntil: base.at, Start: base.at.Add(-time.Minute), End: base.at}

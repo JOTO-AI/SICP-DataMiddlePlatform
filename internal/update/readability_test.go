@@ -79,7 +79,7 @@ func copyFixture(t *testing.T, bundle string, slot int) update.Copy {
 }
 func readabilityFixture(t *testing.T) (update.Readability, *readableWorld, update.Copy, update.Copy) {
 	w := &readableWorld{}
-	v := update.Readability{Admission: w, Checks: w, Queries: w, Store: w, Clock: testkit.FakeClock{Time: updatePlan().StartedAt.Add(time.Minute)}, CodeVersion: "v1"}
+	v := update.Readability{Admission: w, Checks: w, Queries: w, Store: w, Clock: testkit.FakeClock{Time: updatePlan().StartedAt.Add(time.Minute)}}
 	return v, w, copyFixture(t, "C101", 1), copyFixture(t, "C100", 0)
 }
 func TestT13_03OldCopyMustPassIndependentReadAdmissionStoragePermissionsAndQueries(t *testing.T) {
@@ -118,7 +118,7 @@ func TestT13_05OldCopyQueryPrincipalPermissionFailureStopsBeforeRouteShift(t *te
 	}
 }
 func TestT13_06WrongOldIdentityOrQueryEvidenceNeverAuthorizesShift(t *testing.T) {
-	for _, kind := range []string{"bundle", "generation", "code", "dependencies", "same-slot", "new-not-ready", "query", "commit", "close"} {
+	for _, kind := range []string{"bundle", "generation", "unchecked-evidence", "dependencies", "same-slot", "new-not-ready", "query", "commit", "close"} {
 		t.Run(kind, func(t *testing.T) {
 			v, w, next, old := readabilityFixture(t)
 			switch kind {
@@ -126,8 +126,8 @@ func TestT13_06WrongOldIdentityOrQueryEvidenceNeverAuthorizesShift(t *testing.T)
 				old.Manifest.Combination = "C099"
 			case "generation":
 				old.Target.Generation++
-			case "code":
-				old.Evidence.CodeVersion = "old-code"
+			case "unchecked-evidence":
+				old.Evidence.CheckedAt = time.Time{}
 			case "dependencies":
 				old.Manifest.Tables[0].SHA256 = strings.Repeat("c", 64)
 			case "same-slot":

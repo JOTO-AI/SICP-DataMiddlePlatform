@@ -42,7 +42,7 @@ func (s Shifter) ResumeShift(ctx context.Context, event control.Publication) (Sh
 // Shift keeps the durable event even on an unknown reply. No SQL drain or
 // candidate write is attempted until the route is durably confirmed.
 func (s Shifter) Shift(ctx context.Context, p ReadabilityProof) (out ShiftResult, err error) {
-	if s.Store == nil || s.Outbox == nil || s.Delivery == nil || s.Clock == nil || p.TaskID == "" || len(p.TaskID) > 64 || p.Origin.Validate() != nil || p.Destination.Position.Validate() != nil || p.Destination.Generation < 1 || p.Destination.BundleID != p.Origin.Position.BundleID || p.Destination.Position.Instance == p.Origin.Position.Position.Instance || p.Candidate.Position.Instance != p.Destination.Position.Instance || p.Candidate.Position == p.Destination.Position || p.Candidate.Generation < 1 || p.Candidate.CandidateID == "" || p.Combination == "" || p.Combination == p.Destination.BundleID || p.CodeVersion == "" || p.CheckedAt.IsZero() {
+	if s.Store == nil || s.Outbox == nil || s.Delivery == nil || s.Clock == nil || p.TaskID == "" || len(p.TaskID) > 64 || p.Origin.Validate() != nil || p.Destination.Position.Validate() != nil || p.Destination.Generation < 1 || p.Destination.BundleID != p.Origin.Position.BundleID || p.Destination.Position.Instance == p.Origin.Position.Position.Instance || p.Candidate.Position.Instance != p.Destination.Position.Instance || p.Candidate.Position == p.Destination.Position || p.Candidate.Generation < 1 || p.Candidate.CandidateID == "" || p.Combination == "" || p.Combination == p.Destination.BundleID || p.CheckedAt.IsZero() {
 		return out, ErrOldCopy
 	}
 	at := s.Clock.Now()
@@ -52,7 +52,7 @@ func (s Shifter) Shift(ctx context.Context, p ReadabilityProof) (out ShiftResult
 	if err = s.Store.AuthorizeShift(ctx, p); err != nil {
 		return out, err
 	}
-	intent := control.PublicationIntent{ID: p.TaskID + "-shift", Kind: "route_shift", CodeVersion: p.CodeVersion, Expected: &p.Origin, Target: p.Destination, CreatedAt: at}
+	intent := control.PublicationIntent{ID: p.TaskID + "-shift", Kind: "route_shift", Expected: &p.Origin, Target: p.Destination, CreatedAt: at}
 	out.Event, err = publication.Submit(ctx, s.Outbox, s.Delivery, intent)
 	if err != nil {
 		return out, err

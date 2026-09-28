@@ -86,7 +86,7 @@ func TestT14_07ResumeRechecksDrainAndRejectsUnknownPublication(t *testing.T) {
 			case "wrong_role":
 				saved.Copies[0].Target.Position.Instance = saved.Prepared.Plan.Second
 			case "old_evidence":
-				saved.Copies[0].Evidence.CodeVersion = "old"
+				saved.Copies[0].Evidence.Target.Generation++
 			case "publish":
 				saved.Event.ID = "pending-publish"
 			}

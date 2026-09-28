@@ -6,6 +6,8 @@ Docker Compose 的统一配置模板位于根目录 `.env.example`，复制为 `
 
 双服务入口使用 `config.LoadRuntime`，先完整校验，再按 PostgreSQL → Redis → 持久文件 → worker HTTP 源 → worker 邮件创建。缺配置、缺工厂或初始化失败直接失败；释放部分结果及此前资源，顺序相反且有总预算，不回退内存存储。P15.05 接通真实查询、管理、日志、通知与串行 worker：每轮先读取恢复事实并证明旧进程/SQL 已停止，再处理任务或调度。
 
+已移除 `CODE_VERSION` 配置及代码版本相等校验；查询、发布和恢复继续校验数据组合、物理位置、代次、就绪状态及验证证据。旧发布记录中的 `code_version` 仅为完整元数据原子比较与恢复保留，新发布记录不再写入该字段；旧 `.env` 中的 `CODE_VERSION` 可以删除。
+
 | 环境变量 | 约束 |
 |---|---|
 | HTTP_ADDRESS、SOURCE_TIMEZONE、STARTUP_TIMEOUT、SHUTDOWN_TIMEOUT、HTTP_READ_TIMEOUT、HTTP_WRITE_TIMEOUT、HTTP_IDLE_TIMEOUT | 延用基础服务配置；默认时区 Asia/Shanghai，时间预算须正值 |
@@ -17,13 +19,15 @@ Docker Compose 的统一配置模板位于根目录 `.env.example`，复制为 `
 | REDIS_URL | redis/rediss URL，显式端口，固定 `/0`，禁止查询参数覆盖客户端行为 |
 | DEPENDENCY_TIMEOUT | 默认 10s，可设 1ms—1min；连接及邮件提交使用有界预算 |
 | SNAPSHOT_KEY、AUDIT_KEY | 不同的至少 32 字节秘密，与业务 key 分离；AUDIT_KEY 经 SHA-256 派生固定 32 字节日志 HMAC 密钥，重启/双服务需保持相同 |
-| CODE_VERSION、ENVIRONMENT | 显式代码版本；环境为 test/development/staging/production |
+| ENVIRONMENT | 环境为 test/development/staging/production |
 | LOG_DIRECTORY、LOG_MAX_BYTES、LOG_MAX_FILES | 必填；独立预建持久目录，字节数 1024—1TiB，文件数 2—1000000；保留旧事件，容量不足拒绝新写入 |
 | STAGING_DIRECTORY、TARGET_DIRECTORY、SPOOL_DIRECTORY | worker 必填；预建的三个独立持久目录，与日志路径不得重叠，实际符号链接解析后也不得重叠 |
 | STAGING_MAX_BYTES、TARGET_MAX_BYTES、SPOOL_MAX_BYTES | worker 必填；各 1MiB—1TiB，目标/获取文件使用共享配额，spool 预算供后续任务编排使用 |
 | SOURCE_ORIGIN、SOURCE_TOKEN | worker 必填；明确 http/https origin，无用户信息、查询和额外路径；无默认真实上游，禁跳转及环境代理 |
 | SOURCE_SCOPE、SOURCE_QUALITY | worker 必填；scope 为稳定源范围标识，最多 256 字节；quality 是十四个源表名对应的 JSON 对象，每项含 MinimumRows、MaximumDeletedRows、AllowEmpty，计数不可负，不提供隐式宽松策略 |
-| MANAGEMENT_CREDENTIALS | worker 必填；JSON 数组，结构和动作见管理 API 文档，未知字段/尾随 JSON 拒绝 |
+| ADMIN_USERNAME、ADMIN_PASSWORD | worker 必填；单管理员账号，密码 12—1024 字节，不能与 QUERY_API_KEY 相同；账号用于任务操作者记录 |
+| CONSOLE_QUERY_URL | worker 必填；仅允许 http/https origin；Compose 固定为 http://query:8080，浏览器无法覆盖上游目标 |
+| CONSOLE_COOKIE_SECURE | 默认 false，适用于本机 HTTP；HTTPS 部署设为 true，命令行管理地址也必须使用 HTTPS |
 | MAIL_ADDRESS、MAIL_TLS、MAIL_FROM、MAIL_TO | worker 必填；SMTP host:port、tls/starttls/none 和明确发件/收件地址；无默认外部目标 |
 | MAIL_USERNAME、MAIL_PASSWORD | 必须成对配置；none 不允许认证，production 不允许 none |
 

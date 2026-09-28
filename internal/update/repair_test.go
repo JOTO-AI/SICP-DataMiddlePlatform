@@ -37,7 +37,7 @@ func (w *repairWorld) IsolateRepair(context.Context, control.ActiveMetadata, con
 func (w *repairWorld) PlanRepair(_ context.Context, _ control.ActiveMetadata, h control.SlotIdentity, id string) (source.Target, error) {
 	return source.Target{Position: h.Position, Generation: h.Generation + 1, CandidateID: id}, w.step("plan")
 }
-func (w *repairWorld) OpenRepaired(context.Context, control.ActiveMetadata, source.Target, string) error {
+func (w *repairWorld) OpenRepaired(context.Context, control.ActiveMetadata, source.Target) error {
 	err := w.step("open")
 	if err == nil {
 		w.opened = true
@@ -68,7 +68,7 @@ func TestT14_12StandbyRepairPreservesCombinationAndOpensOnlyAfterValidation(t *t
 			if failure == "source" {
 				full.fail = errors.New("untrusted target")
 			}
-			r := update.Repairer{Store: w, Source: full, Builder: w, Validator: w, CodeVersion: "v1"}
+			r := update.Repairer{Store: w, Source: full, Builder: w, Validator: w}
 			out, err := r.Repair(t.Context(), active, damaged, "repair-copy")
 			if failure == "" {
 				if err != nil || !w.opened || out.Manifest.Combination != "C100" || out.Target.Generation != damaged.Target.Generation+1 || !reflect.DeepEqual(w.trace, []string{"isolate", "plan", "build", "validate", "open"}) {
@@ -91,7 +91,7 @@ func TestT14_12RepairRejectsServingInstanceOrDifferentCombination(t *testing.T) 
 			} else {
 				damaged.Manifest.Combination = "C101"
 			}
-			r := update.Repairer{Store: w, Source: &recoveredTarget{}, Builder: w, Validator: w, CodeVersion: "v1"}
+			r := update.Repairer{Store: w, Source: &recoveredTarget{}, Builder: w, Validator: w}
 			if _, err := r.Repair(t.Context(), active, damaged, "repair"); err == nil || len(w.trace) != 0 {
 				t.Fatal("unsafe repair admitted", err)
 			}

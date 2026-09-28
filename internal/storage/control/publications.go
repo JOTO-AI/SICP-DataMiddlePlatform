@@ -19,11 +19,12 @@ type ActiveMetadata struct {
 	TaskID          string       `json:"task_id"`
 	OwnerGeneration int64        `json:"owner_generation,string"`
 	Position        SlotIdentity `json:"position"`
-	CodeVersion     string       `json:"code_version"`
+	// LegacyCodeVersion preserves old publication documents, without controlling admission.
+	LegacyCodeVersion string `json:"code_version,omitempty"`
 }
 
 func (a ActiveMetadata) Validate() error {
-	if a.Sequence < 1 || a.EventID == "" || len(a.EventID) > 128 || a.TaskID == "" || len(a.TaskID) > 128 || a.OwnerGeneration < 1 || !a.Position.valid() || a.Position.Generation < 1 || a.CodeVersion == "" || len(a.CodeVersion) > 256 {
+	if a.Sequence < 1 || a.EventID == "" || len(a.EventID) > 128 || a.TaskID == "" || len(a.TaskID) > 128 || a.OwnerGeneration < 1 || !a.Position.valid() || a.Position.Generation < 1 {
 		return ErrEntity
 	}
 	return nil
@@ -58,14 +59,14 @@ func ActiveDocument(a ActiveMetadata) (Document, error) {
 }
 
 type PublicationIntent struct {
-	ID, Kind, CodeVersion string
-	Expected              *ActiveMetadata
-	Target                SlotIdentity
-	CreatedAt             time.Time
+	ID, Kind  string
+	Expected  *ActiveMetadata
+	Target    SlotIdentity
+	CreatedAt time.Time
 }
 
 func (i PublicationIntent) validate() error {
-	if strings.TrimSpace(i.ID) == "" || len(i.ID) > 128 || i.CodeVersion == "" || len(i.CodeVersion) > 256 || !i.Target.valid() || i.Target.Generation < 1 || i.CreatedAt.IsZero() {
+	if strings.TrimSpace(i.ID) == "" || len(i.ID) > 128 || !i.Target.valid() || i.Target.Generation < 1 || i.CreatedAt.IsZero() {
 		return ErrEntity
 	}
 	if i.Expected != nil && i.Expected.Validate() != nil {
@@ -129,7 +130,7 @@ func (r Repository) EnqueuePublication(ctx context.Context, intent PublicationIn
 			if target.Sequence != result.Sequence || target.EventID != result.ID || target.TaskID != result.TaskID {
 				return ErrEntity
 			}
-			if result.TaskID != r.owner.TaskID || result.Kind != intent.Kind || target.Position != intent.Target || target.CodeVersion != intent.CodeVersion || !result.CreatedAt.Equal(intent.CreatedAt) || !sameActiveDocument(result.Expected, expected) {
+			if result.TaskID != r.owner.TaskID || result.Kind != intent.Kind || target.Position != intent.Target || !result.CreatedAt.Equal(intent.CreatedAt) || !sameActiveDocument(result.Expected, expected) {
 				return ErrIdempotency
 			}
 			return nil
@@ -156,7 +157,7 @@ func (r Repository) EnqueuePublication(ctx context.Context, intent PublicationIn
 		if err := publicationTarget(ctx, tx, intent, r.owner.TaskID); err != nil {
 			return err
 		}
-		target := ActiveMetadata{Sequence: 1, EventID: intent.ID, TaskID: r.owner.TaskID, OwnerGeneration: r.owner.Generation, Position: intent.Target, CodeVersion: intent.CodeVersion}
+		target := ActiveMetadata{Sequence: 1, EventID: intent.ID, TaskID: r.owner.TaskID, OwnerGeneration: r.owner.Generation, Position: intent.Target}
 		initial, err := ActiveDocument(target)
 		if err != nil {
 			return err
@@ -208,7 +209,7 @@ func publicationTarget(ctx context.Context, tx storage.Transaction, i Publicatio
 		return ErrBusy
 	}
 	var ready bool
-	if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.candidates WHERE instance=$1 AND slot=$2 AND generation=$3 AND bundle_id=$4 AND state='ready' AND ready_at IS NOT NULL AND evidence->>'CodeVersion'=$5)", slot.Instance, slot.Slot, i.Target.Generation, i.Target.BundleID, i.CodeVersion).Scan(&ready); err != nil {
+	if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.candidates WHERE instance=$1 AND slot=$2 AND generation=$3 AND bundle_id=$4 AND state='ready' AND ready_at IS NOT NULL AND evidence IS NOT NULL)", slot.Instance, slot.Slot, i.Target.Generation, i.Target.BundleID).Scan(&ready); err != nil {
 		return err
 	}
 	if !ready {
@@ -236,7 +237,7 @@ func publicationTarget(ctx context.Context, tx storage.Transaction, i Publicatio
 		return ErrBusy
 	}
 	var copies int
-	err = tx.QueryRow(ctx, "SELECT COUNT(DISTINCT c.instance) FROM control.candidates c JOIN control.slots s ON s.instance=c.instance AND s.slot=c.slot AND s.generation=c.generation AND s.bundle_id=c.bundle_id WHERE c.bundle_id=$1 AND c.task_id=$2 AND c.state='ready' AND c.ready_at IS NOT NULL AND c.evidence->>'CodeVersion'=$3 AND s.state='ready'", i.Target.BundleID, task, i.CodeVersion).Scan(&copies)
+	err = tx.QueryRow(ctx, "SELECT COUNT(DISTINCT c.instance) FROM control.candidates c JOIN control.slots s ON s.instance=c.instance AND s.slot=c.slot AND s.generation=c.generation AND s.bundle_id=c.bundle_id WHERE c.bundle_id=$1 AND c.task_id=$2 AND c.state='ready' AND c.ready_at IS NOT NULL AND c.evidence IS NOT NULL AND s.state='ready'", i.Target.BundleID, task).Scan(&copies)
 	if err != nil {
 		return err
 	}

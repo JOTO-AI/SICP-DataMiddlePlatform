@@ -4,6 +4,7 @@ package application
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"sync"
@@ -59,7 +60,7 @@ type Application struct {
 
 func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 	a = &Application{runtime: r, config: c, done: make(chan struct{})}
-	a.routes = runtimecontrol.Routes{Registry: c.Databases, Database: r.Database, ActiveReader: r.Active, CodeVersion: c.CodeVersion}
+	a.routes = runtimecontrol.Routes{Registry: c.Databases, Database: r.Database, ActiveReader: r.Active}
 	clock := utcClock{}
 	guard, e := observability.NewGuard(r.Sanitizer, r.Logs)
 	if e != nil {
@@ -96,7 +97,7 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 			return nil, e
 		}
 	} else {
-		auth, e := admin.NewAuth(c.Service.APIKey, c.Credentials)
+		auth, e := admin.NewSessions(c.AdminUsername, c.AdminPassword, c.Service.APIKey, c.ConsoleCookieSecure)
 		if e != nil {
 			return nil, e
 		}
@@ -105,6 +106,34 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 		if e != nil {
 			return nil, e
 		}
+		queryProxy, e := admin.QueryProxy(c.ConsoleQueryURL, c.Service.APIKey)
+		if e != nil {
+			return nil, e
+		}
+		console := http.NewServeMux()
+		console.Handle("/admin/", a.Management)
+		console.HandleFunc("POST /console-api/login", auth.Login)
+		console.HandleFunc("GET /console-api/session", auth.Current)
+		console.HandleFunc("POST /console-api/logout", auth.Logout)
+		console.Handle("/console-api/query/", auth.Require(queryProxy))
+		console.Handle("/console-api/worker/", auth.Require(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Cache-Control", "no-store")
+			switch {
+			case req.Method == "GET" && req.URL.Path == "/console-api/worker/livez":
+				_ = json.NewEncoder(w).Encode(map[string]bool{"live": true})
+			case req.Method == "GET" && req.URL.Path == "/console-api/worker/readyz":
+				status := a.Status(req.Context())
+				status["ready"] = status["sync_ready"]
+				if !status["ready"] {
+					w.WriteHeader(503)
+				}
+				_ = json.NewEncoder(w).Encode(status)
+			default:
+				http.NotFound(w, req)
+			}
+		})))
+		a.Management = console
 		termination := worker.Termination{Runtime: r}
 		a.Engine = &worker.Engine{Store: r.Control, Recovery: update.Recovery{Store: r.Control, Active: r.Active, Execution: termination, Restorer: worker.Restorer{Runtime: r}}, Work: worker.Executor{Runtime: r, Config: c, Clock: clock, Recorder: recorder, Sink: guard, Observe: observe}, Clock: clock, Random: rand.Reader, Process: r.ProcessID}
 		a.Sender, e = notification.NewSender(r.Control, r.Mail, clock, r.Sanitizer, notification.DeliveryConfig{From: c.MailFrom, To: c.MailTo, MaxAttempts: 8, Batch: 20, RetryDelay: time.Minute, SendTimeout: c.DependencyTimeout, StoreTimeout: c.DependencyTimeout, Lease: 3*c.DependencyTimeout + time.Second})

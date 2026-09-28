@@ -34,20 +34,19 @@ type PublishedVerifier interface {
 }
 type UnchangedProgress interface {
 	StageProgress(context.Context, control.ProgressPlan) error
-	CompleteUnchanged(context.Context, control.ActiveMetadata, [2]control.SlotIdentity, string, time.Time) error
+	CompleteUnchanged(context.Context, control.ActiveMetadata, [2]control.SlotIdentity, time.Time) error
 }
 type Unchanged struct {
-	Copies      PublishedCopies
-	Verifier    PublishedVerifier
-	Progress    UnchangedProgress
-	Clock       ports.Clock
-	CodeVersion string
+	Copies   PublishedCopies
+	Verifier PublishedVerifier
+	Progress UnchangedProgress
+	Clock    ports.Clock
 }
 
 // Try treats a complete target equal to the old content as unchanged only if
 // both physical copies pass full read checks. It has no publisher/cache writer.
 func (u Unchanged) Try(ctx context.Context, in PreparedUpdate) (bool, error) {
-	if u.Copies == nil || u.Verifier == nil || u.Progress == nil || u.Clock == nil || u.CodeVersion == "" || in.Plan.Validate() != nil || in.Manifest.Validate() != nil {
+	if u.Copies == nil || u.Verifier == nil || u.Progress == nil || u.Clock == nil || in.Plan.Validate() != nil || in.Manifest.Validate() != nil {
 		return false, ErrInitialization
 	}
 	if in.Plan.Mode != "incremental" {
@@ -70,7 +69,7 @@ func (u Unchanged) Try(ctx context.Context, in PreparedUpdate) (bool, error) {
 		if n == 1 {
 			instance = storage.Standby
 		}
-		if copy.Target.Position.Instance != instance || copy.Manifest.Combination != in.Plan.Origin.Position.BundleID || !SameContent(copy.Manifest, in.Manifest) || copy.Evidence.Validate(copy.Target, copy.Manifest, u.CodeVersion) != nil {
+		if copy.Target.Position.Instance != instance || copy.Manifest.Combination != in.Plan.Origin.Position.BundleID || !SameContent(copy.Manifest, in.Manifest) || copy.Evidence.Validate(copy.Target, copy.Manifest) != nil {
 			return false, ErrOldCopy
 		}
 		identities[n] = control.SlotIdentity{Position: copy.Target.Position, Generation: copy.Target.Generation, BundleID: copy.Manifest.Combination}
@@ -99,7 +98,7 @@ func (u Unchanged) Try(ctx context.Context, in PreparedUpdate) (bool, error) {
 	if err = u.Progress.StageProgress(ctx, p); err != nil {
 		return false, err
 	}
-	if err = u.Progress.CompleteUnchanged(ctx, in.Plan.Origin, identities, u.CodeVersion, u.Clock.Now()); err != nil {
+	if err = u.Progress.CompleteUnchanged(ctx, in.Plan.Origin, identities, u.Clock.Now()); err != nil {
 		return false, err
 	}
 	return true, nil

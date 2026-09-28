@@ -30,7 +30,7 @@ func (s Store) ReopenPublished(ctx context.Context, p control.UpdatePlan, verify
 		if a == nil || *a != p.Origin {
 			return control.ErrEntity
 		}
-		old, e := publishedCopy(ctx, tx, p.Origin.Position.BundleID, p.First, s.CodeVersion)
+		old, e := publishedCopy(ctx, tx, p.Origin.Position.BundleID, p.First)
 		if e != nil {
 			return e
 		}

@@ -20,7 +20,7 @@ Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执�
 | 查询 API | http://127.0.0.1:18080 |
 | 管理 API | http://127.0.0.1:18081 |
 
-控制台使用 `.env` 中的 `QUERY_API_KEY` 和 `MANAGEMENT_CREDENTIALS` 内的 token，不再提供默认部署凭据。通过“更新任务 → 首次初始化”从当前环境的数据源建立数据，或执行：
+控制台使用 `.env` 中的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 登录，不提供默认密码。业务密钥保留在服务端；前端无需填写 API Key 或管理 Token。原有部署需删除 `MANAGEMENT_CREDENTIALS`、`MANAGEMENT_TOKEN` 并填写新的账号密码。会话有效 8 小时，worker 重启后需重新登录。HTTPS 入口设 `CONSOLE_COOKIE_SECURE=true`；此时命令行 `MANAGEMENT_URL` 也应使用同一 HTTPS 网关地址。通过“更新任务 → 首次初始化”从当前环境的数据源建立数据，或执行：
 
 ```sh
 docker compose run --rm --no-deps ctl initialize initialization-001
@@ -31,7 +31,7 @@ docker compose down
 
 首次数据初始化仍需明确提交，`up --wait` 只等待应用存活，不代表已经发布可查询的数据。`volumes` 和 `migrate` 是一次性任务，成功后显示 `Exited (0)` 属于正常状态。`down` 保留全部持久卷；重新执行启动命令可复用数据，不要加 `--volumes`，除非确实要销毁数据。
 
-统一配置模板为根目录 `.env.example`，实际部署只维护根目录 `.env`。六个 `DATABASE_*_URL` 只配置共享端点和库名，不含账号密码；`POSTGRES_PASSWORD`、`QUERY_PASSWORD`、`WORKER_PASSWORD`、`LOGGER_PASSWORD` 各填写一次。Compose 按服务分配账号与密码，进程自动编码特殊字符并构造完整连接串；query 不会获得 worker 或迁移账号密码。已有 PG 卷不会因修改环境变量而自动修改角色密码，轮换时仍需先在数据库内修改，再更新 `.env`。管理令牌仍需同步 `MANAGEMENT_CREDENTIALS` 与 `MANAGEMENT_TOKEN`。
+统一配置模板为根目录 `.env.example`，实际部署只维护根目录 `.env`。六个 `DATABASE_*_URL` 只配置共享端点和库名，不含账号密码；`POSTGRES_PASSWORD`、`QUERY_PASSWORD`、`WORKER_PASSWORD`、`LOGGER_PASSWORD` 各填写一次。Compose 按服务分配账号与密码，进程自动编码特殊字符并构造完整连接串；query 不会获得 worker 或迁移账号密码。已有 PG 卷不会因修改环境变量而自动修改角色密码，轮换时仍需先在数据库内修改，再更新 `.env`。
 
 项目名和端口也统一在 `.env` 设置：`SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`、`SICP_CONSOLE_PORT`。终端同名环境变量优先。只需后端时可指定服务：`docker compose up -d --build --wait --wait-timeout 300 query worker`。
 
@@ -41,7 +41,7 @@ docker compose down
 
 ## 正式与开发环境切换
 
-根目录 `.env.example` 默认为 `ENVIRONMENT=production`。先填写四个数据库密码、`QUERY_API_KEY`、`SNAPSHOT_KEY`、`AUDIT_KEY`、`MANAGEMENT_CREDENTIALS` 和 `MANAGEMENT_TOKEN`，再配置真实 `SOURCE_ORIGIN`、`SOURCE_APP_ID`、`SOURCE_APP_SECRET`、`SOURCE_SCOPE`、`SOURCE_QUALITY` 与 SMTP。正式环境不会启动或挂载 Mock 服务；缺少上游配置、误填开发源地址或邮件配置不完整会报错，不会回退模拟数据。
+根目录 `.env.example` 默认为 `ENVIRONMENT=production`。先填写四个数据库密码、`QUERY_API_KEY`、`SNAPSHOT_KEY`、`AUDIT_KEY`、`ADMIN_USERNAME` 和 `ADMIN_PASSWORD`，再配置真实 `SOURCE_ORIGIN`、`SOURCE_APP_ID`、`SOURCE_APP_SECRET`、`SOURCE_SCOPE`、`SOURCE_QUALITY` 与 SMTP。正式环境不会启动或挂载 Mock 服务；缺少上游配置、误填开发源地址或邮件配置不完整会报错，不会回退模拟数据。
 
 `SOURCE_APP_ID` 与 `SOURCE_APP_SECRET` 来自上游开发者首页。worker 在首次采集时向同一 origin 的 `GET /apizt/opentoken/oauth/token` 传入 `appId`、`secret`，读取 `data.access_token`。Token 仅保存在内存；有效 `data.expires_in`（秒，整数或整数字符串）存在时提前 10% 有效期（最多 30 秒）重新获取；没有可用有效期时每次分页前获取，不假定固定时长。同一客户端串行获取和使用 Token，避免新 Token 使并发中的旧 Token 失效。HTTP 或业务码 401/403 会触发一次重新获取及当前页重试，其他业务码按原失败策略处理；上游专有的失效码尚待完整合同确认。认证请求受 `DEPENDENCY_TIMEOUT` 限制，失败不会回退静态令牌或模拟数据，也不会记录凭据、Token 或响应正文。已有 `.env` 应删除 `SOURCE_TOKEN` 并填写上述两个应用凭据；直接运行进程时，静态 `SOURCE_TOKEN` 仅允许在 development/test 环境使用。
 

@@ -37,7 +37,7 @@ func (w *unchangedWorld) StageProgress(_ context.Context, p control.ProgressPlan
 	w.plan = p
 	return nil
 }
-func (w *unchangedWorld) CompleteUnchanged(context.Context, control.ActiveMetadata, [2]control.SlotIdentity, string, time.Time) error {
+func (w *unchangedWorld) CompleteUnchanged(context.Context, control.ActiveMetadata, [2]control.SlotIdentity, time.Time) error {
 	w.confirmed = true
 	return nil
 }
@@ -47,7 +47,7 @@ func noChangeFixture(t *testing.T) (update.Unchanged, *unchangedWorld, update.Pr
 	a.Evidence.Target = a.Target
 	b := copyFixture(t, "C100", 0)
 	w := &unchangedWorld{copies: [2]update.Copy{a, b}}
-	u := update.Unchanged{Copies: w, Verifier: w, Progress: w, Clock: testkit.FakeClock{Time: updatePlan().StartedAt.Add(2 * time.Minute)}, CodeVersion: "v1"}
+	u := update.Unchanged{Copies: w, Verifier: w, Progress: w, Clock: testkit.FakeClock{Time: updatePlan().StartedAt.Add(2 * time.Minute)}}
 	in := update.PreparedUpdate{Plan: updatePlan(), Manifest: copyFixture(t, "C101", 1).Manifest}
 	in.Changes = map[string]candidate.ChangeCounts{}
 	for _, v := range in.Manifest.Tables {
@@ -72,14 +72,14 @@ func TestT13_13EmptyOrSameContentUsesBothCopiesWithoutNewCombination(t *testing.
 	}
 }
 func TestT13_14DamagedOrStaleSecondCopyCannotConfirmNoChange(t *testing.T) {
-	for _, kind := range []string{"corrupt", "code", "content", "identity"} {
+	for _, kind := range []string{"corrupt", "unchecked-evidence", "content", "identity"} {
 		t.Run(kind, func(t *testing.T) {
 			u, w, in := noChangeFixture(t)
 			switch kind {
 			case "corrupt":
 				w.failAt = 2
-			case "code":
-				w.copies[1].Evidence.CodeVersion = "stale"
+			case "unchecked-evidence":
+				w.copies[1].Evidence.CheckedAt = time.Time{}
 			case "content":
 				w.copies[1].Manifest.Tables[0].Rows++
 			case "identity":

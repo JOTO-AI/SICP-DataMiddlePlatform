@@ -42,7 +42,6 @@ type Changed struct {
 	Delivery    publication.Delivery
 	Progress    ProgressStore
 	Clock       ports.Clock
-	CodeVersion string
 	Journal     interface {
 		SaveLocal(context.Context, ChangeResult) error
 	}
@@ -83,7 +82,7 @@ func (c Changed) Resume(ctx context.Context, saved ChangeResult) (ChangeResult, 
 }
 
 func (c Changed) continuePrepared(ctx context.Context, prepared PreparedUpdate, saved *ChangeResult) (out ChangeResult, err error) {
-	if c.Store == nil || c.Builder == nil || c.Validator == nil || c.Readability == nil || c.Shifter == nil || c.Outbox == nil || c.Delivery == nil || c.Progress == nil || c.Clock == nil || c.CodeVersion == "" {
+	if c.Store == nil || c.Builder == nil || c.Validator == nil || c.Readability == nil || c.Shifter == nil || c.Outbox == nil || c.Delivery == nil || c.Progress == nil || c.Clock == nil {
 		return out, ErrInitialization
 	}
 	out.Prepared = prepared
@@ -132,7 +131,7 @@ func (c Changed) continuePrepared(ctx context.Context, prepared PreparedUpdate, 
 		if e != nil {
 			return e
 		}
-		return out.Copies[n].Evidence.Validate(targets[n], m, c.CodeVersion)
+		return out.Copies[n].Evidence.Validate(targets[n], m)
 	}
 	var destination control.SlotIdentity
 	if saved == nil {
@@ -157,7 +156,7 @@ func (c Changed) continuePrepared(ctx context.Context, prepared PreparedUpdate, 
 		if e != nil || expected != p.Origin || shifted.Position.Position.Instance != p.First || shifted.Position.BundleID != p.Origin.Position.BundleID || shifted.Position.Position == targets[0].Position {
 			return out, ErrRecoveryPending
 		}
-		if saved.Copies[0].Target != targets[0] || !sameManifest(saved.Copies[0].Manifest, m) || saved.Copies[0].Evidence.Validate(targets[0], m, c.CodeVersion) != nil || !saved.Reports[0].StorageComplete {
+		if saved.Copies[0].Target != targets[0] || !sameManifest(saved.Copies[0].Manifest, m) || saved.Copies[0].Evidence.Validate(targets[0], m) != nil || !saved.Reports[0].StorageComplete {
 			return out, ErrRecoveryPending
 		}
 		resume, ok := c.Shifter.(interface {
@@ -208,7 +207,7 @@ func (c Changed) continuePrepared(ctx context.Context, prepared PreparedUpdate, 
 	if err = c.Progress.StageProgress(ctx, progress); err != nil {
 		return out, err
 	}
-	intent := control.PublicationIntent{ID: p.TaskID + "-publish", Kind: "bundle_publish", CodeVersion: c.CodeVersion, Expected: &shifted, Target: control.SlotIdentity{Position: targets[0].Position, Generation: targets[0].Generation, BundleID: m.Combination}, CreatedAt: c.Clock.Now()}
+	intent := control.PublicationIntent{ID: p.TaskID + "-publish", Kind: "bundle_publish", Expected: &shifted, Target: control.SlotIdentity{Position: targets[0].Position, Generation: targets[0].Generation, BundleID: m.Combination}, CreatedAt: c.Clock.Now()}
 	out.Event, err = publication.Submit(ctx, c.Outbox, c.Delivery, intent)
 	if err != nil {
 		return out, err

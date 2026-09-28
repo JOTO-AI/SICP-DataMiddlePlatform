@@ -47,7 +47,7 @@ func (s *preparationSpy) Prepare(ctx context.Context, o candidate.PrepareOptions
 
 func updatePlan() control.UpdatePlan {
 	at := time.Date(2100, 1, 1, 10, 0, 0, 0, time.UTC)
-	p := control.UpdatePlan{TaskID: "update", Mode: "incremental", StartedAt: at, First: storage.Standby, Second: storage.Main, Overlap: 5 * time.Minute, Windows: map[string]control.SourceWindow{}, Origin: control.ActiveMetadata{Sequence: 1, EventID: "original", TaskID: "old", OwnerGeneration: 1, CodeVersion: "v1", Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 1, BundleID: "C100"}}}
+	p := control.UpdatePlan{TaskID: "update", Mode: "incremental", StartedAt: at, First: storage.Standby, Second: storage.Main, Overlap: 5 * time.Minute, Windows: map[string]control.SourceWindow{}, Origin: control.ActiveMetadata{Sequence: 1, EventID: "original", TaskID: "old", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 1, BundleID: "C100"}}}
 	for _, table := range ingest.Catalog() {
 		p.Windows[table.Name] = control.SourceWindow{ConfirmedUntil: at.Add(-2 * time.Hour), Start: at.Add(-125 * time.Minute), End: at}
 	}

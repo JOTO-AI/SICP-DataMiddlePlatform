@@ -15,7 +15,7 @@ func TestT15_09RuntimeRejectsIncompleteOrConflictingDeployment(t *testing.T) {
 		{"SOURCE_SCOPE", ""}, {"SOURCE_QUALITY", ""}, {"SOURCE_QUALITY", "{}"}, {"SOURCE_QUALITY", "null"},
 		{"REDIS_URL", "redis://redis:6379/0?read_timeout=0"}, {"REDIS_URL", "redis://redis:6379/1"}, {"AUDIT_KEY", "short"}, {"SNAPSHOT_KEY", "synthetic-audit-key-0000000000000"},
 		{"TARGET_DIRECTORY", "/data/staging/child"}, {"SPOOL_DIRECTORY", "relative"}, {"LOG_MAX_FILES", "0"}, {"STAGING_MAX_BYTES", "0"}, {"TARGET_MAX_BYTES", "-1"}, {"SPOOL_MAX_BYTES", "invalid"},
-		{"MANAGEMENT_CREDENTIALS", `[{"operator":"op","token":"synthetic-query-secret","actions":["status"]}]`}, {"MANAGEMENT_CREDENTIALS", `[] {}`}, {"DEPENDENCY_TIMEOUT", "0s"}, {"ENVIRONMENT", "production"},
+		{"ADMIN_PASSWORD", "synthetic-query-secret"}, {"ADMIN_PASSWORD", "short"}, {"ADMIN_USERNAME", ""}, {"CONSOLE_QUERY_URL", "http://query:8080/path"}, {"CONSOLE_COOKIE_SECURE", "invalid"}, {"DEPENDENCY_TIMEOUT", "0s"}, {"ENVIRONMENT", "production"},
 	} {
 		t.Run(tc.key+"/"+tc.value, func(t *testing.T) {
 			v := testkit.RuntimeValues("/data")
@@ -44,7 +44,7 @@ func TestT15_09RoleSpecificConfigurationAndSafeFormatting(t *testing.T) {
 			t.Fatal("configuration leaked")
 		}
 	}
-	for _, k := range []string{"SOURCE_ORIGIN", "SOURCE_TOKEN", "MAIL_ADDRESS", "MAIL_TLS", "MAIL_TO", "MAIL_FROM", "MANAGEMENT_CREDENTIALS", "STAGING_DIRECTORY", "TARGET_DIRECTORY", "SPOOL_DIRECTORY", "STAGING_MAX_BYTES", "TARGET_MAX_BYTES", "SPOOL_MAX_BYTES"} {
+	for _, k := range []string{"SOURCE_ORIGIN", "SOURCE_TOKEN", "MAIL_ADDRESS", "MAIL_TLS", "MAIL_TO", "MAIL_FROM", "ADMIN_USERNAME", "ADMIN_PASSWORD", "CONSOLE_QUERY_URL", "STAGING_DIRECTORY", "TARGET_DIRECTORY", "SPOOL_DIRECTORY", "STAGING_MAX_BYTES", "TARGET_MAX_BYTES", "SPOOL_MAX_BYTES"} {
 		delete(v, k)
 	}
 	if _, e := config.LoadRuntime(config.Query, func(k string) (string, bool) { s, ok := v[k]; return s, ok }); e != nil {

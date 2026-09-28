@@ -130,7 +130,7 @@ func publicationFixture(t *testing.T) (control.Repository, *publicationDB, contr
 	bundle := "C101"
 	d := &publicationDB{events: map[string]control.Publication{}, sequence: 9007199254740992, ready: true, unpublished: true, copies: 2, slot: control.Slot{Instance: "S", Slot: 1, Generation: 8, BundleID: &bundle, State: "ready"}}
 	r.Database = d
-	i := control.PublicationIntent{ID: "publish-1", Kind: "bundle_publish", CodeVersion: "query-v1", Target: control.SlotIdentity{Position: storage.Position{Instance: storage.Standby, Slot: 1}, Generation: 8, BundleID: bundle}, CreatedAt: time.Date(2026, 9, 18, 2, 0, 0, 0, time.UTC)}
+	i := control.PublicationIntent{ID: "publish-1", Kind: "bundle_publish", Target: control.SlotIdentity{Position: storage.Position{Instance: storage.Standby, Slot: 1}, Generation: 8, BundleID: bundle}, CreatedAt: time.Date(2026, 9, 18, 2, 0, 0, 0, time.UTC)}
 	return writer(r), d, i
 }
 
@@ -154,7 +154,7 @@ func TestT12_16ActualOutboxPersistsFullIntentExactlyOnceBeforeDelivery(t *testin
 		t.Fatal(e, err)
 	}
 	target, err := control.DecodeActive(e.Target)
-	if err != nil || target.Position != i.Target || target.Sequence != e.Sequence || target.OwnerGeneration != 9 || target.TaskID != "task-A" || target.CodeVersion != i.CodeVersion || !strings.Contains(string(e.Target), `"sequence":"9007199254740993"`) {
+	if err != nil || target.Position != i.Target || target.Sequence != e.Sequence || target.OwnerGeneration != 9 || target.TaskID != "task-A" || !strings.Contains(string(e.Target), `"sequence":"9007199254740993"`) {
 		t.Fatal(target, err, e.Target)
 	}
 	replayed, created, err := r.EnqueuePublication(t.Context(), i)
@@ -164,6 +164,35 @@ func TestT12_16ActualOutboxPersistsFullIntentExactlyOnceBeforeDelivery(t *testin
 	i.Target.Generation++
 	if _, _, err = r.EnqueuePublication(t.Context(), i); !errors.Is(err, control.ErrIdempotency) {
 		t.Fatal("event identity overwritten", err)
+	}
+}
+
+func TestLegacyPublicationReplaysWithoutCodeVersionConfiguration(t *testing.T) {
+	r, d, intent := publicationFixture(t)
+	event, _, err := r.EnqueuePublication(t.Context(), intent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(event.Target), "code_version") {
+		t.Fatal("new publication contains code version", event.Target)
+	}
+	// Simulate an immutable outbox event created before CODE_VERSION was removed.
+	event.Target = control.Document(strings.TrimSuffix(string(event.Target), "}") + `,"code_version":"previous-release"}`)
+	d.events[event.ID] = event
+	metadata, err := control.DecodeActive(event.Target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roundtrip, err := control.ActiveDocument(metadata)
+	if err != nil || roundtrip != event.Target {
+		t.Fatal("legacy metadata changed during round-trip", err, roundtrip)
+	}
+	replayed, created, err := r.EnqueuePublication(t.Context(), intent)
+	if err != nil || created || replayed != event {
+		t.Fatal("legacy publication cannot resume", err, replayed)
+	}
+	if _, err := r.AuthorizePublication(t.Context(), replayed); err != nil {
+		t.Fatal("legacy publication cannot be delivered", err)
 	}
 }
 func TestT12_07ControlFailureOrIncompleteCopiesCannotReachActiveMetadata(t *testing.T) {
@@ -182,7 +211,7 @@ func TestT12_07ControlFailureOrIncompleteCopiesCannotReachActiveMetadata(t *test
 			case "already-published":
 				d.unpublished = false
 			case "expected":
-				a := control.ActiveMetadata{Sequence: 1, EventID: "old", TaskID: "old-task", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Standby, Slot: 0}, Generation: 1, BundleID: "C100"}, CodeVersion: "query-v1"}
+				a := control.ActiveMetadata{Sequence: 1, EventID: "old", TaskID: "old-task", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Standby, Slot: 0}, Generation: 1, BundleID: "C100"}}
 				i.Expected = &a
 			}
 			calls := 0
@@ -208,7 +237,7 @@ func TestT12_16SameVersionShiftBindsConfirmedExpectedMetadata(t *testing.T) {
 	i.Kind = "route_shift"
 	d.unpublished = false
 	d.slot.AdmissionOpen = true
-	old := control.ActiveMetadata{Sequence: 12, EventID: "old", TaskID: "old-task", OwnerGeneration: 3, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 4, BundleID: "C101"}, CodeVersion: "query-v1"}
+	old := control.ActiveMetadata{Sequence: 12, EventID: "old", TaskID: "old-task", OwnerGeneration: 3, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 4, BundleID: "C101"}}
 	i.Expected = &old
 	doc, _ := control.ActiveDocument(old)
 	d.confirmed = &doc

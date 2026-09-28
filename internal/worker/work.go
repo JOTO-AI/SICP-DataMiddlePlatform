@@ -159,7 +159,7 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 	r := w.Runtime
 	c := w.Config
 	repo := r.Control.WithOwnership(owner)
-	store := runtimecontrol.Store{Repository: r.Control, Owner: owner, Clock: w.Clock, CodeVersion: c.CodeVersion}
+	store := runtimecontrol.Store{Repository: r.Control, Owner: owner, Clock: w.Clock}
 	files, e := staging.NewStore(task.ID, r.Files.Staging, 64<<20)
 	if e != nil {
 		return e
@@ -180,17 +180,17 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 		return candidate.StorageChecks{Target: targets, Source: reads, Indexes: reader, Clock: w.Clock, Limits: limits}
 	}
 	builder := candidate.Builder{Ledger: store, Source: targets, Writer: writer, BatchSize: 500}
-	validator := candidate.Validator{Store: store, Checks: checks(candidateReads), Queries: online(candidateReads), Clock: w.Clock, CodeVersion: c.CodeVersion}
+	validator := candidate.Validator{Store: store, Checks: checks(candidateReads), Queries: online(candidateReads), Clock: w.Clock}
 	proof, ok := r.Database.(coord.ExecutionProof)
 	if !ok {
 		return update.ErrInitialization
 	}
 	coordinator := &coord.Coordinator{Store: r.Control, Proof: proof, Clock: w.Clock, Random: rand.Reader, ProcessID: r.ProcessID}
 	publishedReads := read.Repository{Storage: reader, Gate: coordinator}
-	readability := update.Readability{Admission: coordinator, Checks: checks(publishedReads), Queries: online(publishedReads), Store: store, Clock: w.Clock, CodeVersion: c.CodeVersion}
+	readability := update.Readability{Admission: coordinator, Checks: checks(publishedReads), Queries: online(publishedReads), Store: store, Clock: w.Clock}
 	shifter := update.Shifter{Store: store, Outbox: repo, Delivery: delivery, Clock: w.Clock}
 	journal := update.Journal{Store: repo, Clock: w.Clock}
-	changed := update.Changed{Store: store, Builder: builder, Validator: validator, Readability: readability, Shifter: shifter, Outbox: repo, Delivery: delivery, Progress: repo, Clock: w.Clock, CodeVersion: c.CodeVersion, Journal: journal}
+	changed := update.Changed{Store: store, Builder: builder, Validator: validator, Readability: readability, Shifter: shifter, Outbox: repo, Delivery: delivery, Progress: repo, Clock: w.Clock, Journal: journal}
 	zone, _ := time.LoadLocation(c.Service.Timezone)
 	if resume && task.Mode != "initialize" {
 		_, e := (update.LocalRecovery{Store: journal, Files: files, Targets: targets, Changed: changed, Zone: zone}).Run(ctx, task)
@@ -235,7 +235,7 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 		full = acquirer
 	}
 	if task.Mode == "initialize" {
-		_, e := (update.Initializer{Store: store, Source: full, Preparer: targets, Options: options, Builder: builder, Validator: validator, Outbox: repo, Delivery: delivery, Clock: w.Clock, Progress: repo}).Run(ctx, update.InitialTask{ID: task.ID, Combination: options.Combination, CodeVersion: c.CodeVersion, StartedAt: *task.StartedAt})
+		_, e := (update.Initializer{Store: store, Source: full, Preparer: targets, Options: options, Builder: builder, Validator: validator, Outbox: repo, Delivery: delivery, Clock: w.Clock, Progress: repo}).Run(ctx, update.InitialTask{ID: task.ID, Combination: options.Combination, StartedAt: *task.StartedAt})
 		return e
 	}
 	active, exists, e := r.Active.Read(ctx)
@@ -257,14 +257,14 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 	}
 	if e = store.ReopenPublished(ctx, plan, func(ctx context.Context, old update.Copy, gate read.Gate, admission update.FixedAdmission) error {
 		reads := read.Repository{Storage: reader, Gate: gate}
-		v := update.Readability{Admission: admission, Checks: checks(reads), Queries: online(reads), Clock: w.Clock, CodeVersion: c.CodeVersion}
+		v := update.Readability{Admission: admission, Checks: checks(reads), Queries: online(reads), Clock: w.Clock}
 		_, e := v.VerifyPublished(ctx, plan, old)
 		return e
 	}); e != nil {
 		return e
 	}
 	fetcher := update.Fetcher{Planner: repo, Source: acquirer, Preparer: targets, Options: options, Overlap: control.IncrementalOverlap, Zone: zone}
-	unchanged := update.Unchanged{Copies: store, Verifier: readability, Progress: repo, Clock: w.Clock, CodeVersion: c.CodeVersion}
+	unchanged := update.Unchanged{Copies: store, Verifier: readability, Progress: repo, Clock: w.Clock}
 	_, e = (update.Runner{Source: fetcher, Unchanged: unchanged, Changed: changed}).Run(ctx, active)
 	return e
 }

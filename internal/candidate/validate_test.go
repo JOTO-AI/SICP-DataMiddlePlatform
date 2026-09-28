@@ -66,7 +66,7 @@ func (v *validations) Check(_ context.Context, _ read.Handle, op contract.Operat
 	return 1, strings.Repeat("a", 64), nil
 }
 func validator(v *validations) candidate.Validator {
-	return candidate.Validator{Store: v, Checks: v, Queries: v, Clock: testkit.FakeClock{Time: time.Date(2026, 9, 18, 2, 0, 0, 0, time.UTC)}, CodeVersion: "query-code-v1"}
+	return candidate.Validator{Store: v, Checks: v, Queries: v, Clock: testkit.FakeClock{Time: time.Date(2026, 9, 18, 2, 0, 0, 0, time.UTC)}}
 }
 
 func TestT12_04EveryValidationFailureKeepsCandidateUnready(t *testing.T) {
@@ -113,13 +113,11 @@ func TestT12_05DimensionVersionAndGenerationInvalidateQueryEvidence(t *testing.T
 	if strings.Join(state.calls, ",") != "begin,source,indexes,students.grades.query,students.grades.batch-query,ready" {
 		t.Fatal("dimension dependency not respected", state.calls)
 	}
-	for _, kind := range []string{"generation", "code", "combination"} {
+	for _, kind := range []string{"generation", "combination"} {
 		state.calls = nil
 		switch kind {
 		case "generation":
 			target.Generation++
-		case "code":
-			v.CodeVersion = "query-code-v2"
 		case "combination":
 			m.Combination = "C102"
 		}
@@ -129,6 +127,36 @@ func TestT12_05DimensionVersionAndGenerationInvalidateQueryEvidence(t *testing.T
 		if len(state.calls) != 8 {
 			t.Fatal("stale evidence reused", kind, state.calls)
 		}
+	}
+}
+
+func TestLegacyCodeVersionDoesNotInvalidateEvidence(t *testing.T) {
+	_, target, m, _, _, _ := buildFixture(t)
+	state := &validations{}
+	v := validator(state)
+	evidence, err := v.Validate(t.Context(), target, m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(evidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy := `{"CodeVersion":"previous-release",` + string(raw[1:])
+	if err := json.Unmarshal([]byte(legacy), &state.previous); err != nil {
+		t.Fatal(err)
+	}
+	if err := state.previous.Validate(target, m); err != nil {
+		t.Fatal("legacy evidence rejected", err)
+	}
+	state.calls = nil
+	result, err := v.Validate(t.Context(), target, m)
+	if err != nil || strings.Join(state.calls, ",") != "begin,source,indexes,ready" {
+		t.Fatal("legacy evidence not reused", err, state.calls)
+	}
+	raw, err = json.Marshal(result)
+	if err != nil || strings.Contains(string(raw), "CodeVersion") {
+		t.Fatal("new evidence contains code version", err, string(raw))
 	}
 }
 

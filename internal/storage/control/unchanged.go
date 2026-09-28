@@ -10,11 +10,11 @@ import (
 
 // CompleteUnchanged never changes active metadata or published_at. All source
 // progress, query checked-at metadata and task success commit together.
-func (r Repository) CompleteUnchanged(ctx context.Context, expected ActiveMetadata, copies [2]SlotIdentity, code string, at time.Time) error {
+func (r Repository) CompleteUnchanged(ctx context.Context, expected ActiveMetadata, copies [2]SlotIdentity, at time.Time) error {
 	if r.owner == nil {
 		return ErrOwnership
 	}
-	if expected.Validate() != nil || code == "" || at.IsZero() {
+	if expected.Validate() != nil || at.IsZero() {
 		return ErrEntity
 	}
 	at = at.UTC().Truncate(time.Microsecond)
@@ -65,7 +65,7 @@ func (r Repository) CompleteUnchanged(ctx context.Context, expected ActiveMetada
 			if !h.valid() || h.Generation < 1 || h.Position.Instance != instance || h.BundleID != plan.BundleID || (instance == expected.Position.Position.Instance && h != expected.Position) {
 				return ErrEntity
 			}
-			if err = publicationTarget(ctx, tx, PublicationIntent{Kind: "route_shift", Target: h, CodeVersion: code}, r.owner.TaskID); err != nil {
+			if err = publicationTarget(ctx, tx, PublicationIntent{Kind: "route_shift", Target: h}, r.owner.TaskID); err != nil {
 				return err
 			}
 		}

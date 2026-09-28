@@ -97,6 +97,7 @@ func newHTTP(role config.Role, apiKey string, clock ports.Clock, random ports.Ra
 	})
 	if role == config.Worker && management != nil {
 		mux.Handle("/admin/", management)
+		mux.Handle("/console-api/", management)
 	}
 	if role == config.Query {
 		// Validate the configured credential even when all handlers are supplied.

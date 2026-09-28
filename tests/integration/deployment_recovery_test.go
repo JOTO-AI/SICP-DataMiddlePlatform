@@ -78,7 +78,7 @@ func (d *deployment) pendingPublication(t *testing.T, key string) (string, contr
 
 func (d *deployment) assertBusy(t *testing.T, key string) {
 	t.Helper()
-	status, body := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/force-full", managementToken, key, "{}")
+	status, body := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/force-full", managementSession, key, "{}")
 	if status != 409 || body["code"] != "busy" || d.sql(t, "SELECT count(*) FROM control.tasks") != "2" {
 		t.Fatal("pending recovery admitted conflicting task", status, body["code"])
 	}

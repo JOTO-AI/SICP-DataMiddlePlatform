@@ -85,7 +85,7 @@ func (x *repairTX) Commit(ctx context.Context) error {
 }
 func repairRepository(t *testing.T) (control.Repository, *repairDB, control.ActiveMetadata, control.SlotIdentity) {
 	r, d, h := readerRepository(t)
-	active := control.ActiveMetadata{Sequence: 1, EventID: "original", TaskID: "original-task", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 3, BundleID: h.BundleID}, CodeVersion: "v1"}
+	active := control.ActiveMetadata{Sequence: 1, EventID: "original", TaskID: "original-task", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 3, BundleID: h.BundleID}}
 	doc, err := control.ActiveDocument(active)
 	if err != nil {
 		t.Fatal(err)
@@ -114,12 +114,12 @@ func TestT14_12RepairIsolationDrainGenerationAndReadinessGates(t *testing.T) {
 	if err != nil || again != target {
 		t.Fatal(again, err)
 	}
-	if err = r.OpenRepaired(t.Context(), active, target, "v1"); err == nil || d.slot.AdmissionOpen {
+	if err = r.OpenRepaired(t.Context(), active, target); err == nil || d.slot.AdmissionOpen {
 		t.Fatal("unready repair admitted")
 	}
 	d.slot.State = "ready"
 	d.ready = true
-	if err = r.OpenRepaired(t.Context(), active, target, "v1"); err != nil || !d.slot.AdmissionOpen {
+	if err = r.OpenRepaired(t.Context(), active, target); err != nil || !d.slot.AdmissionOpen {
 		t.Fatal(err)
 	}
 	if _, err = r.RegisterReader(t.Context(), h, "late", "query", time.Now()); err == nil {

@@ -67,8 +67,8 @@ func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageR
 }
 
 type InitialTask struct {
-	ID, Combination, CodeVersion string
-	StartedAt                    time.Time
+	ID, Combination string
+	StartedAt       time.Time
 }
 
 // PlanInitial must confirm no active bundle or unresolved event and persist
@@ -111,7 +111,7 @@ type Initialization struct {
 }
 
 func (i Initializer) Run(ctx context.Context, task InitialTask) (out Initialization, err error) {
-	if i.Store == nil || i.Source == nil || i.Preparer == nil || i.Builder == nil || i.Validator == nil || i.Outbox == nil || i.Delivery == nil || i.Progress == nil || i.Clock == nil || task.ID == "" || len(task.ID) > 64 || task.Combination == "" || task.CodeVersion == "" || task.StartedAt.IsZero() {
+	if i.Store == nil || i.Source == nil || i.Preparer == nil || i.Builder == nil || i.Validator == nil || i.Outbox == nil || i.Delivery == nil || i.Progress == nil || i.Clock == nil || task.ID == "" || len(task.ID) > 64 || task.Combination == "" || task.StartedAt.IsZero() {
 		return out, ErrInitialization
 	}
 	out.Task = task
@@ -163,7 +163,7 @@ func (i Initializer) Run(ctx context.Context, task InitialTask) (out Initializat
 		if err != nil {
 			return out, err
 		}
-		if err = out.Evidence[n].Validate(target, out.Manifest, task.CodeVersion); err != nil {
+		if err = out.Evidence[n].Validate(target, out.Manifest); err != nil {
 			return out, err
 		}
 	}
@@ -176,7 +176,7 @@ func (i Initializer) Run(ctx context.Context, task InitialTask) (out Initializat
 	}
 	// No route_shift exists on this path: first publication follows BOTH copies.
 	target := out.Targets[1]
-	intent := control.PublicationIntent{ID: task.ID + "-publish", Kind: "bundle_publish", CodeVersion: task.CodeVersion, Target: control.SlotIdentity{Position: target.Position, Generation: target.Generation, BundleID: task.Combination}, CreatedAt: i.Clock.Now()}
+	intent := control.PublicationIntent{ID: task.ID + "-publish", Kind: "bundle_publish", Target: control.SlotIdentity{Position: target.Position, Generation: target.Generation, BundleID: task.Combination}, CreatedAt: i.Clock.Now()}
 	out.Event, err = publication.Submit(ctx, i.Outbox, i.Delivery, intent)
 	if err != nil {
 		return out, err

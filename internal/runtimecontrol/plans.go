@@ -41,7 +41,7 @@ func (s Store) PlanInitial(ctx context.Context, t update.InitialTask) (out [2]so
 		if e != nil {
 			return e
 		}
-		if task.ID != t.ID || task.Mode != "initialize" || !task.StartedAt.Equal(t.StartedAt) || t.CodeVersion != s.CodeVersion {
+		if task.ID != t.ID || task.Mode != "initialize" || !task.StartedAt.Equal(t.StartedAt) {
 			return control.ErrEntity
 		}
 		if e = noPending(ctx, tx); e != nil {
@@ -115,7 +115,7 @@ func (s Store) RecordTarget(ctx context.Context, t update.InitialTask, targets [
 		return nil
 	})
 }
-func publishedCopy(ctx context.Context, tx storage.Transaction, bundleID string, i storage.Instance, code string) (out update.Copy, err error) {
+func publishedCopy(ctx context.Context, tx storage.Transaction, bundleID string, i storage.Instance) (out update.Copy, err error) {
 	var id *string
 	err = tx.QueryRow(ctx, "SELECT (SELECT c.id FROM control.candidates c JOIN control.slots s ON s.instance=c.instance AND s.slot=c.slot AND s.generation=c.generation AND s.bundle_id=c.bundle_id JOIN control.bundles b ON b.id=c.bundle_id WHERE c.instance=$1 AND c.bundle_id=$2 AND c.state='ready' AND s.state='ready' AND b.published_at IS NOT NULL ORDER BY c.generation DESC LIMIT 1)", string(i), bundleID).Scan(&id)
 	if err != nil {
@@ -132,7 +132,7 @@ func publishedCopy(ctx context.Context, tx storage.Transaction, bundleID string,
 	if out.Manifest, err = bundle(ctx, tx, bundleID); err != nil {
 		return
 	}
-	if c.Evidence == nil || json.Unmarshal([]byte(*c.Evidence), &out.Evidence) != nil || out.Evidence.Validate(out.Target, out.Manifest, code) != nil {
+	if c.Evidence == nil || json.Unmarshal([]byte(*c.Evidence), &out.Evidence) != nil || out.Evidence.Validate(out.Target, out.Manifest) != nil {
 		return update.Copy{}, update.ErrOldCopy
 	}
 	return
@@ -146,7 +146,7 @@ func (s Store) LoadPublished(ctx context.Context, p control.UpdatePlan) (out [2]
 			return e
 		}
 		for n, i := range []storage.Instance{storage.Main, storage.Standby} {
-			v, e := publishedCopy(ctx, tx, p.Origin.Position.BundleID, i, s.CodeVersion)
+			v, e := publishedCopy(ctx, tx, p.Origin.Position.BundleID, i)
 			if e != nil {
 				return e
 			}
@@ -200,7 +200,7 @@ func (s Store) PlanCopies(ctx context.Context, in update.PreparedUpdate) (out [2
 		}
 		p.Prepared = &in
 		for n, i := range []storage.Instance{in.Plan.First, in.Plan.Second} {
-			copy, e := publishedCopy(ctx, tx, in.Plan.Origin.Position.BundleID, i, s.CodeVersion)
+			copy, e := publishedCopy(ctx, tx, in.Plan.Origin.Position.BundleID, i)
 			if e != nil {
 				return e
 			}
@@ -250,7 +250,7 @@ func (s Store) ConfirmCopies(ctx context.Context, p control.UpdatePlan, copies [
 				return control.ErrEntity
 			}
 			var evidence candidate.Evidence
-			if json.Unmarshal([]byte(*c.Evidence), &evidence) != nil || !reflect.DeepEqual(evidence, copy.Evidence) || evidence.Validate(copy.Target, copy.Manifest, s.CodeVersion) != nil {
+			if json.Unmarshal([]byte(*c.Evidence), &evidence) != nil || !reflect.DeepEqual(evidence, copy.Evidence) || evidence.Validate(copy.Target, copy.Manifest) != nil {
 				return control.ErrEntity
 			}
 		}

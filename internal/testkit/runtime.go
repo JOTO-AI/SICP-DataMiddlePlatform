@@ -30,7 +30,7 @@ func RuntimeValues(root string) map[string]string {
 		"MAIL_ADDRESS": "mock-mail:1025", "MAIL_TLS": "none", "MAIL_FROM": "worker@example.invalid", "MAIL_TO": "operator@example.invalid",
 		"LOG_DIRECTORY": path.Join(root, "logs"), "STAGING_DIRECTORY": path.Join(root, "staging"), "TARGET_DIRECTORY": path.Join(root, "targets"), "SPOOL_DIRECTORY": path.Join(root, "spool"),
 		"LOG_MAX_BYTES": "16777216", "LOG_MAX_FILES": "10000", "STAGING_MAX_BYTES": "67108864", "TARGET_MAX_BYTES": "67108864", "SPOOL_MAX_BYTES": "33554432",
-		"SNAPSHOT_KEY": "synthetic-snapshot-key-0000000000", "AUDIT_KEY": "synthetic-audit-key-0000000000000", "CODE_VERSION": "synthetic-v1", "ENVIRONMENT": "test",
-		"MANAGEMENT_CREDENTIALS": `[{"operator":"operator-1","token":"synthetic-management-token","actions":["initialize","sync","force_full","rerun","status"]}]`,
+		"SNAPSHOT_KEY": "synthetic-snapshot-key-0000000000", "AUDIT_KEY": "synthetic-audit-key-0000000000000", "ENVIRONMENT": "test",
+		"ADMIN_USERNAME": "synthetic-admin", "ADMIN_PASSWORD": "synthetic-admin-password", "CONSOLE_QUERY_URL": "http://query:8080", "CONSOLE_COOKIE_SECURE": "false",
 	}
 }

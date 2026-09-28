@@ -114,7 +114,7 @@ func (x *collectionTX) Rollback(context.Context) error {
 }
 func collectionRepository(t *testing.T) (control.Repository, *collectionDB) {
 	r, _ := repository(t)
-	active := control.ActiveMetadata{Sequence: 2, EventID: "new", TaskID: "new-task", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 1}, Generation: 2, BundleID: "C102"}, CodeVersion: "v1"}
+	active := control.ActiveMetadata{Sequence: 2, EventID: "new", TaskID: "new-task", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 1}, Generation: 2, BundleID: "C102"}}
 	doc, _ := control.ActiveDocument(active)
 	d := &collectionDB{refs: map[string]bool{}, active: doc}
 	r.Database = d

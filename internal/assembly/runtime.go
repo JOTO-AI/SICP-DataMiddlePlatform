@@ -129,7 +129,7 @@ func Open(ctx context.Context, c config.Runtime, f Factories) (*Runtime, []lifec
 	c.ProcessID = r.ProcessID
 	key := sha256.Sum256([]byte(c.AuditKey))
 	secrets := []string{}
-	for _, v := range []string{c.Service.APIKey, c.SourceToken, c.SourceAppID, c.SourceAppSecret, c.SnapshotKey, c.AuditKey, c.MailPassword} {
+	for _, v := range []string{c.Service.APIKey, c.SourceToken, c.SourceAppID, c.SourceAppSecret, c.SnapshotKey, c.AuditKey, c.MailPassword, c.AdminPassword} {
 		if len(v) >= 8 && len(v) <= 4096 {
 			secrets = append(secrets, v)
 		}

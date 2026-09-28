@@ -43,7 +43,7 @@ func (s Store) BeginValidation(ctx context.Context, t source.Target, m candidate
 	return
 }
 func (s Store) Ready(ctx context.Context, t source.Target, m candidate.Manifest, ev candidate.Evidence) error {
-	if ev.Validate(t, m, s.CodeVersion) != nil {
+	if ev.Validate(t, m) != nil {
 		return control.ErrEntity
 	}
 	return s.repo().Fenced(ctx, func(tx storage.Transaction) error {
@@ -122,7 +122,7 @@ func (s Store) proof(ctx context.Context, tx storage.Transaction, p update.Reada
 	if e != nil {
 		return e
 	}
-	if p.TaskID != s.Owner.TaskID || p.CodeVersion != s.CodeVersion || p.CheckedAt.Before(*t.StartedAt) {
+	if p.TaskID != s.Owner.TaskID || p.CheckedAt.Before(*t.StartedAt) {
 		return control.ErrEntity
 	}
 	if e = noPending(ctx, tx); e != nil {
@@ -151,10 +151,10 @@ func (s Store) proof(ctx context.Context, tx storage.Transaction, p update.Reada
 		return e
 	}
 	var evidence candidate.Evidence
-	if json.Unmarshal([]byte(*c.Evidence), &evidence) != nil || evidence.Validate(p.Candidate, m, s.CodeVersion) != nil {
+	if json.Unmarshal([]byte(*c.Evidence), &evidence) != nil || evidence.Validate(p.Candidate, m) != nil {
 		return control.ErrEntity
 	}
-	old, e := publishedCopy(ctx, tx, p.Origin.Position.BundleID, p.Destination.Position.Instance, s.CodeVersion)
+	old, e := publishedCopy(ctx, tx, p.Origin.Position.BundleID, p.Destination.Position.Instance)
 	if e != nil {
 		return e
 	}
@@ -172,7 +172,7 @@ func (s Store) proof(ctx context.Context, tx storage.Transaction, p update.Reada
 }
 func (s Store) RecordReadability(ctx context.Context, p update.ReadabilityProof, next, old update.Copy) error {
 	return s.repo().Fenced(ctx, func(tx storage.Transaction) error {
-		if next.Evidence.Validate(next.Target, next.Manifest, s.CodeVersion) != nil || old.Evidence.Validate(old.Target, old.Manifest, s.CodeVersion) != nil || next.Target != p.Candidate || next.Manifest.Combination != p.Combination || old.Target.Position != p.Destination.Position || old.Target.Generation != p.Destination.Generation || old.Manifest.Combination != p.Destination.BundleID {
+		if next.Evidence.Validate(next.Target, next.Manifest) != nil || old.Evidence.Validate(old.Target, old.Manifest) != nil || next.Target != p.Candidate || next.Manifest.Combination != p.Combination || old.Target.Position != p.Destination.Position || old.Target.Generation != p.Destination.Generation || old.Manifest.Combination != p.Destination.BundleID {
 			return control.ErrEntity
 		}
 		if e := s.proof(ctx, tx, p); e != nil {

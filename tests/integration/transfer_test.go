@@ -195,7 +195,7 @@ func oldCopyFailure(t *testing.T, kind string) {
 			_, err := old.Exec(ctx, "REVOKE SELECT ON source.dwd_bzkscjzlb FROM sicp_query")
 			return err
 		case "evidence":
-			_, err := controlDB.Exec(ctx, `UPDATE control.candidates SET evidence=jsonb_set(evidence,'{CodeVersion}','"wrong-version"') WHERE id='100-S'`)
+			_, err := controlDB.Exec(ctx, `UPDATE control.candidates SET evidence=jsonb_set(evidence,'{Combination}','"wrong-bundle"') WHERE id='100-S'`)
 			return err
 		}
 		return errors.New("unknown fault")

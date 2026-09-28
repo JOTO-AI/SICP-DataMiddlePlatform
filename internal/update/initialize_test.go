@@ -85,7 +85,7 @@ func (w *initialWorld) Validate(_ context.Context, target source.Target, m candi
 	if err := w.record("ready-" + target.CandidateID); err != nil {
 		return candidate.Evidence{}, err
 	}
-	e := candidate.Evidence{Target: target, Combination: m.Combination, CodeVersion: "v1", CheckedAt: time.Date(2100, 1, 1, 0, 0, 0, 0, time.UTC), Queries: map[contract.Operation]candidate.QueryEvidence{}}
+	e := candidate.Evidence{Target: target, Combination: m.Combination, CheckedAt: time.Date(2100, 1, 1, 0, 0, 0, 0, time.UTC), Queries: map[contract.Operation]candidate.QueryEvidence{}}
 	for _, definition := range contract.Definitions() {
 		tables, err := metadata.Dependencies(definition.Operation)
 		if err != nil {
@@ -186,7 +186,7 @@ func initialization(t *testing.T, failure string) (update.Initializer, update.In
 	}
 	a := update.Acquirer{Collector: collector, Staging: store, Budget: budget, Limits: ingest.PageLimits{MaxPages: 100, MaxRecords: 1000, MaxBytes: 1 << 20}, PageSize: 2, Owner: "initialize", Observe: func(err error) { t.Errorf("unexpected observation: %v", err) }}
 	i := update.Initializer{Store: w, Source: a, Preparer: candidate.TargetFiles{Files: quota, MaxChunkBytes: 512, MaxChunks: 1000}, Options: candidate.PrepareOptions{Scope: "mock-school", SpoolDirectory: t.TempDir(), Limits: merge.Limits{BatchRows: 2, BatchBytes: 256, FanIn: 2, MaxRuns: 1000, MaxSpoolBytes: 16 << 20, InputPageRows: 2, InputPageBytes: 1 << 20}}, Builder: w, Validator: w, Outbox: w, Delivery: w, Clock: clock, Progress: w}
-	return i, update.InitialTask{ID: "init", Combination: "C1", CodeVersion: "v1", StartedAt: clock.Now()}, w, &requests
+	return i, update.InitialTask{ID: "init", Combination: "C1", StartedAt: clock.Now()}, w, &requests
 }
 
 func TestT15_10AcquisitionPersistsFinalUnknownFieldNotification(t *testing.T) {

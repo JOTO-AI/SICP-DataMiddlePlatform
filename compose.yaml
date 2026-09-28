@@ -22,7 +22,6 @@ x-runtime-environment: &runtime-environment
   LOG_MAX_FILES: "${LOG_MAX_FILES:?Set LOG_MAX_FILES in .env (copy .env.example)}"
   SNAPSHOT_KEY: "${SNAPSHOT_KEY:?Set SNAPSHOT_KEY in .env (copy .env.example)}"
   AUDIT_KEY: "${AUDIT_KEY:?Set AUDIT_KEY in .env (copy .env.example)}"
-  CODE_VERSION: "${CODE_VERSION:?Set CODE_VERSION in .env (copy .env.example)}"
   ENVIRONMENT: "${ENVIRONMENT:?Set ENVIRONMENT in .env (copy .env.example)}"
 
 x-service: &service
@@ -189,7 +188,10 @@ services:
       MAIL_TO: "${MAIL_TO:-}"
       MAIL_USERNAME: "${MAIL_USERNAME:-}"
       MAIL_PASSWORD: "${MAIL_PASSWORD:-}"
-      MANAGEMENT_CREDENTIALS: "${MANAGEMENT_CREDENTIALS:?Set MANAGEMENT_CREDENTIALS in .env (copy .env.example)}"
+      ADMIN_USERNAME: "${ADMIN_USERNAME:?Set ADMIN_USERNAME in .env (copy .env.example)}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env (copy .env.example)}"
+      CONSOLE_QUERY_URL: "http://query:8080"
+      CONSOLE_COOKIE_SECURE: "${CONSOLE_COOKIE_SECURE:-false}"
     volumes: ["worker-logs:/var/lib/sicp/logs", "staging:/var/lib/sicp/staging", "targets:/var/lib/sicp/targets", "spool:/var/lib/sicp/spool"]
     ports: ["127.0.0.1:${SICP_WORKER_PORT:-18081}:8081"]
     healthcheck:
@@ -221,7 +223,8 @@ services:
     entrypoint: [/usr/local/bin/sicpctl, admin]
     environment:
       MANAGEMENT_URL: "${MANAGEMENT_URL:?Set MANAGEMENT_URL in .env (copy .env.example)}"
-      MANAGEMENT_TOKEN: "${MANAGEMENT_TOKEN:?Set MANAGEMENT_TOKEN in .env (copy .env.example)}"
+      ADMIN_USERNAME: "${ADMIN_USERNAME:?Set ADMIN_USERNAME in .env (copy .env.example)}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env (copy .env.example)}"
 
   console:
     build: {context: ./frontend}

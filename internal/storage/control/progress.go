@@ -174,7 +174,7 @@ func (r Repository) ConfirmPublication(ctx context.Context, offered Publication,
 					return err
 				}
 			}
-			count, err := tx.Exec(ctx, "UPDATE control.slots s SET admission_open=TRUE FROM control.candidates c WHERE c.instance=s.instance AND c.slot=s.slot AND c.generation=s.generation AND c.bundle_id=s.bundle_id AND c.bundle_id=$1 AND c.task_id=$2 AND c.state='ready' AND c.ready_at IS NOT NULL AND c.evidence->>'CodeVersion'=$3 AND s.state='ready' AND NOT s.admission_open", plan.BundleID, current.TaskID, target.CodeVersion)
+			count, err := tx.Exec(ctx, "UPDATE control.slots s SET admission_open=TRUE FROM control.candidates c WHERE c.instance=s.instance AND c.slot=s.slot AND c.generation=s.generation AND c.bundle_id=s.bundle_id AND c.bundle_id=$1 AND c.task_id=$2 AND c.state='ready' AND c.ready_at IS NOT NULL AND c.evidence IS NOT NULL AND s.state='ready' AND NOT s.admission_open", plan.BundleID, current.TaskID)
 			if err != nil {
 				return err
 			}

@@ -17,10 +17,9 @@ import (
 )
 
 type Store struct {
-	Repository  control.Repository
-	Owner       control.Ownership
-	Clock       ports.Clock
-	CodeVersion string
+	Repository control.Repository
+	Owner      control.Ownership
+	Clock      ports.Clock
 }
 
 func (s Store) repo() control.Repository { return s.Repository.WithOwnership(s.Owner) }

@@ -56,7 +56,7 @@ func (m *atomicMemory) Do(_ context.Context, command string, args ...any) (any, 
 }
 func event(t *testing.T) (control.Publication, control.ActiveMetadata) {
 	t.Helper()
-	old := control.ActiveMetadata{Sequence: 9007199254740993, EventID: "old", TaskID: "old-task", OwnerGeneration: 2, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 3, BundleID: "C100"}, CodeVersion: "query-v1"}
+	old := control.ActiveMetadata{Sequence: 9007199254740993, EventID: "old", TaskID: "old-task", OwnerGeneration: 2, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 3, BundleID: "C100"}}
 	expected, err := control.ActiveDocument(old)
 	if err != nil {
 		t.Fatal(err)

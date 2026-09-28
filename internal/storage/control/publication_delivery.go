@@ -41,7 +41,7 @@ func (r Repository) publicationForDelivery(ctx context.Context, tx storage.Trans
 	if current.Status != "pending" {
 		return Publication{}, ErrEntity
 	}
-	intent := PublicationIntent{ID: current.ID, Kind: current.Kind, Target: target.Position, CodeVersion: target.CodeVersion, CreatedAt: current.CreatedAt}
+	intent := PublicationIntent{ID: current.ID, Kind: current.Kind, Target: target.Position, CreatedAt: current.CreatedAt}
 	if current.Expected != nil {
 		expected, err := DecodeActive(*current.Expected)
 		if err != nil {

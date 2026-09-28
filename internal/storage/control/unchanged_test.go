@@ -15,7 +15,7 @@ func unchangedFixture(t *testing.T) (control.Repository, *progressDB, control.Ac
 	d.task.Mode = p.Mode
 	d.base.unpublished = false
 	d.base.slot.AdmissionOpen = true
-	a := control.ActiveMetadata{Sequence: 1, EventID: "old", TaskID: "old-task", OwnerGeneration: 1, CodeVersion: "query-v1", Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Standby, Slot: 1}, Generation: 8, BundleID: p.BundleID}}
+	a := control.ActiveMetadata{Sequence: 1, EventID: "old", TaskID: "old-task", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Standby, Slot: 1}, Generation: 8, BundleID: p.BundleID}}
 	doc, _ := control.ActiveDocument(a)
 	d.base.confirmed = &doc
 	copies := [2]control.SlotIdentity{a.Position, a.Position}
@@ -29,7 +29,7 @@ func TestT13_13UnchangedConfirmationAtomicallyAdvancesChecksAndProgressWithoutPu
 	r, d, a, copies := unchangedFixture(t)
 	at := d.task.StartedAt.Add(time.Hour)
 	before := *d.base.confirmed
-	if err := r.CompleteUnchanged(t.Context(), a, copies, "query-v1", at); err != nil {
+	if err := r.CompleteUnchanged(t.Context(), a, copies, at); err != nil {
 		t.Fatal(err)
 	}
 	if d.task.Status != "success_unchanged" || len(d.progress) != 14 || len(d.checks) != 14 || d.published != nil || d.task.PublishedAt != nil || *d.base.confirmed != before || len(d.base.events) != 0 {
@@ -40,7 +40,7 @@ func TestT13_13UnchangedConfirmationAtomicallyAdvancesChecksAndProgressWithoutPu
 			t.Fatal(p)
 		}
 	}
-	if err := r.CompleteUnchanged(t.Context(), a, copies, "query-v1", at.Add(time.Hour)); err != nil || !d.task.FinishedAt.Equal(at) {
+	if err := r.CompleteUnchanged(t.Context(), a, copies, at.Add(time.Hour)); err != nil || !d.task.FinishedAt.Equal(at) {
 		t.Fatal("replay changed end time", err)
 	}
 }
@@ -66,7 +66,7 @@ func TestT13_14UnchangedFaultNeverCommitsPartialSuccess(t *testing.T) {
 			case "commit":
 				d.base.failCommit = true
 			}
-			if err := r.CompleteUnchanged(t.Context(), a, copies, "query-v1", d.task.StartedAt.Add(time.Hour)); err == nil || len(d.progress) != 0 || len(d.checks) != 0 || d.task.Status != "running" {
+			if err := r.CompleteUnchanged(t.Context(), a, copies, d.task.StartedAt.Add(time.Hour)); err == nil || len(d.progress) != 0 || len(d.checks) != 0 || d.task.Status != "running" {
 				t.Fatal(err, d.task)
 			}
 		})

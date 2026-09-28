@@ -1,6 +1,12 @@
 # 管理 API
 
-管理服务独立使用 `Authorization: Bearer <管理 token>`，不接受业务 `X-API-Key`，也不能把业务 key 配成管理 token。每份凭据绑定唯一 operator 与明确 actions；token 必须为 16—4096 个无空白/逗号的可见 ASCII 字符，生产部署使用随机生成的秘密。运行中只保留 token 的 SHA-256 摘要。
+管理服务使用管理员账号登录后的会话，不接受业务 `X-API-Key` 或旧管理 Bearer Token。部署配置为 `ADMIN_USERNAME`、`ADMIN_PASSWORD`；当前为单管理员模式，登录管理员可以执行下表全部操作，操作人由后端从账号取得。
+
+`POST /console-api/login` 接收 JSON `{ "username": "...", "password": "..." }`，必须带 `Content-Type: application/json` 和 `X-SICP-Request: console`。成功返回 `data.operator`、`data.csrf`，同时设置 HttpOnly、SameSite=Strict 的 `sicp_session` Cookie；启用 `CONSOLE_COOKIE_SECURE` 后 Cookie 仅通过 HTTPS 发送。登录每分钟最多尝试 10 次，会话固定有效 8 小时，最多保留 64 个；worker 重启或修改凭据后重启会使会话失效。服务端认证器保留 PBKDF2-HMAC-SHA256 密码摘要与随机盐，不在响应中返回密码或会话标识。
+
+`GET /console-api/session` 恢复当前会话信息。`POST /console-api/logout` 撤销当前会话并清除 Cookie。所有修改请求（退出、管理操作、控制台 POST 查询）须同时携带 Cookie、`X-SICP-Request: console` 和会话返回的 `X-SICP-CSRF`，跨站请求被拒绝，不开放 CORS。所有会话响应禁止缓存。
+
+控制台查询通过 `/console-api/query` 转发，仅放行四个已有查询路径和健康检查，后端注入业务密钥；浏览器 Cookie、管理凭据、CSRF 值不会转发至 query。外部业务系统继续直接使用 query 的 API Key 接口。
 
 | 方法与路径 | 权限 |
 |---|---|
@@ -10,7 +16,7 @@
 | POST /admin/v1/tasks/{task_id}/rerun | rerun |
 | GET /admin/v1/tasks/{task_id} | status |
 
-缺失/错误/重复管理认证返回 401；有效凭据缺少对应动作权限返回 403。认证通过后操作者取配置中的 operator，请求正文、查询参数和 X-Operator 均不能指定审计身份。响应禁止缓存，错误正文只包含固定 code/message，不回显秘密。
+缺失、错误、过期或重复会话 Cookie 返回 401；缺失或错误的防跨站请求凭据返回 403。认证通过后操作者取配置中的管理员账号，请求正文、查询参数和 X-Operator 均不能指定审计身份。响应禁止缓存，错误正文只包含固定 code/message，不回显秘密。
 
 初始化、手动同步及强制全量提交必须带唯一 `Idempotency-Key`（1—128 个无空白/逗号的可见 ASCII 字符）；正文为空或 `{}`，其他字段拒绝。相同操作者/模式/幂等键重试返回原任务；不能用相同键执行不同动作或查询另一操作者的任务。
 
@@ -22,4 +28,4 @@
 
 失败任务重跑使用相同的空正文和 Idempotency-Key 规则；模式由服务器从旧任务读取，新建任务并保留 predecessor_id，旧历史包括未知结束时间均不改写。不存在返回 404 not_found，非失败任务返回 409 not_failed；旧执行仍未释放或存在其他未决工作时返回 busy。同一重跑键返回原先受理的新任务。
 
-P15.01—P15.03 已提供管理边界；服务启动配置与部署在后续小步完成，当前不宣称端到端管理服务已就绪。
+`sicpctl admin` 使用相同账号登录、携带会话提交请求，结束时退出登录；不再使用 MANAGEMENT_TOKEN。

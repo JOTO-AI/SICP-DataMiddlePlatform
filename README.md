@@ -18,7 +18,7 @@ Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执�
 
 上游认证填写 `SOURCE_APP_ID` 和 `SOURCE_APP_SECRET`（上游开发者首页获取），无需填写临时 `SOURCE_TOKEN`。worker 自动获取 Token；响应带有效 `expires_in`（秒）时在到期前更新，否则每次分页前获取。HTTP 或业务码 401/403 时重新获取并重试当前页一次。已有 `.env` 请将 `SOURCE_TOKEN` 替换为这两个应用凭据。
 
-在控制台填写 `.env` 中配置的业务密钥和管理令牌，通过“更新任务 → 首次初始化”从真实上游导入数据，并查看任务完成状态。也可使用命令：
+使用 `.env` 中的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 登录控制台，通过“更新任务 → 首次初始化”从真实上游导入数据，并查看任务完成状态。控制台无需填写业务密钥或管理令牌。也可使用命令：
 
 ```sh
 docker compose run --rm --no-deps ctl initialize initialization-001
@@ -53,7 +53,7 @@ Linux / Bash 脚本用于同一套 Compose 的分步运维，`deploy` 同样包�
 
 `prepare` 仅在根目录 `.env` 不存在时复制 `.env.example`，保留已有配置。`.env` 被 Git 忽略，由 Compose 解析，不要作为 Shell 脚本执行。
 
-业务请求使用 `X-API-Key`，管理入口使用独立 Bearer 凭据及动作权限。`/livez` 表示进程存活，`/readyz` 按合法活动组合、实际依赖及恢复状态判断就绪。响应丢失时使用相同幂等键重试；失败重跑生成关联的新任务，历史不改写；重启先恢复未决任务。
+外部业务请求使用 `X-API-Key`；控制台与命令行管理使用管理员账号登录后的会话，后端校验身份及防跨站请求凭据。`/livez` 表示进程存活，`/readyz` 按合法活动组合、实际依赖及恢复状态判断就绪。响应丢失时使用相同幂等键重试；失败重跑生成关联的新任务，历史不改写；重启先恢复未决任务。
 
 详细操作见[部署说明](deploy/README.md)和[运行配置](development_docs/P15_RUNTIME_CONFIGURATION.md)。
 

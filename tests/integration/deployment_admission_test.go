@@ -36,7 +36,7 @@ func (d *deployment) acceptAndDisconnect(t *testing.T, action, key string) strin
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
 	req, _ := http.NewRequest("POST", d.workerURL+"/admin/v1/tasks/"+action, strings.NewReader("{}"))
-	req.Header.Set("Authorization", "Bearer "+managementToken)
+	d.authorize(t, req)
 	req.Header.Set("Idempotency-Key", key)
 	req.Header.Set("Content-Type", "application/json")
 	if err := req.Write(conn); err != nil {
@@ -57,16 +57,22 @@ func (d *deployment) acceptAndDisconnect(t *testing.T, action, key string) strin
 }
 
 func TestI06_02(t *testing.T) {
-	credentials := `[{"operator":"synthetic-admin","token":"synthetic-management-token","actions":["initialize","sync","force_full","rerun","status"]},{"operator":"synthetic-reader","token":"synthetic-status-only-token","actions":["status"]}]`
-	d := newDeployment(t, false, map[string]string{"MANAGEMENT_CREDENTIALS": credentials})
+	d := newDeployment(t, false)
 	for _, action := range []string{"initialize", "sync", "force-full", "00000000000000000000000000000000/rerun"} {
 		status, _ := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/"+action, "synthetic-query-secret", "denied", "{}")
 		if status != 401 {
 			t.Fatal("business credential accepted as admin", action, status)
 		}
-		status, _ = d.request(t, "POST", d.workerURL+"/admin/v1/tasks/"+action, "synthetic-status-only-token", "denied", "{}")
-		if status != 403 {
-			t.Fatal("status-only grant allowed mutation", action, status)
+		denied, _ := http.NewRequestWithContext(d.ctx, "POST", d.workerURL+"/admin/v1/tasks/"+action, strings.NewReader("{}"))
+		d.authorize(t, denied)
+		denied.Header.Del("X-SICP-CSRF")
+		response, err := d.client.Do(denied)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		if response.StatusCode != 403 {
+			t.Fatal("missing CSRF allowed mutation", action, response.StatusCode)
 		}
 	}
 	req, _ := http.NewRequestWithContext(d.ctx, "POST", d.workerURL+"/admin/v1/tasks/initialize", strings.NewReader("{}"))
@@ -84,7 +90,7 @@ func TestI06_02(t *testing.T) {
 		t.Fatal("unauthorized task admitted")
 	}
 	id := d.initialize(t)
-	status, envelope := d.request(t, "GET", d.workerURL+"/admin/v1/tasks/"+id, "synthetic-status-only-token", "", "")
+	status, envelope := d.request(t, "GET", d.workerURL+"/admin/v1/tasks/"+id, managementSession, "", "")
 	if status != 200 || envelope["data"].(map[string]any)["operator"] != "synthetic-admin" {
 		t.Fatal("status permission or recorded operator incorrect")
 	}
@@ -95,7 +101,7 @@ func TestI06_03(t *testing.T) {
 	d.mockPatch(t, `{"delay":0.15}`)
 	id := d.acceptAndDisconnect(t, "force-full", "lost-receipt")
 	for range 3 {
-		status, body := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/force-full", managementToken, "lost-receipt", "{}")
+		status, body := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/force-full", managementSession, "lost-receipt", "{}")
 		if status != 202 {
 			t.Fatal("idempotent admission failed", status)
 		}

@@ -69,7 +69,7 @@ func (d *database) QueryRow(_ context.Context, q string, args ...any) storage.Ro
 	case strings.Contains(q, "status='pending'"):
 		return row{d.pending}
 	case strings.Contains(q, "target::text FROM control.publication_outbox"):
-		a := control.ActiveMetadata{Sequence: 1, EventID: "old", TaskID: "old-task", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: d.active, Slot: 0}, Generation: 1, BundleID: "C100"}, CodeVersion: "v1"}
+		a := control.ActiveMetadata{Sequence: 1, EventID: "old", TaskID: "old-task", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: d.active, Slot: 0}, Generation: 1, BundleID: "C100"}}
 		raw, _ := control.ActiveDocument(a)
 		return row{string(raw)}
 	case strings.Contains(q, "FROM control.candidates"):
@@ -91,7 +91,7 @@ func gateFixture(t *testing.T) (runtimecontrol.Store, *database, source.Target) 
 		t.Fatal(e)
 	}
 	d := &database{active: storage.Main, owner: 3, generation: 2, at: time.Date(2026, 9, 24, 10, 0, 0, 0, time.UTC)}
-	s := runtimecontrol.Store{Repository: control.Repository{Registry: c.Databases, Database: d}, Owner: control.Ownership{TaskID: "task", OwnerID: "worker", Generation: 3}, Clock: testkit.FakeClock{Time: d.at}, CodeVersion: "v1"}
+	s := runtimecontrol.Store{Repository: control.Repository{Registry: c.Databases, Database: d}, Owner: control.Ownership{TaskID: "task", OwnerID: "worker", Generation: 3}, Clock: testkit.FakeClock{Time: d.at}}
 	return s, d, source.Target{Position: storage.Position{Instance: storage.Standby, Slot: 1}, Generation: 2, CandidateID: "candidate"}
 }
 func TestT15_10RealBuildGateRejectsServingInstanceStaleFenceReadersAndPending(t *testing.T) {

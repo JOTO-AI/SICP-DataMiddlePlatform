@@ -1,6 +1,6 @@
 # Phase 1 简易控制台
 
-Vue 3 + TypeScript + Vite，中文浅色界面。仅连接 Phase 1 已实现的接口，不内置演示数据、不修改 Go 服务或认证规则。
+Vue 3 + TypeScript + Vite，中文浅色界面。使用管理员账号登录，后端通过 HttpOnly 会话校验身份；仅连接已实现的接口，不内置演示数据。
 
 ## 启动
 
@@ -12,18 +12,17 @@ npm.cmd ci
 npm.cmd run dev
 ```
 
-打开 <http://127.0.0.1:5173/console/>。Linux/macOS 使用 `npm` 替代 `npm.cmd`。后端需另行按 [部署说明](../deploy/README.md) 启动；本地前端默认代理至 `http://127.0.0.1:18080`（query）与 `http://127.0.0.1:18081`（worker）。后端未启动时会显示连接错误，不会展示虚构健康状态。
+打开 <http://127.0.0.1:5173/console/>。Linux/macOS 使用 `npm` 替代 `npm.cmd`。后端需另行按 [部署说明](../deploy/README.md) 启动；本地前端默认代理至 `http://127.0.0.1:18081`（worker），查询由 worker 转发至 `CONSOLE_QUERY_URL`。后端未启动时会显示连接错误，不会展示虚构健康状态。
 
 后端运行在远程 Linux 时，可建立 SSH 端口转发：
 
 ```sh
-ssh -L 18080:127.0.0.1:18080 -L 18081:127.0.0.1:18081 user@server
+ssh -L 18081:127.0.0.1:18081 user@server
 ```
 
 也可在 `frontend/.env.local` 指定服务器侧代理目标（修改后重启开发服务）：
 
 ```dotenv
-SICP_QUERY_TARGET=http://127.0.0.1:18080
 SICP_WORKER_TARGET=http://127.0.0.1:18081
 ```
 
@@ -31,14 +30,14 @@ SICP_WORKER_TARGET=http://127.0.0.1:18081
 
 ## 使用
 
-1. 在连接设置中填写业务 `QUERY_API_KEY` 和管理令牌（令牌本身，不带 `Bearer `）。统一在根目录 `.env` 配置，部署模板不提供默认凭据，请使用实际配置值。管理令牌须与 `MANAGEMENT_CREDENTIALS` 中的 token 一致，并同步 `MANAGEMENT_TOKEN` 供命令行使用。不在页面预填任何凭据。
+1. 使用根目录 `.env` 中的 `ADMIN_USERNAME`、`ADMIN_PASSWORD` 登录。密码至少 12 字节，且不得与 `QUERY_API_KEY` 相同。浏览器不接收业务密钥或管理 Token。
 2. 在运行总览检查 query 和 worker 的存活与就绪状态。空数据环境通过更新任务中的“首次初始化”建立数据。
 3. 在业务查询中选择学生成绩、批量成绩、学生课表或教师课表，填参查询。课表必填学年与学期；批量成绩不填学号表示查询所选学年内符合条件的成绩。高级 JSON 支持页面列出的其他筛选字段，最终合法性由后端校验。
 4. 成绩上下翻页回传 `X-Query-Snapshot`；改筛选条件或点击“查询数据”开启新查询。遇到 409 请重新查询。
 5. 更新任务需确认后提交。202 只表示已受理；用返回任务号查看详情，可开启 5 秒轮询。失败任务重跑会创建关联的新任务。
 6. 响应丢失或提交失败时页面保留原操作与幂等键，使用“重试原请求”。“结束本次请求”只释放前端表单，不取消后台任务；不要据此推断原任务未被受理。刷新前请自行记录任务号与幂等键，页面不会持久保存它们。
 
-凭据、查询数据与任务详情仅存在页面内存；刷新或关闭即释放。页面明确清除凭据时也会销毁缓存页面。当前仅适合持有全局业务密钥的可信管理员，未实现面向普通学生/教师的账号与数据范围授权。生产入口由部署方配置 HTTPS 和访问范围。
+会话 Cookie 为 HttpOnly、SameSite=Strict，有效期 8 小时；刷新页面会恢复登录，退出会撤销会话并销毁缓存页面，会话过期自动返回登录页。密码不写入浏览器存储。查询数据与任务详情仅在页面内存中，刷新即释放。当前为单管理员模式，未实现面向普通学生/教师的账号与数据范围授权。HTTPS 部署应设 `CONSOLE_COOKIE_SECURE=true`，生产入口由部署方配置 HTTPS 和访问范围。
 
 ## Docker Compose 部署
 
@@ -50,7 +49,7 @@ cp .env.example .env
 docker compose up -d --build --wait --wait-timeout 300
 ```
 
-Windows PowerShell 使用 `Copy-Item .env.example .env`；已有 `.env` 不要重复覆盖。打开 <http://127.0.0.1:18082/console/>。镜像内 Nginx 同源代理至 `query:8080` 和 `worker:8081`，业务、管理凭据分别透传。端口由根目录 `.env` 的 `SICP_CONSOLE_PORT` 设置。
+Windows PowerShell 使用 `Copy-Item .env.example .env`；已有 `.env` 不要重复覆盖。打开 <http://127.0.0.1:18082/console/>。镜像内 Nginx 将 `/console-api/` 和 `/admin/v1/tasks/` 同源代理至 `worker:8081`，业务查询由 worker 在校验会话后转发至 query。端口由根目录 `.env` 的 `SICP_CONSOLE_PORT` 设置。
 
 仅重建控制台可执行 `docker compose up -d --build --no-deps console`；只停止控制台可执行 `docker compose stop console`。开发测试可将 `.env` 的 `ENVIRONMENT` 改为 `development` 以启用合成数据源。完整操作见[部署说明](../deploy/README.md)。
 

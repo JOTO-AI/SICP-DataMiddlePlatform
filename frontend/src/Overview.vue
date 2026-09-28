@@ -33,7 +33,7 @@ onMounted(refresh)
       </article>
     </div>
     <div class="section-bar next-heading"><h2>常用操作</h2><span class="muted">从数据核验到更新追踪</span></div>
-    <div class="link-list"><a href="#queries"><span class="link-icon" aria-hidden="true">⌕</span><div><h3>查询成绩与课表</h3><p>学生成绩、批量成绩、学生课表与教师课表</p></div><span aria-hidden="true">→</span></a><a href="#tasks"><span class="link-icon" aria-hidden="true">↻</span><div><h3>管理数据更新</h3><p>初始化、增量同步、强制全量与失败任务重跑</p></div><span aria-hidden="true">→</span></a><a href="#settings"><span class="link-icon" aria-hidden="true">⚙</span><div><h3>配置访问凭据</h3><p>分别设置业务密钥与管理令牌</p></div><span aria-hidden="true">→</span></a></div>
-    <div class="section-note"><h2>首次使用</h2><p>启动后端服务后，先填写连接凭据；空数据环境需在更新任务中执行首次初始化，任务完成后再查询。进程存活不代表数据已就绪。</p></div>
+    <div class="link-list"><a href="#queries"><span class="link-icon" aria-hidden="true">⌕</span><div><h3>查询成绩与课表</h3><p>学生成绩、批量成绩、学生课表与教师课表</p></div><span aria-hidden="true">→</span></a><a href="#tasks"><span class="link-icon" aria-hidden="true">↻</span><div><h3>管理数据更新</h3><p>初始化、增量同步、强制全量与失败任务重跑</p></div><span aria-hidden="true">→</span></a></div>
+    <div class="section-note"><h2>首次使用</h2><p>启动后端服务后，空数据环境需在更新任务中执行首次初始化，任务完成后再查询。进程存活不代表数据已就绪。</p></div>
   </section>
 </template>

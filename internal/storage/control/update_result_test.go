@@ -78,7 +78,7 @@ func TestT13_20BackwardSingleSourceRollsBackWholePublishedAndUnchangedConfirmati
 				v.ConfirmedUntil = d.task.StartedAt.Add(time.Minute)
 				d.progress[name] = v
 				before := maps.Clone(d.progress)
-				if err := r.CompleteUnchanged(t.Context(), a, copies, "query-v1", d.task.StartedAt.Add(time.Hour)); err == nil || !maps.Equal(before, d.progress) || len(d.checks) != 0 || d.task.Status != "running" {
+				if err := r.CompleteUnchanged(t.Context(), a, copies, d.task.StartedAt.Add(time.Hour)); err == nil || !maps.Equal(before, d.progress) || len(d.checks) != 0 || d.task.Status != "running" {
 					t.Fatal(err, d.task)
 				}
 				return

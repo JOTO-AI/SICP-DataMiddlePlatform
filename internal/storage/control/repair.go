@@ -110,8 +110,8 @@ func (r Repository) PlanRepair(ctx context.Context, active ActiveMetadata, h Slo
 	}
 	return out, nil
 }
-func (r Repository) OpenRepaired(ctx context.Context, active ActiveMetadata, target source.Target, code string) error {
-	if target.Generation < 1 || target.CandidateID == "" || code == "" {
+func (r Repository) OpenRepaired(ctx context.Context, active ActiveMetadata, target source.Target) error {
+	if target.Generation < 1 || target.CandidateID == "" {
 		return ErrEntity
 	}
 	return r.transaction(ctx, func(tx storage.Transaction) error {
@@ -126,7 +126,7 @@ func (r Repository) OpenRepaired(ctx context.Context, active ActiveMetadata, tar
 			return ErrBusy
 		}
 		var ready bool
-		if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.candidates WHERE id=$1 AND task_id=$2 AND instance=$3 AND slot=$4 AND generation=$5 AND bundle_id=$6 AND owner_generation=$7 AND state='ready' AND ready_at IS NOT NULL AND evidence->>'CodeVersion'=$8)", target.CandidateID, r.owner.TaskID, s.Instance, s.Slot, target.Generation, active.Position.BundleID, r.owner.Generation, code).Scan(&ready); err != nil {
+		if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.candidates WHERE id=$1 AND task_id=$2 AND instance=$3 AND slot=$4 AND generation=$5 AND bundle_id=$6 AND owner_generation=$7 AND state='ready' AND ready_at IS NOT NULL AND evidence IS NOT NULL)", target.CandidateID, r.owner.TaskID, s.Instance, s.Slot, target.Generation, active.Position.BundleID, r.owner.Generation).Scan(&ready); err != nil {
 			return err
 		}
 		if !ready {

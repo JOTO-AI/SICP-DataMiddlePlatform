@@ -65,7 +65,7 @@ func planFixture(t *testing.T) (control.Repository, *planDB, control.ActiveMetad
 	t.Helper()
 	r, base, _ := publicationFixture(t)
 	start := time.Date(2026, 9, 24, 10, 0, 0, 0, time.UTC)
-	a := control.ActiveMetadata{Sequence: 1, EventID: "initial", TaskID: "previous", OwnerGeneration: 1, CodeVersion: "v1", Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 1, BundleID: "C100"}}
+	a := control.ActiveMetadata{Sequence: 1, EventID: "initial", TaskID: "previous", OwnerGeneration: 1, Position: control.SlotIdentity{Position: storage.Position{Instance: storage.Main, Slot: 0}, Generation: 1, BundleID: "C100"}}
 	doc, err := control.ActiveDocument(a)
 	if err != nil {
 		t.Fatal(err)

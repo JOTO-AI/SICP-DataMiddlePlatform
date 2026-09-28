@@ -32,8 +32,9 @@ type Runtime struct {
 	MailAddress, MailTLS, MailUser, MailPassword, MailFrom, MailTo  string
 	LogDirectory, StagingDirectory, TargetDirectory, SpoolDirectory string
 	LogBytes, LogFiles, StagingBytes, TargetBytes, SpoolBytes       int64
-	Credentials                                                     []admin.Credential
-	SnapshotKey, AuditKey, CodeVersion, Environment                 string
+	AdminUsername, AdminPassword, ConsoleQueryURL                   string
+	ConsoleCookieSecure                                             bool
+	SnapshotKey, AuditKey, Environment                              string
 	DependencyTimeout                                               time.Duration
 }
 
@@ -58,7 +59,8 @@ func LoadRuntime(role Role, lookup func(string) (string, bool)) (Runtime, error)
 		{"SOURCE_SCOPE", &c.SourceScope},
 		{"MAIL_ADDRESS", &c.MailAddress}, {"MAIL_TLS", &c.MailTLS}, {"MAIL_USERNAME", &c.MailUser}, {"MAIL_PASSWORD", &c.MailPassword}, {"MAIL_FROM", &c.MailFrom}, {"MAIL_TO", &c.MailTo},
 		{"LOG_DIRECTORY", &c.LogDirectory}, {"STAGING_DIRECTORY", &c.StagingDirectory}, {"TARGET_DIRECTORY", &c.TargetDirectory}, {"SPOOL_DIRECTORY", &c.SpoolDirectory},
-		{"SNAPSHOT_KEY", &c.SnapshotKey}, {"AUDIT_KEY", &c.AuditKey}, {"CODE_VERSION", &c.CodeVersion}, {"ENVIRONMENT", &c.Environment},
+		{"ADMIN_USERNAME", &c.AdminUsername}, {"ADMIN_PASSWORD", &c.AdminPassword}, {"CONSOLE_QUERY_URL", &c.ConsoleQueryURL},
+		{"SNAPSHOT_KEY", &c.SnapshotKey}, {"AUDIT_KEY", &c.AuditKey}, {"ENVIRONMENT", &c.Environment},
 	} {
 		*e.p, _ = lookup(e.k)
 	}
@@ -90,11 +92,11 @@ func LoadRuntime(role Role, lookup func(string) (string, bool)) (Runtime, error)
 		if len(quality) > 16384 || qd.Decode(&c.Quality) != nil || qd.Decode(new(any)) != io.EOF {
 			return Runtime{}, fmt.Errorf("SOURCE_QUALITY: explicit fourteen-source policy required")
 		}
-		raw, _ := lookup("MANAGEMENT_CREDENTIALS")
-		d := json.NewDecoder(strings.NewReader(raw))
-		d.DisallowUnknownFields()
-		if len(raw) > 1<<20 || d.Decode(&c.Credentials) != nil || d.Decode(new(any)) != io.EOF {
-			return Runtime{}, fmt.Errorf("MANAGEMENT_CREDENTIALS: invalid configuration")
+		if value, ok := lookup("CONSOLE_COOKIE_SECURE"); ok {
+			c.ConsoleCookieSecure, err = strconv.ParseBool(value)
+			if err != nil {
+				return Runtime{}, fmt.Errorf("CONSOLE_COOKIE_SECURE: invalid boolean")
+			}
 		}
 	}
 	if err = c.Validate(); err != nil {
@@ -143,9 +145,6 @@ func (c Runtime) Validate() error {
 	if len(c.SnapshotKey) < 32 || len(c.AuditKey) < 32 || c.SnapshotKey == c.AuditKey || c.SnapshotKey == c.Service.APIKey || c.AuditKey == c.Service.APIKey {
 		return bad("SNAPSHOT_KEY/AUDIT_KEY")
 	}
-	if strings.TrimSpace(c.CodeVersion) == "" || len(c.CodeVersion) > 128 {
-		return bad("CODE_VERSION")
-	}
 	if c.Environment != "test" && c.Environment != "development" && c.Environment != "staging" && c.Environment != "production" {
 		return bad("ENVIRONMENT")
 	}
@@ -163,8 +162,12 @@ func (c Runtime) Validate() error {
 				return bad("SOURCE_QUALITY")
 			}
 		}
-		if _, e := admin.NewAuth(c.Service.APIKey, c.Credentials); e != nil {
-			return bad("MANAGEMENT_CREDENTIALS")
+		if !admin.ValidAccount(c.AdminUsername, c.AdminPassword, c.Service.APIKey) {
+			return bad("ADMIN_USERNAME/ADMIN_PASSWORD")
+		}
+		query, valid := endpoint(c.ConsoleQueryURL, "http", "https")
+		if !valid || query.User != nil || (query.Path != "" && query.Path != "/") {
+			return bad("CONSOLE_QUERY_URL")
 		}
 		u, ok = endpoint(c.SourceURL, "http", "https")
 		if !ok || u.User != nil || (u.Path != "" && u.Path != "/") {

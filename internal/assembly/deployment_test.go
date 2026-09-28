@@ -99,7 +99,7 @@ func TestT15_14RepositoryDeploymentFixturesReachActualAssembly(t *testing.T) {
 	}
 }
 func TestT15_14InvalidDeploymentCreatesNoDependencies(t *testing.T) {
-	for _, key := range []string{"DATABASE_CONTROL_URL", "SOURCE_ORIGIN", "MAIL_ADDRESS", "SOURCE_QUALITY", "TARGET_MAX_BYTES", "MANAGEMENT_CREDENTIALS"} {
+	for _, key := range []string{"DATABASE_CONTROL_URL", "SOURCE_ORIGIN", "MAIL_ADDRESS", "SOURCE_QUALITY", "TARGET_MAX_BYTES", "ADMIN_USERNAME", "ADMIN_PASSWORD", "CONSOLE_QUERY_URL"} {
 		t.Run(key, func(t *testing.T) {
 			v := deploymentValues(t, "worker")
 			delete(v, key)

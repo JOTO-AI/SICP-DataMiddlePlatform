@@ -11,21 +11,20 @@ import (
 type RepairStore interface {
 	IsolateRepair(context.Context, control.ActiveMetadata, control.SlotIdentity) error
 	PlanRepair(context.Context, control.ActiveMetadata, control.SlotIdentity, string) (source.Target, error)
-	OpenRepaired(context.Context, control.ActiveMetadata, source.Target, string) error
+	OpenRepaired(context.Context, control.ActiveMetadata, source.Target) error
 }
 type Repairer struct {
-	Store       RepairStore
-	Source      candidate.CompleteSource
-	Builder     CopyBuilder
-	Validator   CopyValidator
-	CodeVersion string
+	Store     RepairStore
+	Source    candidate.CompleteSource
+	Builder   CopyBuilder
+	Validator CopyValidator
 }
 
 // Repair preserves the published business combination. Its dependencies cannot
 // publish a new bundle or advance successful source progress. Isolation commits
 // before target validation/build; failure never reopens the damaged position.
 func (r Repairer) Repair(ctx context.Context, active control.ActiveMetadata, damaged Copy, candidateID string) (Copy, error) {
-	if r.Store == nil || r.Source == nil || r.Builder == nil || r.Validator == nil || r.CodeVersion == "" || active.Validate() != nil || damaged.Manifest.Validate() != nil || damaged.Manifest.Combination != active.Position.BundleID || damaged.Target.Position.Validate() != nil || damaged.Target.Position.Instance == active.Position.Position.Instance || damaged.Target.Generation < 1 || candidateID == "" {
+	if r.Store == nil || r.Source == nil || r.Builder == nil || r.Validator == nil || active.Validate() != nil || damaged.Manifest.Validate() != nil || damaged.Manifest.Combination != active.Position.BundleID || damaged.Target.Position.Validate() != nil || damaged.Target.Position.Instance == active.Position.Position.Instance || damaged.Target.Generation < 1 || candidateID == "" {
 		return Copy{}, ErrInitialization
 	}
 	h := control.SlotIdentity{Position: damaged.Target.Position, Generation: damaged.Target.Generation, BundleID: damaged.Manifest.Combination}
@@ -53,10 +52,10 @@ func (r Repairer) Repair(ctx context.Context, active control.ActiveMetadata, dam
 	if err != nil {
 		return Copy{}, err
 	}
-	if err = evidence.Validate(target, damaged.Manifest, r.CodeVersion); err != nil {
+	if err = evidence.Validate(target, damaged.Manifest); err != nil {
 		return Copy{}, err
 	}
-	if err = r.Store.OpenRepaired(ctx, active, target, r.CodeVersion); err != nil {
+	if err = r.Store.OpenRepaired(ctx, active, target); err != nil {
 		return Copy{}, err
 	}
 	return Copy{Target: target, Manifest: damaged.Manifest, Evidence: evidence}, nil
