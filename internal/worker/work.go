@@ -142,6 +142,17 @@ func (w Executor) finish(ctx context.Context, t control.Task, owner control.Owne
 	if e = w.taskEvent(ctx, view.Task, true); e != nil {
 		return e
 	}
+	if view.Task.Status != "failed" {
+		if e := w.maintain(ctx, view.Task, owner); e != nil {
+			// Discovery failures also receive an independent bounded record.
+			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			recordErr := w.Runtime.Control.WithOwnership(owner).RecordMaintenance(cleanup, "scan", false, w.Clock.Now())
+			cancel()
+			if w.Observe != nil {
+				w.Observe(errors.Join(e, recordErr))
+			}
+		}
+	}
 	return w.Runtime.Control.Release(ctx, owner)
 }
 func (w Executor) execute(ctx context.Context, task control.Task, owner control.Ownership, resume bool, delivery publication.Delivery) error {
