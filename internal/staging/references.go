@@ -116,6 +116,9 @@ func (l *Lease) Bounded(ctx context.Context, maxPageBytes int64, maxPageRows int
 	if l == nil || l.store == nil || l.sealed == nil || maxPageBytes < 1 || maxPageBytes > 64<<20 || maxPageRows < 1 {
 		return nil, ErrInvalid
 	}
+	if bounded, found, err := l.scopedBounded(ctx, maxPageBytes, maxPageRows); found {
+		return bounded, err
+	}
 	q := l.store.files.(*QuotaFiles)
 	q.lifecycle.Lock()
 	defer q.lifecycle.Unlock()
@@ -143,8 +146,8 @@ func (l *Lease) ReadPage(ctx context.Context, index int) (ingest.Page, error) {
 		return ingest.Page{}, ErrInvalid
 	}
 	q := l.store.files.(*QuotaFiles)
-	q.lifecycle.Lock()
-	defer q.lifecycle.Unlock()
+	q.lifecycle.RLock()
+	defer q.lifecycle.RUnlock()
 	if err := l.active(ctx); err != nil {
 		return ingest.Page{}, err
 	}

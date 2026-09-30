@@ -11,13 +11,11 @@ import (
 	"io"
 	"io/fs"
 	"regexp"
-	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/merge"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/staging"
-	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
 
 const targetManifestLimit = 16 << 20
@@ -33,6 +31,7 @@ type TargetFiles struct {
 	MaxChunks     int
 }
 type PrepareOptions struct {
+	TableConcurrency                   int
 	Combination, Scope, SpoolDirectory string
 	Mode                               ingest.Mode
 	Base                               *Manifest
@@ -105,6 +104,9 @@ type emptyRows struct{}
 func (emptyRows) Next(context.Context) (ingest.Record, error) { return ingest.Record{}, io.EOF }
 
 func (f TargetFiles) Prepare(ctx context.Context, o PrepareOptions, input *staging.Lease) (Manifest, error) {
+	if o.TableConcurrency < 0 || o.TableConcurrency > MaxTableConcurrency {
+		return Manifest{}, ErrBuild
+	}
 	if !f.valid() || !targetName.MatchString(o.Combination) || o.Scope == "" || input == nil || o.Limits.BatchRows < 1 || o.Limits.BatchBytes < 1 || o.Limits.BatchBytes > f.MaxChunkBytes-int64(o.Limits.BatchRows) {
 		return Manifest{}, ErrBuild
 	}
@@ -115,9 +117,6 @@ func (f TargetFiles) Prepare(ctx context.Context, o PrepareOptions, input *stagi
 		return Manifest{}, ErrBuild
 	}
 	activity.Report(ctx, "validating_input", "", "")
-	if err := input.Validate(ctx); err != nil {
-		return Manifest{}, err
-	}
 	for _, page := range input.Pages() {
 		if page.Request.Mode != o.Mode {
 			return Manifest{}, ErrBuild
@@ -144,52 +143,25 @@ func (f TargetFiles) Prepare(ctx context.Context, o PrepareOptions, input *stagi
 		copy.Tables = append([]TableVersion(nil), o.Base.Tables...)
 		doc.Base = &copy
 	}
-	totalChunks := 0
-	for _, table := range source.Catalog() {
-		activity.Report(ctx, "building_table", table.Name, "")
-		var current merge.RowIterator = emptyRows{}
-		baseDigest, err := merge.SourceDigest(ctx, table.Name, o.Scope, nil)
+	err := input.WithVerifiedPages(ctx, o.Limits.InputPageBytes, o.Limits.InputPageRows, func(buildCtx context.Context) error {
+		tables, changes, err := f.prepareTables(buildCtx, o, input, base)
 		if err != nil {
-			return Manifest{}, err
+			return err
 		}
-		var opened Rows
-		if old, ok := base[table.Name]; ok {
-			opened, err = o.BaseSource.Open(ctx, *o.Base, old)
-			if err != nil {
-				return Manifest{}, err
-			}
-			if opened == nil {
-				return Manifest{}, ErrBuild
-			}
-			current = opened
-			baseDigest = old.SHA256
+		doc.Tables, doc.Changes = tables, changes
+		for _, table := range tables {
+			doc.Manifest.Tables = append(doc.Manifest.Tables, table.Version)
 		}
-		sink := &fileSink{files: f, combination: o.Combination, table: table.Name, remaining: f.MaxChunks - totalChunks}
-		summary, err := merge.Stream(ctx, merge.StreamOptions{Table: table.Name, Scope: o.Scope, BaselineSHA256: baseDigest, SpoolDirectory: o.SpoolDirectory, Limits: o.Limits, Quality: o.Quality[table.Name]}, current, merge.SealedInput{Scope: o.Scope, Lease: input}, sink)
-		if opened != nil {
-			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-			err = errors.Join(err, opened.Close(cleanup))
-			cancel()
-		}
-		if err != nil {
-			return Manifest{}, err
-		}
-		if !sink.complete || summary.Input != doc.Manifest.Input {
-			return Manifest{}, ErrBuild
-		}
-		version := TableVersion{Table: table.Name, Scope: o.Scope, SHA256: summary.SHA256, Rows: summary.AfterRows}
-		doc.Changes[table.Name] = ChangeCounts{Before: summary.BeforeRows, After: summary.AfterRows, Added: summary.Added, Modified: summary.Modified, Removed: summary.Removed, DeletionsKnown: summary.DeletionsKnown}
-		doc.Manifest.Tables = append(doc.Manifest.Tables, version)
-		doc.Tables = append(doc.Tables, targetTable{Version: version, Chunks: sink.chunks})
-		totalChunks += len(sink.chunks)
+		activity.Report(buildCtx, "validating_target", "", "")
+		return nil
+	})
+	if err != nil {
+		return Manifest{}, err
 	}
 	if err := doc.Manifest.Validate(); err != nil {
 		return Manifest{}, err
 	}
 	activity.Report(ctx, "validating_target", "", "")
-	if err := input.Validate(ctx); err != nil {
-		return Manifest{}, err
-	}
 	raw, err := json.Marshal(doc)
 	if err != nil {
 		return Manifest{}, err
@@ -209,6 +181,7 @@ type fileSink struct {
 	chunks             []targetChunk
 	remaining          int
 	complete           bool
+	reserve            func() bool
 }
 
 func (s *fileSink) WriteBatch(ctx context.Context, rows []ingest.Record) error {
@@ -231,6 +204,9 @@ func (s *fileSink) WriteBatch(ctx context.Context, rows []ingest.Record) error {
 	hash := sha256.Sum256(raw)
 	sha := hex.EncodeToString(hash[:])
 	name := chunkName(s.combination, s.table, len(s.chunks), sha)
+	if s.reserve != nil && !s.reserve() {
+		return staging.ErrCapacity
+	}
 	if err := s.files.put(ctx, name, raw, s.files.MaxChunkBytes); err != nil {
 		return err
 	}

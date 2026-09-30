@@ -27,6 +27,7 @@ const elapsed = computed(() => {
   <section v-if="progress" class="work-progress" aria-label="当前执行阶段">
     <div class="section-bar"><h3>{{ title }}</h3><span class="tag" :class="{ progress: !ended && !stale, warning: !ended && stale }">{{ ended ? '已结束' : stale ? '状态待确认' : '执行器在线' }}</span></div>
     <p v-if="progress.table || progress.instance"><span v-if="progress.table">当前表：<code>{{ progress.table }}</code></span><span v-if="progress.instance"> · 数据库副本：{{ progress.instance }}</span></p>
+    <p v-if="progress.tables?.length">正在构建的表：<span v-for="(table,index) in progress.tables" :key="table">{{ index ? '、' : '' }}<code>{{ table }}</code></span></p>
     <p class="hint">本阶段耗时：{{ elapsed }} · 执行器最近心跳：{{ time(progress.heartbeat_at) }}</p>
     <p v-if="!ended && stale" class="error" role="status">超过 45 秒未收到执行器心跳，暂时无法确认是否仍在执行，请检查服务状态。</p>
     <p v-else-if="!ended" class="hint">每 10 秒上报一次心跳。心跳表示执行器在线，不代表数据处理进度已推进。</p>

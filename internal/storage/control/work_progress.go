@@ -10,6 +10,16 @@ import (
 )
 
 func validWorkProgress(p activity.Snapshot) bool {
+	if len(p.Tables) > 4 || (len(p.Tables) > 0 && (p.Phase != "building_table" || p.Table != "")) {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, table := range p.Tables {
+		if !knownTable(table) || seen[table] {
+			return false
+		}
+		seen[table] = true
+	}
 	if p.StartedAt.IsZero() || p.HeartbeatAt.Before(p.StartedAt) || (p.Table != "" && !knownTable(p.Table)) || (p.Instance != "" && p.Instance != "M" && p.Instance != "S") {
 		return false
 	}

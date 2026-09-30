@@ -14,7 +14,7 @@ type QuotaFiles struct {
 	files     Files
 	limit     int64
 	mu        sync.Mutex
-	lifecycle sync.Mutex // Retain/release/retirement share this across all Stores.
+	lifecycle sync.RWMutex // Concurrent verified reads exclude writes/retirement.
 }
 
 func NewQuotaFiles(files Files, limit int64) (*QuotaFiles, error) {

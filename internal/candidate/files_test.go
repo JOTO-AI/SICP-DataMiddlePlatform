@@ -28,11 +28,34 @@ func TestPreparationReportsEveryTableBeforeBuilding(t *testing.T) {
 	seen := map[string]bool{}
 	for _, p := range stages {
 		if p.Phase == "building_table" {
-			seen[p.Table] = true
+			for _, table := range p.Tables {
+				seen[table] = true
+			}
 		}
 	}
 	if len(stages) == 0 || stages[0].Phase != "validating_input" || stages[len(stages)-1].Phase != "validating_target" || len(seen) != len(ingest.Catalog()) {
 		t.Fatal(stages)
+	}
+}
+
+func TestParallelPreparationDoesNotPublishAfterFinalInputCorruption(t *testing.T) {
+	input, files, options, root := targetInput(t, ingest.Full)
+	options.TableConcurrency = 2
+	corrupted := false
+	ctx, stop := activity.Track(t.Context(), time.Now, func(_ context.Context, p activity.Snapshot) error {
+		if p.Phase == "validating_target" && !corrupted {
+			corrupted = true
+			return os.WriteFile(filepath.Join(root, input.Pages()[0].Payload), []byte("corrupt"), 0600)
+		}
+		return nil
+	}, func(err error) { t.Error(err) })
+	_, err := files.Prepare(ctx, options, input)
+	stop()
+	if !corrupted || !errors.Is(err, staging.ErrCorrupt) {
+		t.Fatal("final input integrity check skipped", err)
+	}
+	if _, err = os.Stat(filepath.Join(root, manifestName(options.Combination))); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("corrupt group produced target manifest", err)
 	}
 }
 

@@ -332,5 +332,6 @@ func targetPreparation(c config.Runtime, files *staging.QuotaFiles, combination 
 	// A retained seal may use a larger page size from before a configuration
 	// change. Keep every supported input page readable during local recovery.
 	options := candidate.PrepareOptions{Combination: combination, Scope: c.SourceScope, SpoolDirectory: c.SpoolDirectory, Quality: c.Quality, Limits: merge.Limits{BatchRows: rows, FanIn: 8, MaxRuns: 100000, BatchBytes: targets.MaxChunkBytes - rows, MaxSpoolBytes: c.SpoolBytes, InputPageRows: config.MaxSourcePageSize, InputPageBytes: 64 << 20}}
+	options.TableConcurrency = c.BuildTableConcurrency
 	return targets, options
 }

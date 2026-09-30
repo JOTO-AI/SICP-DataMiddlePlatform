@@ -6,9 +6,10 @@ test('post-acquisition stages show heartbeat, stale execution and publication', 
   await setup(page)
   let status = 'running', phase = 'building_table', heartbeat = started.toISOString()
   let table: string | undefined = 'dwd_bzkscjzlb', instance: string | undefined
+  let tables: string[] | undefined
   const task = () => ({ task_id: 'build-progress', mode: 'initialize', status, accepted_at: started.toISOString(), started_at: started.toISOString() })
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [task()] } } }))
-  await page.route('**/admin/v1/tasks/build-progress', route => route.fulfill({ json: { code: 'ok', data: { ...task(), work_progress: { phase, table, instance, started_at: started.toISOString(), heartbeat_at: heartbeat }, acquisition: { updated_at: started.toISOString(), tables: [{ table: 'dwd_bzkscjzlb', status: 'collected', completed_pages: 1440, total_pages: 1440 }] } } } })))
+  await page.route('**/admin/v1/tasks/build-progress', route => route.fulfill({ json: { code: 'ok', data: { ...task(), work_progress: { phase, table, tables, instance, started_at: started.toISOString(), heartbeat_at: heartbeat }, acquisition: { updated_at: started.toISOString(), tables: [{ table: 'dwd_bzkscjzlb', status: 'collected', completed_pages: 1440, total_pages: 1440 }] } } } })))
   await page.getByRole('button', { name: '刷新状态', exact: true }).click()
   const stage = page.getByRole('region', { name: '当前执行阶段' })
   await expect(stage.getByRole('heading', { name: '正在构建表数据' })).toBeVisible()
@@ -16,11 +17,15 @@ test('post-acquisition stages show heartbeat, stale execution and publication', 
   await expect(stage).toContainText('执行器在线')
   await page.getByRole('link', { name: '更新任务', exact: true }).click()
   await expect(stage.getByRole('heading', { name: '正在构建表数据' })).toBeVisible()
+  table = undefined; tables = ['dwd_bzkscjzlb', 'dwd_bzkskbsjzlb']
+  await page.clock.runFor(5100)
+  await expect(stage).toContainText('正在构建的表：')
+  await expect(stage).toContainText('dwd_bzkskbsjzlb')
   await page.clock.runFor(46000)
   await expect(stage).toContainText('状态待确认')
   await expect(stage).toContainText('超过 45 秒未收到执行器心跳')
   heartbeat = await page.evaluate(() => new Date().toISOString())
-  phase = 'writing_table'; instance = 'M'
+  phase = 'writing_table'; instance = 'M'; table = 'dwd_bzkscjzlb'; tables = undefined
   await page.clock.runFor(5100)
   await expect(stage.getByRole('heading', { name: '正在写入数据库' })).toBeVisible()
   await expect(stage).toContainText('数据库副本：M')
