@@ -90,7 +90,7 @@ func openFiles(ctx context.Context, c config.Runtime) (*FileSet, error) {
 				return f, e
 			}
 			used, e := d.Usage(ctx)
-			if e != nil || used > entry.limit {
+			if e != nil || (entry.limit > 0 && used > entry.limit) {
 				return f, staging.ErrCapacity
 			}
 			*entry.dst, e = staging.NewQuotaFiles(d, entry.limit)
