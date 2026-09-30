@@ -130,6 +130,7 @@ test('overview shows initialization and automatically becomes ready when it fini
   await expect(progress).toHaveCount(0)
   await expect(page.getByText('✓ 已就绪', { exact: true })).toHaveCount(2)
   await page.getByRole('link', { name: '业务查询', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
   const beforeLeaving = checks
   await page.clock.runFor(20100)
   expect(checks).toBe(beforeLeaving)

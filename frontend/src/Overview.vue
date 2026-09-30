@@ -25,7 +25,7 @@ async function refreshTask() {
   } catch (e) { currentTask.value = null; taskError.value = `无法确认更新任务状态：${describe(e)}` }
 }
 async function refresh() {
-  if (busy.value) return
+  if (!active || busy.value) return
   clearTimeout(timer)
   busy.value = true
   await Promise.all([refreshTask(), ...services.value.map(async s => {
