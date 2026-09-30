@@ -32,6 +32,13 @@ func (e *AcquisitionError) Unwrap() error    { return e.Cause }
 // Collect always starts at page one. It returns only confirmed page evidence;
 // interrupted acquisitions cannot be resumed by mixing pages with a new run.
 func (c *Coordinator) Collect(ctx context.Context, input PageRequest, task *TaskBudget, limits PageLimits, sink PageSink) (result Acquisition, finalErr error) {
+	return c.CollectConcurrent(ctx, input, task, limits, sink, 1)
+}
+
+// CollectConcurrent fetches bounded windows after confirming page one. A window
+// is joined before ordered validation/commit, so sinks and progress remain
+// serial and at most concurrency response pages await processing.
+func (c *Coordinator) CollectConcurrent(ctx context.Context, input PageRequest, task *TaskBudget, limits PageLimits, sink PageSink, concurrency int) (result Acquisition, finalErr error) {
 	result.Manifest.Source = input.Table
 	pageNumber := input.Page
 	defer func() {
@@ -40,7 +47,7 @@ func (c *Coordinator) Collect(ctx context.Context, input PageRequest, task *Task
 			finalErr = &AcquisitionError{Source: input.Table, Page: pageNumber, Cause: finalErr}
 		}
 	}()
-	if c == nil || task == nil || sink == nil || input.Page != 1 {
+	if c == nil || task == nil || sink == nil || input.Page != 1 || concurrency < 1 || concurrency > MaxPageConcurrency {
 		return result, &Failure{Kind: ConfigurationFailure}
 	}
 	pager, err := NewPager(input.Table, input.PageSize, limits)
@@ -66,35 +73,50 @@ func (c *Coordinator) Collect(ctx context.Context, input PageRequest, task *Task
 		if err := check(); err != nil {
 			return result, err
 		}
+		count := 1
+		if pageNumber > 1 {
+			total := pager.manifest.Total / int64(input.PageSize)
+			if pager.manifest.Total%int64(input.PageSize) != 0 {
+				total++
+			}
+			count = int(min(int64(concurrency), total-int64(pageNumber)+1))
+		}
 		input.Page = pageNumber
-		page, err := c.FetchPage(taskCtx, input, task)
-		if page.ObservationError != nil {
-			result.ObservationError = page.ObservationError
+		batch, failed := c.fetchWindow(taskCtx, input, task, count)
+		for i, page := range batch {
+			if page.result.ObservationError != nil {
+				result.ObservationError = page.result.ObservationError
+			}
+			result.Calls = append(result.Calls, PageCall{Page: pageNumber + i, Attempts: page.result.Attempts})
 		}
-		result.Calls = append(result.Calls, PageCall{Page: pageNumber, Attempts: page.Attempts})
-		if err != nil {
-			result.FinalFailure = page.FinalFailure
-			return result, err
+		if failed >= 0 {
+			pageNumber += failed
+			result.FinalFailure = batch[failed].result.FinalFailure
+			return result, batch[failed].err
 		}
-		if err := pager.Accept(pageNumber, page.Page); err != nil {
-			return result, err
+		for _, page := range batch {
+			input.Page = pageNumber
+			if err := check(); err != nil {
+				return result, err
+			}
+			if err := pager.Accept(pageNumber, page.result.Page); err != nil {
+				return result, err
+			}
+			if err := check(); err != nil {
+				return result, err
+			}
+			summary := pager.manifest.Pages[len(pager.manifest.Pages)-1]
+			if err := sink.CommitPage(taskCtx, input, page.result.Page, summary); err != nil {
+				return result, &Failure{Kind: PageCommitFailure}
+			}
+			result.Manifest = pager.Manifest()
+			if err := check(); err != nil {
+				return result, err
+			}
+			if result.Manifest.Complete {
+				return result, nil
+			}
+			pageNumber++
 		}
-		if err := check(); err != nil {
-			return result, err
-		}
-		summary := pager.manifest.Pages[len(pager.manifest.Pages)-1]
-		if err := sink.CommitPage(taskCtx, input, page.Page, summary); err != nil {
-			// A storage error can include local paths/secrets. Do not expose it
-			// through a public acquisition error or trigger more source requests.
-			return result, &Failure{Kind: PageCommitFailure}
-		}
-		result.Manifest = pager.Manifest()
-		if err := check(); err != nil {
-			return result, err
-		}
-		if result.Manifest.Complete {
-			return result, nil
-		}
-		pageNumber++
 	}
 }

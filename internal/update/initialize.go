@@ -19,15 +19,16 @@ import (
 var ErrInitialization = errors.New("initialization prerequisites or copy evidence invalid")
 
 type Acquirer struct {
-	Collector *ingest.Coordinator
-	Staging   *staging.Store
-	Budget    *ingest.TaskBudget
-	Limits    ingest.PageLimits
-	PageSize  int
-	Owner     string
-	Observe   func(error)
-	Notify    func(context.Context, *ingest.FailureEvent) error
-	Progress  func(context.Context, []control.TableAcquisitionProgress) error
+	Collector       *ingest.Coordinator
+	Staging         *staging.Store
+	Budget          *ingest.TaskBudget
+	Limits          ingest.PageLimits
+	PageSize        int
+	PageConcurrency int
+	Owner           string
+	Observe         func(error)
+	Notify          func(context.Context, *ingest.FailureEvent) error
+	Progress        func(context.Context, []control.TableAcquisitionProgress) error
 }
 
 // Full commits every page and requires an actual fourteen-source seal. The
@@ -40,6 +41,13 @@ func (a Acquirer) Full(ctx context.Context) (*staging.Lease, error) {
 
 func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageRequest) (*staging.Lease, error) {
 	if a.Collector == nil || a.Staging == nil || a.Budget == nil || a.PageSize < 1 || a.Owner == "" || a.Observe == nil {
+		return nil, ErrInitialization
+	}
+	concurrency := a.PageConcurrency
+	if concurrency == 0 { // Existing in-process callers remain serial.
+		concurrency = 1
+	}
+	if concurrency < 1 || concurrency > ingest.MaxPageConcurrency {
 		return nil, ErrInitialization
 	}
 	tables := make([]control.TableAcquisitionProgress, 0, len(ingest.Catalog()))
@@ -63,7 +71,7 @@ func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageR
 			}
 			a.reportProgress(ctx, tables)
 		}}
-		result, err := a.Collector.Collect(ctx, request(table.Name), a.Budget, a.Limits, sink)
+		result, err := a.Collector.CollectConcurrent(ctx, request(table.Name), a.Budget, a.Limits, sink, concurrency)
 		if result.FinalFailure != nil && a.Notify != nil {
 			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			notifyErr := a.Notify(cleanup, result.FinalFailure)

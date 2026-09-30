@@ -15,7 +15,7 @@ type Source struct {
 }
 
 func OpenSource(origin, token, appID, secret string, timeout time.Duration) (*Source, error) {
-	t := &http.Transport{DialContext: (&net.Dialer{Timeout: timeout, KeepAlive: 30 * time.Second}).DialContext, TLSHandshakeTimeout: timeout, ResponseHeaderTimeout: timeout, IdleConnTimeout: time.Minute, MaxIdleConnsPerHost: 2, MaxConnsPerHost: 4}
+	t := &http.Transport{DialContext: (&net.Dialer{Timeout: timeout, KeepAlive: 30 * time.Second}).DialContext, TLSHandshakeTimeout: timeout, ResponseHeaderTimeout: timeout, IdleConnTimeout: time.Minute, MaxIdleConnsPerHost: ingest.MaxPageConcurrency, MaxConnsPerHost: ingest.MaxPageConcurrency}
 	var c *ingest.Client
 	var e error
 	if appID != "" || secret != "" {

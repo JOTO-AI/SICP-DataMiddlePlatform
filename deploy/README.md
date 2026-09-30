@@ -4,6 +4,8 @@
 
 上游采集每页条数通过 `.env` 的 `SOURCE_PAGE_SIZE` 设置，默认 `1000`，本地允许 `1`—`10000`。例如 `SOURCE_PAGE_SIZE=5000` 可将约 144 万条数据的请求从约 1440 页降到 288 页，前提是上游允许该条数且每页能在请求超时内返回；这不是对总耗时的保证。修改后重建 worker 才生效，当前任务不会动态改变分页；重启会中断尚未封存的采集。已有配置未设置该变量时继续使用 1000。
 
+同一张表的分页并发数通过 `SOURCE_PAGE_CONCURRENCY` 设置，默认 `4`，允许 `1`—`8`，`1` 为串行。先确认第一页和总页数，再分批并行获取后续页面，按页码顺序校验、保存和报告进度；不同表仍依次采集。初始化、增量和强制全量均适用，重建 worker 后生效。每批最多保留配置数量的响应页，内存占用会随并发数和每页条数增加；建议先使用 `SOURCE_PAGE_SIZE=1000`、`SOURCE_PAGE_CONCURRENCY=4`，根据上游响应与限流情况调整，并发不保证等比例提速。批次中有页面最终失败时取消其余请求，不获取后续批次；重试、Retry-After 冷却、总条数与重复记录校验继续生效。
+
 `STAGING_MAX_BYTES`、`TARGET_MAX_BYTES`、`SPOOL_MAX_BYTES` 默认均为 `0`，表示不设置应用层磁盘字节配额，适用于初始化、增量和强制全量。旧 `.env` 里的 256MiB/128MiB 正值不会被自动覆盖，升级时将这三项改为 `0`，重建 worker 后生效；如有部署需要，仍可显式设置正数配额。
 
 关闭磁盘字节配额不会把全量数据一次性读进内存：单页 64MiB、排序缓冲、输出批次和日志容量仍有独立限制。采集总预算仍为 1 小时，实际磁盘写入失败会使任务报错；失败采集文件继续保留，不能直接删除仍被任务引用的文件。
@@ -63,7 +65,7 @@ docker compose down
 
 根目录 `.env.example` 默认为 `ENVIRONMENT=production`。先填写四个数据库密码、`QUERY_API_KEY`、`SNAPSHOT_KEY`、`AUDIT_KEY`、`ADMIN_USERNAME` 和 `ADMIN_PASSWORD`，再配置真实 `SOURCE_ORIGIN`、`SOURCE_APP_ID`、`SOURCE_APP_SECRET`、`SOURCE_SCOPE`、`SOURCE_QUALITY`；SMTP 按需配置。正式环境不会启动或挂载 Mock 服务；缺少上游配置、误填开发源地址或邮件配置不完整会报错，不会回退模拟数据。
 
-`SOURCE_APP_ID` 与 `SOURCE_APP_SECRET` 来自上游开发者首页。worker 在首次采集时向同一 origin 的 `GET /apizt/opentoken/oauth/token` 传入 `appId`、`secret`，读取 `data.access_token`。Token 仅保存在内存；有效 `data.expires_in`（秒，整数或整数字符串）存在时提前 10% 有效期（最多 30 秒）重新获取；没有可用有效期时每次分页前获取，不假定固定时长。同一客户端串行获取和使用 Token，避免新 Token 使并发中的旧 Token 失效。HTTP 或业务码 401/403 会触发一次重新获取及当前页重试，其他业务码按原失败策略处理；上游专有的失效码尚待完整合同确认。认证请求受 `DEPENDENCY_TIMEOUT` 限制，失败不会回退静态令牌或模拟数据，也不会记录凭据、Token 或响应正文。已有 `.env` 应删除 `SOURCE_TOKEN` 并填写上述两个应用凭据；直接运行进程时，静态 `SOURCE_TOKEN` 仅允许在 development/test 环境使用。
+`SOURCE_APP_ID` 与 `SOURCE_APP_SECRET` 来自上游开发者首页。worker 在首次采集时向同一 origin 的 `GET /apizt/opentoken/oauth/token` 传入 `appId`、`secret`，读取 `data.access_token`。Token 仅保存在内存；有效 `data.expires_in`（秒，整数或整数字符串）存在时提前 10% 有效期（最多 30 秒）重新获取；没有可用有效期时复用到上游明确拒绝，不假定固定时长。并发页面共享 Token，重新获取前等待使用旧 Token 的请求结束，避免新 Token 使并发中的旧 Token 失效。HTTP 或业务码 401/403 会触发一次重新获取及当前页重试，其他业务码按原失败策略处理；上游专有的失效码尚待完整合同确认。认证请求受 `DEPENDENCY_TIMEOUT` 限制，失败不会回退静态令牌或模拟数据，也不会记录凭据、Token 或响应正文。已有 `.env` 应删除 `SOURCE_TOKEN` 并填写上述两个应用凭据；直接运行进程时，静态 `SOURCE_TOKEN` 仅允许在 development/test 环境使用。
 
 邮件通知默认关闭：`MAIL_ADDRESS`、`MAIL_TLS`、`MAIL_FROM`、`MAIL_TO`、`MAIL_USERNAME`、`MAIL_PASSWORD` 六项全部留空或未设置时，worker 正常启动，不创建 SMTP 客户端、不启动邮件发送任务，也不新增待发邮件。正式环境启用时必须完整填写前四项，`MAIL_TLS` 为 `tls` 或 `starttls`；需要登录时成对填写用户名和密码。部分配置缺失仍会报错。已有 `.env` 若保留 `MAIL_TLS=starttls`，关闭邮件时也需清空该项。
 

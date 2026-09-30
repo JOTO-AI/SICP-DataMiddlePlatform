@@ -302,7 +302,10 @@ func (d *deployment) query(t *testing.T, operation contract.Operation, body stri
 }
 
 func TestI06_01(t *testing.T) {
-	d := newDeployment(t, true, map[string]string{"SOURCE_PAGE_SIZE": "2"})
+	d := newDeployment(t, true, map[string]string{"SOURCE_PAGE_SIZE": "2", "SOURCE_PAGE_CONCURRENCY": "3"})
+	if got := strings.TrimSpace(d.compose(t, "exec", "-T", "worker", "printenv", "SOURCE_PAGE_CONCURRENCY")); got != "3" {
+		t.Fatal("worker concurrency configuration not deployed", got)
+	}
 	initial := d.waitTask(t, d.initial, "success_published")
 	progress, ok := initial["acquisition"].(map[string]any)
 	if !ok {

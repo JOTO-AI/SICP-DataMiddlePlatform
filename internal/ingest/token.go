@@ -18,10 +18,12 @@ type sourceAuth struct {
 	token         string
 	validUntil    time.Time
 	timeout       time.Duration
-	// Serialize token issuance and use: some providers invalidate the previous
-	// token when issuing another. Waiting callers can still cancel immediately.
-	gate chan struct{}
-	now  func() time.Time
+	// Protect token state and issuance, while allowing concurrent page leases.
+	// Refresh drains old leases first because issuance may invalidate old tokens.
+	gate    chan struct{}
+	changed chan struct{}
+	active  int
+	now     func() time.Time
 }
 
 func (*sourceAuth) String() string     { return "source authentication [redacted]" }
@@ -38,7 +40,7 @@ func NewAuthenticatedClient(origin, appID, secret string, transport http.RoundTr
 		return nil, err
 	}
 	c.token = ""
-	c.auth = &sourceAuth{appID: appID, secret: secret, timeout: timeout, gate: make(chan struct{}, 1), now: time.Now}
+	c.auth = &sourceAuth{appID: appID, secret: secret, timeout: timeout, gate: make(chan struct{}, 1), changed: make(chan struct{}), now: time.Now}
 	return c, nil
 }
 
@@ -48,41 +50,80 @@ func (c *Client) fetchAuthenticated(ctx context.Context, input PageRequest) (Pag
 		(input.Mode == Incremental && (input.StartTime == "" || input.EndTime == "")) {
 		return Page{}, &Failure{Kind: ConfigurationFailure}
 	}
-	a := c.auth
-	select {
-	case a.gate <- struct{}{}:
-		defer func() { <-a.gate }()
-	case <-ctx.Done():
-		return Page{}, &Failure{Kind: CancelledFailure, Cause: ctx.Err()}
-	}
 	var previous Attempt
 	for attempt := 0; attempt < 2; attempt++ {
 		if err := ctx.Err(); err != nil {
 			return Page{}, &Failure{Kind: CancelledFailure, Cause: err, Attempt: previous}
 		}
-		if a.token == "" || !a.now().Before(a.validUntil) {
-			if err := c.acquireToken(ctx); err != nil {
-				var f *Failure
-				if errors.As(err, &f) {
-					f.Attempt = previous
-				}
-				return Page{}, err
+		token, err := c.leaseToken(ctx)
+		if err != nil {
+			var f *Failure
+			if errors.As(err, &f) {
+				f.Attempt = previous
 			}
+			return Page{}, err
 		}
-		page, err := c.fetch(ctx, input, a.token)
-		if !authenticationRejected(err) {
+		page, err := c.fetch(ctx, input, token)
+		rejected := authenticationRejected(err)
+		c.releaseToken(token, rejected)
+		if !rejected {
 			return page, err
 		}
 		var f *Failure
 		if errors.As(err, &f) {
 			previous = f.Attempt
 		}
-		a.token, a.validUntil = "", time.Time{}
 		if attempt == 1 {
 			return page, err
 		}
 	}
 	panic("unreachable authentication retry")
+}
+
+func (c *Client) leaseToken(ctx context.Context) (string, error) {
+	a := c.auth
+	for {
+		select {
+		case a.gate <- struct{}{}:
+		case <-ctx.Done():
+			return "", &Failure{Kind: CancelledFailure, Cause: ctx.Err()}
+		}
+		if a.token != "" && (a.validUntil.IsZero() || a.now().Before(a.validUntil)) {
+			a.active++
+			token := a.token
+			<-a.gate
+			return token, nil
+		}
+		if a.active > 0 {
+			changed := a.changed
+			<-a.gate
+			select {
+			case <-changed:
+				continue
+			case <-ctx.Done():
+				return "", &Failure{Kind: CancelledFailure, Cause: ctx.Err()}
+			}
+		}
+		err := c.acquireToken(ctx)
+		token := a.token
+		if err == nil {
+			a.active++
+		}
+		<-a.gate
+		return token, err
+	}
+}
+
+func (c *Client) releaseToken(token string, rejected bool) {
+	a := c.auth
+	a.gate <- struct{}{}
+	if rejected && a.token == token {
+		a.token, a.validUntil = "", time.Time{}
+	}
+	a.active--
+	close(a.changed)
+	a.changed = make(chan struct{})
+	<-a.gate
 }
 
 // Only explicit authorization status codes trigger the single retry. Do not
@@ -150,8 +191,9 @@ func (c *Client) acquireToken(parent context.Context) error {
 		return fail()
 	}
 	// The captured contract does not specify a lifetime. Recognize an optional
-	// expires_in in seconds; without a usable value, obtain a token for every
-	// page instead of inventing a lifetime. Never persist tokens to disk.
+	// expires_in in seconds. Without a usable expiry, reuse the in-memory token
+	// until explicit rejection; do not invent a TTL or issue per-page tokens
+	// that could invalidate concurrent requests. Never persist tokens to disk.
 	if seconds, ok := expirySeconds(data["expires_in"]); ok {
 		ttl := time.Duration(seconds) * time.Second
 		lead := min(ttl/10, 30*time.Second)

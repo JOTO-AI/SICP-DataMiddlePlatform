@@ -61,7 +61,7 @@ func TestTokenAcquisitionCacheAndEarlyRefresh(t *testing.T) {
 	}
 }
 
-func TestUnknownTokenLifetimeReacquiresAndSerializesUse(t *testing.T) {
+func TestUnknownTokenLifetimeSharesTokenUntilExplicitRejection(t *testing.T) {
 	var issued atomic.Int32
 	c := authenticatedTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/oauth/token") {
@@ -82,8 +82,120 @@ func TestUnknownTokenLifetimeReacquiresAndSerializesUse(t *testing.T) {
 		})
 	}
 	wg.Wait()
-	if issued.Load() != 12 {
-		t.Fatal("unknown lifetime must not be cached")
+	if issued.Load() != 1 {
+		t.Fatal("concurrent pages should share one token")
+	}
+}
+
+func TestAuthenticatedPageRequestsActuallyOverlap(t *testing.T) {
+	for _, expiry := range []string{"", `,"expires_in":3600`} {
+		t.Run(expiry, func(t *testing.T) {
+			var issued, active atomic.Int32
+			gate := make(chan struct{})
+			c := authenticatedTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasSuffix(r.URL.Path, "/oauth/token") {
+					issued.Add(1)
+					fmt.Fprintf(w, `{"code":200,"data":{"access_token":"shared"%s}}`, expiry)
+					return
+				}
+				if active.Add(1) == 3 {
+					close(gate)
+				}
+				select {
+				case <-gate:
+					io.WriteString(w, tokenTestPage)
+				case <-r.Context().Done():
+				}
+			})
+			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+			defer cancel()
+			var wg sync.WaitGroup
+			for range 3 {
+				wg.Go(func() {
+					if _, err := c.Fetch(ctx, tokenPageRequest()); err != nil {
+						t.Error(err)
+					}
+				})
+			}
+			wg.Wait()
+			if active.Load() != 3 || issued.Load() != 1 {
+				t.Fatal("authentication serialized or issued competing tokens", active.Load(), issued.Load())
+			}
+		})
+	}
+}
+
+func TestRejectedTokenRefreshWaitsForOldPagesAndAllowsWaiterCancellation(t *testing.T) {
+	var issued, oldRequests atomic.Int32
+	bothOld := make(chan struct{})
+	releaseOld := make(chan struct{})
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(releaseOld) }) }
+	c := authenticatedTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/oauth/token") {
+			fmt.Fprintf(w, `{"code":200,"data":{"access_token":"token-%d"}}`, issued.Add(1))
+			return
+		}
+		if r.URL.Query().Get("access_token") == "token-1" {
+			if oldRequests.Add(1) == 2 {
+				close(bothOld)
+			}
+			select {
+			case <-bothOld:
+			case <-r.Context().Done():
+				return
+			}
+			if r.URL.Query().Get("page") == "1" {
+				w.WriteHeader(401)
+				return
+			}
+			select {
+			case <-releaseOld:
+			case <-r.Context().Done():
+				return
+			}
+			if issued.Load() != 1 {
+				t.Error("refresh invalidated a page still using the old token")
+			}
+		}
+		io.WriteString(w, tokenTestPage)
+	})
+	defer release()
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer cancel()
+	done := make(chan error, 2)
+	for page := 1; page <= 2; page++ {
+		go func() { r := tokenPageRequest(); r.Page = page; _, err := c.Fetch(ctx, r); done <- err }()
+	}
+	for {
+		c.auth.gate <- struct{}{}
+		draining := c.auth.token == "" && c.auth.active == 1
+		<-c.auth.gate
+		if draining {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatal("did not wait for old token leases")
+		case <-time.After(time.Millisecond):
+		}
+	}
+	wait, cancelWait := context.WithCancel(ctx)
+	cancelWait()
+	if _, err := c.leaseToken(wait); !errors.Is(err, context.Canceled) {
+		t.Fatal("token waiter ignored cancellation", err)
+	}
+	if issued.Load() != 1 {
+		t.Fatal("refreshed before draining old requests")
+	}
+	release()
+	for range 2 {
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if issued.Load() != 2 {
+		t.Fatal("refresh did not issue exactly one replacement", issued.Load())
 	}
 }
 

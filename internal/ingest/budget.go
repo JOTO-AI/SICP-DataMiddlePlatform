@@ -109,6 +109,7 @@ type Coordinator struct {
 	random    ports.Random
 	cooldown  CooldownStore
 	admission Admission
+	randomMu  sync.Mutex
 }
 
 func NewCoordinator(client *Client, config BudgetConfig, clock Timer, random ports.Random, cooldown CooldownStore, admission Admission) (*Coordinator, error) {
@@ -125,7 +126,7 @@ func NewCoordinator(client *Client, config BudgetConfig, clock Timer, random por
 		}
 	}
 	config.RetryHTTP = append([]int(nil), config.RetryHTTP...)
-	return &Coordinator{client, config, clock, random, cooldown, admission}, nil
+	return &Coordinator{client: client, config: config, clock: clock, random: random, cooldown: cooldown, admission: admission}, nil
 }
 
 func earlier(a, b time.Time) time.Time {
@@ -164,7 +165,10 @@ func (c *Coordinator) FetchPage(ctx context.Context, input PageRequest, task *Ta
 			}
 		}
 		var random [8]byte
-		if n, err := c.random.Read(random[:]); err != nil || n != len(random) {
+		c.randomMu.Lock()
+		nread, readErr := c.random.Read(random[:])
+		c.randomMu.Unlock()
+		if readErr != nil || nread != len(random) {
 			return &Failure{Kind: RetryWaitFailure}
 		}
 		// Jitter remains within [half, full] of the capped exponential delay.

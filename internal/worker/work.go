@@ -215,7 +215,7 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 		if !ok {
 			return update.ErrInitialization
 		}
-		limiter, e := ingest.NewLimiter(1)
+		limiter, e := ingest.NewLimiter(c.SourcePageConcurrency)
 		if e != nil {
 			return e
 		}
@@ -228,6 +228,7 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 			return e
 		}
 		acquirer = update.Acquirer{Collector: collector, Staging: files, Budget: budget, Limits: ingest.PageLimits{MaxPages: 10000, MaxRecords: 10000000, MaxBytes: c.StagingBytes}, PageSize: c.SourcePageSize, Owner: task.ID, Observe: w.Observe}
+		acquirer.PageConcurrency = c.SourcePageConcurrency
 		acquirer.Progress = func(ctx context.Context, tables []control.TableAcquisitionProgress) error {
 			return repo.SaveAcquisitionProgress(ctx, control.AcquisitionProgress{Tables: tables, UpdatedAt: w.Clock.Now()})
 		}

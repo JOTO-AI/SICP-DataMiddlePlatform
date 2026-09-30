@@ -105,6 +105,11 @@ def check_modes(env_file):
     env_file.write_text(fixture_text("production").replace("STAGING_MAX_BYTES=0", "STAGING_MAX_BYTES=268435456"), encoding="utf-8")
     assert render(env_file)["services"]["worker"]["environment"]["STAGING_MAX_BYTES"] == "268435456"
     assert runtime["SOURCE_PAGE_SIZE"] == "1000"
+    assert runtime["SOURCE_PAGE_CONCURRENCY"] == "4"
+    env_file.write_text(fixture_text("production").replace("SOURCE_PAGE_CONCURRENCY=4", "SOURCE_PAGE_CONCURRENCY=2"), encoding="utf-8")
+    assert render(env_file)["services"]["worker"]["environment"]["SOURCE_PAGE_CONCURRENCY"] == "2"
+    env_file.write_text(fixture_text("production").replace("SOURCE_PAGE_CONCURRENCY=4\n", ""), encoding="utf-8")
+    assert render(env_file)["services"]["worker"]["environment"]["SOURCE_PAGE_CONCURRENCY"] == "4"
     env_file.write_text(fixture_text("production").replace("SOURCE_PAGE_SIZE=1000", "SOURCE_PAGE_SIZE=5000"), encoding="utf-8")
     assert render(env_file)["services"]["worker"]["environment"]["SOURCE_PAGE_SIZE"] == "5000"
     env_file.write_text(fixture_text("production").replace("SOURCE_PAGE_SIZE=1000\n", ""), encoding="utf-8")

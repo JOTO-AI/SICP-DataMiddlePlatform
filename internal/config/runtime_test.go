@@ -133,6 +133,32 @@ func TestRuntimeOptionalDataQuotas(t *testing.T) {
 	}
 }
 
+func TestRuntimeSourcePageConcurrency(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		want  int
+	}{{"unset", 4}, {"1", 1}, {"4", 4}, {"8", 8}, {"0", 0}, {"9", 0}, {"-1", 0}, {"", 0}, {"many", 0}} {
+		t.Run(tc.value, func(t *testing.T) {
+			v := testkit.RuntimeValues("/data")
+			if tc.value != "unset" {
+				v["SOURCE_PAGE_CONCURRENCY"] = tc.value
+			}
+			lookup := func(k string) (string, bool) { s, ok := v[k]; return s, ok }
+			c, err := config.LoadRuntime(config.Worker, lookup)
+			if tc.want == 0 {
+				if err == nil || !strings.Contains(err.Error(), "SOURCE_PAGE_CONCURRENCY") {
+					t.Fatal(err)
+				}
+			} else if err != nil || c.SourcePageConcurrency != tc.want {
+				t.Fatal(err)
+			}
+			if _, err := config.LoadRuntime(config.Query, lookup); err != nil {
+				t.Fatal("query requires worker concurrency", err)
+			}
+		})
+	}
+}
+
 func TestRuntimeOptionalMail(t *testing.T) {
 	mail := map[string]string{
 		"MAIL_ADDRESS": "smtp.example.invalid:587", "MAIL_TLS": "starttls",
