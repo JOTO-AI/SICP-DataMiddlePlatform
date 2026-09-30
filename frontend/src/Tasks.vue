@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, type Envelope } from './api'
+import { newIdempotencyKey } from './idempotency'
 interface Task { task_id: string; mode: string; status: string; operator?: string; predecessor_id?: string; accepted_at: string; started_at?: string; ready_at?: string; published_at?: string; checked_at?: string; finished_at?: string; progress_confirmed?: boolean; confirmed_until?: Record<string, string>; counts?: Record<string, number>; failure?: string }
 const actions = [{ id: 'force-full', title: '强制全量', text: '维护操作：重新采集并构建完整数据，即使内容未变化。' }, { id: 'rerun', title: '失败重跑', text: '排除故障后，根据失败任务创建关联的新任务。' }]
-const action = ref('force-full'), predecessor = ref(''), key = ref(crypto.randomUUID()), lookup = ref('')
+const action = ref('force-full'), predecessor = ref(''), key = ref(newIdempotencyKey()), lookup = ref('')
 interface Overview { items: Task[]; initialized: boolean; next_due_at?: string; cooldown_until?: string; interval_seconds: number }
 const overview = ref<Overview | null>(null), historyError = ref(''), historyBusy = ref(false)
 const hasActiveTask = computed(() => overview.value?.items.some(item => !['failed', 'success_published', 'success_unchanged'].includes(item.status)) ?? false)
@@ -48,7 +49,7 @@ function confirm() {
   dialog.value?.showModal()
 }
 function forceFull() { action.value = 'force-full'; confirm() }
-function abandon() { pending.value = null; key.value = crypto.randomUUID(); error.value = ''; receipt.value = '' }
+function abandon() { pending.value = null; key.value = newIdempotencyKey(); error.value = ''; receipt.value = '' }
 async function submit() {
   if (!pending.value) return
   dialog.value?.close(); busy.value = true; error.value = ''; receipt.value = ''
@@ -56,7 +57,7 @@ async function submit() {
     const response = await request<Envelope<Task>>('worker', pending.value.path, { body: {}, key: pending.value.key })
     lookup.value = response.body.data.task_id
     receipt.value = `任务已受理：${lookup.value}。受理不代表执行完成。`
-    pending.value = null; key.value = crypto.randomUUID()
+    pending.value = null; key.value = newIdempotencyKey()
     await fetchTask()
     await refreshHistory()
   } catch (e) { error.value = `${describe(e)} 原请求已保留；再次提交将使用相同操作与幂等键。` }

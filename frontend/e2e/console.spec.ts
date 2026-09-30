@@ -1,5 +1,18 @@
 import { test, expect, type Page } from '@playwright/test'
 
+test('task page renders with the browser capabilities of its deployment origin', async ({ page }, testInfo) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await setup(page)
+  expect(await page.evaluate(() => isSecureContext)).toBe(testInfo.project.name === 'loopback')
+  expect(await page.evaluate(() => typeof crypto.randomUUID)).toBe(testInfo.project.name === 'loopback' ? 'function' : 'undefined')
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '强制全量更新', exact: true })).toBeEnabled()
+  await expect(page.getByLabel('幂等键', { exact: true })).toHaveValue(/^[a-f0-9]{32}$/)
+  expect(errors).toEqual([])
+})
+
 test('login errors are clear and mobile login fits the viewport', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await mockAuth(page)
@@ -117,7 +130,21 @@ test('unknown admission retries original operation with the same idempotency key
   await expect(page.getByText('检查完成，无变化', { exact: true })).toBeVisible()
   expect(keys).toHaveLength(2)
   expect(keys[1]).toBe(keys[0])
+  await expect(page.getByLabel('幂等键', { exact: true })).not.toHaveValue(keys[0]!)
   await expect(page.getByRole('checkbox')).toBeDisabled()
+})
+
+test('abandoning an unconfirmed task renews the idempotency key', async ({ page }) => {
+  await setup(page)
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  const key = page.getByLabel('幂等键', { exact: true })
+  const original = await key.inputValue()
+  await page.getByRole('button', { name: '强制全量更新', exact: true }).click()
+  await page.getByRole('button', { name: '暂不提交', exact: true }).click()
+  await page.getByRole('button', { name: '结束本次请求', exact: true }).click()
+  await expect(key).toBeEnabled()
+  await expect(key).toHaveValue(/^[a-f0-9]{32}$/)
+  await expect(key).not.toHaveValue(original)
 })
 
 test('automatic tasks are discoverable without initialization or sync controls', async ({ page }, testInfo) => {
