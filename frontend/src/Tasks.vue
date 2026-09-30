@@ -6,6 +6,13 @@ const actions = [{ id: 'force-full', title: '强制全量', text: '维护操作�
 const action = ref('force-full'), predecessor = ref(''), key = ref(crypto.randomUUID()), lookup = ref('')
 interface Overview { items: Task[]; initialized: boolean; next_due_at?: string; cooldown_until?: string; interval_seconds: number }
 const overview = ref<Overview | null>(null), historyError = ref(''), historyBusy = ref(false)
+const hasActiveTask = computed(() => overview.value?.items.some(item => !['failed', 'success_published', 'success_unchanged'].includes(item.status)) ?? false)
+const forceFullBlocked = computed(() => !overview.value?.initialized || hasActiveTask.value)
+const failureDescriptions: Record<string, string> = {
+  corrupt_seal: '采集结果未完整封存或校验未通过，需重新采集。重启后系统会自动尝试恢复初始化。',
+  interrupted: '任务执行被中断。重启后系统会自动尝试恢复初始化。',
+  acquisition_failed: '上游采集失败，请检查连接、认证和采集日志。重启后系统会自动尝试恢复初始化。',
+}
 let historyTimer: ReturnType<typeof setTimeout> | undefined
 async function refreshHistory() {
   if (historyBusy.value) return
@@ -34,11 +41,13 @@ function confirm() {
   stop()
   error.value = ''
   if (!pending.value) {
+    if (action.value === 'force-full' && forceFullBlocked.value) { error.value = overview.value?.initialized ? '已有更新任务正在执行，请等待完成。' : '首次初始化完成后才可强制全量更新；初始化由系统自动恢复。'; return }
     if (!/^[\x21-\x7e]{1,128}$/.test(key.value) || key.value.includes(',')) { error.value = '幂等键须为 1–128 位可见 ASCII 字符，且不含逗号。'; return }
     pending.value = { path: action.value === 'rerun' ? `/admin/v1/tasks/${encodeURIComponent(predecessor.value.trim())}/rerun` : `/admin/v1/tasks/${action.value}`, key: key.value, title: selected.value.title }
   }
   dialog.value?.showModal()
 }
+function forceFull() { action.value = 'force-full'; confirm() }
 function abandon() { pending.value = null; key.value = crypto.randomUUID(); error.value = ''; receipt.value = '' }
 async function submit() {
   if (!pending.value) return
@@ -67,11 +76,13 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
 </script>
 <template>
   <section>
-    <div class="page-heading"><div><h1>更新任务</h1><p>初始化和日常同步由系统自动执行，此处查看记录与处理异常。</p></div><button @click="refreshHistory" :disabled="historyBusy">刷新记录</button></div>
+    <div class="page-heading"><div><h1>更新任务</h1><p>初始化和日常同步由系统自动执行，此处查看记录与处理异常。</p></div><div class="actions"><button @click="refreshHistory" :disabled="historyBusy">刷新记录</button><button class="primary" @click="forceFull" :disabled="forceFullBlocked || busy || loading || !!pending" aria-describedby="force-full-help">强制全量更新</button></div></div>
     <div class="section-note">
       <h2>自动更新</h2>
-      <p v-if="overview">{{ overview.initialized ? '初始化已完成，系统按两小时间隔调度增量同步。' : '尚未完成初始化。全新环境自动开始；若任务失败，请排除故障后重跑。' }}</p>
+      <p v-if="overview">{{ overview.initialized ? '初始化已完成，系统按两小时间隔调度增量同步。' : '尚未完成初始化。全新环境自动开始，重启后系统会恢复未完成的初始化。' }}</p>
       <p v-else>正在读取自动更新状态。</p>
+      <p v-if="overview && !overview.initialized" class="hint">每次启动最多自动重新采集一次，与上次失败至少间隔 5 分钟，并遵守上游冷却时间。若再次失败，请先检查失败原因。</p>
+      <p id="force-full-help" class="hint">{{ !overview ? '读取初始化状态后可判断是否允许强制更新。' : !overview.initialized ? '强制全量更新在首次初始化完成后可用。' : hasActiveTask ? '已有更新任务正在执行，完成后可强制全量更新。' : '强制全量更新会立即请求重新采集、校验并发布完整数据。' }}</p>
       <p v-if="overview?.initialized">下次计划时间：{{ time(overview.next_due_at) }}。执行中或恢复中会顺延。</p>
       <p v-if="overview?.cooldown_until">冷却截止时间：{{ time(overview.cooldown_until) }}</p>
     </div>
@@ -94,7 +105,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
         <label class="key-label">幂等键<input v-model="key" required maxlength="128" spellcheck="false"></label></fieldset>
         <p class="hint">响应丢失时用原键重试，可避免重复创建任务。</p>
         <p v-if="pending" class="hint">已锁定请求：{{ pending.title }}。修改操作前请先结束本次请求。</p>
-        <div class="actions"><button class="primary" :disabled="busy || loading">{{ busy ? '正在提交…' : pending ? '重试原请求' : '提交更新' }}</button><button v-if="pending" type="button" :disabled="busy" @click="abandon">结束本次请求</button></div>
+        <div class="actions"><button class="primary" :disabled="busy || loading || (!pending && action === 'force-full' && forceFullBlocked)">{{ busy ? '正在提交…' : pending ? '重试原请求' : '提交更新' }}</button><button v-if="pending" type="button" :disabled="busy" @click="abandon">结束本次请求</button></div>
         <p v-if="error" class="error" role="alert">{{ error }}</p><p v-if="receipt" class="success-text" role="status">{{ receipt }}</p>
       </form>
       <div class="task-detail">
@@ -107,6 +118,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
           <label class="check-row"><input type="checkbox" v-model="auto" :disabled="terminal || busy || loading" @change="toggleAuto">每 5 秒刷新，任务结束或查询失败后停止</label>
           <dl class="facts"><div><dt>更新模式</dt><dd>{{ modeLabels[task.mode] || task.mode }}</dd></div><div><dt>操作人</dt><dd>{{ task.operator === 'scheduler' ? '系统调度' : task.operator || '未提供' }}</dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed ? '已确认' : '未确认' }}</dd></div><div v-if="task.predecessor_id"><dt>前序任务</dt><dd>{{ task.predecessor_id }}</dd></div></dl>
           <p v-if="task.failure" class="error">失败原因：{{ task.failure }}</p>
+          <p v-if="task.failure && task.mode === 'initialize'" class="hint">{{ failureDescriptions[task.failure] }}</p>
           <ol class="timeline"><li v-for="stage in stages" :key="stage.name" :class="{ done: stage.at }"><span class="timeline-dot" aria-hidden="true"></span><span>{{ stage.name }}</span><time>{{ time(stage.at) }}</time></li></ol>
           <p class="hint">未发生的阶段不代表失败；无变化检查可能无需重新发布。</p>
           <details class="raw"><summary>查看完整任务结果与源进度</summary><pre>{{ JSON.stringify(task, null, 2) }}</pre></details>

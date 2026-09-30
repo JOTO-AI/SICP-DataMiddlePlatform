@@ -147,6 +147,19 @@ func (x *taskTx) Exec(_ context.Context, sql string, args ...any) (int64, error)
 }
 func (x *taskTx) QueryRow(_ context.Context, sql string, args ...any) storage.Row {
 	x.db.calls = append(x.db.calls, dbCall{sql, args})
+	if strings.HasPrefix(sql, "SELECT (SELECT id FROM control.tasks ORDER BY") {
+		var latest []any
+		for _, row := range x.records {
+			if latest == nil || row[6].(time.Time).After(latest[6].(time.Time)) || row[6] == latest[6] && row[0].(string) > latest[0].(string) {
+				latest = row
+			}
+		}
+		var id any
+		if latest != nil {
+			id = latest[0]
+		}
+		return result{raw: []any{id}, fail: x.db.failRead}
+	}
 	if strings.Contains(sql, "NOT EXISTS (SELECT 1 FROM control.tasks)") {
 		return result{raw: []any{len(x.records) == 0 && !x.db.initialized && !x.db.pending && x.revision == 0 && x.lastStarted == nil && x.nextDue == nil && x.db.cooldown == nil}, fail: x.db.failRead}
 	}

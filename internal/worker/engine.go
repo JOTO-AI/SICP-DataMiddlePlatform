@@ -18,6 +18,7 @@ import (
 
 type Store interface {
 	Bootstrap(context.Context, control.Request) (control.Acceptance, error)
+	RecoverInitialization(context.Context, control.Request) (control.Acceptance, error)
 	CurrentSchedule(context.Context) (control.Schedule, error)
 	StartAccepted(context.Context, string, string, time.Time) (control.Launch, error)
 	Dispatch(context.Context, control.Request, string, time.Time, *int64) (control.Launch, error)
@@ -31,14 +32,15 @@ type Work interface {
 	Run(context.Context, control.Task, control.Ownership, bool, *control.Publication) error
 }
 type Engine struct {
-	Store    Store
-	Recovery Recovery
-	Work     Work
-	Clock    ports.Clock
-	Random   ports.Random
-	Process  string
-	ready    atomic.Bool
-	busy     atomic.Bool
+	Store                 Store
+	Recovery              Recovery
+	Work                  Work
+	Clock                 ports.Clock
+	Random                ports.Random
+	Process               string
+	ready                 atomic.Bool
+	busy                  atomic.Bool
+	initializationRetried bool
 }
 
 func (e *Engine) Ready(context.Context) bool { return e.ready.Load() }
@@ -93,7 +95,15 @@ func (e *Engine) Cycle(ctx context.Context) error {
 		if _, err = io.ReadFull(e.Random, id[:]); err != nil {
 			return err
 		}
-		_, err = e.Store.Bootstrap(ctx, control.Request{ID: hex.EncodeToString(id[:]), IdempotencyKey: "system-initialize-v1", Mode: "initialize", RequestedBy: "scheduler", AcceptedAt: now})
+		request := control.Request{ID: hex.EncodeToString(id[:]), IdempotencyKey: "system-initialize-v1", Mode: "initialize", RequestedBy: "scheduler", AcceptedAt: now}
+		accepted, err := e.Store.Bootstrap(ctx, request)
+		if err != nil || accepted.Task.ID != "" || e.initializationRetried {
+			return err
+		}
+		accepted, err = e.Store.RecoverInitialization(ctx, request)
+		if err == nil && accepted.Task.ID != "" {
+			e.initializationRetried = true
+		}
 		return err
 	}
 	e.ready.Store(true)

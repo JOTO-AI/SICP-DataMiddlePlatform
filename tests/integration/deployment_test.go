@@ -33,6 +33,11 @@ type deployment struct {
 
 func newDeployment(t *testing.T, initialize bool, workerValues ...map[string]string) *deployment {
 	t.Helper()
+	return newDeploymentBeforeStart(t, initialize, nil, workerValues...)
+}
+
+func newDeploymentBeforeStart(t *testing.T, initialize bool, beforeStart func(*deployment), workerValues ...map[string]string) *deployment {
+	t.Helper()
 	if os.Getenv("GITHUB_ACTIONS") != "true" || os.Getenv("SICP_INTEGRATION") != "1" {
 		t.Fatal("deployment tests run only in GitHub Linux integration")
 	}
@@ -85,7 +90,7 @@ func newDeployment(t *testing.T, initialize bool, workerValues ...map[string]str
 	})
 	// Image builds run once in this same job from its clean checkout. Every
 	// numbered case gets a distinct project and brand-new named volumes.
-	for _, operation := range []string{"validate", "infra", "migrate", "start"} {
+	for _, operation := range []string{"validate", "infra", "migrate"} {
 		d.script(t, operation)
 	}
 	id := strings.TrimSpace(d.compose(t, "ps", "-q", "mock"))
@@ -99,6 +104,10 @@ func newDeployment(t *testing.T, initialize bool, workerValues ...map[string]str
 		t.Fatal("mock is not on a private bridge")
 	}
 	d.mockURL = "http://" + ip.String() + ":8090"
+	if beforeStart != nil {
+		beforeStart(d)
+	}
+	d.script(t, "start")
 	if initialize {
 		d.initial = d.initialize(t)
 	}

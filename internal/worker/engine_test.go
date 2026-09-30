@@ -21,6 +21,7 @@ type world struct {
 	launch                                          control.Launch
 	resumed                                         bool
 	event                                           *control.Publication
+	retry                                           control.Acceptance
 }
 
 func (w *world) Inspect(context.Context) (update.RecoveryDecision, error) {
@@ -44,6 +45,10 @@ func (w *world) Bootstrap(_ context.Context, r control.Request) (control.Accepta
 func (w *world) CurrentSchedule(context.Context) (control.Schedule, error) {
 	w.trace = append(w.trace, "schedule")
 	return w.schedule, nil
+}
+func (w *world) RecoverInitialization(context.Context, control.Request) (control.Acceptance, error) {
+	w.trace = append(w.trace, "recover-initialization")
+	return w.retry, nil
 }
 func (w *world) StartAccepted(_ context.Context, id, process string, at time.Time) (control.Launch, error) {
 	w.trace = append(w.trace, "start")
@@ -150,7 +155,7 @@ func TestT15_10OnlyIdleConfirmedEnvironmentCanDispatchDueTimer(t *testing.T) {
 				want = append(want, "schedule")
 			}
 			if scenario == "uninitialized" {
-				want = append(want, "bootstrap")
+				want = append(want, "bootstrap", "recover-initialization")
 			}
 			if scenario == "due" {
 				want = append(want, "dispatch", "work")
@@ -173,5 +178,32 @@ func TestT15_10RecoveredTerminalTaskFinishesDurableEventsBeforeRelease(t *testin
 				t.Fatal(w.trace, e)
 			}
 		})
+	}
+}
+
+func TestInitializationAutomaticallyRetriesOncePerWorkerAndAgainAfterRestart(t *testing.T) {
+	w := &world{decision: update.RecoveryDecision{Action: "idle"}}
+	e := engine(w)
+	// No eligible task yet: cooldown does not consume the startup retry.
+	if err := e.Cycle(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	w.retry = control.Acceptance{Task: control.Task{ID: "replacement"}, Created: true}
+	if err := e.Cycle(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	w.trace = nil
+	if err := e.Cycle(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(w.trace, []string{"inspect", "schedule", "bootstrap"}) {
+		t.Fatal("automatic retry loop", w.trace)
+	}
+	w.trace = nil
+	if err := engine(w).Cycle(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(w.trace, []string{"inspect", "schedule", "bootstrap", "recover-initialization"}) {
+		t.Fatal("restart did not recover", w.trace)
 	}
 }

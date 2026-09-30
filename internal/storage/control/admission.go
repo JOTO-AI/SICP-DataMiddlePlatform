@@ -2,6 +2,7 @@ package control
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math"
 	"strings"
@@ -20,25 +21,36 @@ func (r Repository) Admit(ctx context.Context, request Request) (Acceptance, err
 	if request.PredecessorID != nil {
 		return Acceptance{}, ErrEntity
 	}
-	return r.admit(ctx, request, false, false)
+	return r.admit(ctx, request, false, false, false)
 }
 
 // Bootstrap admits the first task only in a pristine control database. The
 // execution lock serializes this check with every admission and publication.
-// A failed first task requires an explicit rerun; it must not loop each second.
+// Failed history is handled by RecoverInitialization, never a second bootstrap.
 func (r Repository) Bootstrap(ctx context.Context, request Request) (Acceptance, error) {
 	if request.Mode != "initialize" || request.RequestedBy != "scheduler" || request.PredecessorID != nil {
 		return Acceptance{}, ErrEntity
 	}
-	return r.admit(ctx, request, false, true)
+	return r.admit(ctx, request, false, true, false)
+}
+
+const InitializationRetryInterval = 5 * time.Minute
+
+// RecoverInitialization is used once per worker lifetime after normal recovery
+// has released the previous executor. It never treats existing history as empty.
+func (r Repository) RecoverInitialization(ctx context.Context, request Request) (Acceptance, error) {
+	if request.Mode != "initialize" || request.RequestedBy != "scheduler" || request.PredecessorID != nil {
+		return Acceptance{}, ErrEntity
+	}
+	return r.admit(ctx, request, true, false, true)
 }
 func (r Repository) RerunTask(ctx context.Context, request Request) (Acceptance, error) {
 	if request.PredecessorID == nil || strings.TrimSpace(*request.PredecessorID) == "" || len(*request.PredecessorID) > 64 || *request.PredecessorID == request.ID || request.Mode != "" {
 		return Acceptance{}, ErrEntity
 	}
-	return r.admit(ctx, request, true, false)
+	return r.admit(ctx, request, true, false, false)
 }
-func (r Repository) admit(ctx context.Context, request Request, rerun, bootstrap bool) (Acceptance, error) {
+func (r Repository) admit(ctx context.Context, request Request, rerun, bootstrap, automatic bool) (Acceptance, error) {
 	if strings.TrimSpace(request.ID) == "" || len(request.ID) > 64 || strings.TrimSpace(request.IdempotencyKey) == "" || len(request.IdempotencyKey) > 128 || strings.TrimSpace(request.RequestedBy) == "" || request.AcceptedAt.IsZero() || (!rerun && request.Mode != "initialize" && request.Mode != "incremental" && request.Mode != "force_full") {
 		return Acceptance{}, ErrEntity
 	}
@@ -47,6 +59,55 @@ func (r Repository) admit(ctx context.Context, request Request, rerun, bootstrap
 		owner, err := readExecution(ctx, tx)
 		if err != nil {
 			return err
+		}
+		if automatic {
+			if owner.TaskID != "" || owner.OwnerID != "" {
+				return nil
+			}
+			var latest *string
+			if err = tx.QueryRow(ctx, "SELECT (SELECT id FROM control.tasks ORDER BY accepted_at DESC,id DESC LIMIT 1)").Scan(&latest); err != nil {
+				return err
+			}
+			if latest == nil {
+				return nil
+			}
+			if *latest == request.ID {
+				return ErrEntity
+			}
+			old, err := loadTask(ctx, tx, *latest)
+			if err != nil {
+				return err
+			}
+			var summary struct {
+				Failure string `json:"failure"`
+			}
+			if old.Mode != "initialize" || old.Status != "failed" || json.Unmarshal([]byte(old.Summary), &summary) != nil {
+				return nil
+			}
+			switch summary.Failure {
+			case "acquisition_failed", "corrupt_seal", "interrupted":
+			default:
+				return nil
+			}
+			last := old.AcceptedAt
+			if old.StartedAt != nil {
+				last = *old.StartedAt
+			}
+			if old.FinishedAt != nil {
+				last = *old.FinishedAt
+			}
+			if request.AcceptedAt.Before(last.Add(InitializationRetryInterval)) {
+				return nil
+			}
+			schedule, err := loadSchedule(ctx, tx, false)
+			if err != nil {
+				return err
+			}
+			if schedule.CooldownUntil != nil && request.AcceptedAt.Before(*schedule.CooldownUntil) {
+				return nil
+			}
+			request.PredecessorID = latest
+			request.IdempotencyKey = "system-initialize-retry-" + *latest
 		}
 		if bootstrap {
 			var pristine bool
