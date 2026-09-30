@@ -271,13 +271,13 @@ test('abandoning an unconfirmed task renews the idempotency key', async ({ page 
   await expect(key).not.toHaveValue(original)
 })
 
-test('automatic tasks are discoverable without initialization or sync controls', async ({ page }, testInfo) => {
+test('failed initialization exposes a retry entry without enabling duplicate bootstrap', async ({ page }, testInfo) => {
   await setup(page)
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, interval_seconds: 7200, items: [{ task_id: 'automatic-initial-task', mode: 'initialize', status: 'failed', operator: 'scheduler', accepted_at: '2026-09-28T10:00:00Z' }] } } }))
   await page.route('**/admin/v1/tasks/automatic-initial-task', route => route.fulfill({ json: { code: 'ok', data: { task_id: 'automatic-initial-task', mode: 'initialize', status: 'failed', operator: 'scheduler', accepted_at: '2026-09-28T10:00:00Z', failure: 'acquisition_failed' } } }))
   await page.getByRole('link', { name: '更新任务', exact: true }).click()
-  await expect(page.getByRole('button', { name: '强制全量更新', exact: true })).toBeDisabled()
-  await expect(page.getByText('强制全量更新在首次初始化完成后可用。')).toBeVisible()
+  await expect(page.getByRole('button', { name: '重新初始化', exact: true })).toBeEnabled()
+  await expect(page.getByText('初始化失败，可重新从上游完整采集并初始化，无需重启服务；上游冷却期间任务会等待。')).toBeVisible()
   await expect(page.getByText(/重启后系统会恢复未完成的初始化/)).toBeVisible()
   await expect(page.getByRole('radio')).toHaveCount(2)
   await expect(page.getByRole('radio', { name: /首次初始化|增量同步/ })).toHaveCount(0)
@@ -288,6 +288,61 @@ test('automatic tasks are discoverable without initialization or sync controls',
   await page.setViewportSize({ width: 390, height: 844 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
   await page.screenshot({ path: testInfo.outputPath('automatic-tasks-mobile.png'), fullPage: true })
+})
+
+test('initialization retry keeps its predecessor and key across lost replies and history refresh', async ({ page }) => {
+  await setup(page)
+  const original = { task_id: 'failed-init', mode: 'initialize', status: 'failed', operator: 'scheduler', accepted_at: '2026-09-28T10:00:00Z' }
+  let latest = original
+  const keys: string[] = []
+  let forceCalls = 0
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [latest] } } }))
+  await page.route('**/admin/v1/tasks/force-full', route => { forceCalls++; return route.fulfill({ status: 409, json: { code: 'initialize_required' } }) })
+  await page.route('**/admin/v1/tasks/failed-init/rerun', route => {
+    expect(route.request().method()).toBe('POST')
+    keys.push(route.request().headers()['idempotency-key']!)
+    if (keys.length === 1) return route.abort()
+    latest = { ...original, task_id: 'retry-init', status: 'accepted' }
+    return route.fulfill({ status: 202, json: { code: 'accepted', data: { task_id: 'retry-init', status: 'accepted' } } })
+  })
+  await page.route('**/admin/v1/tasks/retry-init', route => route.fulfill({ json: { code: 'ok', data: { ...latest, predecessor_id: 'failed-init' } } }))
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await page.getByRole('button', { name: '重新初始化', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '确认重新初始化', exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog')).toContainText('failed-init')
+  await page.getByRole('button', { name: '确认提交更新', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('原请求已保留')
+  latest = { ...original, task_id: 'another-failed-init' }
+  await page.getByRole('button', { name: '刷新记录', exact: true }).click()
+  await expect(page.getByRole('button', { name: /another-failed-init/ })).toBeVisible()
+  await page.getByRole('button', { name: '重试原请求', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('failed-init')
+  await page.getByRole('button', { name: '确认提交更新', exact: true }).click()
+  await expect(page.getByText('任务已受理：retry-init。受理不代表执行完成。')).toBeVisible()
+  expect(keys).toHaveLength(2)
+  expect(keys[0]).toBe(keys[1])
+  expect(forceCalls).toBe(0)
+  await expect(page.getByRole('button', { name: '强制全量更新', exact: true })).toBeDisabled()
+})
+
+test('update entry explains active work and blocks use of stale history', async ({ page }) => {
+  await setup(page)
+  let status = 'running', unavailable = false
+  const task = { task_id: 'initial-task', mode: 'initialize', accepted_at: '2026-09-28T10:00:00Z' }
+  await page.route('**/admin/v1/tasks/', route => unavailable
+    ? route.fulfill({ status: 503, json: { code: 'unavailable' } })
+    : route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [{ ...task, status }] } } }))
+  await page.route('**/admin/v1/tasks/initial-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, status } } }))
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await expect(page.getByRole('button', { name: '强制全量更新', exact: true })).toBeDisabled()
+  await expect(page.getByText('已有更新任务正在执行或等待恢复，完成后才能再次启动。')).toBeVisible()
+  status = 'failed'
+  await page.getByRole('button', { name: '刷新记录', exact: true }).click()
+  await expect(page.getByRole('button', { name: '重新初始化', exact: true })).toBeEnabled()
+  unavailable = true
+  await page.getByRole('button', { name: '刷新记录', exact: true }).click()
+  await expect(page.getByText('无法确认当前任务状态，请先刷新记录。')).toBeVisible()
+  await expect(page.getByRole('button', { name: '重新初始化', exact: true })).toBeDisabled()
 })
 
 test('query failures display request ID and mobile pages fit viewport', async ({ page }, testInfo) => {

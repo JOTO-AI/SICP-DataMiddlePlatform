@@ -120,6 +120,42 @@ func TestT15_08HTTPRerunCreatesLinkedTaskAndPreservesFailedHistory(t *testing.T)
 	}
 }
 
+func TestHTTPManualInitializationRetryWorksBeforeFirstPublication(t *testing.T) {
+	r, d, old := taskRepository(t)
+	old.Mode = "initialize"
+	if _, err := r.Admit(t.Context(), old); err != nil {
+		t.Fatal(err)
+	}
+	d.records[old.IdempotencyKey][3] = "failed"
+	d.records[old.IdempotencyKey][15] = `{"failure":"acquisition_failed"}`
+	// Manual retry need not wait for the next worker restart or startup retry timer.
+	h := management(t, r, old.AcceptedAt.Add(time.Second), admin.Rerun)
+	var newID string
+	for attempt := range 2 {
+		request := managementRequest(t.Context())
+		request.SetPathValue("task_id", old.ID)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, request)
+		out := receipt(t, w)
+		if w.Code != 202 || out.Created != (attempt == 0) {
+			t.Fatal(w.Code, w.Body.String())
+		}
+		if attempt == 0 {
+			newID = out.TaskID
+		} else if out.TaskID != newID {
+			t.Fatal("retry duplicated initialization")
+		}
+	}
+	child := d.records["request-key"]
+	if d.initialized || len(d.records) != 2 || child[2] != "initialize" || child[5] != old.ID || d.records[old.IdempotencyKey][3] != "failed" {
+		t.Fatal("manual initialization retry changed mode or history", child)
+	}
+	launch, err := r.StartAccepted(t.Context(), newID, "worker", old.AcceptedAt.Add(2*time.Second))
+	if err != nil || !launch.Started || launch.Task.Mode != "initialize" {
+		t.Fatal("manual retry could not start", err)
+	}
+}
+
 func TestT15_08RerunRejectsNonFailureMissingTaskAndCommitFailure(t *testing.T) {
 	for _, failure := range []string{"not_failed", "missing", "commit", "owned"} {
 		t.Run(failure, func(t *testing.T) {

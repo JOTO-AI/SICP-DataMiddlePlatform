@@ -5,12 +5,26 @@ import { newIdempotencyKey } from './idempotency'
 import AcquisitionProgress from './AcquisitionProgress.vue'
 import type { Acquisition } from './acquisition'
 interface Task { task_id: string; mode: string; status: string; operator?: string; predecessor_id?: string; accepted_at: string; started_at?: string; ready_at?: string; published_at?: string; checked_at?: string; finished_at?: string; progress_confirmed?: boolean; confirmed_until?: Record<string, string>; counts?: Record<string, number>; failure?: string; acquisition?: Acquisition }
-const actions = [{ id: 'force-full', title: '强制全量', text: '维护操作：重新采集并构建完整数据，即使内容未变化。' }, { id: 'rerun', title: '失败重跑', text: '排除故障后，根据失败任务创建关联的新任务。' }]
 const action = ref('force-full'), predecessor = ref(''), key = ref(newIdempotencyKey()), lookup = ref('')
 interface Overview { items: Task[]; initialized: boolean; next_due_at?: string; cooldown_until?: string; interval_seconds: number }
 const overview = ref<Overview | null>(null), historyError = ref(''), historyBusy = ref(false)
 const hasActiveTask = computed(() => overview.value?.items.some(item => !['failed', 'success_published', 'success_unchanged'].includes(item.status)) ?? false)
-const forceFullBlocked = computed(() => !overview.value?.initialized || hasActiveTask.value)
+const failedInitialization = computed(() => {
+  const latest = overview.value?.items[0]
+  return !overview.value?.initialized && latest?.mode === 'initialize' && latest.status === 'failed' ? latest : null
+})
+const primaryLabel = computed(() => failedInitialization.value ? '重新初始化' : '强制全量更新')
+const forceFullBlocked = computed(() => historyBusy.value || !overview.value || !!historyError.value || hasActiveTask.value || (!overview.value.initialized && !failedInitialization.value))
+const forceFullHelp = computed(() => {
+  if (historyBusy.value) return '正在读取最新任务状态。'
+  if (historyError.value) return '无法确认当前任务状态，请先刷新记录。'
+  if (!overview.value) return '读取初始化状态后可判断是否允许强制更新。'
+  if (hasActiveTask.value) return '已有更新任务正在执行或等待恢复，完成后才能再次启动。'
+  if (failedInitialization.value) return '初始化失败，可重新从上游完整采集并初始化，无需重启服务；上游冷却期间任务会等待。'
+  if (!overview.value.initialized) return '等待系统创建初始化任务；任务失败后可在此重新初始化。'
+  return '强制全量更新会立即请求重新采集、校验并发布完整数据。'
+})
+const actions = computed(() => [{ id: 'force-full', title: failedInitialization.value ? '重新初始化' : '强制全量', text: failedInitialization.value ? '根据最近失败的初始化任务，重新采集并构建完整数据。' : '维护操作：重新采集并构建完整数据，即使内容未变化。' }, { id: 'rerun', title: '失败重跑', text: '排除故障后，根据失败任务创建关联的新任务。' }])
 const failureDescriptions: Record<string, string> = {
   corrupt_seal: '采集结果未完整封存或校验未通过，需重新采集。重启后系统会自动尝试恢复初始化。',
   interrupted: '任务执行被中断。重启后系统会自动尝试恢复初始化。',
@@ -32,9 +46,9 @@ function selectTask(id: string) { stop(); task.value = null; lookup.value = id; 
 const modeLabels: Record<string, string> = { initialize: '初始化', incremental: '增量同步', force_full: '强制全量' }
 const task = ref<Task | null>(null), busy = ref(false), loading = ref(false), error = ref(''), taskError = ref(''), receipt = ref(''), auto = ref(false)
 const dialog = ref<HTMLDialogElement | null>(null)
-const selected = computed(() => actions.find(a => a.id === action.value)!)
+const selected = computed(() => actions.value.find(a => a.id === action.value)!)
 // Preserve the exact operation and key until a receipt is obtained or explicitly abandoned.
-const pending = ref<{ path: string; key: string; title: string } | null>(null)
+const pending = ref<{ path: string; key: string; title: string; description: string } | null>(null)
 let timer: ReturnType<typeof setTimeout> | undefined
 let active = true
 const terminal = computed(() => !!task.value?.finished_at || ['success_published', 'success_unchanged', 'failed'].includes(task.value?.status || ''))
@@ -48,9 +62,16 @@ function confirm() {
   stop()
   error.value = ''
   if (!pending.value) {
-    if (action.value === 'force-full' && forceFullBlocked.value) { error.value = overview.value?.initialized ? '已有更新任务正在执行，请等待完成。' : '首次初始化完成后才可强制全量更新；初始化由系统自动恢复。'; return }
+    if (action.value === 'force-full' && forceFullBlocked.value) { error.value = forceFullHelp.value; return }
+    if (action.value === 'rerun' && !predecessor.value.trim()) { error.value = '请输入原失败任务号。'; return }
     if (!/^[\x21-\x7e]{1,128}$/.test(key.value) || key.value.includes(',')) { error.value = '幂等键须为 1–128 位可见 ASCII 字符，且不含逗号。'; return }
-    pending.value = { path: action.value === 'rerun' ? `/admin/v1/tasks/${encodeURIComponent(predecessor.value.trim())}/rerun` : `/admin/v1/tasks/${action.value}`, key: key.value, title: selected.value.title }
+    const retryInitial = action.value === 'force-full' ? failedInitialization.value : null
+    const rerunID = retryInitial?.task_id || (action.value === 'rerun' ? predecessor.value.trim() : '')
+    pending.value = {
+      path: rerunID ? `/admin/v1/tasks/${encodeURIComponent(rerunID)}/rerun` : `/admin/v1/tasks/${action.value}`,
+      key: key.value, title: selected.value.title,
+      description: retryInitial ? `将重新从上游完整采集并初始化，保留原失败任务 ${retryInitial.task_id} 的记录。无需重启服务。` : selected.value.text,
+    }
   }
   dialog.value?.showModal()
 }
@@ -83,13 +104,13 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
 </script>
 <template>
   <section>
-    <div class="page-heading"><div><h1>更新任务</h1><p>初始化和日常同步由系统自动执行，此处查看记录与处理异常。</p></div><div class="actions"><button @click="refreshHistory" :disabled="historyBusy">刷新记录</button><button class="primary" @click="forceFull" :disabled="forceFullBlocked || busy || loading || !!pending" aria-describedby="force-full-help">强制全量更新</button></div></div>
+    <div class="page-heading"><div><h1>更新任务</h1><p>初始化和日常同步由系统自动执行，此处查看记录与处理异常。</p></div><div class="actions"><button @click="refreshHistory" :disabled="historyBusy">刷新记录</button><button class="primary" @click="forceFull" :disabled="forceFullBlocked || busy || loading || !!pending" aria-describedby="force-full-help">{{ primaryLabel }}</button></div></div>
     <div class="section-note">
       <h2>自动更新</h2>
       <p v-if="overview">{{ overview.initialized ? '初始化已完成，系统按两小时间隔调度增量同步。' : '尚未完成初始化。全新环境自动开始，重启后系统会恢复未完成的初始化。' }}</p>
       <p v-else>正在读取自动更新状态。</p>
       <p v-if="overview && !overview.initialized" class="hint">每次启动最多自动重新采集一次，与上次失败至少间隔 5 分钟，并遵守上游冷却时间。若再次失败，请先检查失败原因。</p>
-      <p id="force-full-help" class="hint">{{ !overview ? '读取初始化状态后可判断是否允许强制更新。' : !overview.initialized ? '强制全量更新在首次初始化完成后可用。' : hasActiveTask ? '已有更新任务正在执行，完成后可强制全量更新。' : '强制全量更新会立即请求重新采集、校验并发布完整数据。' }}</p>
+      <p id="force-full-help" class="hint">{{ forceFullHelp }}</p>
       <p v-if="overview?.initialized">下次计划时间：{{ time(overview.next_due_at) }}。执行中或恢复中会顺延。</p>
       <p v-if="overview?.cooldown_until">冷却截止时间：{{ time(overview.cooldown_until) }}</p>
     </div>
@@ -134,6 +155,6 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
         <div v-else class="empty" role="status"><span aria-hidden="true">↻</span><h3>{{ loading ? '正在读取任务' : '等待查看任务' }}</h3><p>提交更新后自动查看，也可输入已有任务号。</p></div>
       </div>
     </div>
-    <dialog ref="dialog" aria-labelledby="confirm-title"><h2 id="confirm-title">确认{{ pending?.title }}</h2><p>此操作将请求后台执行数据更新。{{ action === 'force-full' ? '强制全量会重新采集和构建完整数据。' : '' }}</p><p class="hint">幂等键：{{ pending?.key }}</p><div class="actions"><button autofocus @click="dialog?.close()">暂不提交</button><button class="primary" @click="submit">确认提交更新</button></div></dialog>
+    <dialog ref="dialog" aria-labelledby="confirm-title"><h2 id="confirm-title">确认{{ pending?.title }}</h2><p>{{ pending?.description }}</p><p class="hint">幂等键：{{ pending?.key }}</p><div class="actions"><button autofocus @click="dialog?.close()">暂不提交</button><button class="primary" @click="submit">确认提交更新</button></div></dialog>
   </section>
 </template>
