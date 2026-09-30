@@ -28,6 +28,15 @@ func TestReusedInitializationWatermarksRequirePersistedEpoch(t *testing.T) {
 }
 
 func TestSingleTableProgressCannotAdvanceOtherTables(t *testing.T) {
+	testRetainedProgress(t, false)
+}
+
+func TestFullRepairProgressCannotAdvanceReusedTables(t *testing.T) {
+	testRetainedProgress(t, true)
+}
+
+func testRetainedProgress(t *testing.T, repair bool) {
+	t.Helper()
 	r, d, p, _ := progressFixture(t)
 	_, planDB, active := planFixture(t)
 	planRepo := control.Repository{Registry: r.Registry, Database: planDB}.WithOwnership(control.Ownership{TaskID: "task-A", OwnerID: "owner-A", Generation: 9})
@@ -36,6 +45,10 @@ func TestSingleTableProgressCannotAdvanceOtherTables(t *testing.T) {
 	plan, err := planRepo.PlanUpdate(t.Context(), active, 0)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if repair {
+		plan.Table = ""
+		plan.Repair = true
 	}
 	p.StartedAt = plan.StartedAt
 	p.CheckedAt = p.StartedAt.Add(time.Minute)
@@ -49,7 +62,9 @@ func TestSingleTableProgressCannotAdvanceOtherTables(t *testing.T) {
 	for name := range p.Ends {
 		p.Ends[name] = plan.Windows[name].ConfirmedUntil
 	}
-	p.Ends[plan.Table] = p.StartedAt
+	if !repair {
+		p.Ends[plan.Table] = p.StartedAt
+	}
 	if err := r.StageProgress(t.Context(), p); err != nil {
 		t.Fatal("single-table bounds rejected", err)
 	}
@@ -116,7 +131,21 @@ func TestTableUpdateSharesExecutionGateAndRollsBackScope(t *testing.T) {
 	}
 }
 
-func TestRerunRepairsAllMissingInitializationTablesButKeepsPublishedTableScope(t *testing.T) {
+func TestSingleTableRepairLinksLatestFailedFullUpdate(t *testing.T) {
+	r, d, req := taskRepository(t)
+	d.initialized = true
+	req.Mode = "force_full"
+	if _, err := r.Admit(t.Context(), req); err != nil {
+		t.Fatal(err)
+	}
+	d.records[req.IdempotencyKey][3] = "failed"
+	repair, err := r.AdmitTable(t.Context(), control.Request{ID: "repair", Table: "dwd_bzkscjzlb", IdempotencyKey: "repair", RequestedBy: "admin", AcceptedAt: req.AcceptedAt.Add(time.Minute)})
+	if err != nil || repair.Task.PredecessorID == nil || *repair.Task.PredecessorID != req.ID || repair.Task.Mode != "force_full" {
+		t.Fatal("failed full results not linked", repair, err)
+	}
+}
+
+func TestRerunRepairsAllMissingFullTables(t *testing.T) {
 	for _, initialized := range []bool{false, true} {
 		r, d, req := taskRepository(t)
 		d.initialized = initialized
@@ -132,9 +161,6 @@ func TestRerunRepairsAllMissingInitializationTablesButKeepsPublishedTableScope(t
 		}
 		selected, err := r.TableSelection(t.Context(), rerun.Task.ID)
 		want := ""
-		if initialized {
-			want = req.Table
-		}
 		if err != nil || selected != want {
 			t.Fatal("wrong rerun scope", selected, err)
 		}

@@ -106,12 +106,12 @@ func (r Repository) StageProgress(ctx context.Context, p ProgressPlan) error {
 				}
 			} else {
 				var plan UpdatePlan
-				if task.Roles == nil || json.Unmarshal([]byte(*task.Roles), &plan) != nil || plan.Validate() != nil || plan.Table == "" || plan.TaskID != task.ID || plan.Mode != task.Mode || !plan.StartedAt.Equal(*task.StartedAt) {
+				if task.Roles == nil || json.Unmarshal([]byte(*task.Roles), &plan) != nil || plan.Validate() != nil || (plan.Table == "" && !plan.Repair) || plan.TaskID != task.ID || plan.Mode != task.Mode || !plan.StartedAt.Equal(*task.StartedAt) {
 					return ErrEntity
 				}
 				for name, end := range p.Ends {
 					want := plan.StartedAt
-					if name != plan.Table {
+					if plan.Repair || name != plan.Table {
 						want = plan.Windows[name].ConfirmedUntil
 					}
 					if !end.Equal(want) {

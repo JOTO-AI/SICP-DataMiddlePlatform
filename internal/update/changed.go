@@ -199,7 +199,7 @@ func (c Changed) continuePrepared(ctx context.Context, prepared PreparedUpdate, 
 	progress := control.ProgressPlan{TaskID: p.TaskID, BundleID: m.Combination, Mode: p.Mode, StartedAt: p.StartedAt, CheckedAt: c.Clock.Now(), Ends: map[string]time.Time{}}
 	for _, table := range m.Tables {
 		progress.Ends[table.Table] = p.StartedAt
-		if p.Table != "" && table.Table != p.Table {
+		if p.Repair || (p.Table != "" && table.Table != p.Table) {
 			progress.Retained = true
 			progress.Ends[table.Table] = p.Windows[table.Table].ConfirmedUntil
 		}

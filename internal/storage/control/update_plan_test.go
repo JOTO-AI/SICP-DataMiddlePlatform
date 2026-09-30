@@ -2,6 +2,7 @@ package control_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"maps"
 	"reflect"
@@ -16,11 +17,12 @@ import (
 )
 
 type planDB struct {
-	base     *publicationDB
-	task     control.Task
-	progress map[string]time.Time
-	writes   int
-	table    string
+	base      *publicationDB
+	task      control.Task
+	progress  map[string]time.Time
+	writes    int
+	table     string
+	ancestors map[string]control.Task
 }
 type planTx struct {
 	*publicationTx
@@ -40,6 +42,9 @@ func (t *planTx) QueryRow(ctx context.Context, sql string, args ...any) storage.
 	case strings.Contains(sql, "name='table-selection'"):
 		return result{raw: []any{t.db.table}}
 	case strings.Contains(sql, `FROM control.tasks WHERE "id"=$1`):
+		if args[0] != t.task.ID {
+			return result{raw: entityColumns(t.db.ancestors[args[0].(string)])}
+		}
 		return result{raw: entityColumns(t.task)}
 	case strings.HasPrefix(sql, "SELECT confirmed_until FROM control.source_progress"):
 		until, ok := t.db.progress[args[0].(string)]
@@ -80,6 +85,45 @@ func planFixture(t *testing.T) (control.Repository, *planDB, control.ActiveMetad
 	}
 	r.Database = d
 	return r, d, a
+}
+
+func TestFullRepairPlanRejectsStaleContentOrAdvancedProgress(t *testing.T) {
+	for _, scenario := range []string{"same", "changed-bundle", "advanced-progress", "interrupted"} {
+		t.Run(scenario, func(t *testing.T) {
+			r, d, active := planFixture(t)
+			d.task.Mode = "force_full"
+			prior, err := r.PlanUpdate(t.Context(), active, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			prior.TaskID = "old-full"
+			if scenario == "changed-bundle" {
+				prior.Origin.Position.BundleID = "older-content"
+			}
+			if scenario == "advanced-progress" {
+				window := prior.Windows["dwd_bzkscjzlb"]
+				window.ConfirmedUntil = window.ConfirmedUntil.Add(-time.Hour)
+				window.Start = window.ConfirmedUntil.Add(-prior.Overlap)
+				prior.Windows["dwd_bzkscjzlb"] = window
+			}
+			raw, _ := json.Marshal(prior)
+			roles := control.Document(raw)
+			old := control.Task{ID: prior.TaskID, Mode: "force_full", Status: "failed", Roles: &roles}
+			d.ancestors = map[string]control.Task{old.ID: old}
+			d.task.Roles = nil
+			d.task.PredecessorID = &old.ID
+			if scenario == "interrupted" {
+				gap := control.Task{ID: "interrupted", Mode: "force_full", Status: "failed", PredecessorID: &old.ID}
+				d.ancestors[gap.ID] = gap
+				d.task.PredecessorID = &gap.ID
+			}
+			plan, err := r.PlanUpdate(t.Context(), active, 0)
+			want := scenario == "same" || scenario == "interrupted"
+			if err != nil || plan.Repair != want {
+				t.Fatal("unsafe repair scope", plan.Repair, err)
+			}
+		})
+	}
 }
 func TestT13_01FixedFourteenWindowsUseSuccessfulProgressAndFiveMinuteOverlap(t *testing.T) {
 	r, d, a := planFixture(t)

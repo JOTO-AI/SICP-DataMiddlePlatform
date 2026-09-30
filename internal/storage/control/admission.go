@@ -136,14 +136,8 @@ func (r Repository) admit(ctx context.Context, request Request, rerun, bootstrap
 				return ErrTime
 			}
 			request.Mode = old.Mode
-			// Initialization reruns fill every remaining gap. The explicit table
-			// endpoint is used when the operator wants to repair only one table.
-			if !automatic && old.Mode != "initialize" {
-				request.Table, err = tableSelection(ctx, tx, old.ID)
-				if err != nil {
-					return err
-				}
-			}
+			// Full/initialization reruns fill every remaining gap. The explicit
+			// table endpoint is used when the operator wants only one table.
 		}
 		var exists bool
 		if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.tasks WHERE idempotency_key=$1)", request.IdempotencyKey).Scan(&exists); err != nil {
@@ -186,18 +180,20 @@ func (r Repository) admit(ctx context.Context, request Request, rerun, bootstrap
 			request.Mode = "force_full"
 			if !initialized {
 				request.Mode = "initialize"
-				var latest *string
-				if err := tx.QueryRow(ctx, "SELECT (SELECT id FROM control.tasks ORDER BY accepted_at DESC,id DESC LIMIT 1)").Scan(&latest); err != nil {
+			}
+			var latest *string
+			if err := tx.QueryRow(ctx, "SELECT (SELECT id FROM control.tasks ORDER BY accepted_at DESC,id DESC LIMIT 1)").Scan(&latest); err != nil {
+				return err
+			}
+			if latest != nil {
+				old, err := loadTask(ctx, tx, *latest)
+				if err != nil {
 					return err
 				}
-				if latest != nil {
-					old, err := loadTask(ctx, tx, *latest)
-					if err != nil {
-						return err
-					}
-					if old.Mode != "initialize" || old.Status != "failed" {
-						return ErrBusy
-					}
+				if !initialized && (old.Mode != "initialize" || old.Status != "failed") {
+					return ErrBusy
+				}
+				if old.Mode == request.Mode && old.Status == "failed" {
 					request.PredecessorID = latest
 				}
 			}

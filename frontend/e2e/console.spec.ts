@@ -1,5 +1,32 @@
 import { test, expect, type Page } from '@playwright/test'
 
+test('failed full update offers retry of incomplete tables and single-table repair', async ({ page }) => {
+  await setup(page)
+  const task = { task_id: 'failed-full', mode: 'force_full', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-09-30T10:00:00Z' }
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, items: [task] } } }))
+  await page.route('**/admin/v1/tasks/failed-full', route => route.fulfill({ json: { code: 'ok', data: { ...task, acquisition: { tables: [
+    { table: 'dwd_bzksbjsjzlb', status: 'collected', completed_pages: 1, total_pages: 1 },
+    { table: 'dwd_bzkscjzlb', status: 'failed', completed_pages: 9, total_pages: 20 },
+  ] } } } }))
+  let retries = 0
+  await page.route('**/admin/v1/tasks/failed-full/rerun', route => {
+    retries++
+    expect(route.request().postDataJSON()).toEqual({})
+    expect(route.request().headers()['idempotency-key']).toBeTruthy()
+    return route.fulfill({ status: 202, json: { code: 'accepted', data: { task_id: 'full-repair' } } })
+  })
+  await page.route('**/admin/v1/tasks/full-repair', route => route.fulfill({ json: { code: 'ok', data: { task_id: 'full-repair', mode: 'force_full', status: 'accepted' } } }))
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await page.getByRole('button', { name: /failed-full/ }).click()
+  await expect(page.getByText('部分完成，待补齐', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '强制更新 dwd_bzkscjzlb', exact: true })).toBeEnabled()
+  await page.getByRole('button', { name: '重试未完成的表', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '确认失败重跑', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '确认提交更新', exact: true }).click()
+  await expect(page.getByText('任务已受理：full-repair。受理不代表执行完成。')).toBeVisible()
+  expect(retries).toBe(1)
+})
+
 for (const status of ['success_published', 'success_unchanged']) {
   test(`manual incremental sync preserves retries and displays ${status}`, async ({ page }, testInfo) => {
     await setup(page)

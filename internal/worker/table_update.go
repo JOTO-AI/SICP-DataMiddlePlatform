@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -17,11 +18,13 @@ func (w Executor) configureTables(ctx context.Context, task control.Task, repo c
 		return time.Time{}, err
 	}
 	a.OnlyTable = selected
+	if task.Mode == "initialize" || task.Mode == "force_full" {
+		a.ContinueOnFailure = true
+		a.NewBudget = func() (*ingest.TaskBudget, error) { return ingest.NewTaskBudget(w.Clock.Now().Add(time.Hour), 100000) }
+	}
 	if task.Mode != "initialize" {
 		return time.Time{}, nil
 	}
-	a.ContinueOnFailure = true
-	a.NewBudget = func() (*ingest.TaskBudget, error) { return ingest.NewTaskBudget(w.Clock.Now().Add(time.Hour), 100000) }
 	ancestors, epoch, err := initializationAncestors(ctx, task, repo, w.Runtime.Files.Staging)
 	if err != nil {
 		return time.Time{}, err
@@ -33,6 +36,55 @@ func (w Executor) configureTables(ctx context.Context, task control.Task, repo c
 		return time.Time{}, err
 	}
 	return epoch, nil
+}
+
+func fullUpdateAncestors(ctx context.Context, task control.Task, plan control.UpdatePlan, repo tableHistory, files *staging.QuotaFiles) (initializationHistory, bool, error) {
+	var history initializationHistory
+	baseline := false
+	seen := map[string]bool{task.ID: true}
+	for id := task.PredecessorID; id != nil; {
+		if seen[*id] {
+			return nil, false, control.ErrEntity
+		}
+		seen[*id] = true
+		old, err := repo.TaskStatus(ctx, *id)
+		if err != nil {
+			return nil, false, err
+		}
+		if old.Task.ID != *id || old.Task.Mode != "force_full" || old.Task.Status != "failed" {
+			return nil, false, control.ErrEntity
+		}
+		if old.Task.Roles != nil {
+			var prior control.UpdatePlan
+			if json.Unmarshal([]byte(*old.Task.Roles), &prior) != nil || prior.Validate() != nil {
+				return nil, false, control.ErrEntity
+			}
+			if !plan.SameRepairBase(prior) {
+				break
+			}
+			baseline = prior.Table != "" && !prior.Repair
+		}
+		selected, err := repo.TableSelection(ctx, *id)
+		if err != nil {
+			return nil, false, err
+		}
+		from, err := staging.NewStore(*id, files, 64<<20)
+		if err != nil {
+			return nil, false, err
+		}
+		history = append(history, initializationAncestor{from, selected})
+		id = old.Task.PredecessorID
+	}
+	return history, baseline, nil
+}
+
+func (h initializationHistory) selected(table string) bool {
+	for _, old := range h {
+		if old.selected == table {
+			return true
+		}
+	}
+	return false
 }
 
 type tableHistory interface {

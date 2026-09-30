@@ -137,6 +137,23 @@ func TestSingleTablePublicationPreservesUnfetchedSourceWatermarks(t *testing.T) 
 		}
 	}
 }
+
+func TestFullRepairPublicationKeepsConservativeSourceWatermarks(t *testing.T) {
+	c, w := changedFixture(t)
+	w.prepared.Plan.Mode = "force_full"
+	w.prepared.Plan.Repair = true
+	if _, err := c.Run(t.Context(), w.active); err != nil {
+		t.Fatal(err)
+	}
+	if !w.progress.Retained {
+		t.Fatal("missing retained repair bounds")
+	}
+	for name, window := range w.prepared.Plan.Windows {
+		if !w.progress.Ends[name].Equal(window.ConfirmedUntil) {
+			t.Fatal("reused full data skipped incremental window", name)
+		}
+	}
+}
 func TestT13_07ChangedRoundBuildsAndPublishesInStrictOrderBothDirections(t *testing.T) {
 	for _, instance := range []storage.Instance{storage.Main, storage.Standby} {
 		t.Run(string(instance), func(t *testing.T) {

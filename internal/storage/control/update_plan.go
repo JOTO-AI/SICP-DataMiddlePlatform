@@ -25,6 +25,7 @@ type UpdatePlan struct {
 	Overlap       time.Duration
 	Windows       map[string]SourceWindow
 	Table         string
+	Repair        bool
 }
 
 func (p UpdatePlan) Validate() error {
@@ -35,6 +36,9 @@ func (p UpdatePlan) Validate() error {
 		return ErrEntity
 	}
 	if p.Table != "" && (p.Mode != "force_full" || !knownTable(p.Table)) {
+		return ErrEntity
+	}
+	if p.Repair && p.Mode != "force_full" {
 		return ErrEntity
 	}
 	if p.Second != p.Origin.Position.Position.Instance || p.First == p.Second || (p.First != storage.Main && p.First != storage.Standby) {
@@ -121,6 +125,31 @@ func (r Repository) PlanUpdate(ctx context.Context, active ActiveMetadata, overl
 			}
 			plan.Windows[table.Name] = SourceWindow{ConfirmedUntil: until, Start: until.Add(-overlap), End: plan.StartedAt}
 		}
+		if task.Mode == "force_full" {
+			seen := map[string]bool{task.ID: true}
+			for id := task.PredecessorID; id != nil; {
+				if seen[*id] {
+					return ErrEntity
+				}
+				seen[*id] = true
+				old, err := loadTask(ctx, tx, *id)
+				if err != nil {
+					return err
+				}
+				if old.Mode != "force_full" || old.Status != "failed" {
+					return ErrEntity
+				}
+				if old.Roles != nil {
+					var prior UpdatePlan
+					if json.Unmarshal([]byte(*old.Roles), &prior) != nil || prior.Validate() != nil {
+						return ErrEntity
+					}
+					plan.Repair = plan.SameRepairBase(prior)
+					break
+				}
+				id = old.PredecessorID
+			}
+		}
 		if err = plan.Validate(); err != nil {
 			return err
 		}
@@ -134,4 +163,19 @@ func (r Repository) PlanUpdate(ctx context.Context, active ActiveMetadata, overl
 		return UpdatePlan{}, err
 	}
 	return plan, nil
+}
+
+// Reuse is safe only while neither the published content nor its successful
+// source progress has changed since the failed full acquisition was planned.
+func (p UpdatePlan) SameRepairBase(old UpdatePlan) bool {
+	if p.Mode != "force_full" || old.Mode != "force_full" || p.Origin.Position.BundleID != old.Origin.Position.BundleID || len(p.Windows) != len(old.Windows) {
+		return false
+	}
+	for name, window := range p.Windows {
+		prior, ok := old.Windows[name]
+		if !ok || !window.ConfirmedUntil.Equal(prior.ConfirmedUntil) {
+			return false
+		}
+	}
+	return true
 }

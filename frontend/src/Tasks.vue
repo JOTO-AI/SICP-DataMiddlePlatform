@@ -64,7 +64,7 @@ let timer: ReturnType<typeof setTimeout> | undefined
 let active = true
 const terminal = computed(() => !!task.value?.finished_at || ['success_published', 'success_unchanged', 'failed'].includes(task.value?.status || ''))
 const statusLabels: Record<string, string> = { accepted: '已受理', running: '执行中', success_published: '发布成功', success_unchanged: '检查完成，无变化', failed: '执行失败' }
-const detailStatus = computed(() => task.value?.mode === 'initialize' && task.value.status === 'failed' && task.value.acquisition?.tables.some(table => table.status === 'collected') && task.value.acquisition.tables.some(table => table.status !== 'collected') ? '部分完成，待补齐' : statusLabels[task.value?.status || ''] || task.value?.status)
+const detailStatus = computed(() => task.value && ['initialize', 'force_full'].includes(task.value.mode) && task.value.status === 'failed' && task.value.acquisition?.tables.some(table => table.status === 'collected') && task.value.acquisition.tables.some(table => table.status !== 'collected') ? '部分完成，待补齐' : statusLabels[task.value?.status || ''] || task.value?.status)
 const stages = computed(() => task.value ? [{ name: '已受理', at: task.value.accepted_at }, { name: '开始执行', at: task.value.started_at }, { name: '构建就绪', at: task.value.ready_at }, { name: '发布完成', at: task.value.published_at }, { name: '检查完成', at: task.value.checked_at }, { name: '任务结束', at: task.value.finished_at }] : [])
 function stop() { auto.value = false; clearTimeout(timer) }
 onActivated(() => { active = true; void refreshHistory(); if (task.value && !terminal.value) { auto.value = true; void fetchTask() } })
@@ -91,6 +91,7 @@ function confirm() {
 }
 function forceFull() { action.value = 'force-full'; confirm() }
 function syncIncremental() { action.value = 'incremental'; confirm() }
+function retryFull(id: string) { if (!tableUpdateAllowed.value) return; action.value = 'rerun'; predecessor.value = id; confirm() }
 function forceTable(table: string) { if (!tableUpdateAllowed.value) return; action.value = 'table-full'; selectedTable.value = table; confirm() }
 function abandon() { pending.value = null; key.value = newIdempotencyKey(); error.value = ''; receipt.value = '' }
 async function submit() {
@@ -167,6 +168,10 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
           <dl class="facts"><div><dt>更新模式</dt><dd>{{ modeLabels[task.mode] || task.mode }}</dd></div><div><dt>操作人</dt><dd>{{ task.operator === 'scheduler' ? '系统调度' : task.operator || '未提供' }}</dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed ? '已确认' : '未确认' }}</dd></div><div v-if="task.predecessor_id"><dt>前序任务</dt><dd>{{ task.predecessor_id }}</dd></div></dl>
           <p v-if="task.failure" class="error">失败原因：{{ task.failure }}</p>
           <p v-if="task.failure && task.mode === 'initialize'" class="hint">{{ failureDescriptions[task.failure] }}</p>
+          <template v-if="task.status === 'failed' && task.mode === 'force_full'">
+            <p class="hint">已完成的表保留在本次任务中。可逐张强制更新失败表，或重试全部未完成表；补齐并校验通过后自动发布。若期间已完成其他同步，则使用当前版本重新采集。</p>
+            <button type="button" :disabled="!tableUpdateAllowed" @click="retryFull(task.task_id)">重试未完成的表</button>
+          </template>
           <button type="button" :disabled="loading || busy" @click="selectTask(task.task_id)">刷新详情</button>
           <FailedAttempts :attempts="task.failed_attempts" :unavailable="task.diagnostics_unavailable" :failed="task.failure === 'acquisition_failed'" />
           <ol class="timeline"><li v-for="stage in stages" :key="stage.name" :class="{ done: stage.at }"><span class="timeline-dot" aria-hidden="true"></span><span>{{ stage.name }}</span><time>{{ time(stage.at) }}</time></li></ol>

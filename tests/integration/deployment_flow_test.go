@@ -64,7 +64,7 @@ func (d *deployment) assertTaskLog(t *testing.T, id, outcome string) {
 	}
 }
 
-func (d *deployment) assertFlowState(t *testing.T, task, bundle string, instance storage.Instance, score float64, contacts int, deleted bool) control.ActiveMetadata {
+func (d *deployment) assertFlowState(t *testing.T, task, bundle string, instance storage.Instance, score float64, contacts int, deleted bool, retainedProgress ...string) control.ActiveMetadata {
 	t.Helper()
 	active := d.active(t)
 	if active.Position.BundleID != "C"+bundle || active.Position.Position.Instance != instance {
@@ -106,7 +106,11 @@ func (d *deployment) assertFlowState(t *testing.T, task, bundle string, instance
 	// All pages above were consumed. Accelerate only these fixture snapshots'
 	// expiry, so this single flow need not sleep through production token TTLs.
 	d.sql(t, "UPDATE control.query_snapshots SET expires_at=created_at+interval '1 microsecond'")
-	if d.sql(t, fmt.Sprintf("SELECT count(*) FROM control.source_progress p JOIN control.tasks t ON t.id=p.task_id WHERE t.id='%s' AND p.confirmed_until=t.started_at", task)) != "14" {
+	progressTask := task
+	if len(retainedProgress) > 0 {
+		progressTask = retainedProgress[0]
+	}
+	if d.sql(t, fmt.Sprintf("SELECT count(*) FROM control.source_progress p JOIN control.tasks t ON t.id='%s' WHERE p.task_id='%s' AND p.confirmed_until=t.started_at", progressTask, task)) != "14" {
 		t.Fatal("flow progress differs from fixed task start")
 	}
 	d.waitSQL(t, fmt.Sprintf("SELECT count(*) FROM control.tasks WHERE id='%s' AND owner_id IS NULL", task), "1")
@@ -189,7 +193,7 @@ func TestI06_06(t *testing.T) {
 	if rerun == failed || result["predecessor_id"] != failed || result["mode"] != "force_full" {
 		t.Fatal("rerun did not create a linked full task")
 	}
-	d.assertFlowState(t, rerun, rerun, storage.Main, 88.5, 12, true)
+	d.assertFlowState(t, rerun, rerun, storage.Main, 88.5, 12, true, full)
 	if d.sql(t, historyQuery) != history || len(d.mockMail(t)) != 1 || d.sql(t, "SELECT count(*) FROM control.tasks") != "6" || d.sql(t, "SELECT count(*) FROM control.publication_outbox WHERE kind='bundle_publish' AND status='confirmed'") != "4" {
 		t.Fatal("rerun rewrote failed history or duplicated side effects")
 	}

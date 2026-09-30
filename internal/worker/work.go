@@ -272,17 +272,34 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 	}
 	options.Base = &base
 	options.BaseSource = targets
-	if acquirer.OnlyTable != "" {
+	plan, e := repo.PlanUpdate(ctx, active, control.IncrementalOverlap)
+	if e != nil {
+		return e
+	}
+	if plan.Repair {
+		history, baseline, err := fullUpdateAncestors(ctx, task, plan, repo, r.Files.Staging)
+		if err != nil {
+			return err
+		}
+		if baseline {
+			if err := targets.Validate(ctx, base); err != nil {
+				return err
+			}
+		}
+		acquirer.Reuse = func(ctx context.Context, request ingest.PageRequest) (int64, error) {
+			pages, err := history.copyTable(ctx, request, files, acquirer.Limits)
+			if errors.Is(err, staging.ErrIncomplete) && baseline && !history.selected(request.Table) {
+				return update.CopyBaselineTable(ctx, targets, base, request, files, acquirer.Limits)
+			}
+			return pages, err
+		}
+	} else if acquirer.OnlyTable != "" {
 		if err := targets.Validate(ctx, base); err != nil {
 			return err
 		}
 		acquirer.Reuse = func(ctx context.Context, r ingest.PageRequest) (int64, error) {
 			return update.CopyBaselineTable(ctx, targets, base, r, files, acquirer.Limits)
 		}
-	}
-	plan, e := repo.PlanUpdate(ctx, active, control.IncrementalOverlap)
-	if e != nil {
-		return e
 	}
 	if e = store.ReopenPublished(ctx, plan, func(ctx context.Context, old update.Copy, gate read.Gate, admission update.FixedAdmission) error {
 		reads := read.Repository{Storage: reader, Gate: gate}

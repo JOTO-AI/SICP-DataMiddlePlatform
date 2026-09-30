@@ -19,6 +19,23 @@ import (
 )
 
 func TestInitializationContinuesAndSeparateTableRepairsReuseDurableSuccesses(t *testing.T) {
+	testTableRepairs(t, false)
+}
+
+func TestForceFullContinuesAndSeparateTableRepairsReuseDurableSuccesses(t *testing.T) {
+	testTableRepairs(t, true)
+}
+
+func testTableRepairs(t *testing.T, force bool) {
+	t.Helper()
+	acquire := func(a update.Acquirer) (*staging.Lease, error) {
+		if !force {
+			return a.Full(t.Context())
+		}
+		plan := updatePlan()
+		plan.Mode, plan.Table = "force_full", a.OnlyTable
+		return a.Acquire(t.Context(), plan, time.UTC)
+	}
 	dir, err := staging.OpenDirectory(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +80,7 @@ func TestInitializationContinuesAndSeparateTableRepairsReuseDurableSuccesses(t *
 		return a, store
 	}
 	first, firstStore := makeRun("first", "", nil)
-	if lease, err := first.Full(t.Context()); err == nil || lease != nil {
+	if lease, err := acquire(first); err == nil || lease != nil {
 		t.Fatal("incomplete initialization published")
 	}
 	if len(calls) != 14 {
@@ -86,7 +103,7 @@ func TestInitializationContinuesAndSeparateTableRepairsReuseDurableSuccesses(t *
 	delete(failed, "dwd_bzkscjzlb")
 	calls = map[string]int{}
 	second, secondStore := makeRun("second", "dwd_bzkscjzlb", firstStore)
-	if lease, err := second.Full(t.Context()); err == nil || lease != nil {
+	if lease, err := acquire(second); err == nil || lease != nil {
 		t.Fatal("other missing table was falsely complete")
 	}
 	if len(calls) != 1 || calls["dwd_bzkscjzlb"] != 1 {
@@ -95,7 +112,7 @@ func TestInitializationContinuesAndSeparateTableRepairsReuseDurableSuccesses(t *
 	delete(failed, "dwd_bzksgrtxsjzlb")
 	calls = map[string]int{}
 	third, _ := makeRun("third", "dwd_bzksgrtxsjzlb", secondStore)
-	lease, err := third.Full(t.Context())
+	lease, err := acquire(third)
 	if err != nil || lease == nil {
 		t.Fatal("all repaired tables did not seal", err)
 	}
