@@ -36,7 +36,8 @@ x-service: &service
   networks: [sicp]
 
 x-postgres: &postgres
-  image: postgres:16-bookworm
+  # Major upgrades require data migration; see deploy/README.md.
+  image: postgres:18.6-trixie
   platform: linux/amd64
   restart: unless-stopped
   environment: &postgres-environment
@@ -63,7 +64,7 @@ services:
       <<: *postgres-environment
       SICP_CLUSTER: M
     volumes:
-      - pg-m:/var/lib/postgresql/data
+      - pg-m:/var/lib/postgresql
       - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
   db-s:
     <<: *postgres
@@ -71,7 +72,7 @@ services:
       <<: *postgres-environment
       SICP_CLUSTER: S
     volumes:
-      - pg-s:/var/lib/postgresql/data
+      - pg-s:/var/lib/postgresql
       - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
   db-log:
     <<: *postgres
@@ -79,7 +80,7 @@ services:
       <<: *postgres-environment
       SICP_CLUSTER: log
     volumes:
-      - pg-log:/var/lib/postgresql/data
+      - pg-log:/var/lib/postgresql
       - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
   redis:
     image: redis:7.4-bookworm

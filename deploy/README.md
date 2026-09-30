@@ -37,7 +37,19 @@ docker compose down
 
 旧版 `deploy/compose*.yaml`、`deploy/examples/*.env.example` 和 `configs/*.env.example` 已移除。原有 `deploy/runtime/*.env` 不再加载，请先将自定义值迁入根目录 `.env`；旧文件不会自动改写。上一版的 `QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 也不再读取：请将相同的端点与库名合并为六个不含凭据的 `DATABASE_*_URL`，账号密码填写到上方对应变量。旧项目 `sicp-phase1` 的卷不会自动迁移。仅在确认旧卷数据属于目标环境后，才显式设置相同 `SICP_PROJECT` 复用数据；不要将含合成数据的卷直接用于正式环境。
 
-升级已有部署时先 `docker compose stop console query worker` 并备份全部卷，再运行上述启动命令；如需要明确重跑迁移，先执行 `docker compose build`、`docker compose run --rm migrate`。重复迁移校验已应用版本与 checksum。不要在旧服务仍运行时直接进行结构升级。
+升级已有部署时先 `docker compose stop console query worker` 并备份全部卷；如果涉及 PostgreSQL 大版本变化，先完成下节的数据迁移，再运行上述启动命令。如需要明确重跑应用表结构迁移，先执行 `docker compose build`、`docker compose run --rm migrate`。重复迁移校验已应用版本与 checksum。不要在旧服务仍运行时直接进行结构升级。
+
+## PostgreSQL 18 与旧数据升级
+
+三个数据库统一使用 `postgres:18.6-trixie`（PostgreSQL 18.6 / Debian 13），与 P01 的数据库版本决策一致。现有实现依赖 PostgreSQL 事务、advisory lock、pgx 批量 COPY 和 JSON 存储，继续使用 PostgreSQL 可直接沿用这些能力。镜像标签明确固定数据库补丁版本和基础系统；后续补丁升级需同步修改配置检查并重新执行部署与集成验证。
+
+按 [Docker 官方镜像约定](https://hub.docker.com/_/postgres)，命名卷挂载到 `/var/lib/postgresql`，实际数据目录为 `/var/lib/postgresql/18/docker`。全新空卷可直接使用一键启动命令；`.env` 中的数据库地址和凭据格式不变。`scripts/check-compose-config.py` 校验三个实例的镜像版本和各自持久卷挂载，防止部署配置再次偏离版本决策。
+
+已有 PostgreSQL 16 数据不能通过换镜像或移动目录直接升级。旧卷名称仍为 `pg-m`、`pg-s`、`pg-log`；官方入口发现旧格式数据时会拒绝初始化，需要先进行 [PostgreSQL 大版本迁移](https://www.postgresql.org/docs/18/upgrading.html)。应用的 `db-migrate` 只负责表结构，不升级 PG 数据文件。
+
+保留旧数据时，在仍使用 16 的部署配置下停止 console/query/worker 并等待写入结束，备份所有持久卷，分别导出 M、S、日志实例的数据库和角色。M 包含 slot0、slot1、control，S 包含 slot0、slot1，日志实例包含 logs。随后在独立新卷中初始化 18，恢复角色及各库，核对数据、权限、应用迁移记录后再切换应用。恢复方案需要处理初始化脚本已创建的同名角色和空库；不要直接向它们重复执行全实例建库脚本。也可在同时具备 16/18 二进制的专用迁移环境中使用 `pg_upgrade`。迁移验收前保留旧卷和备份，应用恢复写入后回退还需处理新增数据。
+
+若旧环境仅含可丢弃的测试数据，可在停掉旧项目后选择新的 `SICP_PROJECT` 启动全新环境，旧项目的卷仍保留。不要为升级执行 `docker compose down --volumes`，它会连同 Redis、日志、staging、targets、spool 等卷一起删除。
 
 ## 正式与开发环境切换
 

@@ -174,6 +174,13 @@ def main(directory):
         assert services[role]["healthcheck"]["test"] == ["CMD", "/usr/local/bin/service", "--healthcheck"]
         assert services[role]["environment"]["DATABASE_USER"] != services["migrate"]["environment"]["DATABASE_USER"]
     for name, cluster in (("db-m", "M"), ("db-s", "S"), ("db-log", "log")):
+        # Keep deployment aligned with the P01 database decision and PG 18 layout.
+        assert services[name]["image"] == "postgres:18.6-trixie", f"{name} database version drift"
+        data_volumes = [v for v in services[name]["volumes"] if v["type"] == "volume"]
+        assert len(data_volumes) == 1, f"{name} must have one persistent database volume"
+        assert data_volumes[0]["source"] == "pg-" + name.removeprefix("db-")
+        assert data_volumes[0]["target"] == "/var/lib/postgresql"
+        assert not data_volumes[0].get("read_only", False)
         assert services[name]["environment"]["SICP_CLUSTER"] == cluster
         assert services[name]["environment"]["POSTGRES_USER"] == "postgres"
         assert "127.0.0.1" in services[name]["healthcheck"]["test"][1]
