@@ -1,5 +1,28 @@
 import { test, expect, type Page } from '@playwright/test'
 
+test('failed task shows upstream evidence as text and can refresh delayed logs', async ({ page }, testInfo) => {
+  await setup(page)
+  const task = { task_id: 'diagnostic-task', mode: 'initialize', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-09-30T05:21:41Z' }
+  let unavailable = false
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [task] } } }))
+  await page.route('**/admin/v1/tasks/diagnostic-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, diagnostics_unavailable: unavailable, failed_attempts: unavailable ? [] : [{ at: '2026-09-30T05:45:25Z', source: 'dwd_bzkscjzlb', page: 1115, attempt: 3, failure: 'http', http_status: 500, duration_ns: 248000000, response: { body: 'database unavailable <img src=x onerror="window.injected=true">', request_id: 'upstream-trace', truncated: true, read_error: true } }] } } }))
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await page.getByRole('button', { name: /diagnostic-task/ }).click()
+  const evidence = page.getByRole('region', { name: '采集失败记录' })
+  await expect(evidence).toContainText('第 1115 页 · 第 3 次尝试 · HTTP 500')
+  await expect(evidence).toContainText('database unavailable')
+  await expect(evidence).toContainText('upstream-trace')
+  await expect(evidence.locator('img')).toHaveCount(0)
+  await expect(evidence).toContainText('响应正文未完整读取')
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+  await page.screenshot({ path: testInfo.outputPath('failure-diagnostic-mobile.png'), fullPage: true })
+  unavailable = true
+  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await expect(evidence).toContainText('暂时无法读取调用日志')
+  await expect(page.getByText('失败原因：acquisition_failed', { exact: true })).toBeVisible()
+})
+
 test('table page progress auto-opens, refreshes and preserves the last counts on failure', async ({ page }, testInfo) => {
   await page.clock.install()
   await setup(page)

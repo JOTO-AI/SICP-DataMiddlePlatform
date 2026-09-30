@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/diagnostic"
 )
 
 type Mode string
@@ -33,6 +35,7 @@ type Attempt struct {
 	Sent         bool
 	HTTPStatus   *int
 	BusinessCode *int64
+	Response     *diagnostic.Response
 }
 
 type Page struct {
@@ -55,7 +58,7 @@ const (
 	RecordFailure        FailureKind = "record"
 )
 
-// Failure never retains an upstream error, URL, response message or body.
+// Failure retains only a bounded redacted response diagnostic, never raw bodies.
 // Cause is restricted to safe context sentinels or ValidationError.
 type Failure struct {
 	Kind       FailureKind
@@ -175,6 +178,12 @@ func (c *Client) fetch(ctx context.Context, input PageRequest, token string) (Pa
 	retryAfter = resp.Header.Get("Retry-After")
 	a.HTTPStatus = &status
 	if status < 200 || status >= 300 {
+		var body []byte
+		var readErr error
+		if resp.Body != nil {
+			body, readErr = io.ReadAll(io.LimitReader(resp.Body, diagnostic.CaptureBytes+1))
+		}
+		a.Response = c.errorResponse(resp.Header, body, readErr != nil, token)
 		return fail(HTTPFailure, nil)
 	}
 	if resp.Body == nil {
@@ -192,14 +201,17 @@ func (c *Client) fetch(ctx context.Context, input PageRequest, token string) (Pa
 	}
 	envelope, err := objectFields(body)
 	if err != nil {
+		a.Response = c.errorResponse(resp.Header, body, false, token)
 		return fail(StructureFailure, nil)
 	}
 	code, valid := integer(envelope["code"])
 	if !valid {
+		a.Response = c.errorResponse(resp.Header, body, false, token)
 		return fail(BusinessFailure, nil)
 	}
 	a.BusinessCode = &code
 	if code != 200 {
+		a.Response = c.errorResponse(resp.Header, body, false, token)
 		return fail(BusinessFailure, nil)
 	}
 	// Source message is validated but never propagated to errors or telemetry.
@@ -259,6 +271,14 @@ func (c *Client) fetch(ctx context.Context, input PageRequest, token string) (Pa
 		return fail(RecordFailure, recordError)
 	}
 	return Page{Total: total, Records: rows, Attempt: a, retryAfter: retryAfter}, nil
+}
+
+func (c *Client) errorResponse(header http.Header, body []byte, readError bool, token string) *diagnostic.Response {
+	secrets := []string{token}
+	if c.auth != nil {
+		secrets = append(secrets, c.auth.appID, c.auth.secret)
+	}
+	return diagnostic.Capture(header, body, readError, secrets...)
 }
 
 // Decode objects explicitly so duplicate envelope keys cannot silently win.

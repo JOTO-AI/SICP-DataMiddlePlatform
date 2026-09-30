@@ -7,9 +7,46 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/diagnostic"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/testkit"
 )
+
+func TestResponseEvidenceIsFrozenAcrossLogAcknowledgementFailure(t *testing.T) {
+	var saved []events.Event
+	r, err := events.New(testkit.FakeClock{Time: time.Now()}, testkit.FixedRandom(1), events.SinkFunc(func(_ context.Context, e events.Event) error {
+		if e.Phase == events.Finished {
+			saved = append(saved, e)
+			if len(saved) == 1 {
+				return errors.New("lost acknowledgement")
+			}
+		}
+		return nil
+	}), time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, span, err := r.Begin(context.Background(), events.Attempt, events.Identity{TaskID: "task", CallID: "call"}, "", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status := 500
+	response := &diagnostic.Response{Body: "database unavailable", RequestID: "trace-a"}
+	if span.FinishResponse(ctx, events.Failed, &status, nil, "http", response) == nil {
+		t.Fatal("log failure hidden")
+	}
+	response.Body = "changed"
+	if span.FinishResponse(ctx, events.Failed, &status, nil, "http", response) != events.ErrEvent {
+		t.Fatal("immutable evidence overwritten")
+	}
+	response.Body = "database unavailable"
+	if err := span.FinishResponse(ctx, events.Failed, &status, nil, "http", response); err != nil {
+		t.Fatal(err)
+	}
+	if len(saved) != 2 || !reflect.DeepEqual(saved[0], saved[1]) {
+		t.Fatal("replay changed response evidence")
+	}
+}
 
 func recorder(t *testing.T) (*events.Recorder, *[]events.Event, *testkit.FakeClock) {
 	t.Helper()

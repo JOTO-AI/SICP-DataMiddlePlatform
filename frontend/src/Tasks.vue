@@ -4,7 +4,8 @@ import { request, describe, time, type Envelope } from './api'
 import { newIdempotencyKey } from './idempotency'
 import AcquisitionProgress from './AcquisitionProgress.vue'
 import type { Acquisition } from './acquisition'
-interface Task { task_id: string; mode: string; status: string; operator?: string; predecessor_id?: string; accepted_at: string; started_at?: string; ready_at?: string; published_at?: string; checked_at?: string; finished_at?: string; progress_confirmed?: boolean; confirmed_until?: Record<string, string>; counts?: Record<string, number>; failure?: string; acquisition?: Acquisition }
+import FailedAttempts, { type FailedAttempt } from './FailedAttempts.vue'
+interface Task { task_id: string; mode: string; status: string; operator?: string; predecessor_id?: string; accepted_at: string; started_at?: string; ready_at?: string; published_at?: string; checked_at?: string; finished_at?: string; progress_confirmed?: boolean; confirmed_until?: Record<string, string>; counts?: Record<string, number>; failure?: string; acquisition?: Acquisition; failed_attempts?: FailedAttempt[]; diagnostics_unavailable?: boolean }
 const action = ref('force-full'), predecessor = ref(''), key = ref(newIdempotencyKey()), lookup = ref('')
 interface Overview { items: Task[]; initialized: boolean; next_due_at?: string; cooldown_until?: string; interval_seconds: number }
 const overview = ref<Overview | null>(null), historyError = ref(''), historyBusy = ref(false)
@@ -148,6 +149,8 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
           <dl class="facts"><div><dt>更新模式</dt><dd>{{ modeLabels[task.mode] || task.mode }}</dd></div><div><dt>操作人</dt><dd>{{ task.operator === 'scheduler' ? '系统调度' : task.operator || '未提供' }}</dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed ? '已确认' : '未确认' }}</dd></div><div v-if="task.predecessor_id"><dt>前序任务</dt><dd>{{ task.predecessor_id }}</dd></div></dl>
           <p v-if="task.failure" class="error">失败原因：{{ task.failure }}</p>
           <p v-if="task.failure && task.mode === 'initialize'" class="hint">{{ failureDescriptions[task.failure] }}</p>
+          <button type="button" :disabled="loading || busy" @click="selectTask(task.task_id)">刷新详情</button>
+          <FailedAttempts :attempts="task.failed_attempts" :unavailable="task.diagnostics_unavailable" :failed="task.failure === 'acquisition_failed'" />
           <ol class="timeline"><li v-for="stage in stages" :key="stage.name" :class="{ done: stage.at }"><span class="timeline-dot" aria-hidden="true"></span><span>{{ stage.name }}</span><time>{{ time(stage.at) }}</time></li></ol>
           <p class="hint">未发生的阶段不代表失败；无变化检查可能无需重新发布。</p>
           <details class="raw"><summary>查看完整任务结果与源进度</summary><pre>{{ JSON.stringify(task, null, 2) }}</pre></details>

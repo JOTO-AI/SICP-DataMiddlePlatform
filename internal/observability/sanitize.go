@@ -177,6 +177,10 @@ func (s *Sanitizer) Sanitize(e events.Event, d Details) (SafeEvent, error) {
 	e.Identity.StepID = s.Correlation(e.Identity.StepID)
 	e.Identity.CallID = s.Correlation(e.Identity.CallID)
 	e.Identity.AttemptID = s.Correlation(e.Identity.AttemptID)
+	if e.Response != nil {
+		copy := e.Response.Sanitize(s.secrets...)
+		e.Response = &copy
+	}
 	env := envelope{e, detailSummary{Redacted: size > 0, OriginalBytes: size, FieldCount: len(d.Fields), Truncated: size > int64(s.detailBytes)}}
 	body, err := json.Marshal(env)
 	if err != nil {

@@ -134,7 +134,7 @@ func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch
 		if observedFailure != nil {
 			failureKind = string(observedFailure.Kind)
 		}
-		if recordErr := span.FinishFailure(ctx, outcome, meta.HTTPStatus, meta.BusinessCode, failureKind); recordErr != nil {
+		if recordErr := span.FinishResponse(ctx, outcome, meta.HTTPStatus, meta.BusinessCode, failureKind, meta.Response); recordErr != nil {
 			result.ObservationError = recordErr
 		}
 		if err == nil {

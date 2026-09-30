@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/diagnostic"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 )
 
@@ -45,17 +46,18 @@ type Identity struct {
 	Instance  string `json:"instance,omitempty"`
 }
 type Event struct {
-	ID           string    `json:"event_id"`
-	EntityID     string    `json:"entity_id"`
-	Kind         Kind      `json:"kind"`
-	Phase        Phase     `json:"phase"`
-	Identity     Identity  `json:"identity"`
-	OccurredAt   time.Time `json:"occurred_at"`
-	Outcome      Outcome   `json:"outcome,omitempty"`
-	HTTPStatus   *int      `json:"http_status,omitempty"`
-	BusinessCode *int64    `json:"business_code,omitempty"`
-	DurationNS   *int64    `json:"duration_ns,omitempty"`
-	Metadata     Metadata  `json:"metadata"`
+	ID           string               `json:"event_id"`
+	EntityID     string               `json:"entity_id"`
+	Kind         Kind                 `json:"kind"`
+	Phase        Phase                `json:"phase"`
+	Identity     Identity             `json:"identity"`
+	OccurredAt   time.Time            `json:"occurred_at"`
+	Outcome      Outcome              `json:"outcome,omitempty"`
+	HTTPStatus   *int                 `json:"http_status,omitempty"`
+	BusinessCode *int64               `json:"business_code,omitempty"`
+	DurationNS   *int64               `json:"duration_ns,omitempty"`
+	Metadata     Metadata             `json:"metadata"`
+	Response     *diagnostic.Response `json:"response,omitempty"`
 }
 
 func (Event) String() string        { return "[lifecycle event redacted]" }
@@ -117,6 +119,9 @@ func (i Identity) valid() bool {
 	return validID(i.RequestID) && validID(i.TaskID) && validID(i.StepID) && validID(i.CallID) && validID(i.AttemptID) && (i.Instance == "" || i.Instance == "M" || i.Instance == "S") && i.AttemptNo >= 0
 }
 func (e Event) Validate() error {
+	if e.Response != nil && (!e.Response.Valid() || e.Phase != Finished || e.Outcome != Failed || (e.Kind != Attempt && e.Kind != Call)) {
+		return ErrEvent
+	}
 	if e.ID == "" || e.EntityID == "" || !validID(e.ID) || !validID(e.EntityID) || !e.Identity.valid() || !e.Metadata.valid() || e.OccurredAt.IsZero() {
 		return ErrEvent
 	}
@@ -260,15 +265,18 @@ func (s *Span) FinishedAt() (time.Time, bool) {
 
 // Finish records business completion; Transport records client delivery separately.
 func (s *Span) Finish(ctx context.Context, outcome Outcome, status *int, code *int64) error {
-	return s.end(ctx, Finished, outcome, status, code, "")
+	return s.end(ctx, Finished, outcome, status, code, "", nil)
 }
 func (s *Span) FinishFailure(ctx context.Context, outcome Outcome, status *int, code *int64, failure string) error {
-	return s.end(ctx, Finished, outcome, status, code, failure)
+	return s.end(ctx, Finished, outcome, status, code, failure, nil)
+}
+func (s *Span) FinishResponse(ctx context.Context, outcome Outcome, status *int, code *int64, failure string, response *diagnostic.Response) error {
+	return s.end(ctx, Finished, outcome, status, code, failure, response)
 }
 func (s *Span) Transport(ctx context.Context, outcome Outcome, status *int) error {
-	return s.end(ctx, Transport, outcome, status, nil, "")
+	return s.end(ctx, Transport, outcome, status, nil, "", nil)
 }
-func (s *Span) end(ctx context.Context, phase Phase, outcome Outcome, status *int, code *int64, failure string) error {
+func (s *Span) end(ctx context.Context, phase Phase, outcome Outcome, status *int, code *int64, failure string, response *diagnostic.Response) error {
 	if s == nil {
 		return nil
 	}
@@ -284,7 +292,7 @@ func (s *Span) end(ctx context.Context, phase Phase, outcome Outcome, status *in
 	var e Event
 	if *pending != nil {
 		old := **pending
-		if old.Outcome != outcome || old.Metadata.Failure != failure || !sameValue(old.HTTPStatus, status) || !sameValue(old.BusinessCode, code) {
+		if old.Outcome != outcome || old.Metadata.Failure != failure || !sameValue(old.HTTPStatus, status) || !sameValue(old.BusinessCode, code) || !sameValue(old.Response, response) {
 			return ErrEvent
 		}
 		e = old
@@ -300,6 +308,10 @@ func (s *Span) end(ctx context.Context, phase Phase, outcome Outcome, status *in
 		e.OccurredAt = now.UTC()
 		e.Outcome = outcome
 		e.Metadata.Failure = failure
+		if response != nil {
+			copy := *response
+			e.Response = &copy
+		}
 		e.DurationNS = &elapsed
 		if status != nil {
 			v := *status

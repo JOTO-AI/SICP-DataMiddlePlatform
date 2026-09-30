@@ -161,7 +161,8 @@ func (r *logRows) Scan(dest ...any) error {
 func (r *logRows) Err() error { return nil }
 func (r *logRows) Close()     {}
 func (t *logsTx) Query(_ context.Context, sql string, args ...any) (storage.Rows, error) {
-	if !strings.Contains(sql, "FROM logs.events WHERE entity_id=$1") {
+	diagnostics := strings.Contains(sql, "payload #>> '{event,identity,task_id}'=$1") && strings.Contains(sql, "LIMIT 20")
+	if !diagnostics && !strings.Contains(sql, "FROM logs.events WHERE entity_id=$1") {
 		return nil, errors.New("wrong projection query")
 	}
 	var bodies []string
@@ -170,7 +171,8 @@ func (t *logsTx) Query(_ context.Context, sql string, args ...any) (storage.Rows
 		if json.Unmarshal([]byte(body), &envelope) != nil {
 			return nil, errors.New("bad row")
 		}
-		if envelope.Event.EntityID == args[0].(string) {
+		e := envelope.Event
+		if (!diagnostics && e.EntityID == args[0].(string)) || (diagnostics && e.Identity.TaskID == args[0].(string) && e.Kind == events.Attempt && e.Phase == events.Finished && e.Outcome == events.Failed) {
 			bodies = append(bodies, body)
 		}
 	}

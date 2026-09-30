@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/observability"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
 )
 
@@ -15,27 +16,32 @@ type StatusStore interface {
 }
 type StatusHandler struct {
 	Store       StatusStore
+	Diagnostics interface {
+		FailedAttempts(context.Context, string) ([]observability.FailedAttempt, error)
+	}
 	Acquisition interface {
 		AcquisitionProgress(context.Context, string) (*control.AcquisitionProgress, error)
 	}
 }
 type TaskView struct {
-	ID                string                       `json:"task_id"`
-	Mode              string                       `json:"mode"`
-	Status            string                       `json:"status"`
-	Operator          string                       `json:"operator"`
-	Predecessor       *string                      `json:"predecessor_id"`
-	AcceptedAt        time.Time                    `json:"accepted_at"`
-	StartedAt         *time.Time                   `json:"started_at"`
-	ReadyAt           *time.Time                   `json:"ready_at"`
-	PublishedAt       *time.Time                   `json:"published_at"`
-	CheckedAt         *time.Time                   `json:"checked_at"`
-	FinishedAt        *time.Time                   `json:"finished_at"`
-	ProgressConfirmed bool                         `json:"progress_confirmed"`
-	Progress          map[string]time.Time         `json:"confirmed_until"`
-	Counts            *control.ResultSummary       `json:"counts"`
-	Failure           string                       `json:"failure,omitempty"`
-	Acquisition       *control.AcquisitionProgress `json:"acquisition,omitempty"`
+	ID                     string                        `json:"task_id"`
+	Mode                   string                        `json:"mode"`
+	Status                 string                        `json:"status"`
+	Operator               string                        `json:"operator"`
+	Predecessor            *string                       `json:"predecessor_id"`
+	AcceptedAt             time.Time                     `json:"accepted_at"`
+	StartedAt              *time.Time                    `json:"started_at"`
+	ReadyAt                *time.Time                    `json:"ready_at"`
+	PublishedAt            *time.Time                    `json:"published_at"`
+	CheckedAt              *time.Time                    `json:"checked_at"`
+	FinishedAt             *time.Time                    `json:"finished_at"`
+	ProgressConfirmed      bool                          `json:"progress_confirmed"`
+	Progress               map[string]time.Time          `json:"confirmed_until"`
+	Counts                 *control.ResultSummary        `json:"counts"`
+	Failure                string                        `json:"failure,omitempty"`
+	FailedAttempts         []observability.FailedAttempt `json:"failed_attempts,omitempty"`
+	DiagnosticsUnavailable bool                          `json:"diagnostics_unavailable,omitempty"`
+	Acquisition            *control.AcquisitionProgress  `json:"acquisition,omitempty"`
 }
 
 func (s StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +90,14 @@ func (s StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			case "acquisition_failed", "corrupt_seal", "interrupted":
 				view.Failure = failure.Failure
 			}
+		}
+	}
+	if s.Diagnostics != nil {
+		attempts, err := s.Diagnostics.FailedAttempts(r.Context(), task.ID)
+		if err != nil {
+			view.DiagnosticsUnavailable = true
+		} else {
+			view.FailedAttempts = attempts
 		}
 	}
 	respond(w, 200, "ok", "OK", view)

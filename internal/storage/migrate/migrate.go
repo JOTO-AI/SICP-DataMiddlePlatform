@@ -59,6 +59,9 @@ func Catalog(domain Domain) ([]Migration, error) {
 		return nil, fmt.Errorf("unknown migration domain")
 	}
 	versions := []string{string(domain) + "_001"}
+	if domain == Logs {
+		versions = append(versions, "logs_002")
+	}
 	if domain == Business {
 		versions = append(versions, "business_002")
 	}
