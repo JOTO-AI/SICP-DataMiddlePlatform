@@ -107,6 +107,73 @@ test('grade pagination preserves snapshot in both directions and clears on filte
   expect(requests[3]!.headers['x-query-snapshot']).toBeUndefined()
 })
 
+test('overview shows initialization and automatically becomes ready when it finishes', async ({ page }, testInfo) => {
+  await page.clock.install()
+  await setup(page)
+  const task = { task_id: 'initializing-task', mode: 'initialize', status: 'running', accepted_at: '2026-09-30T03:08:08Z', started_at: '2026-09-30T03:08:09Z' }
+  let finished = false, checks = 0
+  await page.route('**/admin/v1/tasks/', route => { checks++; return route.fulfill({ json: { code: 'ok', data: { initialized: finished, items: [{ ...task, status: finished ? 'success_published' : 'running' }] } } }) })
+  await page.route('**/admin/v1/tasks/initializing-task', route => route.fulfill({ json: { code: 'ok', data: task } }))
+  await page.route('**/console-api/**/readyz', route => route.fulfill({ status: finished ? 200 : 503, json: { ready: finished, dependencies_ready: true, query_ready: finished, sync_ready: finished } }))
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  const progress = page.getByRole('region', { name: '正在初始化' })
+  await expect(progress).toBeVisible()
+  await expect(progress).toContainText('已运行')
+  await expect(progress).toContainText('首次初始化完成前，成绩与课表暂不可查询。')
+  await expect(page.getByRole('article').filter({ hasText: '数据更新服务' }).locator('.tag')).toHaveText('正在初始化')
+  await page.screenshot({ path: testInfo.outputPath('initializing-overview-desktop.png'), fullPage: true })
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+  await page.screenshot({ path: testInfo.outputPath('initializing-overview-mobile.png'), fullPage: true })
+  finished = true
+  await page.clock.runFor(10100)
+  await expect(progress).toHaveCount(0)
+  await expect(page.getByText('✓ 已就绪', { exact: true })).toHaveCount(2)
+  await page.getByRole('link', { name: '业务查询', exact: true }).click()
+  const beforeLeaving = checks
+  await page.clock.runFor(20100)
+  expect(checks).toBe(beforeLeaving)
+  await page.getByRole('link', { name: '运行总览', exact: true }).click()
+  await expect.poll(() => checks).toBeGreaterThan(beforeLeaving)
+})
+
+for (const entry of [
+  { mode: 'incremental', status: 'running', title: '正在同步' },
+  { mode: 'force_full', status: 'running', title: '正在全量更新' },
+  { mode: 'incremental', status: 'accepted', title: '更新任务等待执行' },
+]) {
+  test(`overview distinguishes ${entry.title} from query availability`, async ({ page }) => {
+    await setup(page)
+    const task = { task_id: 'updating-task', ...entry, accepted_at: '2026-09-30T03:08:08Z' }
+    await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, items: [task] } } }))
+    await page.route('**/admin/v1/tasks/updating-task', route => route.fulfill({ json: { code: 'ok', data: task } }))
+    await page.route('**/console-api/**/readyz', route => route.fulfill({ json: { ready: true, dependencies_ready: true } }))
+    await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+    await expect(page.getByRole('region', { name: entry.title })).toContainText('当前已发布数据仍可查询。')
+    await expect(page.getByRole('article').filter({ hasText: '业务查询服务' }).locator('.tag')).toHaveText('✓ 已就绪')
+    await expect(page.getByRole('article').filter({ hasText: '数据更新服务' }).locator('.tag')).toHaveText(entry.title)
+    await page.getByRole('link', { name: '查看更新任务 →', exact: true }).click()
+    await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
+  })
+}
+
+test('overview does not keep reporting progress when task status cannot be read', async ({ page }) => {
+  await setup(page)
+  const task = { task_id: 'recovering-task', mode: 'initialize', status: 'running', accepted_at: '2026-09-30T03:08:08Z' }
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [task] } } }))
+  await page.route('**/admin/v1/tasks/recovering-task', route => route.fulfill({ json: { code: 'ok', data: task } }))
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(page.getByRole('region', { name: '正在初始化' })).toBeVisible()
+  await page.route('**/console-api/worker/livez', route => route.fulfill({ status: 503, json: { live: false } }))
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(page.getByText('更新服务状态异常或尚未确认，请结合下方检查结果判断任务是否仍在推进。')).toBeVisible()
+  await expect(page.getByRole('article').filter({ hasText: '数据更新服务' }).locator('.tag')).toHaveText('尚未就绪')
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ status: 503, json: { code: 'unavailable' } }))
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('无法确认更新任务状态')
+  await expect(page.getByRole('region', { name: '正在初始化' })).toHaveCount(0)
+})
+
 test('unknown admission retries original operation with the same idempotency key', async ({ page }) => {
   await setup(page)
   const keys: string[] = []

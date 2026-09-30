@@ -75,6 +75,11 @@ main { padding: 36px 38px 48px; width: 100%; max-width: 1510px; margin: 0 auto; 
 .tag { display: inline-flex; align-items: center; padding: 3px 9px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); border-radius: 5px; font-size: 12px; white-space: nowrap; }
 .tag.success { color: var(--green); background: oklch(.96 .025 150); }
 .tag.warning { color: var(--warning); background: oklch(.96 .025 55); }
+.tag.progress { color: var(--brand); background: var(--selected); }
+.update-progress { border-left: 3px solid var(--brand); background: var(--selected); padding: 20px 24px; margin-bottom: 28px; }
+.update-progress .section-bar { margin-bottom: 8px; }
+.update-progress p { margin-top: 4px; }
+.update-progress .result-meta { margin: 12px 0 0; }
 .facts { margin: 20px 0 0; }
 .facts > div { display: flex; align-items: baseline; gap: 20px; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .facts > div:last-child { border-bottom: 0; }
