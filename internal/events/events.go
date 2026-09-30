@@ -119,6 +119,9 @@ func (i Identity) valid() bool {
 	return validID(i.RequestID) && validID(i.TaskID) && validID(i.StepID) && validID(i.CallID) && validID(i.AttemptID) && (i.Instance == "" || i.Instance == "M" || i.Instance == "S") && i.AttemptNo >= 0
 }
 func (e Event) Validate() error {
+	if e.Metadata.Build != nil && (e.Kind != Step || e.Identity.TaskID == "" || e.Identity.StepID != e.EntityID || e.Phase == Transport) {
+		return ErrEvent
+	}
 	if e.Response != nil && (!e.Response.Valid() || e.Phase != Finished || e.Outcome != Failed || (e.Kind != Attempt && e.Kind != Call)) {
 		return ErrEvent
 	}

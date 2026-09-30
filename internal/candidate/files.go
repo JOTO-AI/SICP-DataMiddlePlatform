@@ -13,6 +13,7 @@ import (
 	"regexp"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/merge"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/staging"
@@ -103,7 +104,9 @@ type emptyRows struct{}
 
 func (emptyRows) Next(context.Context) (ingest.Record, error) { return ingest.Record{}, io.EOF }
 
-func (f TargetFiles) Prepare(ctx context.Context, o PrepareOptions, input *staging.Lease) (Manifest, error) {
+func (f TargetFiles) Prepare(ctx context.Context, o PrepareOptions, input *staging.Lease) (result Manifest, err error) {
+	end := events.BeginBuild(ctx, events.BuildScope{Stage: "prepare_target", Combination: o.Combination}, "")
+	defer func() { end(err) }()
 	if o.TableConcurrency < 0 || o.TableConcurrency > MaxTableConcurrency {
 		return Manifest{}, ErrBuild
 	}
@@ -143,7 +146,7 @@ func (f TargetFiles) Prepare(ctx context.Context, o PrepareOptions, input *stagi
 		copy.Tables = append([]TableVersion(nil), o.Base.Tables...)
 		doc.Base = &copy
 	}
-	err := input.WithVerifiedPages(ctx, o.Limits.InputPageBytes, o.Limits.InputPageRows, func(buildCtx context.Context) error {
+	err = input.WithVerifiedPages(ctx, o.Limits.InputPageBytes, o.Limits.InputPageRows, func(buildCtx context.Context) error {
 		tables, changes, err := f.prepareTables(buildCtx, o, input, base)
 		if err != nil {
 			return err

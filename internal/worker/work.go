@@ -82,6 +82,7 @@ func (w Executor) Run(ctx context.Context, task control.Task, owner control.Owne
 		return w.finish(ctx, task, owner)
 	}
 	ctx = events.WithRecorder(ctx, w.Recorder, events.Identity{TaskID: task.ID})
+	ctx = events.WithBuildTrace(ctx, owner.Generation, w.Observe)
 	ctx, stopActivity := activity.Track(ctx, w.Clock.Now, repo.SaveWorkProgress, w.Observe)
 	defer stopActivity()
 	finish := func(finishCtx context.Context) error { stopActivity(); return w.finish(finishCtx, task, owner) }

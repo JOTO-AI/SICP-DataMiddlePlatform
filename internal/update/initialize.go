@@ -8,6 +8,7 @@ import (
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/candidate"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/publication"
@@ -156,6 +157,14 @@ func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageR
 	if len(failures) > 0 {
 		return nil, errors.Join(failures...)
 	}
+	return a.seal(ctx)
+}
+
+// This boundary starts only after every required page is durably acquired or
+// reused, and includes both sealing and retention in measured local work.
+func (a Acquirer) seal(ctx context.Context) (lease *staging.Lease, err error) {
+	end := events.BeginBuild(ctx, events.BuildScope{Stage: "sealing"}, "")
+	defer func() { end(err) }()
 	activity.Report(ctx, "sealing", "", "")
 	ref, err := a.Staging.Seal(ctx, a.Limits)
 	if err != nil {

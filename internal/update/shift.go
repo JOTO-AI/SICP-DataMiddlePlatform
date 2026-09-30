@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/publication"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
@@ -35,7 +36,7 @@ func (s Shifter) ResumeShift(ctx context.Context, event control.Publication) (Sh
 		return out, ErrRecoveryPending
 	}
 	var err error
-	out.Drained, err = s.Store.DrainShift(ctx, event)
+	out.Drained, err = s.drain(ctx, event)
 	return out, err
 }
 
@@ -65,6 +66,18 @@ func (s Shifter) Shift(ctx context.Context, p ReadabilityProof) (out ShiftResult
 	if confirmed.Kind != "route_shift" || confirmed.Status != "confirmed" || confirmed.ConfirmedAt == nil {
 		return out, control.ErrEntity
 	}
-	out.Drained, err = s.Store.DrainShift(ctx, confirmed)
+	out.Drained, err = s.drain(ctx, confirmed)
 	return out, err
+}
+
+func (s Shifter) drain(ctx context.Context, event control.Publication) (drained bool, err error) {
+	end := events.BeginBuild(ctx, events.BuildScope{Stage: "drain"}, "")
+	defer func() {
+		measurementErr := err
+		if measurementErr == nil && !drained {
+			measurementErr = ErrNotDrained
+		}
+		end(measurementErr)
+	}()
+	return s.Store.DrainShift(ctx, event)
 }

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/staging"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
@@ -109,6 +110,8 @@ func validTarget(target source.Target, s source.BuildState) bool {
 }
 
 func (b Builder) Build(ctx context.Context, target source.Target, m Manifest, force bool) (out Report, err error) {
+	end := events.BeginBuild(ctx, events.BuildScope{Stage: "write_copy", Combination: m.Combination, Candidate: target.CandidateID, Slot: target.Position.Slot, Generation: target.Generation}, string(target.Position.Instance))
+	defer func() { end(err) }()
 	if b.Ledger == nil || b.Source == nil || b.Writer == nil || b.BatchSize < 1 || b.BatchSize > source.MaxBatchRows || m.Validate() != nil {
 		return out, ErrBuild
 	}
