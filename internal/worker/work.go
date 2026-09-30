@@ -227,7 +227,7 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 		if e != nil {
 			return e
 		}
-		acquirer = update.Acquirer{Collector: collector, Staging: files, Budget: budget, Limits: ingest.PageLimits{MaxPages: 10000, MaxRecords: 10000000, MaxBytes: c.StagingBytes}, PageSize: 1000, Owner: task.ID, Observe: w.Observe}
+		acquirer = update.Acquirer{Collector: collector, Staging: files, Budget: budget, Limits: ingest.PageLimits{MaxPages: 10000, MaxRecords: 10000000, MaxBytes: c.StagingBytes}, PageSize: c.SourcePageSize, Owner: task.ID, Observe: w.Observe}
 		if c.MailEnabled() {
 			consumer, e := notification.NewConsumer(repo, r.Sanitizer, c.Environment)
 			if e != nil {
@@ -277,6 +277,8 @@ func targetPreparation(c config.Runtime, files *staging.QuotaFiles, combination 
 	const rows = 1000
 	// Merge counts canonical JSON bytes; target chunks append a newline per row.
 	// Reserve framing inside the same limit used by the persistent file writer.
-	options := candidate.PrepareOptions{Combination: combination, Scope: c.SourceScope, SpoolDirectory: c.SpoolDirectory, Quality: c.Quality, Limits: merge.Limits{BatchRows: rows, FanIn: 8, MaxRuns: 100000, BatchBytes: targets.MaxChunkBytes - rows, MaxSpoolBytes: c.SpoolBytes, InputPageRows: 1000, InputPageBytes: 64 << 20}}
+	// A retained seal may use a larger page size from before a configuration
+	// change. Keep every supported input page readable during local recovery.
+	options := candidate.PrepareOptions{Combination: combination, Scope: c.SourceScope, SpoolDirectory: c.SpoolDirectory, Quality: c.Quality, Limits: merge.Limits{BatchRows: rows, FanIn: 8, MaxRuns: 100000, BatchBytes: targets.MaxChunkBytes - rows, MaxSpoolBytes: c.SpoolBytes, InputPageRows: config.MaxSourcePageSize, InputPageBytes: 64 << 20}}
 	return targets, options
 }

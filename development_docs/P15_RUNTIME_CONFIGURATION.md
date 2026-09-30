@@ -25,6 +25,7 @@ Docker Compose 的统一配置模板位于根目录 `.env.example`，复制为 `
 | STAGING_MAX_BYTES、TARGET_MAX_BYTES、SPOOL_MAX_BYTES | worker 必填；各 1MiB—1TiB，目标/获取文件使用共享配额，spool 预算供后续任务编排使用 |
 | SOURCE_ORIGIN、SOURCE_TOKEN | worker 必填；明确 http/https origin，无用户信息、查询和额外路径；无默认真实上游，禁跳转及环境代理 |
 | SOURCE_SCOPE、SOURCE_QUALITY | worker 必填；scope 为稳定源范围标识，最多 256 字节；quality 是十四个源表名对应的 JSON 对象，每项含 MinimumRows、MaximumDeletedRows、AllowEmpty，计数不可负，不提供隐式宽松策略 |
+| SOURCE_PAGE_SIZE | worker 上游请求的 pageSize；可选，默认 1000，允许 1—10000（本地保护上限，上游可能更低）。初始化、增量和强制全量均适用；重建 worker 后的新采集使用新值，已封存数据按原分页恢复。单页仍受 64MiB 限制，目标输出批次仍为 1000 行 |
 | ADMIN_USERNAME、ADMIN_PASSWORD | worker 必填；单管理员账号，密码 12—1024 字节，不能与 QUERY_API_KEY 相同；账号用于任务操作者记录 |
 | CONSOLE_QUERY_URL | worker 必填；仅允许 http/https origin；Compose 固定为 http://query:8080，浏览器无法覆盖上游目标 |
 | CONSOLE_COOKIE_SECURE | 默认 false，适用于本机 HTTP；HTTPS 部署设为 true |

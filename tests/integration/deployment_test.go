@@ -302,7 +302,21 @@ func (d *deployment) query(t *testing.T, operation contract.Operation, body stri
 }
 
 func TestI06_01(t *testing.T) {
-	d := newDeployment(t, true)
+	d := newDeployment(t, true, map[string]string{"SOURCE_PAGE_SIZE": "2"})
+	status, audit := d.request(t, "GET", d.mockURL+"/test/audit", "synthetic-mock-control-token", "", "")
+	if status != 200 {
+		t.Fatal("mock audit unavailable")
+	}
+	requests := audit["requests"].([]any)
+	if len(requests) <= 14 {
+		t.Fatal("configured page size did not paginate sources")
+	}
+	for _, raw := range requests {
+		parameters := raw.(map[string]any)["parameters"].(map[string]any)
+		if parameters["pageSize"] != "2" {
+			t.Fatal("worker ignored configured source page size", parameters)
+		}
+	}
 	for _, service := range []string{"query", "worker"} {
 		id := strings.TrimSpace(d.compose(t, "ps", "-q", service))
 		cmd := exec.CommandContext(d.ctx, "docker", "inspect", "--format", "{{.Config.User}} {{.HostConfig.ReadonlyRootfs}}", id)

@@ -81,6 +81,35 @@ func TestRuntimeApplicationCredentials(t *testing.T) {
 	}
 }
 
+func TestRuntimeSourcePageSize(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		want  int
+	}{
+		{"unset", 1000}, {"1", 1}, {"5000", 5000}, {"10000", 10000},
+		{"", 0}, {"0", 0}, {"-1", 0}, {"10001", 0}, {"1.5", 0}, {"many", 0},
+	} {
+		t.Run(tc.value, func(t *testing.T) {
+			v := testkit.RuntimeValues("/data")
+			if tc.value != "unset" {
+				v["SOURCE_PAGE_SIZE"] = tc.value
+			}
+			lookup := func(k string) (string, bool) { s, ok := v[k]; return s, ok }
+			c, err := config.LoadRuntime(config.Worker, lookup)
+			if tc.want == 0 {
+				if err == nil || !strings.Contains(err.Error(), "SOURCE_PAGE_SIZE") {
+					t.Fatal("invalid source page size accepted", err)
+				}
+			} else if err != nil || c.SourcePageSize != tc.want {
+				t.Fatal("source page size not loaded", err)
+			}
+			if _, err := config.LoadRuntime(config.Query, lookup); err != nil {
+				t.Fatal("query requires worker-only page size", err)
+			}
+		})
+	}
+}
+
 func TestRuntimeOptionalMail(t *testing.T) {
 	mail := map[string]string{
 		"MAIL_ADDRESS": "smtp.example.invalid:587", "MAIL_TLS": "starttls",

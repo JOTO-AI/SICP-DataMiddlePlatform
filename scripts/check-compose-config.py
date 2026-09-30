@@ -94,6 +94,12 @@ def check_modes(env_file):
     for service in services.values():
         assert not any("mock" in volume.get("source", "") for volume in service.get("volumes", []))
     runtime = entrypoint(services["worker"]["environment"])
+    assert runtime["SOURCE_PAGE_SIZE"] == "1000"
+    env_file.write_text(fixture_text("production").replace("SOURCE_PAGE_SIZE=1000", "SOURCE_PAGE_SIZE=5000"), encoding="utf-8")
+    assert render(env_file)["services"]["worker"]["environment"]["SOURCE_PAGE_SIZE"] == "5000"
+    env_file.write_text(fixture_text("production").replace("SOURCE_PAGE_SIZE=1000\n", ""), encoding="utf-8")
+    assert render(env_file)["services"]["worker"]["environment"]["SOURCE_PAGE_SIZE"] == "1000"
+    env_file.write_text(fixture_text("production"), encoding="utf-8")
     assert "SOURCE_TOKEN" not in runtime
     assert "SOURCE_APP_SECRET" not in services["query"]["environment"]
     for key in ("SOURCE_ORIGIN", "SOURCE_APP_ID", "SOURCE_APP_SECRET", "SOURCE_SCOPE", "MAIL_ADDRESS", "MAIL_TLS", "MAIL_USERNAME", "MAIL_PASSWORD"):
