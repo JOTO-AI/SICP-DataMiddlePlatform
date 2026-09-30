@@ -1,5 +1,61 @@
 import { test, expect, type Page } from '@playwright/test'
 
+test('table page progress auto-opens, refreshes and preserves the last counts on failure', async ({ page }, testInfo) => {
+  await page.clock.install()
+  await setup(page)
+  const task = { task_id: 'page-progress-task', mode: 'initialize', status: 'running', accepted_at: '2026-09-30T03:08:08Z' }
+  let completed = 720, failed = false, unavailable = false, reads = 0
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [{ ...task, status: failed ? 'failed' : 'running' }] } } }))
+  await page.route('**/admin/v1/tasks/page-progress-task', route => {
+    reads++
+    if (unavailable) return route.fulfill({ status: 503, json: { code: 'unavailable' } })
+    return route.fulfill({ json: { code: 'ok', data: { ...task, status: failed ? 'failed' : 'running', acquisition: { updated_at: '2026-09-30T04:00:00Z', tables: [
+      { table: 'dwd_bzksbjsjzlb', status: 'collected', completed_pages: 1, total_pages: 1 },
+      { table: 'dwd_bzkscjzlb', status: 'acquiring', completed_pages: completed, total_pages: 1440 },
+      { table: 'dwd_bzksgrtxsjzlb', status: 'waiting', completed_pages: 0, total_pages: null },
+    ] } } } })
+  })
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await expect(page.getByText('720 / 1440 页 · 50%', { exact: true })).toBeVisible()
+  await expect(page.getByRole('checkbox')).toBeChecked()
+  const bar = page.getByRole('progressbar', { name: 'dwd_bzkscjzlb 采集进度', exact: true })
+  await expect(bar).toHaveAttribute('value', '720')
+  await page.screenshot({ path: testInfo.outputPath('page-progress-desktop.png'), fullPage: true })
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+  await page.screenshot({ path: testInfo.outputPath('page-progress-mobile.png'), fullPage: true })
+  completed = 1080
+  await page.clock.runFor(5100)
+  await expect(page.getByText('1080 / 1440 页 · 75%', { exact: true })).toBeVisible()
+  unavailable = true
+  await page.clock.runFor(5100)
+  await expect(page.getByRole('alert')).toContainText('自动刷新已停止')
+  await expect(bar).toHaveAttribute('value', '1080')
+  unavailable = false; failed = true
+  await page.getByRole('checkbox').check()
+  await expect(page.getByText('采集已停止', { exact: true })).toBeVisible()
+  await expect(page.getByRole('checkbox')).toBeDisabled()
+  const afterFailure = reads
+  await page.clock.runFor(10100)
+  expect(reads).toBe(afterFailure)
+})
+
+test('overview distinguishes unknown totals and completed acquisition from publication', async ({ page }) => {
+  await page.clock.install()
+  await setup(page)
+  const task = { task_id: 'progress-overview', mode: 'force_full', status: 'running', accepted_at: '2026-09-30T03:08:08Z' }
+  let collected = false
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, items: [task] } } }))
+  await page.route('**/admin/v1/tasks/progress-overview', route => route.fulfill({ json: { code: 'ok', data: { ...task, acquisition: { updated_at: '2026-09-30T04:00:00Z', tables: [{ table: 'dwd_bzkscjzlb', status: collected ? 'collected' : 'acquiring', completed_pages: collected ? 1 : 0, total_pages: collected ? 1 : null }] } } } }))
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(page.getByText('等待首个分页结果，暂未取得总页数。')).toBeVisible()
+  await expect(page.getByRole('progressbar')).toHaveCount(0)
+  collected = true
+  await page.clock.runFor(10100)
+  await expect(page.getByText('所有表采集完成，构建与发布结果请查看任务状态。')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '正在全量更新', exact: true })).toBeVisible()
+})
+
 test('task page renders with the browser capabilities of its deployment origin', async ({ page }, testInfo) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))

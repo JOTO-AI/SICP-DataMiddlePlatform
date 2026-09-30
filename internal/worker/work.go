@@ -228,6 +228,9 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 			return e
 		}
 		acquirer = update.Acquirer{Collector: collector, Staging: files, Budget: budget, Limits: ingest.PageLimits{MaxPages: 10000, MaxRecords: 10000000, MaxBytes: c.StagingBytes}, PageSize: c.SourcePageSize, Owner: task.ID, Observe: w.Observe}
+		acquirer.Progress = func(ctx context.Context, tables []control.TableAcquisitionProgress) error {
+			return repo.SaveAcquisitionProgress(ctx, control.AcquisitionProgress{Tables: tables, UpdatedAt: w.Clock.Now()})
+		}
 		if c.MailEnabled() {
 			consumer, e := notification.NewConsumer(repo, r.Sanitizer, c.Environment)
 			if e != nil {

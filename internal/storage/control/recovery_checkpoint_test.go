@@ -34,6 +34,13 @@ func (x *checkpointTx) Exec(ctx context.Context, sql string, args ...any) (int64
 	return x.Transaction.Exec(ctx, sql, args...)
 }
 func (x *checkpointTx) QueryRow(ctx context.Context, sql string, args ...any) storage.Row {
+	if strings.HasPrefix(sql, "SELECT COALESCE((SELECT payload::text FROM control.checkpoints") {
+		raw := x.document
+		if raw == "" {
+			raw = "null"
+		}
+		return result{raw: []any{raw}}
+	}
 	if strings.HasPrefix(sql, "SELECT payload::text FROM control.checkpoints") {
 		return result{raw: []any{x.document}}
 	}

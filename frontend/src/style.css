@@ -80,6 +80,17 @@ main { padding: 36px 38px 48px; width: 100%; max-width: 1510px; margin: 0 auto; 
 .update-progress .section-bar { margin-bottom: 8px; }
 .update-progress p { margin-top: 4px; }
 .update-progress .result-meta { margin: 12px 0 0; }
+.acquisition-progress { margin: 20px 0; min-width: 0; }
+.acquisition-progress .section-bar { flex-wrap: wrap; gap: 6px 16px; margin-bottom: 8px; }
+.acquisition-tables { list-style: none; margin: 0 0 10px; padding: 0; }
+.acquisition-tables li { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.acquisition-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; }
+.acquisition-heading span { font-size: 12px; color: var(--muted); }
+.acquisition-count { margin-top: 6px; font-variant-numeric: tabular-nums; }
+.acquisition-progress progress { display: block; width: 100%; height: 8px; margin: 6px 0; appearance: none; border: 0; border-radius: 4px; overflow: hidden; background: var(--line); accent-color: var(--brand); }
+.acquisition-progress progress::-webkit-progress-bar { background: var(--line); }
+.acquisition-progress progress::-webkit-progress-value { background: var(--brand); }
+.acquisition-progress progress::-moz-progress-bar { background: var(--brand); }
 .facts { margin: 20px 0 0; }
 .facts > div { display: flex; align-items: baseline; gap: 20px; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .facts > div:last-child { border-bottom: 0; }

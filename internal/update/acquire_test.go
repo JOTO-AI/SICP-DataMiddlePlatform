@@ -106,6 +106,85 @@ func acquisition(t *testing.T, failed string) (update.Acquirer, *[]requestRecord
 	}
 	return a, &requests
 }
+
+func TestAcquisitionReportsCommittedPagesWithoutCountingRetries(t *testing.T) {
+	for _, mode := range []string{"initialize", "incremental", "force_full"} {
+		t.Run(mode, func(t *testing.T) {
+			a, _ := acquisition(t, "")
+			var snapshots [][]control.TableAcquisitionProgress
+			a.Progress = func(_ context.Context, tables []control.TableAcquisitionProgress) error {
+				snapshots = append(snapshots, append([]control.TableAcquisitionProgress(nil), tables...))
+				return nil
+			}
+			var err error
+			if mode == "initialize" {
+				_, err = a.Full(t.Context())
+			} else {
+				p := updatePlan()
+				p.Mode = mode
+				_, err = a.Acquire(t.Context(), p, time.UTC)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var pages []int64
+			for _, snapshot := range snapshots {
+				for _, table := range snapshot {
+					if table.Table == "dwd_xqjbsjzlb" && table.TotalPages != nil {
+						if *table.TotalPages != 2 {
+							t.Fatal(table)
+						}
+						if len(pages) == 0 || pages[len(pages)-1] != table.CompletedPages {
+							pages = append(pages, table.CompletedPages)
+						}
+					}
+				}
+			}
+			if !reflect.DeepEqual(pages, []int64{1, 2}) {
+				t.Fatal("retry changed page count", pages)
+			}
+			for _, table := range snapshots[len(snapshots)-1] {
+				if table.Status != "collected" || table.TotalPages == nil || table.CompletedPages != *table.TotalPages {
+					t.Fatal(table)
+				}
+				if table.Table != "dwd_xqjbsjzlb" && *table.TotalPages != 1 {
+					t.Fatal("empty source must count its checked page", table)
+				}
+			}
+		})
+	}
+}
+
+func TestAcquisitionFailureKeepsLastCommittedPageAndTelemetryFailureIsNonFatal(t *testing.T) {
+	for _, failed := range []string{"dwd_bzkscjzlb", ""} {
+		a, _ := acquisition(t, failed)
+		var last []control.TableAcquisitionProgress
+		observed := 0
+		a.Observe = func(error) { observed++ }
+		a.Progress = func(_ context.Context, tables []control.TableAcquisitionProgress) error {
+			last = append([]control.TableAcquisitionProgress(nil), tables...)
+			if failed == "" {
+				return errors.New("telemetry unavailable")
+			}
+			return nil
+		}
+		_, err := a.Full(t.Context())
+		if failed == "" {
+			if err != nil || observed == 0 {
+				t.Fatal("telemetry failure blocked collection", err)
+			}
+		} else {
+			if err == nil {
+				t.Fatal("source failure lost")
+			}
+			for _, table := range last {
+				if table.Table == failed && (table.CompletedPages != 1 || table.TotalPages == nil || *table.TotalPages != 2 || table.Status != "acquiring") {
+					t.Fatal(table)
+				}
+			}
+		}
+	}
+}
 func TestT13_12EachSourceFinalFailureBlocksComparisonAndAllLaterWork(t *testing.T) {
 	for _, table := range ingest.Catalog() {
 		t.Run(table.Name, func(t *testing.T) {

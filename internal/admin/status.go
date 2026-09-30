@@ -13,23 +13,29 @@ import (
 type StatusStore interface {
 	TaskStatus(context.Context, string) (control.TaskStatus, error)
 }
-type StatusHandler struct{ Store StatusStore }
+type StatusHandler struct {
+	Store       StatusStore
+	Acquisition interface {
+		AcquisitionProgress(context.Context, string) (*control.AcquisitionProgress, error)
+	}
+}
 type TaskView struct {
-	ID                string                 `json:"task_id"`
-	Mode              string                 `json:"mode"`
-	Status            string                 `json:"status"`
-	Operator          string                 `json:"operator"`
-	Predecessor       *string                `json:"predecessor_id"`
-	AcceptedAt        time.Time              `json:"accepted_at"`
-	StartedAt         *time.Time             `json:"started_at"`
-	ReadyAt           *time.Time             `json:"ready_at"`
-	PublishedAt       *time.Time             `json:"published_at"`
-	CheckedAt         *time.Time             `json:"checked_at"`
-	FinishedAt        *time.Time             `json:"finished_at"`
-	ProgressConfirmed bool                   `json:"progress_confirmed"`
-	Progress          map[string]time.Time   `json:"confirmed_until"`
-	Counts            *control.ResultSummary `json:"counts"`
-	Failure           string                 `json:"failure,omitempty"`
+	ID                string                       `json:"task_id"`
+	Mode              string                       `json:"mode"`
+	Status            string                       `json:"status"`
+	Operator          string                       `json:"operator"`
+	Predecessor       *string                      `json:"predecessor_id"`
+	AcceptedAt        time.Time                    `json:"accepted_at"`
+	StartedAt         *time.Time                   `json:"started_at"`
+	ReadyAt           *time.Time                   `json:"ready_at"`
+	PublishedAt       *time.Time                   `json:"published_at"`
+	CheckedAt         *time.Time                   `json:"checked_at"`
+	FinishedAt        *time.Time                   `json:"finished_at"`
+	ProgressConfirmed bool                         `json:"progress_confirmed"`
+	Progress          map[string]time.Time         `json:"confirmed_until"`
+	Counts            *control.ResultSummary       `json:"counts"`
+	Failure           string                       `json:"failure,omitempty"`
+	Acquisition       *control.AcquisitionProgress `json:"acquisition,omitempty"`
 }
 
 func (s StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -55,6 +61,13 @@ func (s StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	view := TaskView{ID: task.ID, Mode: task.Mode, Status: task.Status, Operator: task.RequestedBy, Predecessor: task.PredecessorID, AcceptedAt: task.AcceptedAt, StartedAt: task.StartedAt, ReadyAt: task.ReadyAt, PublishedAt: task.PublishedAt, CheckedAt: task.CheckedAt, FinishedAt: task.FinishedAt, ProgressConfirmed: out.Progress != nil}
 	if out.Progress != nil {
 		view.Progress = out.Progress.Ends
+	}
+	if s.Acquisition != nil {
+		view.Acquisition, err = s.Acquisition.AcquisitionProgress(r.Context(), task.ID)
+		if err != nil {
+			respond(w, 503, "unavailable", "Task progress unavailable", nil)
+			return
+		}
 	}
 	// Decode into a whitelist: arbitrary task summary, roles, source payloads,
 	// idempotency keys and executor credentials never enter the status response.

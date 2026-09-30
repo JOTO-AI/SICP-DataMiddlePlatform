@@ -27,6 +27,7 @@ type Acquirer struct {
 	Owner     string
 	Observe   func(error)
 	Notify    func(context.Context, *ingest.FailureEvent) error
+	Progress  func(context.Context, []control.TableAcquisitionProgress) error
 }
 
 // Full commits every page and requires an actual fourteen-source seal. The
@@ -41,8 +42,28 @@ func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageR
 	if a.Collector == nil || a.Staging == nil || a.Budget == nil || a.PageSize < 1 || a.Owner == "" || a.Observe == nil {
 		return nil, ErrInitialization
 	}
+	tables := make([]control.TableAcquisitionProgress, 0, len(ingest.Catalog()))
 	for _, table := range ingest.Catalog() {
-		result, err := a.Collector.Collect(ctx, request(table.Name), a.Budget, a.Limits, a.Staging)
+		tables = append(tables, control.TableAcquisitionProgress{Table: table.Name, Status: "waiting"})
+	}
+	for index, table := range ingest.Catalog() {
+		tables[index].Status = "acquiring"
+		a.reportProgress(ctx, tables)
+		sink := acquisitionSink{PageSink: a.Staging, afterCommit: func(ctx context.Context, r ingest.PageRequest, page ingest.Page) {
+			total := page.Total / int64(r.PageSize)
+			if page.Total%int64(r.PageSize) != 0 {
+				total++
+			}
+			// An empty source still has one successfully checked response page.
+			total = max(1, total)
+			tables[index].CompletedPages = int64(r.Page)
+			tables[index].TotalPages = &total
+			if int64(r.Page) == total {
+				tables[index].Status = "collected"
+			}
+			a.reportProgress(ctx, tables)
+		}}
+		result, err := a.Collector.Collect(ctx, request(table.Name), a.Budget, a.Limits, sink)
 		if result.FinalFailure != nil && a.Notify != nil {
 			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			notifyErr := a.Notify(cleanup, result.FinalFailure)

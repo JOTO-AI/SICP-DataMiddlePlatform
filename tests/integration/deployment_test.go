@@ -303,6 +303,21 @@ func (d *deployment) query(t *testing.T, operation contract.Operation, body stri
 
 func TestI06_01(t *testing.T) {
 	d := newDeployment(t, true, map[string]string{"SOURCE_PAGE_SIZE": "2"})
+	initial := d.waitTask(t, d.initial, "success_published")
+	progress, ok := initial["acquisition"].(map[string]any)
+	if !ok {
+		t.Fatal("deployed worker did not persist acquisition progress")
+	}
+	tables := progress["tables"].([]any)
+	if len(tables) != 14 {
+		t.Fatal("incomplete table progress", tables)
+	}
+	for _, raw := range tables {
+		table := raw.(map[string]any)
+		if table["status"] != "collected" || table["completed_pages"] != table["total_pages"] || table["total_pages"].(float64) < 1 {
+			t.Fatal(table)
+		}
+	}
 	status, audit := d.request(t, "GET", d.mockURL+"/test/audit", "synthetic-mock-control-token", "", "")
 	if status != 200 {
 		t.Fatal("mock audit unavailable")
