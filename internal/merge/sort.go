@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -146,7 +147,7 @@ func (w *runWriter) put(entry item) error {
 		return err
 	}
 	charge := int64(len(entry.raw)) + 5
-	if charge > w.sorter.limits.MaxSpoolBytes-w.sorter.written {
+	if charge > math.MaxInt64-w.sorter.written || (w.sorter.limits.MaxSpoolBytes > 0 && charge > w.sorter.limits.MaxSpoolBytes-w.sorter.written) {
 		return ErrLimit
 	}
 	var header [5]byte

@@ -9,6 +9,7 @@ import (
 // QuotaFiles must be shared by every Store using the same staging directory.
 // Temporary, orphaned, payload and receipt bytes all count. The execution
 // ownership protocol provides the single worker process writing that volume.
+// A zero limit disables the application quota; filesystem errors still apply.
 type QuotaFiles struct {
 	files     Files
 	limit     int64
@@ -17,7 +18,7 @@ type QuotaFiles struct {
 }
 
 func NewQuotaFiles(files Files, limit int64) (*QuotaFiles, error) {
-	if files == nil || limit < 1 {
+	if files == nil || limit < 0 {
 		return nil, ErrInvalid
 	}
 	return &QuotaFiles{files: files, limit: limit}, nil
@@ -25,6 +26,9 @@ func NewQuotaFiles(files Files, limit int64) (*QuotaFiles, error) {
 func (q *QuotaFiles) WriteTemporary(ctx context.Context, data []byte) (string, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+	if q.limit == 0 {
+		return q.files.WriteTemporary(ctx, data)
+	}
 	used, err := q.files.Usage(ctx)
 	if err != nil {
 		return "", fileError(err)

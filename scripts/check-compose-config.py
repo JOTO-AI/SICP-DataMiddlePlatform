@@ -94,6 +94,16 @@ def check_modes(env_file):
     for service in services.values():
         assert not any("mock" in volume.get("source", "") for volume in service.get("volumes", []))
     runtime = entrypoint(services["worker"]["environment"])
+    quota_keys = ("STAGING_MAX_BYTES", "TARGET_MAX_BYTES", "SPOOL_MAX_BYTES")
+    assert all(runtime[key] == "0" for key in quota_keys)
+    no_quotas = fixture_text("production")
+    for key in quota_keys:
+        no_quotas = no_quotas.replace(f"{key}=0\n", "")
+    env_file.write_text(no_quotas, encoding="utf-8")
+    optional = render(env_file)["services"]["worker"]["environment"]
+    assert all(optional[key] == "0" for key in quota_keys)
+    env_file.write_text(fixture_text("production").replace("STAGING_MAX_BYTES=0", "STAGING_MAX_BYTES=268435456"), encoding="utf-8")
+    assert render(env_file)["services"]["worker"]["environment"]["STAGING_MAX_BYTES"] == "268435456"
     assert runtime["SOURCE_PAGE_SIZE"] == "1000"
     env_file.write_text(fixture_text("production").replace("SOURCE_PAGE_SIZE=1000", "SOURCE_PAGE_SIZE=5000"), encoding="utf-8")
     assert render(env_file)["services"]["worker"]["environment"]["SOURCE_PAGE_SIZE"] == "5000"

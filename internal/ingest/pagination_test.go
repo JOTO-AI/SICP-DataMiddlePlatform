@@ -131,6 +131,31 @@ func TestT03_23PageRecordAndByteLimitsNeverTruncateSuccess(t *testing.T) {
 	}
 }
 
+func TestDisabledAcquisitionByteLimitStillChecksCompleteness(t *testing.T) {
+	limits := ingest.PageLimits{MaxPages: 10, MaxRecords: 100, MaxBytes: 0}
+	p, err := ingest.NewPager("dwd_xqjbsjzlb", 1, limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, raw := range []string{`{"XQH":"01"}`, `{"XQH":"02"}`} {
+		if err := p.Accept(i+1, sourcePage(t, "dwd_xqjbsjzlb", 2, raw)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !p.Manifest().Complete || p.Manifest().Rows != 2 || p.Manifest().Bytes <= 0 {
+		t.Fatal("unlimited byte mode lost accounting")
+	}
+	p, err = ingest.NewPager("dwd_xqjbsjzlb", 1, limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectPageFailure(t, p, 1, sourcePage(t, "dwd_xqjbsjzlb", 2), ingest.PaginationFailure)
+	limits.MaxBytes = -1
+	if _, err := ingest.NewPager("dwd_xqjbsjzlb", 1, limits); err == nil {
+		t.Fatal("negative byte limit accepted")
+	}
+}
+
 func TestT03_27HistoricalRowsRetainVersionsAndCountSourceRows(t *testing.T) {
 	p := pager(t, "dwd_bzksgrtxsjzlb", 1)
 	for i, raw := range []string{`{"XH":"01","ETL_TIME":"2026-08-05 08:00:00"}`, `{"XH":"01","ETL_TIME":"2026-08-05 09:00:00"}`} {

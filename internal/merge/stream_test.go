@@ -101,6 +101,30 @@ func streamSetup(t *testing.T, table string, mode ingest.Mode, current, incoming
 	return options, merge.SealedInput{Scope: b.Scope, Lease: lease}, &candidate{}
 }
 
+func TestUnlimitedSpoolRetainsBoundedBatchesInEveryUpdateMode(t *testing.T) {
+	incoming := records(t, grades, `{"ID":"01"}`, `{"ID":"02"}`, `{"ID":"03"}`, `{"ID":"04"}`)
+	for _, mode := range []ingest.Mode{ingest.Full, ingest.ForceFull, ingest.Incremental} {
+		t.Run(string(mode), func(t *testing.T) {
+			o, input, sink := streamSetup(t, grades, mode, nil, incoming)
+			o.Limits.MaxSpoolBytes = 0
+			o.Limits.BatchRows = 1
+			summary, err := merge.Stream(context.Background(), o, &rowIterator{}, input, sink)
+			if err != nil || !sink.complete || summary.AfterRows != 4 || summary.Buffers.SpoolBytesWritten <= 0 {
+				t.Fatal("unlimited spool failed", err)
+			}
+			assertRows(t, grades, sink.rows, incoming)
+			if sink.maxRows != 1 || summary.Buffers.PeakSortRows > 1 || summary.Buffers.PeakSortBytes > o.Limits.BatchBytes {
+				t.Fatal("disabled disk quota removed buffer bounds")
+			}
+			o, input, sink = streamSetup(t, grades, mode, nil, incoming)
+			o.Limits.MaxSpoolBytes = -1
+			if _, err := merge.Stream(context.Background(), o, &rowIterator{}, input, sink); err == nil || sink.complete {
+				t.Fatal("negative spool budget accepted")
+			}
+		})
+	}
+}
+
 func TestT04_14ManyBatchesMatchIndependentExpectedAndBoundBuffers(t *testing.T) {
 	var current, incoming, expected []ingest.Record
 	for i := 96; i >= 0; i-- {

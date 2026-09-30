@@ -20,7 +20,8 @@ import (
 // Limits bounds data buffers, merge descriptors, run metadata and scratch IO.
 // BatchBytes counts canonical token bytes, not Go allocator overhead. Rows
 // additionally bound the per-record maps; input page allocation is independent.
-// MaxSpoolBytes bounds cumulative scratch writes (and therefore disk occupancy).
+// MaxSpoolBytes bounds cumulative scratch writes when positive; zero disables
+// that application quota while keeping all in-memory buffer bounds.
 type Limits struct {
 	BatchRows, FanIn, MaxRuns int
 	BatchBytes, MaxSpoolBytes int64
@@ -74,7 +75,7 @@ func digestHeader(table, scope string) hash.Hash {
 func writeDigest(h hash.Hash, raw []byte) { h.Write(raw); h.Write([]byte{'\n'}) }
 
 func validLimits(l Limits) bool {
-	return l.BatchRows > 0 && l.BatchRows <= 100000 && l.BatchBytes > 0 && l.BatchBytes <= 64<<20 && l.FanIn >= 2 && l.FanIn <= 32 && l.MaxRuns > 0 && l.MaxRuns <= 100000 && l.MaxSpoolBytes > 0 && l.InputPageRows > 0 && l.InputPageRows <= 100000 && l.InputPageBytes > 0 && l.InputPageBytes <= 64<<20
+	return l.BatchRows > 0 && l.BatchRows <= 100000 && l.BatchBytes > 0 && l.BatchBytes <= 64<<20 && l.FanIn >= 2 && l.FanIn <= 32 && l.MaxRuns > 0 && l.MaxRuns <= 100000 && l.MaxSpoolBytes >= 0 && l.InputPageRows > 0 && l.InputPageRows <= 100000 && l.InputPageBytes > 0 && l.InputPageBytes <= 64<<20
 }
 
 // Stream uses only an actual active sealed-acquisition lease for incoming rows.

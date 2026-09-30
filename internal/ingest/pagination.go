@@ -3,6 +3,7 @@ package ingest
 import (
 	"bytes"
 	"crypto/sha256"
+	"math"
 	"sort"
 )
 
@@ -15,7 +16,8 @@ const (
 )
 
 type PageLimits struct {
-	MaxPages             int
+	MaxPages int
+	// MaxBytes == 0 disables only the cumulative byte cap.
 	MaxRecords, MaxBytes int64
 }
 type PageSummary struct {
@@ -44,7 +46,7 @@ type Pager struct {
 
 func NewPager(source string, pageSize int, limits PageLimits) (*Pager, error) {
 	d, ok := definitions[source]
-	if !ok || pageSize < 1 || limits.MaxPages < 1 || limits.MaxRecords < 1 || limits.MaxBytes < 1 {
+	if !ok || pageSize < 1 || limits.MaxPages < 1 || limits.MaxRecords < 1 || limits.MaxBytes < 0 {
 		return nil, &Failure{Kind: ConfigurationFailure}
 	}
 	return &Pager{definition: d, pageSize: pageSize, limits: limits, manifest: Manifest{Source: source}, keys: map[string]bool{}, digests: map[[32]byte]bool{}}, nil
@@ -86,6 +88,10 @@ func (p *Pager) Accept(number int, page Page) error {
 	newKeys := map[string]bool{}
 	hashes := make([][32]byte, 0, len(page.Records))
 	var size int64
+	byteLimit := p.limits.MaxBytes
+	if byteLimit == 0 {
+		byteLimit = math.MaxInt64 // Keep counters representable without a quota.
+	}
 	for _, record := range page.Records {
 		if record.Key == "" {
 			return fail(PaginationFailure)
@@ -98,7 +104,7 @@ func (p *Pager) Accept(number int, page Page) error {
 		if err != nil {
 			return fail(RecordFailure)
 		}
-		if int64(len(canonical)) > p.limits.MaxBytes-p.manifest.Bytes-size {
+		if int64(len(canonical)) > byteLimit-p.manifest.Bytes-size {
 			return fail(AcquisitionLimit)
 		}
 		size += int64(len(canonical))

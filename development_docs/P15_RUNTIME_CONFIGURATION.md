@@ -22,7 +22,7 @@ Docker Compose 的统一配置模板位于根目录 `.env.example`，复制为 `
 | ENVIRONMENT | 环境为 test/development/staging/production |
 | LOG_DIRECTORY、LOG_MAX_BYTES、LOG_MAX_FILES | 必填；独立预建持久目录，字节数 1024—1TiB，文件数 2—1000000；保留旧事件，容量不足拒绝新写入 |
 | STAGING_DIRECTORY、TARGET_DIRECTORY、SPOOL_DIRECTORY | worker 必填；预建的三个独立持久目录，与日志路径不得重叠，实际符号链接解析后也不得重叠 |
-| STAGING_MAX_BYTES、TARGET_MAX_BYTES、SPOOL_MAX_BYTES | worker 必填；各 1MiB—1TiB，目标/获取文件使用共享配额，spool 预算供后续任务编排使用 |
+| STAGING_MAX_BYTES、TARGET_MAX_BYTES、SPOOL_MAX_BYTES | 可选，省略或设为 0 时不设应用层磁盘字节配额（默认），初始化、增量、强制全量均适用。正值仍可显式设置 1MiB—1TiB 配额；旧部署已有正值需改为 0 才会关闭。单页、内存缓冲和日志容量限制独立保留，真实磁盘写满仍会报错 |
 | SOURCE_ORIGIN、SOURCE_TOKEN | worker 必填；明确 http/https origin，无用户信息、查询和额外路径；无默认真实上游，禁跳转及环境代理 |
 | SOURCE_SCOPE、SOURCE_QUALITY | worker 必填；scope 为稳定源范围标识，最多 256 字节；quality 是十四个源表名对应的 JSON 对象，每项含 MinimumRows、MaximumDeletedRows、AllowEmpty，计数不可负，不提供隐式宽松策略 |
 | SOURCE_PAGE_SIZE | worker 上游请求的 pageSize；可选，默认 1000，允许 1—10000（本地保护上限，上游可能更低）。初始化、增量和强制全量均适用；重建 worker 后的新采集使用新值，已封存数据按原分页恢复。单页仍受 64MiB 限制，目标输出批次仍为 1000 行 |

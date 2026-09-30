@@ -110,3 +110,46 @@ func TestT04_05DirectoryQuotaChargesPendingAndPublishedFiles(t *testing.T) {
 		t.Fatal("wrong directory usage")
 	}
 }
+
+type quotaProbe struct {
+	*memoryFiles
+	usageCalls int
+	writeError error
+}
+
+func (f *quotaProbe) Usage(context.Context) (int64, error) { f.usageCalls++; return 512 << 20, nil }
+func (f *quotaProbe) WriteTemporary(ctx context.Context, data []byte) (string, error) {
+	if f.writeError != nil {
+		return "", f.writeError
+	}
+	return f.memoryFiles.WriteTemporary(ctx, data)
+}
+func TestDisabledQuotaDoesNotScanOrCapVolumeAndPreservesWriteErrors(t *testing.T) {
+	f := &quotaProbe{memoryFiles: newMemoryFiles()}
+	q, err := staging.NewQuotaFiles(f, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := staging.NewStore("unlimited", q, 1<<20); err != nil {
+		t.Fatal("disabled quota rejected by store", err)
+	}
+	if _, err := q.WriteTemporary(context.Background(), []byte("next page")); err != nil {
+		t.Fatal(err)
+	}
+	if f.usageCalls != 0 || f.writes != 1 {
+		t.Fatal("unlimited write scanned or rejected the volume")
+	}
+	f.writeError = errors.New("synthetic disk full")
+	if _, err := q.WriteTemporary(context.Background(), []byte("next page")); !errors.Is(err, f.writeError) {
+		t.Fatal("filesystem failure hidden", err)
+	}
+	f.writeError = nil
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := q.WriteTemporary(ctx, []byte("cancelled")); !errors.Is(err, context.Canceled) {
+		t.Fatal("cancellation ignored", err)
+	}
+	if _, err := staging.NewQuotaFiles(f, -1); err == nil {
+		t.Fatal("negative quota accepted")
+	}
+}

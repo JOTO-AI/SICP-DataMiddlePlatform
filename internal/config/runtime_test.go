@@ -14,7 +14,7 @@ func TestT15_09RuntimeRejectsIncompleteOrConflictingDeployment(t *testing.T) {
 		{"DATABASE_M1_URL", ""}, {"SOURCE_ORIGIN", ""}, {"SOURCE_ORIGIN", "http://mock.invalid/production-path"}, {"SOURCE_TOKEN", ""}, {"MAIL_ADDRESS", ""}, {"MAIL_TLS", ""}, {"MAIL_TO", "attacker\r\nBcc:someone"},
 		{"SOURCE_SCOPE", ""}, {"SOURCE_QUALITY", ""}, {"SOURCE_QUALITY", "{}"}, {"SOURCE_QUALITY", "null"},
 		{"REDIS_URL", "redis://redis:6379/0?read_timeout=0"}, {"REDIS_URL", "redis://redis:6379/1"}, {"AUDIT_KEY", "short"}, {"SNAPSHOT_KEY", "synthetic-audit-key-0000000000000"},
-		{"TARGET_DIRECTORY", "/data/staging/child"}, {"SPOOL_DIRECTORY", "relative"}, {"LOG_MAX_FILES", "0"}, {"STAGING_MAX_BYTES", "0"}, {"TARGET_MAX_BYTES", "-1"}, {"SPOOL_MAX_BYTES", "invalid"},
+		{"TARGET_DIRECTORY", "/data/staging/child"}, {"SPOOL_DIRECTORY", "relative"}, {"LOG_MAX_FILES", "0"}, {"STAGING_MAX_BYTES", "-1"}, {"TARGET_MAX_BYTES", "-1"}, {"SPOOL_MAX_BYTES", "invalid"},
 		{"ADMIN_PASSWORD", "synthetic-query-secret"}, {"ADMIN_PASSWORD", "short"}, {"ADMIN_USERNAME", ""}, {"CONSOLE_QUERY_URL", "http://query:8080/path"}, {"CONSOLE_COOKIE_SECURE", "invalid"}, {"DEPENDENCY_TIMEOUT", "0s"}, {"ENVIRONMENT", "production"},
 	} {
 		t.Run(tc.key+"/"+tc.value, func(t *testing.T) {
@@ -105,6 +105,29 @@ func TestRuntimeSourcePageSize(t *testing.T) {
 			}
 			if _, err := config.LoadRuntime(config.Query, lookup); err != nil {
 				t.Fatal("query requires worker-only page size", err)
+			}
+		})
+	}
+}
+
+func TestRuntimeOptionalDataQuotas(t *testing.T) {
+	for _, value := range []string{"unset", "0", "1048576", "268435456", "-1", "1", "", "invalid"} {
+		t.Run(value, func(t *testing.T) {
+			v := testkit.RuntimeValues("/data")
+			for _, key := range []string{"STAGING_MAX_BYTES", "TARGET_MAX_BYTES", "SPOOL_MAX_BYTES"} {
+				if value == "unset" {
+					delete(v, key)
+				} else {
+					v[key] = value
+				}
+			}
+			c, err := config.LoadRuntime(config.Worker, func(k string) (string, bool) { s, ok := v[k]; return s, ok })
+			valid := value == "unset" || value == "0" || value == "1048576" || value == "268435456"
+			if (err == nil) != valid {
+				t.Fatal("unexpected quota validation", err)
+			}
+			if (value == "unset" || value == "0") && (c.StagingBytes != 0 || c.TargetBytes != 0 || c.SpoolBytes != 0) {
+				t.Fatal("disabled quota replaced by a fixed cap")
 			}
 		})
 	}

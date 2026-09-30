@@ -46,7 +46,7 @@ type Store struct {
 }
 
 func NewStore(runID string, files *QuotaFiles, maxPageBytes int64) (*Store, error) {
-	if !runName.MatchString(runID) || files == nil || files.files == nil || files.limit < 1 || maxPageBytes < 1 || maxPageBytes > 64<<20 {
+	if !runName.MatchString(runID) || files == nil || files.files == nil || files.limit < 0 || maxPageBytes < 1 || maxPageBytes > 64<<20 {
 		return nil, ErrInvalid
 	}
 	return &Store{runID: runID, files: files, maxPageBytes: maxPageBytes}, nil

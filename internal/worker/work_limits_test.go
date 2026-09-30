@@ -36,7 +36,7 @@ func TestLargeSourcePageRemainsReadableAfterPageSizeIsReduced(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = dir.Close() })
-	quota, err := staging.NewQuotaFiles(dir, 32<<20)
+	quota, err := staging.NewQuotaFiles(dir, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestLargeSourcePageRemainsReadableAfterPageSizeIsReduced(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	limits := ingest.PageLimits{MaxPages: 100, MaxRecords: 10000, MaxBytes: 1 << 20}
+	limits := ingest.PageLimits{MaxPages: 100, MaxRecords: 10000, MaxBytes: 0}
 	for _, table := range ingest.Catalog() {
 		var rows []ingest.Record
 		if table.Name == "dwd_bzkscjzlb" {
@@ -78,7 +78,7 @@ func TestLargeSourcePageRemainsReadableAfterPageSizeIsReduced(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A new configuration must not make a previously sealed large page invalid.
-	files, options := targetPreparation(config.Runtime{SourceScope: "synthetic", SourcePageSize: 2, SpoolDirectory: t.TempDir(), SpoolBytes: 16 << 20}, quota, "Clargepage")
+	files, options := targetPreparation(config.Runtime{SourceScope: "synthetic", SourcePageSize: 2, SpoolDirectory: t.TempDir(), SpoolBytes: 0}, quota, "Clargepage")
 	options.Mode = ingest.Full
 	manifest, err := files.Prepare(ctx, options, lease)
 	if err != nil {

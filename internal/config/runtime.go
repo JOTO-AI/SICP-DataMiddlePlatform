@@ -81,7 +81,8 @@ func LoadRuntime(role Role, lookup func(string) (string, bool)) (Runtime, error)
 		{"LOG_MAX_BYTES", &c.LogBytes}, {"LOG_MAX_FILES", &c.LogFiles}, {"STAGING_MAX_BYTES", &c.StagingBytes}, {"TARGET_MAX_BYTES", &c.TargetBytes}, {"SPOOL_MAX_BYTES", &c.SpoolBytes},
 	} {
 		v, ok := lookup(e.k)
-		if !ok && role == Query && strings.HasPrefix(e.k, "LOG_") == false {
+		// Data-volume quotas are optional; zero means no application byte cap.
+		if !ok && !strings.HasPrefix(e.k, "LOG_") {
 			continue
 		}
 		*e.p, err = strconv.ParseInt(v, 10, 64)
@@ -215,7 +216,7 @@ func (c Runtime) Validate() error {
 			}
 		}
 		for _, v := range []int64{c.StagingBytes, c.TargetBytes, c.SpoolBytes} {
-			if v < 1<<20 || v > 1<<40 {
+			if v != 0 && (v < 1<<20 || v > 1<<40) {
 				return bad("FILE_CAPACITY")
 			}
 		}

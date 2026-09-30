@@ -63,7 +63,7 @@ func TestT15_14RepositoryDeploymentFixturesReachActualAssembly(t *testing.T) {
 				t.Fatal("fixed endpoint drift")
 			}
 			if entry.role == config.Worker {
-				if c.SourceURL != "http://mock-source:8090" || c.MailAddress != "mock-mail:1025" || c.MailTo != "operator@example.invalid" || c.MailTLS != "none" || c.StagingDirectory != "/var/lib/sicp/staging" || c.TargetDirectory != "/var/lib/sicp/targets" || c.SpoolDirectory != "/var/lib/sicp/spool" || c.StagingBytes != 268435456 || c.TargetBytes != 268435456 || c.SpoolBytes != 134217728 || len(c.Quality) != 14 {
+				if c.SourceURL != "http://mock-source:8090" || c.MailAddress != "mock-mail:1025" || c.MailTo != "operator@example.invalid" || c.MailTLS != "none" || c.StagingDirectory != "/var/lib/sicp/staging" || c.TargetDirectory != "/var/lib/sicp/targets" || c.SpoolDirectory != "/var/lib/sicp/spool" || c.StagingBytes != 0 || c.TargetBytes != 0 || c.SpoolBytes != 0 || len(c.Quality) != 14 {
 					t.Fatal("worker contract drift")
 				}
 			}
