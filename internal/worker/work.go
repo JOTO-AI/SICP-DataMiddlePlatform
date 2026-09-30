@@ -201,7 +201,17 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 	}
 	var full update.FullSource
 	var acquirer update.Acquirer
+	var sourceEpoch time.Time
 	if resume {
+		if task.Mode == "initialize" {
+			at, err := repo.SourceEpoch(ctx, task.ID)
+			if err != nil {
+				return err
+			}
+			if at != nil {
+				sourceEpoch = *at
+			}
+		}
 		m, e := store.Manifest(ctx, options.Combination)
 		if e != nil {
 			if errors.Is(e, sql.ErrNoRows) {
@@ -239,10 +249,14 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 			}
 			acquirer.Notify = func(ctx context.Context, f *ingest.FailureEvent) error { _, _, e := consumer.Consume(ctx, f); return e }
 		}
+		sourceEpoch, e = w.configureTables(ctx, task, repo, files, &acquirer)
+		if e != nil {
+			return e
+		}
 		full = acquirer
 	}
 	if task.Mode == "initialize" {
-		_, e := (update.Initializer{Store: store, Source: full, Preparer: targets, Options: options, Builder: builder, Validator: validator, Outbox: repo, Delivery: delivery, Clock: w.Clock, Progress: repo}).Run(ctx, update.InitialTask{ID: task.ID, Combination: options.Combination, StartedAt: *task.StartedAt})
+		_, e := (update.Initializer{Store: store, Source: full, Preparer: targets, Options: options, Builder: builder, Validator: validator, Outbox: repo, Delivery: delivery, Clock: w.Clock, Progress: repo}).Run(ctx, update.InitialTask{ID: task.ID, Combination: options.Combination, StartedAt: *task.StartedAt, SourceStartedAt: sourceEpoch})
 		return e
 	}
 	active, exists, e := r.Active.Read(ctx)
@@ -258,6 +272,14 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 	}
 	options.Base = &base
 	options.BaseSource = targets
+	if acquirer.OnlyTable != "" {
+		if err := targets.Validate(ctx, base); err != nil {
+			return err
+		}
+		acquirer.Reuse = func(ctx context.Context, r ingest.PageRequest) (int64, error) {
+			return update.CopyBaselineTable(ctx, targets, base, r, files, acquirer.Limits)
+		}
+	}
 	plan, e := repo.PlanUpdate(ctx, active, control.IncrementalOverlap)
 	if e != nil {
 		return e

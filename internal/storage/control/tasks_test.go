@@ -2,6 +2,7 @@ package control_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"sync"
@@ -17,6 +18,7 @@ import (
 type taskDB struct {
 	mu                   sync.Mutex
 	records              map[string][]any
+	selections           map[string]string
 	owner                control.Ownership
 	lastStarted, nextDue *time.Time
 	revision             int64
@@ -32,6 +34,7 @@ type taskDB struct {
 type taskTx struct {
 	db                   *taskDB
 	records              map[string][]any
+	selections           map[string]string
 	owner                control.Ownership
 	lastStarted, nextDue *time.Time
 	revision             int64
@@ -46,6 +49,10 @@ func (d *taskDB) Begin(_ context.Context, c storage.Connection) (storage.Transac
 	}
 	d.mu.Lock()
 	x := &taskTx{db: d, records: map[string][]any{}, owner: d.owner, lastStarted: d.lastStarted, nextDue: d.nextDue, revision: d.revision, deferred: d.deferred}
+	x.selections = map[string]string{}
+	for id, name := range d.selections {
+		x.selections[id] = name
+	}
 	for key, row := range d.records {
 		x.records[key] = append([]any(nil), row...)
 	}
@@ -57,6 +64,15 @@ func (x *taskTx) Exec(_ context.Context, sql string, args ...any) (int64, error)
 		return 0, errors.New("injected SQL failure")
 	}
 	switch {
+	case strings.Contains(sql, "VALUES ($1,'table-selection'"):
+		var selection struct {
+			Table string `json:"table"`
+		}
+		if err := json.Unmarshal([]byte(args[1].(string)), &selection); err != nil {
+			return 0, err
+		}
+		x.selections[args[0].(string)] = selection.Table
+		return 1, nil
 	case strings.HasPrefix(sql, "UPDATE control.execution SET owner_id="):
 		if x.owner.TaskID != args[2] || x.owner.OwnerID != args[3] || x.owner.Generation != args[4] {
 			return 0, nil
@@ -147,6 +163,9 @@ func (x *taskTx) Exec(_ context.Context, sql string, args ...any) (int64, error)
 }
 func (x *taskTx) QueryRow(_ context.Context, sql string, args ...any) storage.Row {
 	x.db.calls = append(x.db.calls, dbCall{sql, args})
+	if strings.Contains(sql, "name='table-selection'") {
+		return result{raw: []any{x.selections[args[0].(string)]}, fail: x.db.failRead}
+	}
 	if strings.HasPrefix(sql, "SELECT (SELECT id FROM control.tasks ORDER BY") {
 		var latest []any
 		for _, row := range x.records {
@@ -225,6 +244,7 @@ func (x *taskTx) Commit(context.Context) error {
 		return errors.New("injected commit failure")
 	}
 	x.db.records = x.records
+	x.db.selections = x.selections
 	x.db.owner = x.owner
 	x.db.lastStarted = x.lastStarted
 	x.db.nextDue = x.nextDue

@@ -41,7 +41,7 @@ func (w *changedWorld) PlanCopies(context.Context, update.PreparedUpdate) ([2]so
 	return [2]source.Target{{Position: storage.Position{Instance: p.First, Slot: 1}, Generation: 2, CandidateID: "first"}, {Position: storage.Position{Instance: p.Second, Slot: 1}, Generation: 2, CandidateID: "second"}}, w.old, w.step("plan-copies")
 }
 func (w *changedWorld) Build(_ context.Context, t source.Target, m candidate.Manifest, force bool) (candidate.Report, error) {
-	if force || !reflect.DeepEqual(m, w.prepared.Manifest) {
+	if force != (w.prepared.Plan.Mode == "force_full") || !reflect.DeepEqual(m, w.prepared.Manifest) {
 		w.t.Fatal("wrong build baseline/mode")
 	}
 	err := w.step("build-" + t.CandidateID)
@@ -115,6 +115,27 @@ func changedFixture(t *testing.T) (update.Changed, *changedWorld) {
 	}
 	c := update.Changed{Source: w, Store: w, Builder: w, Validator: w, Readability: w, Shifter: w, Outbox: w, Delivery: w, Progress: w, Clock: testkit.FakeClock{Time: p.StartedAt.Add(13 * time.Minute)}}
 	return c, w
+}
+
+func TestSingleTablePublicationPreservesUnfetchedSourceWatermarks(t *testing.T) {
+	c, w := changedFixture(t)
+	w.prepared.Plan.Mode = "force_full"
+	w.prepared.Plan.Table = "dwd_bzkscjzlb"
+	if _, err := c.Run(t.Context(), w.active); err != nil {
+		t.Fatal(err)
+	}
+	if !w.progress.Retained {
+		t.Fatal("missing retained bounds")
+	}
+	for name, window := range w.prepared.Plan.Windows {
+		want := window.ConfirmedUntil
+		if name == w.prepared.Plan.Table {
+			want = w.prepared.Plan.StartedAt
+		}
+		if !w.progress.Ends[name].Equal(want) {
+			t.Fatal("incorrect source watermark", name, w.progress.Ends[name])
+		}
+	}
 }
 func TestT13_07ChangedRoundBuildsAndPublishesInStrictOrderBothDirections(t *testing.T) {
 	for _, instance := range []storage.Instance{storage.Main, storage.Standby} {

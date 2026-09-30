@@ -1,5 +1,33 @@
 import { test, expect, type Page } from '@playwright/test'
 
+test('partial initialization can force only one table while retaining successful tables', async ({ page }, testInfo) => {
+  await setup(page)
+  const task = { task_id: 'partial-initialization', mode: 'initialize', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-09-30T05:21:41Z' }
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [task] } } }))
+  await page.route('**/admin/v1/tasks/partial-initialization', route => route.fulfill({ json: { code: 'ok', data: { ...task, acquisition: { updated_at: '2026-09-30T06:00:00Z', tables: [
+    { table: 'dwd_bzksbjsjzlb', status: 'collected', completed_pages: 1, total_pages: 1, reused: true },
+    { table: 'dwd_bzkscjzlb', status: 'failed', completed_pages: 1113, total_pages: 1440 },
+  ] } } } }))
+  let posted = ''
+  await page.route('**/admin/v1/tables/dwd_bzkscjzlb/force-full', route => {
+    posted = route.request().url()
+    expect(route.request().postDataJSON()).toEqual({})
+    expect(route.request().headers()['idempotency-key']).toBeTruthy()
+    return route.fulfill({ json: { code: 'accepted', data: { task_id: 'repair-one-table' } } })
+  })
+  await page.route('**/admin/v1/tasks/repair-one-table', route => route.fulfill({ json: { code: 'ok', data: { ...task, task_id: 'repair-one-table', status: 'accepted', selected_table: 'dwd_bzkscjzlb' } } }))
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await page.getByRole('button', { name: /partial-initialization/ }).click()
+  await expect(page.getByText('部分完成，待补齐', { exact: true })).toBeVisible()
+  await expect(page.getByText('复用已完成数据', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '强制更新 dwd_bzkscjzlb', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('其它表复用最近完成的数据')
+  await page.screenshot({ path: testInfo.outputPath('single-table-repair.png'), fullPage: true })
+  await page.getByRole('button', { name: '确认提交更新', exact: true }).click()
+  await expect(page.getByText('本次强制更新表：dwd_bzkscjzlb', { exact: true })).toBeVisible()
+  expect(posted).toContain('/admin/v1/tables/dwd_bzkscjzlb/force-full')
+})
+
 test('failed task shows upstream evidence as text and can refresh delayed logs', async ({ page }, testInfo) => {
   await setup(page)
   const task = { task_id: 'diagnostic-task', mode: 'initialize', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-09-30T05:21:41Z' }

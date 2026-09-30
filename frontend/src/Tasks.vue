@@ -3,13 +3,15 @@ import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, type Envelope } from './api'
 import { newIdempotencyKey } from './idempotency'
 import AcquisitionProgress from './AcquisitionProgress.vue'
-import type { Acquisition } from './acquisition'
+import { sourceTables, type Acquisition } from './acquisition'
 import FailedAttempts, { type FailedAttempt } from './FailedAttempts.vue'
-interface Task { task_id: string; mode: string; status: string; operator?: string; predecessor_id?: string; accepted_at: string; started_at?: string; ready_at?: string; published_at?: string; checked_at?: string; finished_at?: string; progress_confirmed?: boolean; confirmed_until?: Record<string, string>; counts?: Record<string, number>; failure?: string; acquisition?: Acquisition; failed_attempts?: FailedAttempt[]; diagnostics_unavailable?: boolean }
+interface Task { task_id: string; mode: string; status: string; operator?: string; predecessor_id?: string; accepted_at: string; started_at?: string; ready_at?: string; published_at?: string; checked_at?: string; finished_at?: string; progress_confirmed?: boolean; confirmed_until?: Record<string, string>; counts?: Record<string, number>; failure?: string; acquisition?: Acquisition; failed_attempts?: FailedAttempt[]; diagnostics_unavailable?: boolean; selected_table?: string }
 const action = ref('force-full'), predecessor = ref(''), key = ref(newIdempotencyKey()), lookup = ref('')
 interface Overview { items: Task[]; initialized: boolean; next_due_at?: string; cooldown_until?: string; interval_seconds: number }
 const overview = ref<Overview | null>(null), historyError = ref(''), historyBusy = ref(false)
 const hasActiveTask = computed(() => overview.value?.items.some(item => !['failed', 'success_published', 'success_unchanged'].includes(item.status)) ?? false)
+const selectedTable = ref('dwd_bzkscjzlb')
+const tableUpdateAllowed = computed(() => !!overview.value && !historyBusy.value && !historyError.value && !hasActiveTask.value && !busy.value && !loading.value && !pending.value)
 const failedInitialization = computed(() => {
   const latest = overview.value?.items[0]
   return !overview.value?.initialized && latest?.mode === 'initialize' && latest.status === 'failed' ? latest : null
@@ -21,15 +23,15 @@ const forceFullHelp = computed(() => {
   if (historyError.value) return '无法确认当前任务状态，请先刷新记录。'
   if (!overview.value) return '读取初始化状态后可判断是否允许强制更新。'
   if (hasActiveTask.value) return '已有更新任务正在执行或等待恢复，完成后才能再次启动。'
-  if (failedInitialization.value) return '初始化失败，可重新从上游完整采集并初始化，无需重启服务；上游冷却期间任务会等待。'
+  if (failedInitialization.value) return '初始化未完成，可重新采集待补齐的表，或选择单表强制更新；已完成的表会保留复用，上游冷却期间任务会等待。'
   if (!overview.value.initialized) return '等待系统创建初始化任务；任务失败后可在此重新初始化。'
   return '强制全量更新会立即请求重新采集、校验并发布完整数据。'
 })
-const actions = computed(() => [{ id: 'force-full', title: failedInitialization.value ? '重新初始化' : '强制全量', text: failedInitialization.value ? '根据最近失败的初始化任务，重新采集并构建完整数据。' : '维护操作：重新采集并构建完整数据，即使内容未变化。' }, { id: 'rerun', title: '失败重跑', text: '排除故障后，根据失败任务创建关联的新任务。' }])
+const actions = computed(() => [{ id: 'force-full', title: failedInitialization.value ? '重新初始化' : '强制全量', text: failedInitialization.value ? '复用已经完整采集的表，重新采集待补齐的表。' : '维护操作：重新采集并构建完整数据，即使内容未变化。' }, { id: 'table-full', title: '单表强制更新', text: '只从上游完整采集所选表，其余表复用最近已完成的数据。初始化尚缺其他表时，保留本次结果，等待继续补齐。' }, { id: 'rerun', title: '失败重跑', text: '排除故障后，根据失败任务创建关联的新任务。' }])
 const failureDescriptions: Record<string, string> = {
   corrupt_seal: '采集结果未完整封存或校验未通过，需重新采集。重启后系统会自动尝试恢复初始化。',
   interrupted: '任务执行被中断。重启后系统会自动尝试恢复初始化。',
-  acquisition_failed: '上游采集失败，请检查连接、认证和采集日志。重启后系统会自动尝试恢复初始化。',
+  acquisition_failed: '部分表采集未完成。已完成的表可以保留复用，可强制更新失败表；全部补齐并通过校验后才完成初始化。',
 }
 let historyTimer: ReturnType<typeof setTimeout> | undefined
 async function refreshHistory() {
@@ -54,6 +56,7 @@ let timer: ReturnType<typeof setTimeout> | undefined
 let active = true
 const terminal = computed(() => !!task.value?.finished_at || ['success_published', 'success_unchanged', 'failed'].includes(task.value?.status || ''))
 const statusLabels: Record<string, string> = { accepted: '已受理', running: '执行中', success_published: '发布成功', success_unchanged: '检查完成，无变化', failed: '执行失败' }
+const detailStatus = computed(() => task.value?.mode === 'initialize' && task.value.status === 'failed' && task.value.acquisition?.tables.some(table => table.status === 'collected') && task.value.acquisition.tables.some(table => table.status !== 'collected') ? '部分完成，待补齐' : statusLabels[task.value?.status || ''] || task.value?.status)
 const stages = computed(() => task.value ? [{ name: '已受理', at: task.value.accepted_at }, { name: '开始执行', at: task.value.started_at }, { name: '构建就绪', at: task.value.ready_at }, { name: '发布完成', at: task.value.published_at }, { name: '检查完成', at: task.value.checked_at }, { name: '任务结束', at: task.value.finished_at }] : [])
 function stop() { auto.value = false; clearTimeout(timer) }
 onActivated(() => { active = true; void refreshHistory(); if (task.value && !terminal.value) { auto.value = true; void fetchTask() } })
@@ -64,19 +67,21 @@ function confirm() {
   error.value = ''
   if (!pending.value) {
     if (action.value === 'force-full' && forceFullBlocked.value) { error.value = forceFullHelp.value; return }
+    if (action.value === 'table-full' && (!tableUpdateAllowed.value || !sourceTables.includes(selectedTable.value))) { error.value = '请选择有效的来源表，并等待当前任务结束。'; return }
     if (action.value === 'rerun' && !predecessor.value.trim()) { error.value = '请输入原失败任务号。'; return }
     if (!/^[\x21-\x7e]{1,128}$/.test(key.value) || key.value.includes(',')) { error.value = '幂等键须为 1–128 位可见 ASCII 字符，且不含逗号。'; return }
     const retryInitial = action.value === 'force-full' ? failedInitialization.value : null
     const rerunID = retryInitial?.task_id || (action.value === 'rerun' ? predecessor.value.trim() : '')
     pending.value = {
-      path: rerunID ? `/admin/v1/tasks/${encodeURIComponent(rerunID)}/rerun` : `/admin/v1/tasks/${action.value}`,
+      path: action.value === 'table-full' ? `/admin/v1/tables/${encodeURIComponent(selectedTable.value)}/force-full` : rerunID ? `/admin/v1/tasks/${encodeURIComponent(rerunID)}/rerun` : `/admin/v1/tasks/${action.value}`,
       key: key.value, title: selected.value.title,
-      description: retryInitial ? `将重新从上游完整采集并初始化，保留原失败任务 ${retryInitial.task_id} 的记录。无需重启服务。` : selected.value.text,
+      description: action.value === 'table-full' ? `将完整重采 ${selectedTable.value}，其它表复用最近完成的数据。若初始化仍缺其它表，本表成功后会保留结果，等待补齐；完整数据校验通过后统一发布。` : retryInitial ? `将复用已完成的表并重采待补齐的表，保留原失败任务 ${retryInitial.task_id} 的记录。无需重启服务。` : selected.value.text,
     }
   }
   dialog.value?.showModal()
 }
 function forceFull() { action.value = 'force-full'; confirm() }
+function forceTable(table: string) { if (!tableUpdateAllowed.value) return; action.value = 'table-full'; selectedTable.value = table; confirm() }
 function abandon() { pending.value = null; key.value = newIdempotencyKey(); error.value = ''; receipt.value = '' }
 async function submit() {
   if (!pending.value) return
@@ -131,10 +136,11 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
         <h2>人工维护</h2><p class="muted">仅在需要完整重建或排除故障后使用。</p>
         <fieldset :disabled="busy || !!pending"><legend>更新方式</legend><label v-for="item in actions" :key="item.id" class="radio-row"><input v-model="action" type="radio" :value="item.id" name="action"><span><strong>{{ item.title }}</strong><small>{{ item.text }}</small></span></label>
         <label v-if="action === 'rerun'">原失败任务号 *<input v-model="predecessor" required placeholder="输入失败任务号"></label>
+        <label v-if="action === 'table-full'">来源表<select v-model="selectedTable"><option v-for="name in sourceTables" :key="name" :value="name">{{ name }}</option></select></label>
         <label class="key-label">幂等键<input v-model="key" required maxlength="128" spellcheck="false"></label></fieldset>
         <p class="hint">响应丢失时用原键重试，可避免重复创建任务。</p>
         <p v-if="pending" class="hint">已锁定请求：{{ pending.title }}。修改操作前请先结束本次请求。</p>
-        <div class="actions"><button class="primary" :disabled="busy || loading || (!pending && action === 'force-full' && forceFullBlocked)">{{ busy ? '正在提交…' : pending ? '重试原请求' : '提交更新' }}</button><button v-if="pending" type="button" :disabled="busy" @click="abandon">结束本次请求</button></div>
+        <div class="actions"><button class="primary" :disabled="busy || loading || (!pending && ((action === 'force-full' && forceFullBlocked) || (action === 'table-full' && !tableUpdateAllowed)))">{{ busy ? '正在提交…' : pending ? '重试原请求' : '提交更新' }}</button><button v-if="pending" type="button" :disabled="busy" @click="abandon">结束本次请求</button></div>
         <p v-if="error" class="error" role="alert">{{ error }}</p><p v-if="receipt" class="success-text" role="status">{{ receipt }}</p>
       </form>
       <div class="task-detail">
@@ -142,10 +148,11 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
         <p class="hint">点击最近任务查看详情，也可输入历史任务号。</p>
         <p v-if="taskError" class="error" role="alert">{{ taskError }}</p>
         <template v-if="task">
-          <div class="section-bar"><h2>执行详情</h2><span class="tag" :class="{ warning: task.status === 'failed', success: task.status.startsWith('success_') }">{{ statusLabels[task.status] || task.status }}</span></div>
+          <div class="section-bar"><h2>执行详情</h2><span class="tag" :class="{ warning: task.status === 'failed', success: task.status.startsWith('success_') }">{{ detailStatus }}</span></div>
           <p class="task-id">{{ task.task_id }}</p>
           <label class="check-row"><input type="checkbox" v-model="auto" :disabled="terminal || busy || loading" @change="toggleAuto">每 5 秒刷新，任务结束或查询失败后停止</label>
-          <AcquisitionProgress :progress="task.acquisition" :status="task.status" />
+          <p v-if="task.selected_table" class="hint">本次强制更新表：{{ task.selected_table }}</p>
+          <AcquisitionProgress :progress="task.acquisition" :status="task.status" :allow-update="tableUpdateAllowed" @update-table="forceTable" />
           <dl class="facts"><div><dt>更新模式</dt><dd>{{ modeLabels[task.mode] || task.mode }}</dd></div><div><dt>操作人</dt><dd>{{ task.operator === 'scheduler' ? '系统调度' : task.operator || '未提供' }}</dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed ? '已确认' : '未确认' }}</dd></div><div v-if="task.predecessor_id"><dt>前序任务</dt><dd>{{ task.predecessor_id }}</dd></div></dl>
           <p v-if="task.failure" class="error">失败原因：{{ task.failure }}</p>
           <p v-if="task.failure && task.mode === 'initialize'" class="hint">{{ failureDescriptions[task.failure] }}</p>

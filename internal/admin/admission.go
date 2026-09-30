@@ -87,7 +87,17 @@ func (a Admission) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mode := string(action)
 	request := control.Request{ID: hex.EncodeToString(random[:]), IdempotencyKey: key, Mode: mode, RequestedBy: operator, AcceptedAt: a.Clock.Now()}
 	var result control.Acceptance
-	if action == Rerun {
+	if table := r.PathValue("table"); table != "" && action == ForceFull {
+		store, ok := a.Store.(interface {
+			AdmitTable(context.Context, control.Request) (control.Acceptance, error)
+		})
+		if !ok {
+			respond(w, 503, "unavailable", "Table update unavailable", nil)
+			return
+		}
+		request.Table = table
+		result, err = store.AdmitTable(r.Context(), request)
+	} else if action == Rerun {
 		store, ok := a.Store.(interface {
 			RerunTask(context.Context, control.Request) (control.Acceptance, error)
 		})

@@ -17,7 +17,7 @@ func (a Acquirer) Acquire(ctx context.Context, plan control.UpdatePlan, zone *ti
 	if err := plan.Validate(); err != nil {
 		return nil, err
 	}
-	if zone == nil {
+	if zone == nil || a.OnlyTable != plan.Table {
 		return nil, ErrInitialization
 	}
 	return a.collect(ctx, func(table string) ingest.PageRequest {

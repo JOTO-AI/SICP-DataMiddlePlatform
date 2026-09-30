@@ -24,6 +24,7 @@ type UpdatePlan struct {
 	First, Second storage.Instance
 	Overlap       time.Duration
 	Windows       map[string]SourceWindow
+	Table         string
 }
 
 func (p UpdatePlan) Validate() error {
@@ -31,6 +32,9 @@ func (p UpdatePlan) Validate() error {
 		return ErrEntity
 	}
 	if p.Mode != "incremental" && p.Mode != "force_full" {
+		return ErrEntity
+	}
+	if p.Table != "" && (p.Mode != "force_full" || !knownTable(p.Table)) {
 		return ErrEntity
 	}
 	if p.Second != p.Origin.Position.Position.Instance || p.First == p.Second || (p.First != storage.Main && p.First != storage.Standby) {
@@ -106,6 +110,10 @@ func (r Repository) PlanUpdate(ctx context.Context, active ActiveMetadata, overl
 			first = storage.Main
 		}
 		plan = UpdatePlan{TaskID: task.ID, Mode: task.Mode, StartedAt: *task.StartedAt, Origin: active, First: first, Second: active.Position.Position.Instance, Overlap: overlap, Windows: map[string]SourceWindow{}}
+		plan.Table, err = tableSelection(ctx, tx, task.ID)
+		if err != nil {
+			return err
+		}
 		for _, table := range source.Catalog() {
 			var until time.Time
 			if err = tx.QueryRow(ctx, "SELECT confirmed_until FROM control.source_progress WHERE source=$1 FOR SHARE", table.Name).Scan(&until); err != nil {

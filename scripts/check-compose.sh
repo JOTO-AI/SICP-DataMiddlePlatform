@@ -37,6 +37,9 @@ for ((attempt=0; attempt<120; attempt++)); do
 done
 curl --fail --silent --show-error -b "$cookies" "$console/console-api/query/readyz"
 
+# Exercise the real console proxy, session/CSRF, worker and PostgreSQL together.
+python3 scripts/check-table-update.py "$console"
+
 # Exercise repeated up and a full container recreation with retained volumes.
 docker compose up -d --wait --wait-timeout 300
 docker compose down

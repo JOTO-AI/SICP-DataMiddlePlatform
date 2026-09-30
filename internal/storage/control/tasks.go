@@ -19,6 +19,7 @@ type Request struct {
 	ID, IdempotencyKey, Mode, RequestedBy string
 	PredecessorID                         *string
 	AcceptedAt                            time.Time
+	Table                                 string
 }
 type Acceptance struct {
 	Task    Task
@@ -30,6 +31,9 @@ type Ownership struct {
 }
 
 func (r Repository) Accept(ctx context.Context, request Request) (Acceptance, error) {
+	if request.Table != "" {
+		return Acceptance{}, ErrEntity
+	}
 	if strings.TrimSpace(request.ID) == "" || strings.TrimSpace(request.IdempotencyKey) == "" || strings.TrimSpace(request.RequestedBy) == "" || request.AcceptedAt.IsZero() {
 		return Acceptance{}, ErrEntity
 	}

@@ -24,6 +24,7 @@ type progressDB struct {
 	published *time.Time
 	open      bool
 	failAt    int
+	epoch     time.Time
 }
 type progressTx struct {
 	*publicationTx
@@ -46,6 +47,8 @@ func (d *progressDB) Begin(ctx context.Context, c storage.Connection) (storage.T
 }
 func (t *progressTx) QueryRow(ctx context.Context, sql string, args ...any) storage.Row {
 	switch {
+	case strings.Contains(sql, "name='source-epoch'"):
+		return result{raw: []any{t.db.epoch}}
 	case strings.Contains(sql, "SELECT EXISTS (SELECT 1 FROM control.tasks WHERE id=$1)"):
 		return result{raw: []any{t.task.ID == args[0]}}
 	case strings.HasPrefix(sql, "SELECT payload::text FROM control.checkpoints"):

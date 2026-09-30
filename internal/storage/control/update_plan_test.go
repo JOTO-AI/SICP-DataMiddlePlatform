@@ -20,6 +20,7 @@ type planDB struct {
 	task     control.Task
 	progress map[string]time.Time
 	writes   int
+	table    string
 }
 type planTx struct {
 	*publicationTx
@@ -36,6 +37,8 @@ func (d *planDB) Begin(ctx context.Context, c storage.Connection) (storage.Trans
 }
 func (t *planTx) QueryRow(ctx context.Context, sql string, args ...any) storage.Row {
 	switch {
+	case strings.Contains(sql, "name='table-selection'"):
+		return result{raw: []any{t.db.table}}
 	case strings.Contains(sql, `FROM control.tasks WHERE "id"=$1`):
 		return result{raw: entityColumns(t.task)}
 	case strings.HasPrefix(sql, "SELECT confirmed_until FROM control.source_progress"):

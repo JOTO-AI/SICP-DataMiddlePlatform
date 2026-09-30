@@ -17,6 +17,7 @@ func Routes(auth interface {
 		pattern string
 	}{
 		{ForceFull, "POST /admin/v1/tasks/force-full"},
+		{ForceFull, "POST /admin/v1/tables/{table}/force-full"},
 		{Rerun, "POST /admin/v1/tasks/{task_id}/rerun"},
 		{Status, "GET /admin/v1/tasks/{task_id}"},
 	} {

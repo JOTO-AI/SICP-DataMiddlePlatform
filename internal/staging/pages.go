@@ -204,7 +204,10 @@ func (s *Store) ensure(ctx context.Context, name string, data []byte, limit int6
 }
 
 func (s *Store) Entries(ctx context.Context) ([]Entry, error) {
-	names, err := s.files.List(ctx, s.runID+".")
+	return s.entries(ctx, s.runID+".")
+}
+func (s *Store) entries(ctx context.Context, prefix string) ([]Entry, error) {
+	names, err := s.files.List(ctx, prefix)
 	if err != nil {
 		return nil, ErrStorage
 	}

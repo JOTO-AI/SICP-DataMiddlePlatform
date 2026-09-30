@@ -18,7 +18,7 @@ var ErrNotFailed = errors.New("only failed tasks can be rerun")
 // Admit persists acceptance only. Client cancellation after commit cannot
 // cancel the separately owned worker task.
 func (r Repository) Admit(ctx context.Context, request Request) (Acceptance, error) {
-	if request.PredecessorID != nil {
+	if request.PredecessorID != nil || request.Table != "" {
 		return Acceptance{}, ErrEntity
 	}
 	return r.admit(ctx, request, false, false, false)
@@ -28,7 +28,7 @@ func (r Repository) Admit(ctx context.Context, request Request) (Acceptance, err
 // execution lock serializes this check with every admission and publication.
 // Failed history is handled by RecoverInitialization, never a second bootstrap.
 func (r Repository) Bootstrap(ctx context.Context, request Request) (Acceptance, error) {
-	if request.Mode != "initialize" || request.RequestedBy != "scheduler" || request.PredecessorID != nil {
+	if request.Mode != "initialize" || request.RequestedBy != "scheduler" || request.PredecessorID != nil || request.Table != "" {
 		return Acceptance{}, ErrEntity
 	}
 	return r.admit(ctx, request, false, true, false)
@@ -39,13 +39,13 @@ const InitializationRetryInterval = 5 * time.Minute
 // RecoverInitialization is used once per worker lifetime after normal recovery
 // has released the previous executor. It never treats existing history as empty.
 func (r Repository) RecoverInitialization(ctx context.Context, request Request) (Acceptance, error) {
-	if request.Mode != "initialize" || request.RequestedBy != "scheduler" || request.PredecessorID != nil {
+	if request.Mode != "initialize" || request.RequestedBy != "scheduler" || request.PredecessorID != nil || request.Table != "" {
 		return Acceptance{}, ErrEntity
 	}
 	return r.admit(ctx, request, true, false, true)
 }
 func (r Repository) RerunTask(ctx context.Context, request Request) (Acceptance, error) {
-	if request.PredecessorID == nil || strings.TrimSpace(*request.PredecessorID) == "" || len(*request.PredecessorID) > 64 || *request.PredecessorID == request.ID || request.Mode != "" {
+	if request.PredecessorID == nil || strings.TrimSpace(*request.PredecessorID) == "" || len(*request.PredecessorID) > 64 || *request.PredecessorID == request.ID || request.Mode != "" || request.Table != "" {
 		return Acceptance{}, ErrEntity
 	}
 	return r.admit(ctx, request, true, false, false)
@@ -136,6 +136,14 @@ func (r Repository) admit(ctx context.Context, request Request, rerun, bootstrap
 				return ErrTime
 			}
 			request.Mode = old.Mode
+			// Initialization reruns fill every remaining gap. The explicit table
+			// endpoint is used when the operator wants to repair only one table.
+			if !automatic && old.Mode != "initialize" {
+				request.Table, err = tableSelection(ctx, tx, old.ID)
+				if err != nil {
+					return err
+				}
+			}
 		}
 		var exists bool
 		if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.tasks WHERE idempotency_key=$1)", request.IdempotencyKey).Scan(&exists); err != nil {
@@ -148,7 +156,11 @@ func (r Repository) admit(ctx context.Context, request Request, rerun, bootstrap
 				return err
 			}
 			task := v.Interface().(Task)
-			if task.Mode != request.Mode || task.RequestedBy != request.RequestedBy || !sameString(task.PredecessorID, request.PredecessorID) {
+			selected, err := tableSelection(ctx, tx, task.ID)
+			if err != nil {
+				return err
+			}
+			if selected != request.Table || (request.Table == "" && task.Mode != request.Mode) || ((rerun || request.Table == "") && !sameString(task.PredecessorID, request.PredecessorID)) || task.RequestedBy != request.RequestedBy {
 				return ErrIdempotency
 			}
 			out.Task = task
@@ -167,6 +179,29 @@ func (r Repository) admit(ctx context.Context, request Request, rerun, bootstrap
 		if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM control.publication_outbox WHERE status='confirmed' AND kind='bundle_publish')").Scan(&initialized); err != nil {
 			return err
 		}
+		if request.Table != "" && !rerun {
+			if !knownTable(request.Table) {
+				return ErrEntity
+			}
+			request.Mode = "force_full"
+			if !initialized {
+				request.Mode = "initialize"
+				var latest *string
+				if err := tx.QueryRow(ctx, "SELECT (SELECT id FROM control.tasks ORDER BY accepted_at DESC,id DESC LIMIT 1)").Scan(&latest); err != nil {
+					return err
+				}
+				if latest != nil {
+					old, err := loadTask(ctx, tx, *latest)
+					if err != nil {
+						return err
+					}
+					if old.Mode != "initialize" || old.Status != "failed" {
+						return ErrBusy
+					}
+					request.PredecessorID = latest
+				}
+			}
+		}
 		if !initialized && request.Mode != "initialize" {
 			return ErrInitializeRequired
 		}
@@ -175,6 +210,14 @@ func (r Repository) admit(ctx context.Context, request Request, rerun, bootstrap
 		}
 		if err = exactlyOne(tx.Exec(ctx, "INSERT INTO control.tasks (id,idempotency_key,mode,status,requested_by,predecessor_id,accepted_at) VALUES ($1,$2,$3,'accepted',$4,$5,$6) ON CONFLICT (idempotency_key) DO NOTHING", request.ID, request.IdempotencyKey, request.Mode, request.RequestedBy, optionalString(request.PredecessorID), request.AcceptedAt)); err != nil {
 			return err
+		}
+		if request.Table != "" {
+			raw, _ := json.Marshal(struct {
+				Table string `json:"table"`
+			}{request.Table})
+			if err = exactlyOne(tx.Exec(ctx, "INSERT INTO control.checkpoints (task_id,name,payload,recorded_at) VALUES ($1,'table-selection',$2::jsonb,$3)", request.ID, string(raw), request.AcceptedAt)); err != nil {
+				return err
+			}
 		}
 		task, err := loadTask(ctx, tx, request.ID)
 		if err != nil {

@@ -21,6 +21,7 @@ type ProgressPlan struct {
 	StartedAt, CheckedAt   time.Time
 	Ends                   map[string]time.Time
 	Summary                Document
+	Retained               bool
 }
 
 func (p ProgressPlan) valid() bool {
@@ -31,7 +32,7 @@ func (p ProgressPlan) valid() bool {
 		return false
 	}
 	for _, table := range source.Catalog() {
-		if !p.Ends[table.Name].Equal(p.StartedAt) {
+		if (!p.Retained && !p.Ends[table.Name].Equal(p.StartedAt)) || p.Ends[table.Name].IsZero() || p.Ends[table.Name].After(p.StartedAt) || (p.Retained && p.Mode == "incremental") {
 			return false
 		}
 	}
@@ -47,7 +48,7 @@ func normalizePlan(p ProgressPlan) ProgressPlan {
 	return p
 }
 func samePlan(a, b ProgressPlan) bool {
-	return a.TaskID == b.TaskID && a.BundleID == b.BundleID && a.Mode == b.Mode && a.StartedAt.Equal(b.StartedAt) && a.CheckedAt.Equal(b.CheckedAt) && maps.EqualFunc(a.Ends, b.Ends, time.Time.Equal) && a.Summary == b.Summary
+	return a.TaskID == b.TaskID && a.BundleID == b.BundleID && a.Mode == b.Mode && a.StartedAt.Equal(b.StartedAt) && a.CheckedAt.Equal(b.CheckedAt) && maps.EqualFunc(a.Ends, b.Ends, time.Time.Equal) && a.Summary == b.Summary && a.Retained == b.Retained
 }
 func loadTask(ctx context.Context, tx storage.Transaction, id string) (Task, error) {
 	d, _ := describe(&Task{})
@@ -91,6 +92,33 @@ func (r Repository) StageProgress(ctx context.Context, p ProgressPlan) error {
 		}
 		if task.StartedAt == nil || !task.StartedAt.Equal(p.StartedAt) || task.Mode != p.Mode || task.Status != "running" || task.PublishedAt != nil {
 			return ErrEntity
+		}
+		if p.Retained {
+			if p.Mode == "initialize" {
+				var at time.Time
+				if err := tx.QueryRow(ctx, "SELECT (payload->>'at')::timestamptz FROM control.checkpoints WHERE task_id=$1 AND name='source-epoch'", task.ID).Scan(&at); err != nil {
+					return err
+				}
+				for _, end := range p.Ends {
+					if !end.Equal(at) {
+						return ErrEntity
+					}
+				}
+			} else {
+				var plan UpdatePlan
+				if task.Roles == nil || json.Unmarshal([]byte(*task.Roles), &plan) != nil || plan.Validate() != nil || plan.Table == "" || plan.TaskID != task.ID || plan.Mode != task.Mode || !plan.StartedAt.Equal(*task.StartedAt) {
+					return ErrEntity
+				}
+				for name, end := range p.Ends {
+					want := plan.StartedAt
+					if name != plan.Table {
+						want = plan.Windows[name].ConfirmedUntil
+					}
+					if !end.Equal(want) {
+						return ErrEntity
+					}
+				}
+			}
 		}
 		count, err := tx.Exec(ctx, "INSERT INTO control.checkpoints (task_id,name,payload,recorded_at) VALUES ($1,$2,$3::jsonb,$4) ON CONFLICT (task_id,name) DO NOTHING", p.TaskID, progressCheckpoint, string(raw), p.CheckedAt)
 		if err != nil {

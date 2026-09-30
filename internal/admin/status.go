@@ -15,7 +15,10 @@ type StatusStore interface {
 	TaskStatus(context.Context, string) (control.TaskStatus, error)
 }
 type StatusHandler struct {
-	Store       StatusStore
+	Store     StatusStore
+	Selection interface {
+		TableSelection(context.Context, string) (string, error)
+	}
 	Diagnostics interface {
 		FailedAttempts(context.Context, string) ([]observability.FailedAttempt, error)
 	}
@@ -39,6 +42,7 @@ type TaskView struct {
 	Progress               map[string]time.Time          `json:"confirmed_until"`
 	Counts                 *control.ResultSummary        `json:"counts"`
 	Failure                string                        `json:"failure,omitempty"`
+	SelectedTable          string                        `json:"selected_table,omitempty"`
 	FailedAttempts         []observability.FailedAttempt `json:"failed_attempts,omitempty"`
 	DiagnosticsUnavailable bool                          `json:"diagnostics_unavailable,omitempty"`
 	Acquisition            *control.AcquisitionProgress  `json:"acquisition,omitempty"`
@@ -65,6 +69,13 @@ func (s StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	task := out.Task
 	view := TaskView{ID: task.ID, Mode: task.Mode, Status: task.Status, Operator: task.RequestedBy, Predecessor: task.PredecessorID, AcceptedAt: task.AcceptedAt, StartedAt: task.StartedAt, ReadyAt: task.ReadyAt, PublishedAt: task.PublishedAt, CheckedAt: task.CheckedAt, FinishedAt: task.FinishedAt, ProgressConfirmed: out.Progress != nil}
+	if s.Selection != nil {
+		view.SelectedTable, err = s.Selection.TableSelection(r.Context(), task.ID)
+		if err != nil {
+			respond(w, 503, "unavailable", "Task scope unavailable", nil)
+			return
+		}
+	}
 	if out.Progress != nil {
 		view.Progress = out.Progress.Ends
 	}

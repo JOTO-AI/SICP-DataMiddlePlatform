@@ -22,6 +22,7 @@ type TableAcquisitionProgress struct {
 	Status         string `json:"status"`
 	CompletedPages int64  `json:"completed_pages"`
 	TotalPages     *int64 `json:"total_pages"`
+	Reused         bool   `json:"reused,omitempty"`
 }
 
 func (p AcquisitionProgress) valid() bool {
@@ -34,19 +35,20 @@ func (p AcquisitionProgress) valid() bool {
 		known[table.Name] = true
 	}
 	for _, table := range p.Tables {
-		if !known[table.Table] || table.CompletedPages < 0 {
+		if !known[table.Table] || table.CompletedPages < 0 || (table.Reused && table.Status != "collected") {
 			return false
 		}
 		delete(known, table.Table)
 		if table.TotalPages == nil {
-			if table.CompletedPages != 0 || (table.Status != "waiting" && table.Status != "acquiring") {
+			if table.CompletedPages != 0 || (table.Status != "waiting" && table.Status != "acquiring" && table.Status != "failed") {
 				return false
 			}
 			continue
 		}
 		if *table.TotalPages < 1 || table.CompletedPages > *table.TotalPages ||
-			(table.Status != "acquiring" && table.Status != "collected") ||
-			(table.Status == "collected") != (table.CompletedPages == *table.TotalPages) {
+			(table.Status != "acquiring" && table.Status != "collected" && table.Status != "failed") ||
+			(table.Status == "collected" && table.CompletedPages != *table.TotalPages) ||
+			(table.Status == "acquiring" && table.CompletedPages == *table.TotalPages) {
 			return false
 		}
 	}

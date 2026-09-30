@@ -19,16 +19,20 @@ import (
 var ErrInitialization = errors.New("initialization prerequisites or copy evidence invalid")
 
 type Acquirer struct {
-	Collector       *ingest.Coordinator
-	Staging         *staging.Store
-	Budget          *ingest.TaskBudget
-	Limits          ingest.PageLimits
-	PageSize        int
-	PageConcurrency int
-	Owner           string
-	Observe         func(error)
-	Notify          func(context.Context, *ingest.FailureEvent) error
-	Progress        func(context.Context, []control.TableAcquisitionProgress) error
+	Collector         *ingest.Coordinator
+	Staging           *staging.Store
+	Budget            *ingest.TaskBudget
+	Limits            ingest.PageLimits
+	PageSize          int
+	PageConcurrency   int
+	Owner             string
+	Observe           func(error)
+	Notify            func(context.Context, *ingest.FailureEvent) error
+	Progress          func(context.Context, []control.TableAcquisitionProgress) error
+	ContinueOnFailure bool
+	OnlyTable         string
+	Reuse             func(context.Context, ingest.PageRequest) (int64, error)
+	NewBudget         func() (*ingest.TaskBudget, error)
 }
 
 // Full commits every page and requires an actual fourteen-source seal. The
@@ -54,7 +58,37 @@ func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageR
 	for _, table := range ingest.Catalog() {
 		tables = append(tables, control.TableAcquisitionProgress{Table: table.Name, Status: "waiting"})
 	}
+	var failures []error
 	for index, table := range ingest.Catalog() {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if a.Reuse != nil && table.Name != a.OnlyTable {
+			pages, err := a.Reuse(ctx, request(table.Name))
+			if err == nil {
+				tables[index].Status = "collected"
+				tables[index].Reused = true
+				tables[index].CompletedPages = pages
+				tables[index].TotalPages = &pages
+				a.reportProgress(ctx, tables)
+				continue
+			}
+			if !errors.Is(err, staging.ErrIncomplete) {
+				tables[index].Status = "failed"
+				a.reportProgress(ctx, tables)
+				failures = append(failures, &ingest.AcquisitionError{Source: table.Name, Page: 1, Cause: err})
+				if !a.ContinueOnFailure {
+					return nil, failures[len(failures)-1]
+				}
+				continue
+			}
+		}
+		if a.OnlyTable != "" && table.Name != a.OnlyTable {
+			tables[index].Status = "failed"
+			a.reportProgress(ctx, tables)
+			failures = append(failures, &ingest.AcquisitionError{Source: table.Name, Page: 1, Cause: staging.ErrIncomplete})
+			continue
+		}
 		tables[index].Status = "acquiring"
 		a.reportProgress(ctx, tables)
 		sink := acquisitionSink{PageSink: a.Staging, afterCommit: func(ctx context.Context, r ingest.PageRequest, page ingest.Page) {
@@ -71,7 +105,15 @@ func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageR
 			}
 			a.reportProgress(ctx, tables)
 		}}
-		result, err := a.Collector.CollectConcurrent(ctx, request(table.Name), a.Budget, a.Limits, sink, concurrency)
+		budget := a.Budget
+		if a.NewBudget != nil {
+			var err error
+			budget, err = a.NewBudget()
+			if err != nil {
+				return nil, err
+			}
+		}
+		result, err := a.Collector.CollectConcurrent(ctx, request(table.Name), budget, a.Limits, sink, concurrency)
 		if result.FinalFailure != nil && a.Notify != nil {
 			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			notifyErr := a.Notify(cleanup, result.FinalFailure)
@@ -82,11 +124,20 @@ func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageR
 			a.Observe(result.ObservationError)
 		}
 		if err != nil {
-			return nil, err
+			tables[index].Status = "failed"
+			a.reportProgress(ctx, tables)
+			if !a.ContinueOnFailure || ctx.Err() != nil {
+				return nil, err
+			}
+			failures = append(failures, err)
+			continue
 		}
 		if !result.Manifest.Complete {
 			return nil, ErrInitialization
 		}
+	}
+	if len(failures) > 0 {
+		return nil, errors.Join(failures...)
 	}
 	ref, err := a.Staging.Seal(ctx, a.Limits)
 	if err != nil {
@@ -98,6 +149,7 @@ func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageR
 type InitialTask struct {
 	ID, Combination string
 	StartedAt       time.Time
+	SourceStartedAt time.Time
 }
 
 // PlanInitial must confirm no active bundle or unresolved event and persist
@@ -141,6 +193,9 @@ type Initialization struct {
 
 func (i Initializer) Run(ctx context.Context, task InitialTask) (out Initialization, err error) {
 	if i.Store == nil || i.Source == nil || i.Preparer == nil || i.Builder == nil || i.Validator == nil || i.Outbox == nil || i.Delivery == nil || i.Progress == nil || i.Clock == nil || task.ID == "" || len(task.ID) > 64 || task.Combination == "" || task.StartedAt.IsZero() {
+		return out, ErrInitialization
+	}
+	if task.SourceStartedAt.After(task.StartedAt) {
 		return out, ErrInitialization
 	}
 	out.Task = task
@@ -199,6 +254,10 @@ func (i Initializer) Run(ctx context.Context, task InitialTask) (out Initializat
 	plan := control.ProgressPlan{TaskID: task.ID, BundleID: task.Combination, Mode: "initialize", StartedAt: task.StartedAt, CheckedAt: i.Clock.Now(), Ends: map[string]time.Time{}}
 	for _, table := range out.Manifest.Tables {
 		plan.Ends[table.Table] = task.StartedAt
+		if !task.SourceStartedAt.IsZero() {
+			plan.Retained = true
+			plan.Ends[table.Table] = task.SourceStartedAt
+		}
 	}
 	if err = i.Progress.StageProgress(ctx, plan); err != nil {
 		return out, err
