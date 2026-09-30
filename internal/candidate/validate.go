@@ -6,6 +6,7 @@ import (
 	"maps"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/metadata"
@@ -87,6 +88,7 @@ func dependencies(m Manifest, op contract.Operation) (map[string]string, error) 
 }
 
 func (v Validator) Validate(ctx context.Context, target source.Target, m Manifest) (result Evidence, err error) {
+	activity.Report(ctx, "validating_copy", "", string(target.Position.Instance))
 	if v.Store == nil || v.Checks == nil || v.Queries == nil || v.Clock == nil || m.Validate() != nil {
 		return result, ErrBuild
 	}

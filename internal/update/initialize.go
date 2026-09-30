@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/candidate"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
@@ -44,6 +45,7 @@ func (a Acquirer) Full(ctx context.Context) (*staging.Lease, error) {
 }
 
 func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageRequest) (*staging.Lease, error) {
+	activity.Report(ctx, "acquiring", "", "")
 	if a.Collector == nil || a.Staging == nil || a.Budget == nil || a.PageSize < 1 || a.Owner == "" || a.Observe == nil {
 		return nil, ErrInitialization
 	}
@@ -154,6 +156,7 @@ func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageR
 	if len(failures) > 0 {
 		return nil, errors.Join(failures...)
 	}
+	activity.Report(ctx, "sealing", "", "")
 	ref, err := a.Staging.Seal(ctx, a.Limits)
 	if err != nil {
 		return nil, err
@@ -280,10 +283,12 @@ func (i Initializer) Run(ctx context.Context, task InitialTask) (out Initializat
 	// No route_shift exists on this path: first publication follows BOTH copies.
 	target := out.Targets[1]
 	intent := control.PublicationIntent{ID: task.ID + "-publish", Kind: "bundle_publish", Target: control.SlotIdentity{Position: target.Position, Generation: target.Generation, BundleID: task.Combination}, CreatedAt: i.Clock.Now()}
+	activity.Report(ctx, "publishing", "", "")
 	out.Event, err = publication.Submit(ctx, i.Outbox, i.Delivery, intent)
 	if err != nil {
 		return out, err
 	}
+	activity.Report(ctx, "confirming_progress", "", "")
 	confirmed, confirmErr := i.Progress.ConfirmPublication(ctx, out.Event, i.Clock.Now())
 	err = confirmErr
 	if err != nil {

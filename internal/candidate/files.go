@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/merge"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/staging"
@@ -113,6 +114,7 @@ func (f TargetFiles) Prepare(ctx context.Context, o PrepareOptions, input *stagi
 	if o.Mode == ingest.Incremental && o.Base == nil {
 		return Manifest{}, ErrBuild
 	}
+	activity.Report(ctx, "validating_input", "", "")
 	if err := input.Validate(ctx); err != nil {
 		return Manifest{}, err
 	}
@@ -144,6 +146,7 @@ func (f TargetFiles) Prepare(ctx context.Context, o PrepareOptions, input *stagi
 	}
 	totalChunks := 0
 	for _, table := range source.Catalog() {
+		activity.Report(ctx, "building_table", table.Name, "")
 		var current merge.RowIterator = emptyRows{}
 		baseDigest, err := merge.SourceDigest(ctx, table.Name, o.Scope, nil)
 		if err != nil {
@@ -183,6 +186,7 @@ func (f TargetFiles) Prepare(ctx context.Context, o PrepareOptions, input *stagi
 	if err := doc.Manifest.Validate(); err != nil {
 		return Manifest{}, err
 	}
+	activity.Report(ctx, "validating_target", "", "")
 	if err := input.Validate(ctx); err != nil {
 		return Manifest{}, err
 	}

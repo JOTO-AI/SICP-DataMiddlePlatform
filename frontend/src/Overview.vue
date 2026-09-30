@@ -2,10 +2,12 @@
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, type Envelope } from './api'
 import AcquisitionProgress from './AcquisitionProgress.vue'
+import WorkProgress from './WorkProgress.vue'
+import type { WorkProgress as WorkProgressData } from './workProgress'
 import type { Acquisition } from './acquisition'
 const busy = ref(false)
 const checked = ref('')
-interface Task { task_id: string; mode: string; status: string; accepted_at: string; started_at?: string; acquisition?: Acquisition }
+interface Task { task_id: string; mode: string; status: string; accepted_at: string; started_at?: string; work_progress?: WorkProgressData; acquisition?: Acquisition }
 const currentTask = ref<Task | null>(null), taskError = ref(''), now = ref(Date.now())
 const activityTitle = computed(() => currentTask.value?.status === 'accepted' ? '更新任务等待执行' : currentTask.value?.mode === 'initialize' ? '正在初始化' : currentTask.value?.mode === 'force_full' ? '正在全量更新' : '正在同步')
 const elapsed = computed(() => {
@@ -20,10 +22,10 @@ async function refreshTask() {
   taskError.value = ''
   try {
     const overview = (await request<Envelope<{ items: Task[] }>>('worker', '/admin/v1/tasks/')).body.data
-    const task = overview.items.find(item => ['accepted', 'running'].includes(item.status))
+    const task = overview.items.find(item => ['accepted', 'running', 'published_pending_progress'].includes(item.status))
     if (!task) { currentTask.value = null; return }
     const detail = (await request<Envelope<Task>>('worker', `/admin/v1/tasks/${encodeURIComponent(task.task_id)}`)).body.data
-    currentTask.value = ['accepted', 'running'].includes(detail.status) ? detail : null
+    currentTask.value = ['accepted', 'running', 'published_pending_progress'].includes(detail.status) ? detail : null
   } catch (e) { currentTask.value = null; taskError.value = `无法确认更新任务状态：${describe(e)}` }
 }
 async function refresh() {
@@ -58,6 +60,7 @@ onUnmounted(stop)
       <p v-else-if="services[0]!.ready">当前已发布数据仍可查询。</p>
       <p v-if="!workerExecuting" class="hint">更新服务状态异常或尚未确认，请结合下方检查结果判断任务是否仍在推进。</p>
       <div class="result-meta"><span v-if="currentTask.started_at">开始时间：{{ time(currentTask.started_at) }} · 已运行 {{ elapsed }}</span><span v-else>受理时间：{{ time(currentTask.accepted_at) }}</span><span>任务号：<code>{{ currentTask.task_id }}</code></span></div>
+      <WorkProgress :progress="currentTask.work_progress" :status="currentTask.status" />
       <AcquisitionProgress :progress="currentTask.acquisition" :status="currentTask.status" compact />
     </section>
     <p v-if="taskError" class="error" role="alert">{{ taskError }}</p>

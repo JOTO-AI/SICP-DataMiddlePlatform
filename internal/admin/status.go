@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/observability"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
 )
@@ -24,6 +25,9 @@ type StatusHandler struct {
 	}
 	Acquisition interface {
 		AcquisitionProgress(context.Context, string) (*control.AcquisitionProgress, error)
+	}
+	Work interface {
+		WorkProgress(context.Context, string) (*activity.Snapshot, error)
 	}
 }
 type TaskView struct {
@@ -46,6 +50,7 @@ type TaskView struct {
 	FailedAttempts         []observability.FailedAttempt `json:"failed_attempts,omitempty"`
 	DiagnosticsUnavailable bool                          `json:"diagnostics_unavailable,omitempty"`
 	Acquisition            *control.AcquisitionProgress  `json:"acquisition,omitempty"`
+	WorkProgress           *activity.Snapshot            `json:"work_progress,omitempty"`
 }
 
 func (s StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -83,6 +88,13 @@ func (s StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		view.Acquisition, err = s.Acquisition.AcquisitionProgress(r.Context(), task.ID)
 		if err != nil {
 			respond(w, 503, "unavailable", "Task progress unavailable", nil)
+			return
+		}
+	}
+	if s.Work != nil {
+		view.WorkProgress, err = s.Work.WorkProgress(r.Context(), task.ID)
+		if err != nil {
+			respond(w, 503, "unavailable", "Task execution status unavailable", nil)
 			return
 		}
 	}

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/staging"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
@@ -113,6 +114,7 @@ func (b Builder) Build(ctx context.Context, target source.Target, m Manifest, fo
 	}
 	// Detach the caller's manifest; each copy/phase sees identical table versions.
 	m.Tables = append([]TableVersion(nil), m.Tables...)
+	activity.Report(ctx, "validating_target", "", string(target.Position.Instance))
 	if err = b.Source.Validate(ctx, m); err != nil {
 		return out, err
 	}
@@ -132,6 +134,7 @@ func (b Builder) Build(ctx context.Context, target source.Target, m Manifest, fo
 		}
 	}()
 	for _, table := range m.Tables {
+		activity.Report(ctx, "writing_table", table.Table, string(target.Position.Instance))
 		if err = ctx.Err(); err != nil {
 			return
 		}
@@ -175,6 +178,7 @@ func (b Builder) Build(ctx context.Context, target source.Target, m Manifest, fo
 		}
 		out.Rebuilt = append(out.Rebuilt, table.Table)
 	}
+	activity.Report(ctx, "validating_target", "", string(target.Position.Instance))
 	if err = b.Source.Validate(ctx, m); err != nil {
 		return
 	}

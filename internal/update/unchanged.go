@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/candidate"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
@@ -63,6 +64,7 @@ func (u Unchanged) Try(ctx context.Context, in PreparedUpdate) (bool, error) {
 		return false, nil
 	}
 	var identities [2]control.SlotIdentity
+	activity.Report(ctx, "checking_unchanged", "", "")
 	checked := in.Plan.StartedAt
 	for n, copy := range copies {
 		instance := storage.Main
@@ -98,6 +100,7 @@ func (u Unchanged) Try(ctx context.Context, in PreparedUpdate) (bool, error) {
 	if err = u.Progress.StageProgress(ctx, p); err != nil {
 		return false, err
 	}
+	activity.Report(ctx, "confirming_progress", "", "")
 	if err = u.Progress.CompleteUnchanged(ctx, in.Plan.Origin, identities, u.Clock.Now()); err != nil {
 		return false, err
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/candidate"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/publication"
@@ -212,10 +213,12 @@ func (c Changed) continuePrepared(ctx context.Context, prepared PreparedUpdate, 
 		return out, err
 	}
 	intent := control.PublicationIntent{ID: p.TaskID + "-publish", Kind: "bundle_publish", Expected: &shifted, Target: control.SlotIdentity{Position: targets[0].Position, Generation: targets[0].Generation, BundleID: m.Combination}, CreatedAt: c.Clock.Now()}
+	activity.Report(ctx, "publishing", "", "")
 	out.Event, err = publication.Submit(ctx, c.Outbox, c.Delivery, intent)
 	if err != nil {
 		return out, err
 	}
+	activity.Report(ctx, "confirming_progress", "", "")
 	confirmed, e := c.Progress.ConfirmPublication(ctx, out.Event, c.Clock.Now())
 	if e != nil {
 		return out, e

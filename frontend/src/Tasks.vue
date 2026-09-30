@@ -3,9 +3,11 @@ import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, type Envelope } from './api'
 import { newIdempotencyKey } from './idempotency'
 import AcquisitionProgress from './AcquisitionProgress.vue'
+import WorkProgress from './WorkProgress.vue'
+import type { WorkProgress as WorkProgressData } from './workProgress'
 import { sourceTables, type Acquisition } from './acquisition'
 import FailedAttempts, { type FailedAttempt } from './FailedAttempts.vue'
-interface Task { task_id: string; mode: string; status: string; operator?: string; predecessor_id?: string; accepted_at: string; started_at?: string; ready_at?: string; published_at?: string; checked_at?: string; finished_at?: string; progress_confirmed?: boolean; confirmed_until?: Record<string, string>; counts?: Record<string, number>; failure?: string; acquisition?: Acquisition; failed_attempts?: FailedAttempt[]; diagnostics_unavailable?: boolean; selected_table?: string }
+interface Task { task_id: string; mode: string; status: string; operator?: string; predecessor_id?: string; accepted_at: string; started_at?: string; ready_at?: string; published_at?: string; checked_at?: string; finished_at?: string; progress_confirmed?: boolean; confirmed_until?: Record<string, string>; counts?: Record<string, number>; failure?: string; work_progress?: WorkProgressData; acquisition?: Acquisition; failed_attempts?: FailedAttempt[]; diagnostics_unavailable?: boolean; selected_table?: string }
 const action = ref('force-full'), predecessor = ref(''), key = ref(newIdempotencyKey()), lookup = ref('')
 interface Overview { items: Task[]; initialized: boolean; next_due_at?: string; cooldown_until?: string; interval_seconds: number }
 const overview = ref<Overview | null>(null), historyError = ref(''), historyBusy = ref(false)
@@ -47,7 +49,7 @@ async function refreshHistory() {
   clearTimeout(historyTimer); historyBusy.value = true; historyError.value = ''
   try {
     overview.value = (await request<Envelope<Overview>>('worker', '/admin/v1/tasks/')).body.data
-    const current = overview.value.items.find(item => ['accepted', 'running'].includes(item.status))
+    const current = overview.value.items.find(item => ['accepted', 'running', 'published_pending_progress'].includes(item.status))
     if (active && !lookup.value && current) selectTask(current.task_id)
   }
   catch (e) { historyError.value = describe(e) }
@@ -63,7 +65,7 @@ const pending = ref<{ path: string; key: string; title: string; description: str
 let timer: ReturnType<typeof setTimeout> | undefined
 let active = true
 const terminal = computed(() => !!task.value?.finished_at || ['success_published', 'success_unchanged', 'failed'].includes(task.value?.status || ''))
-const statusLabels: Record<string, string> = { accepted: '已受理', running: '执行中', success_published: '发布成功', success_unchanged: '检查完成，无变化', failed: '执行失败' }
+const statusLabels: Record<string, string> = { accepted: '已受理', running: '执行中', published_pending_progress: '已发布，正在确认进度', success_published: '发布成功', success_unchanged: '检查完成，无变化', failed: '执行失败' }
 const detailStatus = computed(() => task.value && ['initialize', 'force_full'].includes(task.value.mode) && task.value.status === 'failed' && task.value.acquisition?.tables.some(table => table.status === 'collected') && task.value.acquisition.tables.some(table => table.status !== 'collected') ? '部分完成，待补齐' : statusLabels[task.value?.status || ''] || task.value?.status)
 const stages = computed(() => task.value ? [{ name: '已受理', at: task.value.accepted_at }, { name: '开始执行', at: task.value.started_at }, { name: '构建就绪', at: task.value.ready_at }, { name: '发布完成', at: task.value.published_at }, { name: '检查完成', at: task.value.checked_at }, { name: '任务结束', at: task.value.finished_at }] : [])
 function stop() { auto.value = false; clearTimeout(timer) }
@@ -164,6 +166,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
           <p class="task-id">{{ task.task_id }}</p>
           <label class="check-row"><input type="checkbox" v-model="auto" :disabled="terminal || busy || loading" @change="toggleAuto">每 5 秒刷新，任务结束或查询失败后停止</label>
           <p v-if="task.selected_table" class="hint">本次强制更新表：{{ task.selected_table }}</p>
+          <WorkProgress :progress="task.work_progress" :status="task.status" />
           <AcquisitionProgress :progress="task.acquisition" :status="task.status" :allow-update="tableUpdateAllowed" @update-table="forceTable" />
           <dl class="facts"><div><dt>更新模式</dt><dd>{{ modeLabels[task.mode] || task.mode }}</dd></div><div><dt>操作人</dt><dd>{{ task.operator === 'scheduler' ? '系统调度' : task.operator || '未提供' }}</dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed ? '已确认' : '未确认' }}</dd></div><div v-if="task.predecessor_id"><dt>前序任务</dt><dd>{{ task.predecessor_id }}</dd></div></dl>
           <p v-if="task.failure" class="error">失败原因：{{ task.failure }}</p>

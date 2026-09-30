@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/adapters"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/assembly"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/candidate"
@@ -81,6 +82,13 @@ func (w Executor) Run(ctx context.Context, task control.Task, owner control.Owne
 		return w.finish(ctx, task, owner)
 	}
 	ctx = events.WithRecorder(ctx, w.Recorder, events.Identity{TaskID: task.ID})
+	ctx, stopActivity := activity.Track(ctx, w.Clock.Now, repo.SaveWorkProgress, w.Observe)
+	defer stopActivity()
+	finish := func(finishCtx context.Context) error { stopActivity(); return w.finish(finishCtx, task, owner) }
+	activity.Report(ctx, "preparing", "", "")
+	if resume || pending != nil {
+		activity.Report(ctx, "recovering", "", "")
+	}
 	reconciler := publication.Reconciler{Store: repo, Active: r.Active, Atomic: r.Active, Clock: w.Clock}
 	finisher := update.Finisher{Store: repo, Delivery: reconciler, Clock: w.Clock}
 	if pending != nil {
@@ -89,10 +97,11 @@ func (w Executor) Run(ctx context.Context, task control.Task, owner control.Owne
 			return e
 		}
 		if event.Kind == "bundle_publish" {
-			return w.finish(ctx, task, owner)
+			return finish(ctx)
 		}
 	}
 	if task.Status == "published_pending_progress" {
+		activity.Report(ctx, "confirming_progress", "", "")
 		event, e := repo.RecoveryPublication(ctx, task.ID+"-publish")
 		if e != nil {
 			return e
@@ -103,11 +112,11 @@ func (w Executor) Run(ctx context.Context, task control.Task, owner control.Owne
 		if _, e = finisher.Recover(ctx, *event); e != nil {
 			return e
 		}
-		return w.finish(ctx, task, owner)
+		return finish(ctx)
 	}
 	err = w.execute(ctx, task, owner, resume, reconciler)
 	if err == nil {
-		return w.finish(ctx, task, owner)
+		return finish(ctx)
 	}
 	// Only a positively failed acquisition or verified unusable seal terminates
 	// the task here. Unknown DB/publication/build outcomes stay recoverable.
@@ -127,7 +136,7 @@ func (w Executor) Run(ctx context.Context, task control.Task, owner control.Owne
 		if e := repo.FailTask(cleanup, reason, at); e != nil {
 			return errors.Join(err, e)
 		}
-		return errors.Join(err, w.finish(cleanup, task, owner))
+		return errors.Join(err, finish(cleanup))
 	}
 	return err
 }

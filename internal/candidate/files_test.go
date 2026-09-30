@@ -8,11 +8,33 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/merge"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/staging"
 )
+
+func TestPreparationReportsEveryTableBeforeBuilding(t *testing.T) {
+	input, files, options, _ := targetInput(t, ingest.Full)
+	var stages []activity.Snapshot
+	ctx, stop := activity.Track(t.Context(), time.Now, func(_ context.Context, p activity.Snapshot) error { stages = append(stages, p); return nil }, nil)
+	_, err := files.Prepare(ctx, options, input)
+	stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, p := range stages {
+		if p.Phase == "building_table" {
+			seen[p.Table] = true
+		}
+	}
+	if len(stages) == 0 || stages[0].Phase != "validating_input" || stages[len(stages)-1].Phase != "validating_target" || len(seen) != len(ingest.Catalog()) {
+		t.Fatal(stages)
+	}
+}
 
 func targetInput(t *testing.T, mode ingest.Mode, objects ...string) (*staging.Lease, TargetFiles, PrepareOptions, string) {
 	t.Helper()
