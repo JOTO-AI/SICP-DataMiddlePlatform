@@ -8,7 +8,7 @@ import (
 func Routes(auth interface {
 	Protect(Action, http.Handler) (http.Handler, error)
 }, handlers map[Action]http.Handler) (http.Handler, error) {
-	if len(handlers) != 3 {
+	if len(handlers) != 4 {
 		return nil, errors.New("all management actions must be configured")
 	}
 	mux := http.NewServeMux()
@@ -16,6 +16,7 @@ func Routes(auth interface {
 		action  Action
 		pattern string
 	}{
+		{Incremental, "POST /admin/v1/tasks/incremental"},
 		{ForceFull, "POST /admin/v1/tasks/force-full"},
 		{ForceFull, "POST /admin/v1/tables/{table}/force-full"},
 		{Rerun, "POST /admin/v1/tasks/{task_id}/rerun"},

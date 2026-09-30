@@ -1,5 +1,66 @@
 import { test, expect, type Page } from '@playwright/test'
 
+for (const status of ['success_published', 'success_unchanged']) {
+  test(`manual incremental sync preserves retries and displays ${status}`, async ({ page }, testInfo) => {
+    await setup(page)
+    const keys: string[] = []
+    let fullCalls = 0
+    await page.route('**/admin/v1/tasks/force-full', route => { fullCalls++; return route.abort() })
+    await page.route('**/admin/v1/tasks/incremental', route => {
+      expect(route.request().postDataJSON()).toEqual({})
+      expect(route.request().headers()['x-sicp-csrf']).toBe('synthetic-csrf')
+      keys.push(route.request().headers()['idempotency-key']!)
+      if (keys.length === 1) return route.abort()
+      return route.fulfill({ status: 202, json: { code: 'accepted', data: { task_id: 'manual-sync' } } })
+    })
+    await page.route('**/admin/v1/tasks/manual-sync', route => route.fulfill({ json: { code: 'ok', data: {
+      task_id: 'manual-sync', mode: 'incremental', status, operator: 'admin', progress_confirmed: true,
+      accepted_at: '2026-09-30T10:00:00Z', checked_at: '2026-09-30T10:05:00Z',
+      published_at: status === 'success_published' ? '2026-09-30T10:05:00Z' : null,
+    } } }))
+    await page.getByRole('link', { name: '更新任务', exact: true }).click()
+    await page.getByRole('button', { name: '立即增量同步', exact: true }).click()
+    await expect(page.getByRole('dialog')).toContainText('校验通过后自动发布')
+    await page.getByRole('button', { name: '确认提交更新', exact: true }).click()
+    await expect(page.getByRole('alert')).toContainText('原请求已保留')
+    await expect(page.getByRole('radio', { name: /强制全量/ })).toBeDisabled()
+    await page.getByRole('button', { name: '重试原请求', exact: true }).click()
+    await expect(page.getByRole('heading', { name: '确认增量同步', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '确认提交更新', exact: true }).click()
+    await expect(page.getByText(status === 'success_published' ? '发布成功' : '检查完成，无变化', { exact: true })).toBeVisible()
+    await expect(page.getByText('已确认', { exact: true })).toBeVisible()
+    expect(keys).toHaveLength(2)
+    expect(keys[1]).toBe(keys[0])
+    expect(fullCalls).toBe(0)
+    await page.setViewportSize({ width: 390, height: 844 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+    await page.screenshot({ path: testInfo.outputPath(`manual-incremental-${status}.png`), fullPage: true })
+  })
+}
+
+test('manual incremental sync requires initialization and current idle status', async ({ page }) => {
+  await setup(page)
+  let initialized = false, running = false, unavailable = false
+  await page.route('**/admin/v1/tasks/', route => unavailable
+    ? route.fulfill({ status: 503, json: { code: 'unavailable' } })
+    : route.fulfill({ json: { code: 'ok', data: { initialized, items: running ? [{ task_id: 'other', mode: 'incremental', status: 'running' }] : [] } } }))
+  await page.route('**/admin/v1/tasks/other', route => route.fulfill({ json: { code: 'ok', data: { task_id: 'other', mode: 'incremental', status: 'running' } } }))
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  const button = page.getByRole('button', { name: '立即增量同步', exact: true })
+  await expect(button).toBeDisabled()
+  await expect(page.getByText('初始化完成后可手动增量同步；当前可先补齐失败表。')).toBeVisible()
+  initialized = true
+  await page.getByRole('button', { name: '刷新记录', exact: true }).click()
+  await expect(button).toBeEnabled()
+  running = true
+  await page.getByRole('button', { name: '刷新记录', exact: true }).click()
+  await expect(button).toBeDisabled()
+  running = false; unavailable = true
+  await page.getByRole('button', { name: '刷新记录', exact: true }).click()
+  await expect(page.getByRole('alert')).toBeVisible()
+  await expect(button).toBeDisabled()
+})
+
 test('partial initialization can force only one table while retaining successful tables', async ({ page }, testInfo) => {
   await setup(page)
   const task = { task_id: 'partial-initialization', mode: 'initialize', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-09-30T05:21:41Z' }

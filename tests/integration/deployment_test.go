@@ -235,8 +235,8 @@ func (d *deployment) initialize(t *testing.T) string {
 	}
 }
 
-// Advance the persisted timer in the isolated test database. No public sync
-// endpoint exists; the production scheduler must observe and dispatch it.
+// Advance the persisted timer in the isolated test database to exercise the
+// production scheduler independently of manual incremental admission.
 func (d *deployment) scheduledSync(t *testing.T) string {
 	t.Helper()
 	previous := d.sql(t, "SELECT id FROM control.tasks WHERE mode='incremental' ORDER BY accepted_at DESC LIMIT 1")

@@ -10,7 +10,7 @@ import (
 
 func TestAutomaticOperationsHaveNoManualHTTPRoute(t *testing.T) {
 	h := http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Fatal("removed action reached handler") })
-	mux, err := admin.Routes(administrator(t, admin.ForceFull), map[admin.Action]http.Handler{admin.ForceFull: h, admin.Rerun: h, admin.Status: h})
+	mux, err := admin.Routes(administrator(t, admin.ForceFull), map[admin.Action]http.Handler{admin.Incremental: h, admin.ForceFull: h, admin.Rerun: h, admin.Status: h})
 	if err != nil {
 		t.Fatal(err)
 	}

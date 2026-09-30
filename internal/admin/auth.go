@@ -14,13 +14,14 @@ import (
 type Action string
 
 const (
-	ForceFull Action = "force_full"
-	Rerun     Action = "rerun"
-	Status    Action = "status"
+	Incremental Action = "incremental"
+	ForceFull   Action = "force_full"
+	Rerun       Action = "rerun"
+	Status      Action = "status"
 )
 
 func validAction(a Action) bool {
-	return a == ForceFull || a == Rerun || a == Status
+	return a == Incremental || a == ForceFull || a == Rerun || a == Status
 }
 
 type Credential struct {

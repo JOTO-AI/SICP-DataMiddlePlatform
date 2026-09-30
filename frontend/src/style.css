@@ -63,6 +63,7 @@ nav a.selected { background: var(--selected); color: var(--brand); }
 .connection span { color: var(--brand); margin-left: 8px; }
 main { padding: 36px 38px 48px; width: 100%; max-width: 1510px; margin: 0 auto; flex: 1; }
 .page-heading { display: flex; gap: 20px; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+.page-heading > .actions { flex-wrap: wrap; justify-content: flex-end; }
 .page-heading p { color: var(--muted); margin-top: 8px; }
 .muted, .hint { color: var(--muted); }
 .hint { font-size: 12px; font-weight: 400; }

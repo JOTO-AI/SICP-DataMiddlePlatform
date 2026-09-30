@@ -102,7 +102,7 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 			return nil, e
 		}
 		admission := admin.Admission{Store: r.Control, Clock: clock, Random: rand.Reader}
-		a.Management, e = admin.Routes(auth, map[admin.Action]http.Handler{admin.ForceFull: admission, admin.Rerun: admission, admin.Status: admin.StatusHandler{Store: r.Control, Selection: r.Control, Acquisition: r.Control, Diagnostics: observability.TaskDiagnostics{Repository: observability.Repository{Registry: c.Databases, Database: r.Database}, Sanitizer: r.Sanitizer}}})
+		a.Management, e = admin.Routes(auth, map[admin.Action]http.Handler{admin.Incremental: admission, admin.ForceFull: admission, admin.Rerun: admission, admin.Status: admin.StatusHandler{Store: r.Control, Selection: r.Control, Acquisition: r.Control, Diagnostics: observability.TaskDiagnostics{Repository: observability.Repository{Registry: c.Databases, Database: r.Database}, Sanitizer: r.Sanitizer}}})
 		if e != nil {
 			return nil, e
 		}

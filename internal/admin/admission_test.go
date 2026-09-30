@@ -37,7 +37,7 @@ func TestTableForceFullRouteUsesTrustedIdentityAndForceFullPermission(t *testing
 		if allowed {
 			action = admin.ForceFull
 		}
-		mux, err := admin.Routes(administrator(t, action), map[admin.Action]http.Handler{admin.ForceFull: a, admin.Rerun: a, admin.Status: http.NotFoundHandler()})
+		mux, err := admin.Routes(administrator(t, action), map[admin.Action]http.Handler{admin.Incremental: a, admin.ForceFull: a, admin.Rerun: a, admin.Status: http.NotFoundHandler()})
 		if err != nil {
 			t.Fatal(err)
 		}

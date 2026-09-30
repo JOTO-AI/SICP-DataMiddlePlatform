@@ -47,7 +47,7 @@ func TestT15_01And02EachRouteRequiresItsOwnPermissionAndTrustedOperator(t *testi
 	routes := []struct {
 		action       admin.Action
 		method, path string
-	}{{admin.ForceFull, "POST", "/admin/v1/tasks/force-full"}, {admin.Rerun, "POST", "/admin/v1/tasks/failed-task/rerun"}, {admin.Status, "GET", "/admin/v1/tasks/task-123"}}
+	}{{admin.Incremental, "POST", "/admin/v1/tasks/incremental"}, {admin.ForceFull, "POST", "/admin/v1/tasks/force-full"}, {admin.Rerun, "POST", "/admin/v1/tasks/failed-task/rerun"}, {admin.Status, "GET", "/admin/v1/tasks/task-123"}}
 	for _, allowed := range routes {
 		t.Run(string(allowed.action), func(t *testing.T) {
 			calls := 0

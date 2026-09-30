@@ -73,6 +73,44 @@ func TestT15_02And03HTTPAcceptanceAndLostReplyRetryReturnSameDurableTask(t *test
 	}
 }
 
+func TestManualIncrementalAdmissionAndReplay(t *testing.T) {
+	r, d, req := taskRepository(t)
+	h := management(t, r, req.AcceptedAt, admin.Incremental)
+	blocked := httptest.NewRecorder()
+	h.ServeHTTP(blocked, managementRequest(t.Context()))
+	if blocked.Code != 409 || len(d.records) != 0 {
+		t.Fatal("incremental admitted before initialization", blocked.Code)
+	}
+	d.initialized = true
+	first := httptest.NewRecorder()
+	h.ServeHTTP(first, managementRequest(t.Context()))
+	one := receipt(t, first)
+	if first.Code != 202 || !one.Created || d.records["request-key"][2] != "incremental" || d.records["request-key"][4] != "operator-1" {
+		t.Fatal("wrong manual task", first.Code, one)
+	}
+	if _, err := r.StartAccepted(t.Context(), one.TaskID, "worker", req.AcceptedAt.Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	replay := httptest.NewRecorder()
+	h.ServeHTTP(replay, managementRequest(t.Context()))
+	two := receipt(t, replay)
+	if replay.Code != 202 || two.Created || two.TaskID != one.TaskID || len(d.records) != 1 {
+		t.Fatal("lost response duplicated task", replay.Code, two)
+	}
+	other := managementRequest(t.Context())
+	other.Header.Set("Idempotency-Key", "new-sync")
+	busy := httptest.NewRecorder()
+	h.ServeHTTP(busy, other)
+	if busy.Code != 409 || len(d.records) != 1 {
+		t.Fatal("overlapping task admitted", busy.Code)
+	}
+	conflict := httptest.NewRecorder()
+	management(t, r, req.AcceptedAt, admin.ForceFull).ServeHTTP(conflict, managementRequest(t.Context()))
+	if conflict.Code != 409 || len(d.records) != 1 {
+		t.Fatal("incremental key changed into full update", conflict.Code)
+	}
+}
+
 func TestT15_04And05And13AcceptanceFailuresCreateNoTask(t *testing.T) {
 	for _, failure := range []string{"commit", "pending", "owner", "unfinished", "uninitialized-full"} {
 		t.Run(failure, func(t *testing.T) {

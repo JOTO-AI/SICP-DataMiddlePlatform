@@ -61,7 +61,7 @@ func emptyBody(w http.ResponseWriter, r *http.Request) bool {
 }
 func (a Admission) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	operator, action, ok := Identity(r.Context())
-	if !ok || (action != ForceFull && action != Rerun) {
+	if !ok || (action != Incremental && action != ForceFull && action != Rerun) {
 		respond(w, 403, "forbidden", "Action not permitted", nil)
 		return
 	}

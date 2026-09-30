@@ -58,7 +58,7 @@ func (d *deployment) acceptAndDisconnect(t *testing.T, action, key string) strin
 
 func TestI06_02(t *testing.T) {
 	d := newDeployment(t, true)
-	for _, action := range []string{"force-full", "00000000000000000000000000000000/rerun"} {
+	for _, action := range []string{"incremental", "force-full", "00000000000000000000000000000000/rerun"} {
 		status, _ := d.request(t, "POST", d.workerURL+"/admin/v1/tasks/"+action, "synthetic-query-secret", "denied", "{}")
 		if status != 401 {
 			t.Fatal("business credential accepted as admin", action, status)

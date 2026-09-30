@@ -18,6 +18,14 @@ const failedInitialization = computed(() => {
 })
 const primaryLabel = computed(() => failedInitialization.value ? '重新初始化' : '强制全量更新')
 const forceFullBlocked = computed(() => historyBusy.value || !overview.value || !!historyError.value || hasActiveTask.value || (!overview.value.initialized && !failedInitialization.value))
+const incrementalBlocked = computed(() => historyBusy.value || !overview.value || !!historyError.value || hasActiveTask.value || !overview.value.initialized)
+const incrementalHelp = computed(() => {
+  if (historyBusy.value || !overview.value) return '正在读取初始化和任务状态。'
+  if (historyError.value) return '无法确认当前任务状态，请先刷新记录。'
+  if (!overview.value.initialized) return '初始化完成后可手动增量同步；当前可先补齐失败表。'
+  if (hasActiveTask.value) return '已有任务正在执行或等待恢复，结束后可启动增量同步。'
+  return '从各表已确认进度立即采集增量；有变化且校验通过后自动发布，无变化则确认同步进度。'
+})
 const forceFullHelp = computed(() => {
   if (historyBusy.value) return '正在读取最新任务状态。'
   if (historyError.value) return '无法确认当前任务状态，请先刷新记录。'
@@ -27,7 +35,7 @@ const forceFullHelp = computed(() => {
   if (!overview.value.initialized) return '等待系统创建初始化任务；任务失败后可在此重新初始化。'
   return '强制全量更新会立即请求重新采集、校验并发布完整数据。'
 })
-const actions = computed(() => [{ id: 'force-full', title: failedInitialization.value ? '重新初始化' : '强制全量', text: failedInitialization.value ? '复用已经完整采集的表，重新采集待补齐的表。' : '维护操作：重新采集并构建完整数据，即使内容未变化。' }, { id: 'table-full', title: '单表强制更新', text: '只从上游完整采集所选表，其余表复用最近已完成的数据。初始化尚缺其他表时，保留本次结果，等待继续补齐。' }, { id: 'rerun', title: '失败重跑', text: '排除故障后，根据失败任务创建关联的新任务。' }])
+const actions = computed(() => [{ id: 'incremental', title: '增量同步', text: '立即同步所有表的增量。有变化且校验通过后自动发布，无变化则确认同步进度；失败时保留当前版本和原同步进度。' }, { id: 'force-full', title: failedInitialization.value ? '重新初始化' : '强制全量', text: failedInitialization.value ? '复用已经完整采集的表，重新采集待补齐的表。' : '维护操作：重新采集并构建完整数据，即使内容未变化。' }, { id: 'table-full', title: '单表强制更新', text: '只从上游完整采集所选表，其余表复用最近已完成的数据。初始化尚缺其他表时，保留本次结果，等待继续补齐。' }, { id: 'rerun', title: '失败重跑', text: '排除故障后，根据失败任务创建关联的新任务。' }])
 const failureDescriptions: Record<string, string> = {
   corrupt_seal: '采集结果未完整封存或校验未通过，需重新采集。重启后系统会自动尝试恢复初始化。',
   interrupted: '任务执行被中断。重启后系统会自动尝试恢复初始化。',
@@ -66,6 +74,7 @@ function confirm() {
   stop()
   error.value = ''
   if (!pending.value) {
+    if (action.value === 'incremental' && incrementalBlocked.value) { error.value = incrementalHelp.value; return }
     if (action.value === 'force-full' && forceFullBlocked.value) { error.value = forceFullHelp.value; return }
     if (action.value === 'table-full' && (!tableUpdateAllowed.value || !sourceTables.includes(selectedTable.value))) { error.value = '请选择有效的来源表，并等待当前任务结束。'; return }
     if (action.value === 'rerun' && !predecessor.value.trim()) { error.value = '请输入原失败任务号。'; return }
@@ -81,6 +90,7 @@ function confirm() {
   dialog.value?.showModal()
 }
 function forceFull() { action.value = 'force-full'; confirm() }
+function syncIncremental() { action.value = 'incremental'; confirm() }
 function forceTable(table: string) { if (!tableUpdateAllowed.value) return; action.value = 'table-full'; selectedTable.value = table; confirm() }
 function abandon() { pending.value = null; key.value = newIdempotencyKey(); error.value = ''; receipt.value = '' }
 async function submit() {
@@ -110,13 +120,14 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
 </script>
 <template>
   <section>
-    <div class="page-heading"><div><h1>更新任务</h1><p>初始化和日常同步由系统自动执行，此处查看记录与处理异常。</p></div><div class="actions"><button @click="refreshHistory" :disabled="historyBusy">刷新记录</button><button class="primary" @click="forceFull" :disabled="forceFullBlocked || busy || loading || !!pending" aria-describedby="force-full-help">{{ primaryLabel }}</button></div></div>
+    <div class="page-heading"><div><h1>更新任务</h1><p>初始化和日常同步由系统自动执行，此处查看记录与处理异常。</p></div><div class="actions"><button @click="refreshHistory" :disabled="historyBusy">刷新记录</button><button class="primary" @click="syncIncremental" :disabled="incrementalBlocked || busy || loading || !!pending" aria-describedby="incremental-help">立即增量同步</button><button @click="forceFull" :disabled="forceFullBlocked || busy || loading || !!pending" aria-describedby="force-full-help">{{ primaryLabel }}</button></div></div>
     <div class="section-note">
       <h2>自动更新</h2>
       <p v-if="overview">{{ overview.initialized ? '初始化已完成，系统按两小时间隔调度增量同步。' : '尚未完成初始化。全新环境自动开始，重启后系统会恢复未完成的初始化。' }}</p>
       <p v-else>正在读取自动更新状态。</p>
       <p v-if="overview && !overview.initialized" class="hint">每次启动最多自动重新采集一次，与上次失败至少间隔 5 分钟，并遵守上游冷却时间。若再次失败，请先检查失败原因。</p>
       <p id="force-full-help" class="hint">{{ forceFullHelp }}</p>
+      <p id="incremental-help" class="hint">{{ incrementalHelp }}</p>
       <p v-if="overview?.initialized">下次计划时间：{{ time(overview.next_due_at) }}。执行中或恢复中会顺延。</p>
       <p v-if="overview?.cooldown_until">冷却截止时间：{{ time(overview.cooldown_until) }}</p>
     </div>
@@ -140,7 +151,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
         <label class="key-label">幂等键<input v-model="key" required maxlength="128" spellcheck="false"></label></fieldset>
         <p class="hint">响应丢失时用原键重试，可避免重复创建任务。</p>
         <p v-if="pending" class="hint">已锁定请求：{{ pending.title }}。修改操作前请先结束本次请求。</p>
-        <div class="actions"><button class="primary" :disabled="busy || loading || (!pending && ((action === 'force-full' && forceFullBlocked) || (action === 'table-full' && !tableUpdateAllowed)))">{{ busy ? '正在提交…' : pending ? '重试原请求' : '提交更新' }}</button><button v-if="pending" type="button" :disabled="busy" @click="abandon">结束本次请求</button></div>
+        <div class="actions"><button class="primary" :disabled="busy || loading || (!pending && ((action === 'incremental' && incrementalBlocked) || (action === 'force-full' && forceFullBlocked) || (action === 'table-full' && !tableUpdateAllowed)))">{{ busy ? '正在提交…' : pending ? '重试原请求' : '提交更新' }}</button><button v-if="pending" type="button" :disabled="busy" @click="abandon">结束本次请求</button></div>
         <p v-if="error" class="error" role="alert">{{ error }}</p><p v-if="receipt" class="success-text" role="status">{{ receipt }}</p>
       </form>
       <div class="task-detail">
