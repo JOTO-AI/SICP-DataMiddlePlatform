@@ -26,6 +26,32 @@ func TestForceFullContinuesAndSeparateTableRepairsReuseDurableSuccesses(t *testi
 	testTableRepairs(t, true)
 }
 
+func TestIncompleteHistoryResetsCountersBeforeFreshAcquisition(t *testing.T) {
+	a, _ := acquisition(t, "")
+	a.Reuse = func(_ context.Context, _ ingest.PageRequest, observe staging.TableCopyObserver) (int64, error) {
+		observe.Report("checking", 2, 3)
+		return 0, staging.ErrIncomplete
+	}
+	started := map[string]bool{}
+	a.Progress = func(_ context.Context, tables []control.TableAcquisitionProgress) error {
+		for _, table := range tables {
+			if table.Status == "acquiring" && !started[table.Table] {
+				if table.CompletedPages != 0 || table.TotalPages != nil {
+					t.Fatal("historical check counts leaked into fresh acquisition", table)
+				}
+				started[table.Table] = true
+			}
+		}
+		return nil
+	}
+	if _, err := a.Full(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if len(started) != len(ingest.Catalog()) {
+		t.Fatal("missing acquisition transitions", started)
+	}
+}
+
 func testTableRepairs(t *testing.T, force bool) {
 	t.Helper()
 	acquire := func(a update.Acquirer) (*staging.Lease, error) {
@@ -62,6 +88,7 @@ func testTableRepairs(t *testing.T, force bool) {
 		t.Fatal(err)
 	}
 	var progress []control.TableAcquisitionProgress
+	seenChecking, seenReusing := false, false
 	makeRun := func(id, selected string, prior *staging.Store) (update.Acquirer, *staging.Store) {
 		store, err := staging.NewStore(id, quota, 1<<20)
 		if err != nil {
@@ -70,11 +97,15 @@ func testTableRepairs(t *testing.T, force bool) {
 		budget, _ := ingest.NewTaskBudget(clock.Now().Add(time.Hour), 100)
 		a := update.Acquirer{Collector: collector, Staging: store, Budget: budget, Limits: ingest.PageLimits{MaxPages: 100, MaxRecords: 1000}, PageSize: 2, Owner: id, Observe: func(err error) { t.Error(err) }, OnlyTable: selected, ContinueOnFailure: true, Progress: func(_ context.Context, p []control.TableAcquisitionProgress) error {
 			progress = append([]control.TableAcquisitionProgress(nil), p...)
+			for _, table := range p {
+				seenChecking = seenChecking || table.Status == "checking"
+				seenReusing = seenReusing || table.Status == "reusing"
+			}
 			return nil
 		}}
 		if prior != nil {
-			a.Reuse = func(ctx context.Context, r ingest.PageRequest) (int64, error) {
-				return prior.CopyTable(ctx, r.Table, store, r.Mode, a.Limits)
+			a.Reuse = func(ctx context.Context, r ingest.PageRequest, observe staging.TableCopyObserver) (int64, error) {
+				return prior.CopyTableWithProgress(ctx, r.Table, store, r.Mode, a.Limits, observe)
 			}
 		}
 		return a, store
@@ -128,6 +159,9 @@ func testTableRepairs(t *testing.T, force bool) {
 	if reused != 13 {
 		t.Fatal("missing per-table reuse status", reused)
 	}
+	if !seenChecking || !seenReusing {
+		t.Fatal("historical data processing appeared idle")
+	}
 }
 
 func TestCancelledInitializationDoesNotKeepRequestingOtherTables(t *testing.T) {
@@ -179,8 +213,8 @@ func TestPublishedTableCopyUsesCompleteCanonicalBaseline(t *testing.T) {
 		t.Fatal(err)
 	}
 	a.OnlyTable = "dwd_bzkscjzlb"
-	a.Reuse = func(ctx context.Context, r ingest.PageRequest) (int64, error) {
-		return update.CopyBaselineTable(ctx, baseline, out.Manifest, r, a.Staging, a.Limits)
+	a.Reuse = func(ctx context.Context, r ingest.PageRequest, observe staging.TableCopyObserver) (int64, error) {
+		return update.CopyBaselineTableWithProgress(ctx, baseline, out.Manifest, r, a.Staging, a.Limits, observe)
 	}
 	plan := updatePlan()
 	plan.Mode, plan.Table = "force_full", a.OnlyTable

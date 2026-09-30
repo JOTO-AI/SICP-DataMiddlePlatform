@@ -12,6 +12,10 @@ import (
 // CopyBaselineTable carries untouched full tables from the verified published
 // target, never from its possibly incremental original acquisition.
 func CopyBaselineTable(ctx context.Context, source candidate.CompleteSource, manifest candidate.Manifest, request ingest.PageRequest, target *staging.Store, limits ingest.PageLimits) (int64, error) {
+	return CopyBaselineTableWithProgress(ctx, source, manifest, request, target, limits, nil)
+}
+
+func CopyBaselineTableWithProgress(ctx context.Context, source candidate.CompleteSource, manifest candidate.Manifest, request ingest.PageRequest, target *staging.Store, limits ingest.PageLimits, observe staging.TableCopyObserver) (int64, error) {
 	for _, table := range manifest.Tables {
 		if table.Table != request.Table {
 			continue
@@ -25,6 +29,12 @@ func CopyBaselineTable(ctx context.Context, source candidate.CompleteSource, man
 		if err != nil {
 			return 0, err
 		}
+		total := table.Rows / int64(request.PageSize)
+		if table.Rows%int64(request.PageSize) != 0 {
+			total++
+		}
+		total = max(1, total)
+		observe.Report("reusing", 0, total)
 		for number := 1; ; number++ {
 			page := ingest.Page{Total: table.Rows, Records: []ingest.Record{}}
 			for len(page.Records) < request.PageSize {
@@ -49,8 +59,10 @@ func CopyBaselineTable(ctx context.Context, source candidate.CompleteSource, man
 				if _, err := rows.Next(ctx); err != io.EOF {
 					return 0, candidate.ErrBuild
 				}
+				observe.Report("reusing", int64(number), total)
 				return int64(number), nil
 			}
+			observe.Report("reusing", int64(number), total)
 		}
 	}
 	return 0, candidate.ErrBuild

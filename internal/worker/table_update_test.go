@@ -60,7 +60,7 @@ func TestInterruptedRepairRetainsAncestorTablesAndConservativeEpoch(t *testing.T
 		t.Fatal("lost original source epoch", err, epoch)
 	}
 	target, _ := staging.NewStore(task.ID, files, 1<<20)
-	if pages, err := ancestors.copyTable(t.Context(), request, target, limits); err != nil || pages != 1 {
+	if pages, err := ancestors.copyTable(t.Context(), request, target, limits, nil); err != nil || pages != 1 {
 		t.Fatal("interruption lost completed ancestor table", pages, err)
 	}
 	// An interrupted explicit refresh must not silently revive its old version.
@@ -70,7 +70,7 @@ func TestInterruptedRepairRetainsAncestorTablesAndConservativeEpoch(t *testing.T
 		t.Fatal(err)
 	}
 	other, _ := staging.NewStore("fourth", files, 1<<20)
-	if _, err := ancestors.copyTable(t.Context(), request, other, limits); !errors.Is(err, staging.ErrIncomplete) {
+	if _, err := ancestors.copyTable(t.Context(), request, other, limits, nil); !errors.Is(err, staging.ErrIncomplete) {
 		t.Fatal("revived invalidated table", err)
 	}
 	if entries, err := other.Entries(t.Context()); err != nil || len(entries) != 0 {

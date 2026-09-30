@@ -29,8 +29,8 @@ func (w Executor) configureTables(ctx context.Context, task control.Task, repo c
 	if err != nil {
 		return time.Time{}, err
 	}
-	a.Reuse = func(ctx context.Context, r ingest.PageRequest) (int64, error) {
-		return ancestors.copyTable(ctx, r, files, a.Limits)
+	a.Reuse = func(ctx context.Context, r ingest.PageRequest, observe staging.TableCopyObserver) (int64, error) {
+		return ancestors.copyTable(ctx, r, files, a.Limits, observe)
 	}
 	if err := repo.SaveSourceEpoch(ctx, epoch); err != nil {
 		return time.Time{}, err
@@ -143,9 +143,9 @@ func initializationAncestors(ctx context.Context, task control.Task, repo tableH
 	return ancestors, epoch, nil
 }
 
-func (h initializationHistory) copyTable(ctx context.Context, r ingest.PageRequest, target *staging.Store, limits ingest.PageLimits) (int64, error) {
+func (h initializationHistory) copyTable(ctx context.Context, r ingest.PageRequest, target *staging.Store, limits ingest.PageLimits, observe staging.TableCopyObserver) (int64, error) {
 	for _, old := range h {
-		pages, err := old.store.CopyTable(ctx, r.Table, target, r.Mode, limits)
+		pages, err := old.store.CopyTableWithProgress(ctx, r.Table, target, r.Mode, limits, observe)
 		if !errors.Is(err, staging.ErrIncomplete) {
 			return pages, err
 		}

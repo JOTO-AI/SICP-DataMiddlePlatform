@@ -286,10 +286,10 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 				return err
 			}
 		}
-		acquirer.Reuse = func(ctx context.Context, request ingest.PageRequest) (int64, error) {
-			pages, err := history.copyTable(ctx, request, files, acquirer.Limits)
+		acquirer.Reuse = func(ctx context.Context, request ingest.PageRequest, observe staging.TableCopyObserver) (int64, error) {
+			pages, err := history.copyTable(ctx, request, files, acquirer.Limits, observe)
 			if errors.Is(err, staging.ErrIncomplete) && baseline && !history.selected(request.Table) {
-				return update.CopyBaselineTable(ctx, targets, base, request, files, acquirer.Limits)
+				return update.CopyBaselineTableWithProgress(ctx, targets, base, request, files, acquirer.Limits, observe)
 			}
 			return pages, err
 		}
@@ -297,8 +297,8 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 		if err := targets.Validate(ctx, base); err != nil {
 			return err
 		}
-		acquirer.Reuse = func(ctx context.Context, r ingest.PageRequest) (int64, error) {
-			return update.CopyBaselineTable(ctx, targets, base, r, files, acquirer.Limits)
+		acquirer.Reuse = func(ctx context.Context, r ingest.PageRequest, observe staging.TableCopyObserver) (int64, error) {
+			return update.CopyBaselineTableWithProgress(ctx, targets, base, r, files, acquirer.Limits, observe)
 		}
 	}
 	if e = store.ReopenPublished(ctx, plan, func(ctx context.Context, old update.Copy, gate read.Gate, admission update.FixedAdmission) error {

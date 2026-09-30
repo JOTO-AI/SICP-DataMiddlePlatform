@@ -31,7 +31,7 @@ type Acquirer struct {
 	Progress          func(context.Context, []control.TableAcquisitionProgress) error
 	ContinueOnFailure bool
 	OnlyTable         string
-	Reuse             func(context.Context, ingest.PageRequest) (int64, error)
+	Reuse             func(context.Context, ingest.PageRequest, staging.TableCopyObserver) (int64, error)
 	NewBudget         func() (*ingest.TaskBudget, error)
 }
 
@@ -64,7 +64,18 @@ func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageR
 			return nil, ctx.Err()
 		}
 		if a.Reuse != nil && table.Name != a.OnlyTable {
-			pages, err := a.Reuse(ctx, request(table.Name))
+			tables[index].Status = "checking"
+			a.reportProgress(ctx, tables)
+			pages, err := a.Reuse(ctx, request(table.Name), func(p staging.TableCopyProgress) {
+				tables[index].Status = p.Phase
+				tables[index].CompletedPages = p.CompletedPages
+				tables[index].TotalPages = nil
+				if p.TotalPages > 0 {
+					total := p.TotalPages
+					tables[index].TotalPages = &total
+				}
+				a.reportProgress(ctx, tables)
+			})
 			if err == nil {
 				tables[index].Status = "collected"
 				tables[index].Reused = true
@@ -82,6 +93,10 @@ func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageR
 				}
 				continue
 			}
+			// A partial historical table is fetched afresh. Its check counts
+			// must not be presented as pages acquired by the new request.
+			tables[index].CompletedPages = 0
+			tables[index].TotalPages = nil
 		}
 		if a.OnlyTable != "" && table.Name != a.OnlyTable {
 			tables[index].Status = "failed"

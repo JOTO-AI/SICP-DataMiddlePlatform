@@ -1,5 +1,40 @@
 import { test, expect, type Page } from '@playwright/test'
 
+test('historical data verification and reuse stay visible as active work', async ({ page }, testInfo) => {
+  await page.clock.install()
+  await setup(page)
+  const task = { task_id: 'reuse-progress', mode: 'initialize', status: 'running', accepted_at: '2026-09-30T07:41:35Z' }
+  let phase = 'checking', completed = 0, total: number | null = null, failed = false
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [{ ...task, status: failed ? 'failed' : 'running' }] } } }))
+  await page.route('**/admin/v1/tasks/reuse-progress', route => route.fulfill({ json: { code: 'ok', data: { ...task, status: failed ? 'failed' : 'running', acquisition: { updated_at: '2026-09-30T07:42:00Z', tables: [
+    { table: 'dwd_bzksbjsjzlb', status: 'collected', completed_pages: 1, total_pages: 1, reused: true },
+    { table: 'dwd_bzkscjzlb', status: phase, completed_pages: completed, total_pages: total },
+    { table: 'dwd_bzksgrtxsjzlb', status: 'waiting', completed_pages: 0, total_pages: null },
+  ] } } } })))
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(page.getByText('正在校验历史数据', { exact: true })).toBeVisible()
+  await expect(page.getByText('正在检查已保存的分页数据，确认完整后复用。')).toBeVisible()
+  await expect(page.getByRole('progressbar')).toHaveCount(0)
+  completed = 720; total = 1440
+  await page.clock.runFor(10100)
+  await expect(page.getByRole('progressbar', { name: 'dwd_bzkscjzlb 历史数据校验进度' })).toHaveAttribute('value', '720')
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await expect(page.getByText('等待处理', { exact: true })).toBeVisible()
+  phase = 'reusing'; completed = 360
+  await page.clock.runFor(5100)
+  await expect(page.getByText('正在复用历史数据', { exact: true })).toBeVisible()
+  await expect(page.getByText('360 / 1440 页 · 25%', { exact: true })).toBeVisible()
+  await expect(page.getByText('已完成 1 / 3 张表', { exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('reuse-progress-desktop.png'), fullPage: true })
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+  await page.screenshot({ path: testInfo.outputPath('reuse-progress-mobile.png'), fullPage: true })
+  failed = true
+  await page.clock.runFor(5100)
+  await expect(page.getByText('历史数据复用已停止', { exact: true })).toBeVisible()
+  await expect(page.getByRole('progressbar', { name: 'dwd_bzkscjzlb 历史数据复用进度' })).toHaveAttribute('value', '360')
+})
+
 test('failed full update offers retry of incomplete tables and single-table repair', async ({ page }) => {
   await setup(page)
   const task = { task_id: 'failed-full', mode: 'force_full', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-09-30T10:00:00Z' }

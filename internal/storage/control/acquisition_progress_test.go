@@ -70,3 +70,28 @@ func TestAcquisitionProgressPersistsOnlyUnderLiveOwnership(t *testing.T) {
 		})
 	}
 }
+
+func TestRestorationProgressRoundTripsBeforeTableCompletion(t *testing.T) {
+	for _, status := range []string{"checking", "reusing"} {
+		for _, complete := range []int64{0, 720, 1440} {
+			r, d, req := taskRepository(t)
+			launch, err := r.Dispatch(t.Context(), req, "worker", req.AcceptedAt, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r.Database = &checkpointDB{taskDB: d}
+			p := acquisitionProgress()
+			p.Tables[0].Status, p.Tables[0].CompletedPages = status, complete
+			if complete == 0 {
+				p.Tables[0].TotalPages = nil
+			}
+			if err := r.WithOwnership(launch.Owner).SaveAcquisitionProgress(t.Context(), p); err != nil {
+				t.Fatal(err)
+			}
+			got, err := r.AcquisitionProgress(t.Context(), req.ID)
+			if err != nil || !reflect.DeepEqual(got, &p) {
+				t.Fatal(got, err)
+			}
+		}
+	}
+}

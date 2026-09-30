@@ -35,18 +35,19 @@ func (p AcquisitionProgress) valid() bool {
 		known[table.Name] = true
 	}
 	for _, table := range p.Tables {
+		restoring := table.Status == "checking" || table.Status == "reusing"
 		if !known[table.Table] || table.CompletedPages < 0 || (table.Reused && table.Status != "collected") {
 			return false
 		}
 		delete(known, table.Table)
 		if table.TotalPages == nil {
-			if table.CompletedPages != 0 || (table.Status != "waiting" && table.Status != "acquiring" && table.Status != "failed") {
+			if table.CompletedPages != 0 || (table.Status != "waiting" && table.Status != "acquiring" && table.Status != "failed" && !restoring) {
 				return false
 			}
 			continue
 		}
 		if *table.TotalPages < 1 || table.CompletedPages > *table.TotalPages ||
-			(table.Status != "acquiring" && table.Status != "collected" && table.Status != "failed") ||
+			(table.Status != "acquiring" && table.Status != "collected" && table.Status != "failed" && !restoring) ||
 			(table.Status == "collected" && table.CompletedPages != *table.TotalPages) ||
 			(table.Status == "acquiring" && table.CompletedPages == *table.TotalPages) {
 			return false
