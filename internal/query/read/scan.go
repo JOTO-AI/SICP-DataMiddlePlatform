@@ -162,17 +162,8 @@ func Scan(ctx context.Context, r Matcher, h Handle, table string, filters []sour
 func Collect(ctx context.Context, r Matcher, h Handle, table string, filters []source.Filter, b *Budget) ([]source.SourceRow, error) {
 	result := []source.SourceRow{}
 	err := Scan(ctx, r, h, table, filters, b, func(row source.SourceRow) error {
-		if b.limits.BatchBytes > 0 {
-			for name, raw := range row {
-				if len(name) > b.limits.Bytes-b.retained {
-					return ErrBudget
-				}
-				b.retained += len(name)
-				if len(raw) > b.limits.Bytes-b.retained {
-					return ErrBudget
-				}
-				b.retained += len(raw)
-			}
+		if err := b.Retain(row); err != nil {
+			return err
 		}
 		result = append(result, row)
 		return nil
@@ -181,4 +172,26 @@ func Collect(ctx context.Context, r Matcher, h Handle, table string, filters []s
 		return nil, err
 	}
 	return result, nil
+}
+
+// Retain accounts for filtered rows held after a streaming callback returns.
+// Foreground Scan already charges all traffic, so its stricter cap is unchanged.
+func (b *Budget) Retain(row source.SourceRow) error {
+	if b == nil {
+		return ErrBudget
+	}
+	if b.limits.BatchBytes == 0 {
+		return nil
+	}
+	for name, raw := range row {
+		if len(name) > b.limits.Bytes-b.retained {
+			return ErrBudget
+		}
+		b.retained += len(name)
+		if len(raw) > b.limits.Bytes-b.retained {
+			return ErrBudget
+		}
+		b.retained += len(raw)
+	}
+	return nil
 }

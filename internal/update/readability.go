@@ -117,8 +117,13 @@ func (v Readability) VerifyPublished(ctx context.Context, p control.UpdatePlan, 
 	if at.Before(p.StartedAt) {
 		return checked, control.ErrTime
 	}
+	queries, closeSession, err := candidate.QuerySession(ctx, v.Queries, h, old.Manifest)
+	if err != nil {
+		return checked, err
+	}
+	defer closeSession()
 	for _, def := range contract.Definitions() {
-		count, digest, e := v.Queries.Check(ctx, h, def.Operation, at)
+		count, digest, e := queries.Check(ctx, h, def.Operation, at)
 		if e != nil {
 			return checked, e
 		}

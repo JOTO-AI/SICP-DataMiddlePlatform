@@ -31,6 +31,7 @@ type Online struct {
 	Clock     ports.Clock
 	Limits    read.Limits
 	MaxCases  int
+	memo      *caseMemo
 }
 
 func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation, at time.Time) (result int, summary string, err error) {
@@ -48,6 +49,7 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 	count := 0
 	hash := sha256.New()
 	seen := map[string]bool{}
+	seenBytes := 0
 	visit := func(request any) error {
 		if err := budget.Check(ctx); err != nil {
 			return err
@@ -63,6 +65,10 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 		if count >= o.MaxCases {
 			return read.ErrBudget
 		}
+		if len(identity) > 16<<20-seenBytes {
+			return read.ErrBudget
+		}
+		seenBytes += len(identity)
 		seen[identity] = true
 		parsed, err := transport.Parse(op, bytes.NewReader(encoded))
 		if err != nil {
@@ -129,24 +135,71 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 }
 
 func (o Online) cases(ctx context.Context, h read.Handle, op contract.Operation, b *read.Budget, visit func(any) error) error {
+	seenTerms := map[[3]string]bool{}
+	termBytes := 0
+	termVisit := func(id, year, semester string, request any) error {
+		key := [3]string{id, year, semester}
+		if seenTerms[key] {
+			return nil
+		}
+		charge := len(id) + len(year) + len(semester) + 64
+		if len(seenTerms) >= o.MaxCases || charge > 8<<20-termBytes {
+			return read.ErrBudget
+		}
+		termBytes += charge
+		seenTerms[key] = true
+		return visit(request)
+	}
 	scan := func(table string, filters []source.Filter, fn func(source.SourceRow) error) error {
 		return read.Scan(ctx, o.Source, h, table, filters, b, fn)
 	}
 	switch op {
 	case contract.StudentGrades, contract.BatchGrades:
-		return scan(grades.GradesTable, nil, func(row source.SourceRow) error {
-			id, err := compute.Required(row, "XH")
-			if err != nil {
+		var ids []string
+		if o.memo != nil && o.memo.gradesLoaded {
+			ids = o.memo.gradeIDs
+		} else {
+			seen := map[string]bool{}
+			idBytes := 0
+			if err := scan(grades.GradesTable, nil, func(row source.SourceRow) error {
+				id, err := compute.Required(row, "XH")
+				if err != nil {
+					return err
+				}
+				if !seen[id] {
+					if len(ids) >= o.MaxCases || len(id)+64 > 8<<20-idBytes {
+						return read.ErrBudget
+					}
+					idBytes += len(id) + 64
+					seen[id] = true
+					ids = append(ids, id)
+				}
+				return nil
+			}); err != nil {
 				return err
 			}
+			if o.memo != nil {
+				o.memo.gradeIDs = ids
+				o.memo.gradesLoaded = true
+			}
+		}
+		for _, id := range ids {
 			all := "all"
 			page, size := 1, 1
 			if op == contract.StudentGrades {
-				return visit(contract.StudentGradesRequest{StudentNumber: id, AcademicYear: &all, GradeFilters: contract.GradeFilters{Page: &page, PageSize: &size}})
+				if err := visit(contract.StudentGradesRequest{StudentNumber: id, AcademicYear: &all, GradeFilters: contract.GradeFilters{Page: &page, PageSize: &size}}); err != nil {
+					return err
+				}
+			} else {
+				if err := visit(contract.BatchGradesRequest{AcademicYear: all, StudentNumbers: []string{id}, GradeFilters: contract.GradeFilters{Page: &page, PageSize: &size}}); err != nil {
+					return err
+				}
 			}
-			return visit(contract.BatchGradesRequest{AcademicYear: all, StudentNumbers: []string{id}, GradeFilters: contract.GradeFilters{Page: &page, PageSize: &size}})
-		})
+		}
+		return nil
 	case contract.StudentTimetable:
+		associations := map[[2]string][][2]string{}
+		associationBytes := 0
 		return scan(timetable.RelationsTable, nil, func(row source.SourceRow) error {
 			id, err := compute.Required(row, "XH")
 			if err != nil {
@@ -160,7 +213,20 @@ func (o Online) cases(ctx context.Context, h read.Handle, op contract.Operation,
 			if err != nil {
 				return err
 			}
-			return scan(timetable.SchedulesTable, []source.Filter{{Column: "JXBH", Value: class}, {Column: "JHKCH", Value: course}}, func(schedule source.SourceRow) error {
+			key := [2]string{class, course}
+			if terms, ok := associations[key]; ok {
+				for _, term := range terms {
+					if err := termVisit(id, term[0], term[1], contract.StudentTimetableRequest{StudentNumber: id, AcademicYear: term[0], Semester: term[1]}); err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+			terms := [][2]string{}
+			termSet := map[[2]string]bool{}
+			charge := len(class) + len(course) + 64
+			cacheable := charge <= 8<<20-associationBytes
+			err = scan(timetable.SchedulesTable, []source.Filter{{Column: "JXBH", Value: class}, {Column: "JHKCH", Value: course}}, func(schedule source.SourceRow) error {
 				year, err := compute.Required(schedule, "KKXND")
 				if err != nil {
 					return err
@@ -169,8 +235,26 @@ func (o Online) cases(ctx context.Context, h read.Handle, op contract.Operation,
 				if err != nil {
 					return err
 				}
-				return visit(contract.StudentTimetableRequest{StudentNumber: id, AcademicYear: year, Semester: semester})
+				term := [2]string{year, semester}
+				if cacheable && !termSet[term] {
+					cost := len(year) + len(semester) + 64
+					if cost > 8<<20-associationBytes-charge {
+						cacheable = false
+						terms = nil
+						termSet = nil
+					} else {
+						charge += cost
+						terms = append(terms, term)
+						termSet[term] = true
+					}
+				}
+				return termVisit(id, year, semester, contract.StudentTimetableRequest{StudentNumber: id, AcademicYear: year, Semester: semester})
 			})
+			if err == nil && cacheable {
+				associations[key] = terms
+				associationBytes += charge
+			}
+			return err
 		})
 	case contract.StaffTimetable:
 		return scan(timetable.SchedulesTable, nil, func(row source.SourceRow) error {
@@ -187,7 +271,7 @@ func (o Online) cases(ctx context.Context, h read.Handle, op contract.Operation,
 				return err
 			}
 			for _, id := range teachers.StaffNumbers {
-				if err = visit(contract.StaffTimetableRequest{StaffNumber: id, AcademicYear: year, Semester: semester}); err != nil {
+				if err = termVisit(id, year, semester, contract.StaffTimetableRequest{StaffNumber: id, AcademicYear: year, Semester: semester}); err != nil {
 					return err
 				}
 			}

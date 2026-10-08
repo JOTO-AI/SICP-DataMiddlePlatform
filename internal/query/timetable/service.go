@@ -33,11 +33,20 @@ func (s Service) Staff(ctx context.Context, h read.Handle, req contract.StaffTim
 		return out, err
 	}
 	// Teacher IDs are delimited source values, not SQL substring predicates.
-	rows, err := read.Collect(ctx, s.Source, h, SchedulesTable, []source.Filter{{Column: "KKXND", Value: req.AcademicYear}, {Column: "KKXQM", Value: req.Semester}}, b)
-	if err != nil {
-		return out, err
-	}
-	matches, err := staffMatchesChecked(rows, req, func() error { return b.Check(ctx) })
+	matches := []Match{}
+	err = read.Scan(ctx, s.Source, h, SchedulesTable, []source.Filter{{Column: "KKXND", Value: req.AcademicYear}, {Column: "KKXQM", Value: req.Semester}}, b, func(row source.SourceRow) error {
+		found, err := staffMatchesChecked([]source.SourceRow{row}, req, func() error { return b.Check(ctx) })
+		if err != nil {
+			return err
+		}
+		if len(found) > 0 {
+			if err = b.Retain(row); err != nil {
+				return err
+			}
+			matches = append(matches, found...)
+		}
+		return nil
+	})
 	if err != nil {
 		return out, err
 	}

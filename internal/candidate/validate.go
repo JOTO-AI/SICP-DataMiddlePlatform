@@ -124,6 +124,11 @@ func (v Validator) Validate(ctx context.Context, target source.Target, m Manifes
 		return
 	}
 	result = Evidence{Target: target, Combination: m.Combination, CheckedAt: at, Queries: map[contract.Operation]QueryEvidence{}}
+	queries, closeSession, err := QuerySession(ctx, v.Queries, h, m)
+	if err != nil {
+		return result, err
+	}
+	defer closeSession()
 	for _, definition := range contract.Definitions() {
 		if err = ctx.Err(); err != nil {
 			return
@@ -142,7 +147,7 @@ func (v Validator) Validate(ctx context.Context, target source.Target, m Manifes
 		}
 		var count int
 		var summary string
-		count, summary, err = v.Queries.Check(ctx, h, op, at)
+		count, summary, err = queries.Check(ctx, h, op, at)
 		if err != nil {
 			return
 		}

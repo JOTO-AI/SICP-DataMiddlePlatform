@@ -242,6 +242,31 @@ func TestT12_06RealCandidateDataDrivesOnlineConversionAndFailure(t *testing.T) {
 		t.Fatal("real grade conversion bypassed")
 	}
 }
+
+func TestBT07_QuerySessionPreservesExhaustiveEvidence(t *testing.T) {
+	var row source.SourceRow
+	if err := json.Unmarshal([]byte(`{"ID":"G1","XH":"001","XN":"2025-2026","XQM":"1","KCH":"C1","KCCJ":"pass"}`), &row); err != nil {
+		t.Fatal(err)
+	}
+	s := &candidateSource{rows: map[string][]source.SourceRow{grades.GradesTable: {row}}}
+	o, h, at := onlineFixture(t, s)
+	_, _, m, _, _, _ := buildFixture(t)
+	queries, closeSession, err := candidate.QuerySession(t.Context(), o, h, m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeSession()
+	for _, def := range contract.Definitions() {
+		count, digest, err := o.Check(t.Context(), h, def.Operation, at)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, summary, err := queries.Check(t.Context(), h, def.Operation, at)
+		if err != nil || got != count || summary != digest {
+			t.Fatal("memoized validation changed evidence", def.Operation, err)
+		}
+	}
+}
 func TestT12_06ValidationCaseBudgetNeverTruncatesSuccess(t *testing.T) {
 	s := &candidateSource{rows: map[string][]source.SourceRow{}}
 	for _, id := range []string{"G1", "G2"} {
