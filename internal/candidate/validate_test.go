@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -265,6 +266,37 @@ func TestBT07_QuerySessionPreservesExhaustiveEvidence(t *testing.T) {
 		if err != nil || got != count || summary != digest {
 			t.Fatal("memoized validation changed evidence", def.Operation, err)
 		}
+	}
+}
+
+func TestBT07GroupedStaffPreservesAllCasesOrderAndEvidence(t *testing.T) {
+	ids := make([]string, 70)
+	for i := range ids {
+		ids[i] = fmt.Sprintf("T%03d", i)
+	}
+	var schedule source.SourceRow
+	if err := json.Unmarshal([]byte(`{"PKH":"P1","JXBH":"J1","JHKCH":"C1","KKXND":"2026-2027","KKXQM":"1","SKRQ":"20260907","XQJ":"1","ZC":"1","SKJC":"1,2"}`), &schedule); err != nil {
+		t.Fatal(err)
+	}
+	schedule["JSJGH"], _ = json.Marshal(strings.Join(ids, ","))
+	s := &candidateSource{rows: map[string][]source.SourceRow{timetable.SchedulesTable: {schedule}}}
+	o, h, at := onlineFixture(t, s)
+	o.Limits = read.BackgroundLimits(time.Minute)
+	o.Timetable.Limits = o.Limits
+	n, digest, err := o.Check(t.Context(), h, contract.StaffTimetable, at)
+	if err != nil || n != 70 {
+		t.Fatal(n, err)
+	}
+	before := len(s.calls)
+	s.calls = nil
+	o.GroupedStaff = true
+	got, summary, err := o.Check(t.Context(), h, contract.StaffTimetable, at)
+	if err != nil || got != n || summary != digest || len(s.calls) >= before {
+		t.Fatal("grouped evidence differs or scans unchanged", got, err, len(s.calls), before)
+	}
+	o.MaxCases = 69
+	if n, digest, err := o.Check(t.Context(), h, contract.StaffTimetable, at); !errors.Is(err, read.ErrBudget) || n != 0 || digest != "" {
+		t.Fatal("partial group became evidence", n, err)
 	}
 }
 func TestT12_06ValidationCaseBudgetNeverTruncatesSuccess(t *testing.T) {

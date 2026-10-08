@@ -39,6 +39,7 @@ func (o Online) Session(ctx context.Context, h read.Handle, m Manifest) (Queries
 	o.Grades.Source = memo
 	o.Timetable.Source = memo
 	o.memo = &caseMemo{}
+	o.GroupedStaff = o.Limits.BatchBytes > 0 && o.Timetable.Limits.BatchBytes > 0
 	return o, func() {
 		cancel()
 		buildmetric.Memory(ctx, -memo.used)

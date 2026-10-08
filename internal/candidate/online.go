@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
@@ -28,13 +29,14 @@ const MaxBackgroundCases = 1000000
 // Cases are derived from candidate source rows, not fabricated success fixtures.
 // Caches are invocation-scoped; no derived-table writer or publisher is available.
 type Online struct {
-	Source    read.Matcher
-	Grades    grades.Service
-	Timetable timetable.Service
-	Clock     ports.Clock
-	Limits    read.Limits
-	MaxCases  int
-	memo      *caseMemo
+	Source       read.Matcher
+	Grades       grades.Service
+	Timetable    timetable.Service
+	Clock        ports.Clock
+	Limits       read.Limits
+	MaxCases     int
+	GroupedStaff bool
+	memo         *caseMemo
 }
 
 func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation, at time.Time) (result int, summary string, err error) {
@@ -52,6 +54,26 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 	count := 0
 	advance := activity.Begin(ctx, "business_check", "", string(h.Position.Instance), "cases", string(op), -1)
 	hash := sha256.New()
+	consume := func(encoded []byte, response any) error {
+		if count >= o.MaxCases {
+			return read.ErrBudget
+		}
+		payload, err := metadata.Payload(response)
+		if err != nil {
+			return err
+		}
+		if len(payload) > 16<<20 {
+			return read.ErrBudget
+		}
+		hash.Write(encoded)
+		hash.Write([]byte{'\n'})
+		hash.Write(payload)
+		hash.Write([]byte{'\n'})
+		count++
+		advance(1, 0)
+		buildmetric.Add(ctx, buildmetric.Cases, 1)
+		return budget.Check(ctx)
+	}
 	visit := func(request any) error {
 		if err := budget.Check(ctx); err != nil {
 			return err
@@ -85,23 +107,77 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 		if err != nil {
 			return err
 		}
-		payload, err := metadata.Payload(response)
-		if err != nil {
+		return consume(encoded, response)
+	}
+	enumerate := visit
+	flush := func() error { return nil }
+	if o.GroupedStaff && op == contract.StaffTimetable {
+		var pending []contract.StaffTimetableRequest
+		var encoded [][]byte
+		pendingBytes := 0
+		flush = func() error {
+			if len(pending) == 0 {
+				return nil
+			}
+			err := o.Timetable.StaffGroup(ctx, h, pending, at, func(i int, response contract.StaffTimetableResponse) error { return consume(encoded[i], response) })
+			if errors.Is(err, timetable.ErrGroupCapacity) {
+				// Capacity is reported before emission; replay every case in order.
+				err = nil
+				for i, req := range pending {
+					var response contract.StaffTimetableResponse
+					response, err = o.Timetable.Staff(ctx, h, req, at)
+					if err == nil {
+						err = consume(encoded[i], response)
+					}
+					if err != nil {
+						break
+					}
+				}
+			}
+			pending, encoded = nil, nil
+			pendingBytes = 0
 			return err
 		}
-		if len(payload) > 16<<20 {
-			return read.ErrBudget
+		enumerate = func(request any) error {
+			if err := budget.Check(ctx); err != nil {
+				return err
+			}
+			if count+len(pending) >= o.MaxCases {
+				return read.ErrBudget
+			}
+			raw, err := json.Marshal(request)
+			if err != nil {
+				return err
+			}
+			if len(raw) > 1<<20-pendingBytes {
+				if err := flush(); err != nil {
+					return err
+				}
+				if len(raw) > 1<<20 {
+					return visit(request)
+				}
+			}
+			parsed, err := transport.Parse(op, bytes.NewReader(raw))
+			if err != nil {
+				return err
+			}
+			req, ok := parsed.(contract.StaffTimetableRequest)
+			if !ok {
+				return ErrBuild
+			}
+			pending = append(pending, req)
+			encoded = append(encoded, raw)
+			pendingBytes += len(raw)
+			if len(pending) == timetable.StaffGroupSize {
+				return flush()
+			}
+			return nil
 		}
-		hash.Write(encoded)
-		hash.Write([]byte{'\n'})
-		hash.Write(payload)
-		hash.Write([]byte{'\n'})
-		count++
-		advance(1, 0)
-		buildmetric.Add(ctx, buildmetric.Cases, 1)
-		return budget.Check(ctx)
 	}
-	if err = o.cases(ctx, h, op, budget, visit); err != nil {
+	if err = o.cases(ctx, h, op, budget, enumerate); err != nil {
+		return 0, "", err
+	}
+	if err = flush(); err != nil {
 		return 0, "", err
 	}
 	if count == 0 {

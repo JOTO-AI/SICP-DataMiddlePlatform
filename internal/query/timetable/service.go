@@ -50,21 +50,26 @@ func (s Service) Staff(ctx context.Context, h read.Handle, req contract.StaffTim
 	if err != nil {
 		return out, err
 	}
+	return s.staffResponse(ctx, h, req, synced, matches, b)
+}
+
+func (s Service) staffResponse(ctx context.Context, h read.Handle, req contract.StaffTimetableRequest, synced time.Time, matches []Match, b *read.Budget) (contract.StaffTimetableResponse, error) {
 	a, err := s.assembler(ctx, h, matches, b)
 	if err != nil {
-		return out, err
+		return contract.StaffTimetableResponse{}, err
 	}
 	entries, err := a.entriesChecked(matches, func() error { return b.Check(ctx) })
 	if err != nil {
-		return out, err
+		return contract.StaffTimetableResponse{}, err
 	}
 	at, err := s.Times.Instant(synced)
 	if err != nil {
-		return out, err
+		return contract.StaffTimetableResponse{}, err
 	}
-	out = contract.StaffTimetableResponse{StaffNumber: req.StaffNumber, AcademicYear: req.AcademicYear, Semester: req.Semester, SyncedAt: *at, Items: FilterStaff(entries, req)}
-	err = b.Check(ctx)
-	return
+	if err := b.Check(ctx); err != nil {
+		return contract.StaffTimetableResponse{}, err
+	}
+	return contract.StaffTimetableResponse{StaffNumber: req.StaffNumber, AcademicYear: req.AcademicYear, Semester: req.Semester, SyncedAt: *at, Items: FilterStaff(entries, req)}, nil
 }
 
 func (s Service) Student(ctx context.Context, h read.Handle, req contract.StudentTimetableRequest, synced time.Time) (out contract.StudentTimetableResponse, err error) {
