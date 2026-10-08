@@ -225,7 +225,7 @@
 
 ### 7.1 工作流设计
 
-已新增 `.github/workflows/build-performance.yml`、`scripts/check-build-performance.sh`、`scripts/build_acceptance.py` 和真实 worker 容量入口。手动核心验收实现 BP01—BP05 每场景 3 次独立 job、严格 T 门槛及完整样本汇总；BP06—BP10 专项入口仍待补齐。对应 SHA 的运行结果与工件仍待 GitHub 验证，不能把核心通过替代完整验收。
+已新增 `.github/workflows/build-performance.yml`、`scripts/check-build-performance.sh`、`scripts/build_acceptance.py` 和真实 worker 容量入口。手动核心验收实现 BP01—BP06 与 BP08 冷/暖近似各 3 次独立 job、严格 T 门槛及完整样本汇总；BP09/BP10 已有独立诊断入口，BP07 在线负载和完整资源验收仍待补齐。对应 SHA 的运行结果与工件仍待 GitHub 验证，不能把核心通过替代完整验收。
 
 - 所有单元、race、集成、前端和性能测试只在 GitHub Actions 运行；本地仅编辑、格式化和文档／差异复核。
 - 普通 PR 执行小规模正确性和扫描次数回归；完整容量使用 `workflow_dispatch` 与发布候选触发，固定被测 SHA，不混用不同版本镜像。
@@ -289,5 +289,5 @@
 - [ ] B08／BT08：部分完成。B08.01 锁观测、B08.03 M/S 编排约束已实现；B08.02 额外数据库并发待收益及隔离验证，当前保持串行。
 - [x] B09／BT09：真实进度与停滞／失败显示；GitHub 验证待确认，见 verification/B09.md。
 - [ ] BI01—BI16：部分测试已编写，完整故障矩阵尚未补齐，GitHub 结果待确认；逐项缺口见 [B10 记录](verification/B10.md)。
-- [ ] BP01—BP10：BP01—BP05 核心工作流已编写，实测待确认；BP06—BP10 专项容量、缓存、压力与在线负载场景尚未补齐。
+- [ ] BP01—BP10：BP01—BP06、BP08 冷/暖近似及 BP09/BP10 诊断入口已编写，实测待确认；BP07 在线负载和完整资源验收仍待补齐。
 - [ ] B10：B10.03 静态复核及部署／回退说明已完成；B10.01／B10.02 测试矩阵未完整，B10.04 完整验收报告待形成，尚未证明 30 分钟达标。

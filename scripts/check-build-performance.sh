@@ -43,7 +43,8 @@ for p in sorted(Path('artifacts/build-performance').rglob('stages.json')):
     report = json.loads(p.read_text())
     lines = [f"Build measurements: {report.get('Scenario') or 'diagnostic baseline'}, attempt {report.get('Attempt', 1)} (not overall B10 acceptance)", '']
     for scenario in report['Scenarios']:
-        lines.append(f"- {scenario['Name']}: {scenario['State']}, T={scenario['BuildToUsableNS']/1e9:.3f}s, setup={scenario.get('Setup', False)}")
+        duration = f"check={scenario.get('CheckedNS', 0)/1e9:.3f}s" if scenario['State'] == 'unchanged_verified' else f"T={scenario['BuildToUsableNS']/1e9:.3f}s"
+        lines.append(f"- {scenario['Name']}: {scenario['State']}, {duration}, setup={scenario.get('Setup', False)}")
     with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
         out.write('\n'.join(lines) + '\n')
 PY

@@ -151,5 +151,5 @@ jobs:
           name: linux-integration-evidence
           path: |
             artifacts/integration/
-            artifacts/build-performance/small/
+            artifacts/build-performance/
           if-no-files-found: error

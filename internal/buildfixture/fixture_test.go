@@ -19,6 +19,58 @@ func fixture() buildfixture.Fixture {
 	return buildfixture.Fixture{Seed: 73, Small: true, Epoch: at, ChangedAt: at.Add(time.Hour)}
 }
 
+func TestB10StressVariantsRemainDeterministicAndExplicit(t *testing.T) {
+	base := fixture()
+	base.Small = false
+	doubled := base
+	doubled.Scale = 2
+	total := 0
+	for _, table := range buildfixture.Tables() {
+		total += doubled.Count(table)
+		if doubled.Count(table) != 2*base.Count(table) {
+			t.Fatal(table.Name)
+		}
+	}
+	if total != 2*buildfixture.TotalRows {
+		t.Fatal(total)
+	}
+	invalid := base
+	invalid.Scale = 3
+	if invalid.Valid() {
+		t.Fatal("unbounded scale")
+	}
+	for _, table := range buildfixture.Tables() {
+		if table.Name != "dwd_bzkspksjzlb" {
+			continue
+		}
+		wide := base
+		wide.Wide = true
+		x, err := wide.Row(table, 7)
+		if err != nil {
+			t.Fatal(err)
+		}
+		y, _ := wide.Row(table, 7)
+		if !bytes.Equal(x, y) {
+			t.Fatal("unstable wide fixture")
+		}
+		var row map[string]any
+		_ = json.Unmarshal(x, &row)
+		if len(row["JXBMC"].(string)) != 4096 {
+			t.Fatal("missing wide field")
+		}
+		hot := base
+		hot.Hotspot = true
+		x, _ = hot.Row(table, 7)
+		y, _ = hot.Row(table, 8)
+		var a, b map[string]any
+		_ = json.Unmarshal(x, &a)
+		_ = json.Unmarshal(y, &b)
+		if a["JHKCH"] != b["JHKCH"] || a["JXBH"] != b["JXBH"] || a["PKH"] == b["PKH"] {
+			t.Fatal("hotspot lost association or unique key")
+		}
+	}
+}
+
 func TestB10ExactlyOneChangedRowPerTable(t *testing.T) {
 	f := fixture()
 	f.Small = false

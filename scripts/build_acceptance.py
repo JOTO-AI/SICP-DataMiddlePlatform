@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from statistics import median
 
-SCENARIOS = ("BP01", "BP02", "BP03", "BP04", "BP05")
+SCENARIOS = ("BP01", "BP02", "BP03", "BP04", "BP05", "BP06", "BP08-cold", "BP08-warm")
 LIMIT_NS = 1_800_000_000_000
 
 
@@ -51,9 +51,13 @@ def summarize(root, sha):
                 raise ValueError("incomplete fourteen-table capacity")
             if not 480000000 <= sum(t["bytes"] for t in expected) <= 600000000 or any(len(t["sha256"]) != 64 for t in expected):
                 raise ValueError("fixture width or digest missing")
-            expected_mode = {"BP01": "initialize", "BP02": "incremental", "BP03": "incremental", "BP04": "incremental", "BP05": "force_full"}[scenario]
+            expected_mode = {"BP01": "initialize", "BP02": "incremental", "BP03": "incremental", "BP04": "incremental", "BP05": "force_full", "BP06": "incremental", "BP08-cold": "initialize", "BP08-warm": "force_full"}[scenario]
             if sample["Name"] != expected_mode:
                 raise ValueError("wrong execution mode")
+            if scenario == "BP06" and sample.get("EmptySlotsVerified") is not True:
+                raise ValueError("empty target slots not verified")
+            if scenario.startswith("BP08-") and not sample.get("CacheCondition"):
+                raise ValueError("cache conditions missing")
             stages = [event for event in report["Stages"] if event.get("phase") == "finished" and
                       event.get("identity", {}).get("task_id") == "b01-" + expected_mode]
             if any(event["metadata"]["build"]["metrics"].get("invalid") for event in stages):
@@ -68,7 +72,7 @@ def summarize(root, sha):
             if copies != {"M", "S"}:
                 raise ValueError("both independently validated copies required")
             for table in expected:
-                changes = {"BP01": 0, "BP02": 1, "BP03": max(1, (table["rows"]+99)//100), "BP04": table["rows"], "BP05": table["rows"]}[scenario]
+                changes = {"BP01": 0, "BP02": 1, "BP03": max(1, (table["rows"]+99)//100), "BP04": table["rows"], "BP05": table["rows"], "BP06": max(1,(table["rows"]+99)//100), "BP08-cold":0, "BP08-warm":0}[scenario]
                 if table["changed"] != changes:
                     raise ValueError("wrong per-table change distribution")
             key = (scenario, attempt)
@@ -87,7 +91,7 @@ def summarize(root, sha):
         stats[scenario] = {"seconds": values, "min": min(values) if values else None,
                            "median": median(values) if values else None, "max": max(values) if values else None}
     return {"sha": sha, "core_passed": not errors, "full_acceptance_passed": False,
-            "remaining_gates": ["all BT/BI correctness", "BP06-BP10", "resource budgets", "online latency", "before/after baseline"],
+            "remaining_gates": ["all BT/BI correctness", "BP07 online load", "BP09/BP10 diagnostic reports", "resource budgets", "before/after baseline"],
             "scenarios": stats, "errors": errors}
 
 

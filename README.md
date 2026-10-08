@@ -87,7 +87,7 @@ worker 默认 `BUILD_IMPORT_MODE=copy` 使用事务内有界 COPY；需要对照
 
 ## 验证与文档
 
-构建专项的实现范围、待补故障/容量矩阵与复核记录见 [B10 交付记录](development_docs/verification/B10.md)，升级迁移、失败恢复与二进制回退见 [专项升级说明](development_docs/BUILD_TO_READY_ROLLOUT.md)。GitHub 核心容量验收可手动启用 BP01—BP05 各 3 次运行，缺失或超时样本不能通过；该汇总不代表全部 BP/BI 或 30 分钟目标已经完成。
+构建专项的实现范围、待补故障/容量矩阵与复核记录见 [B10 交付记录](development_docs/verification/B10.md)，升级迁移、失败恢复与二进制回退见 [专项升级说明](development_docs/BUILD_TO_READY_ROLLOUT.md)。GitHub 核心容量验收可手动启用 BP01—BP06、BP08 冷/暖近似各 3 次运行，缺失或超时样本不能通过；该汇总不代表全部 BP/BI 或 30 分钟目标已经完成。
 
 [Linux CI](.github/workflows/ci.yml) 先运行 `scripts/check.sh`（单元测试、race、vet、语法检查、Linux 构建）及生命周期重复回归，再构建镜像、串行执行 I01—I06。普通单测不启用 integration 标签；集成测试仅在 GitHub 的隔离 PG/Redis/Mock 环境中运行。以下为工作流中的检查和构建入口：
 

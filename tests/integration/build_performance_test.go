@@ -45,6 +45,9 @@ type buildScenario struct {
 	Setup                                    bool
 	ClusterWALBytes                          map[string]int64
 	ReadIndexBytes                           map[string]int64
+	CheckedNS                                int64
+	EmptySlotsVerified                       bool
+	CacheCondition                           string
 }
 type stageCapture struct {
 	mu       sync.Mutex
@@ -121,6 +124,16 @@ func TestB01_Performance(t *testing.T) {
 	runBuildBaseline(t, false)
 }
 func runBuildBaseline(t *testing.T, small bool) {
+	runBuildScenario(t, small, "")
+}
+
+func TestI05_B10EmptySlotsAndUnchanged(t *testing.T) {
+	for _, scenario := range []string{"BP06", "BP09"} {
+		t.Run(scenario, func(t *testing.T) { runBuildScenario(t, true, scenario) })
+	}
+}
+
+func runBuildScenario(t *testing.T, small bool, selected string) {
 	t.Helper()
 	budget := 100 * time.Minute
 	if small {
@@ -141,6 +154,7 @@ func runBuildBaseline(t *testing.T, small bool) {
 		}()
 	}
 	report := buildEvidence{Version: buildfixture.Version, Scale: "capacity", Seed: 73, GoVersion: runtime.Version(), DiagnosticOnly: true, Attempt: 1}
+	report.Scenario = selected
 	if !small {
 		report.Scenario = os.Getenv("SICP_BUILD_SCENARIO")
 		if report.Scenario == "baseline" {
@@ -165,7 +179,7 @@ func runBuildBaseline(t *testing.T, small bool) {
 	dir := filepath.Join("..", "..", "artifacts", "build-performance", report.Scale)
 	if report.Scenario != "" {
 		switch report.Scenario {
-		case "BP01", "BP02", "BP03", "BP04", "BP05":
+		case "BP01", "BP02", "BP03", "BP04", "BP05", "BP06", "BP08-cold", "BP08-warm", "BP09", "BP10-double", "BP10-wide", "BP10-hot":
 		default:
 			t.Fatal("unsupported capacity scenario")
 		}
@@ -226,6 +240,17 @@ func runBuildBaseline(t *testing.T, small bool) {
 	// later, immediately before the first seal: acquisition stays outside T.
 	epoch := time.Now().UTC().Add(-24 * time.Hour).Truncate(time.Second)
 	fixture := buildfixture.Fixture{Seed: report.Seed, Small: small, Epoch: epoch}
+	switch report.Scenario {
+	case "BP10-double":
+		fixture.Scale = 2
+	case "BP10-wide":
+		fixture.Wide = true
+	case "BP10-hot":
+		fixture.Hotspot = true
+	}
+	if !report.DiagnosticOnly && (report.Scenario == "BP09" || fixture.Scale == 2 || fixture.Wide || fixture.Hotspot) {
+		t.Fatal("diagnostic scenarios cannot be core acceptance")
+	}
 	type input struct {
 		mode    string
 		percent int
@@ -243,6 +268,12 @@ func runBuildBaseline(t *testing.T, small bool) {
 			inputs = append(inputs, input{"incremental", 100, false})
 		case "BP05":
 			inputs = append(inputs, input{"force_full", 100, false})
+		case "BP06":
+			inputs = append(inputs, input{"incremental", 1, false})
+		case "BP08-warm":
+			inputs = append(inputs, input{"force_full", 0, false})
+		case "BP09":
+			inputs = append(inputs, input{"incremental", 0, false})
 		}
 	}
 	for i, in := range inputs {
@@ -253,6 +284,24 @@ func runBuildBaseline(t *testing.T, small bool) {
 			fixture.ChangedAt = time.Now().UTC().Add(-time.Microsecond)
 		}
 		scenario := buildScenario{Name: mode, State: "preparing", Fixture: fixture, Setup: report.Scenario != "" && len(inputs) > 1 && i == 0}
+		if report.Scenario == "BP08-cold" {
+			scenario.CacheCondition = "new isolated PostgreSQL instances/volumes; host page cache not cleared"
+		}
+		if report.Scenario == "BP08-warm" {
+			scenario.CacheCondition = "same instances after complete initialization; forced rewrite of identical full data"
+		}
+		if report.Scenario == "BP06" && !scenario.Setup {
+			for _, slot := range []int{1, 3} {
+				conn := f.e.connection(t, slot)
+				for _, table := range source.Catalog() {
+					var n int64
+					if err := conn.QueryRow(f.e.ctx, "SELECT count(*) FROM source."+table.Name).Scan(&n); err != nil || n != 0 {
+						t.Fatal("BP06 requires truly empty target slots", err)
+					}
+				}
+			}
+			scenario.EmptySlotsVerified = true
+		}
 		started := time.Now()
 		scenario.Expected, err = fixture.Expected(f.e.ctx, f.wc.SourceScope)
 		scenario.PreparationNS = time.Since(started).Nanoseconds()
@@ -270,7 +319,7 @@ func runBuildBaseline(t *testing.T, small bool) {
 				t.Fatal("unchanged table in changed fixture")
 			}
 		}
-		if !small && (rows != buildfixture.TotalRows || bytes < 480000000 || bytes > 600000000) {
+		if !small && (rows != buildfixture.TotalRows*max(1, fixture.Scale) || (!fixture.Wide && !fixture.Hotspot && (bytes < 480000000*int64(max(1, fixture.Scale)) || bytes > 600000000*int64(max(1, fixture.Scale))))) {
 			scenario.State = "capacity_mismatch"
 			report.Scenarios = append(report.Scenarios, scenario)
 			t.Fatalf("capacity mismatch: rows=%d bytes=%d", rows, bytes)
@@ -279,6 +328,10 @@ func runBuildBaseline(t *testing.T, small bool) {
 		f.source.generated = fixture.Handler("synthetic-source-token")
 		f.source.mu.Unlock()
 		id := "b01-" + mode
+		var before control.ActiveMetadata
+		if report.Scenario == "BP09" && !scenario.Setup {
+			before = activeMetadata(t, f)
+		}
 		_, err = f.wr.Control.Admit(f.e.ctx, control.Request{ID: id, IdempotencyKey: id, Mode: mode, RequestedBy: "synthetic", AcceptedAt: realClock{}.Now()})
 		if err != nil {
 			t.Fatal("baseline admission failed")
@@ -307,11 +360,25 @@ func runBuildBaseline(t *testing.T, small bool) {
 			report.Scenarios = append(report.Scenarios, scenario)
 			t.Fatalf("real worker failed: %v", workErr)
 		}
+		if report.Scenario == "BP09" && !scenario.Setup {
+			task := loadTask(t, f, id)
+			if task.Status != "success_unchanged" || task.FinishedAt == nil || task.FinishedAt.Before(timing.BuildStartedAt) || timing.UsableAt != nil || activeMetadata(t, f) != before || countControl(t, f, "SELECT count(*) FROM control.publication_outbox WHERE task_id=$1", id) != 0 {
+				t.Fatal("unchanged round published or fabricated usability")
+			}
+			assertProgress(t, f, id)
+			scenario.CheckedNS = task.FinishedAt.Sub(timing.BuildStartedAt).Nanoseconds()
+			scenario.State = "unchanged_verified"
+			report.Scenarios = append(report.Scenarios, scenario)
+			continue
+		}
 		if timing.UsableAt == nil || timing.UsableAt.Before(timing.BuildStartedAt) {
 			report.Scenarios = append(report.Scenarios, scenario)
 			t.Fatal("publication did not produce authenticated usable evidence")
 		}
 		scenario.BuildToUsableNS = timing.UsableAt.Sub(timing.BuildStartedAt).Nanoseconds()
+		if scenario.EmptySlotsVerified && countControl(t, f, "SELECT count(*) FROM control.candidates WHERE task_id=$1 AND bundle_id=$2 AND slot=1 AND state='ready'", id, timing.BundleID) != 2 {
+			t.Fatal("BP06 did not rebuild both previously empty slots")
+		}
 		if countControl(t, f, "SELECT count(*) FROM control.query_snapshots") != 0 {
 			t.Fatal("build probes retained pagination snapshots")
 		}
@@ -378,7 +445,7 @@ func runBuildBaseline(t *testing.T, small bool) {
 		buffer = max(buffer, b.Metrics.BufferPeak)
 		disk = max(disk, b.Metrics.DiskPeak)
 	}
-	if small && (sql == 0 || decodes == 0 || cases == 0 || buffer == 0 || disk == 0 || !stages["usable_probe"] || !stages["old_copy_check"] || !stages["drain"]) {
+	if small && report.Scenario == "" && (sql == 0 || decodes == 0 || cases == 0 || buffer == 0 || disk == 0 || !stages["usable_probe"] || !stages["old_copy_check"] || !stages["drain"]) {
 		t.Error("incomplete stage/counter coverage")
 	}
 	// Selected acceptance scenarios enforce T; diagnostic baselines retain failures

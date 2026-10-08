@@ -9,9 +9,14 @@ on:
         type: boolean
         default: false
       acceptance:
-        description: Run BP01-BP05, three isolated attempts each, enforce T < 1800s (remaining BP gates are separate)
+        description: Run BP01-BP06 and BP08 cold/warm, three attempts each, enforce T < 1800s (BP07 remains separate)
         type: boolean
         default: false
+      scenario:
+        description: Diagnostic scenario (ignored when acceptance=true)
+        type: choice
+        default: baseline
+        options: [baseline, BP01, BP02, BP03, BP04, BP05, BP06, BP08-cold, BP08-warm, BP09, BP10-double, BP10-wide, BP10-hot]
 permissions:
   contents: read
 concurrency:
@@ -23,7 +28,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        scenario: ${{ fromJSON(inputs.acceptance && '["BP01","BP02","BP03","BP04","BP05"]' || '["baseline"]') }}
+        scenario: ${{ fromJSON(inputs.acceptance && '["BP01","BP02","BP03","BP04","BP05","BP06","BP08-cold","BP08-warm"]' || format('["{0}"]', inputs.scenario || 'baseline')) }}
         attempt: ${{ fromJSON(inputs.acceptance && '[1,2,3]' || '[1]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120

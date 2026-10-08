@@ -16,8 +16,9 @@ class EvidenceTests(unittest.TestCase):
                 (path / "exit-code.txt").write_text("0")
                 tables = [{"table": str(i), "rows": 1 if i else 2592377, "bytes": 35000000, "sha256": "a"*64} for i in range(14)]
                 for table in tables:
-                    table["changed"] = {"BP01": 0, "BP02": 1, "BP03": max(1, (table["rows"]+99)//100), "BP04": table["rows"], "BP05": table["rows"]}[scenario]
-                sample = {"State": "usable", "Setup": False, "Name": "initialize" if scenario == "BP01" else "force_full" if scenario == "BP05" else "incremental",
+                    table["changed"] = {"BP01": 0, "BP02": 1, "BP03": max(1, (table["rows"]+99)//100), "BP04": table["rows"], "BP05": table["rows"], "BP06":max(1,(table["rows"]+99)//100), "BP08-cold":0, "BP08-warm":0}[scenario]
+                sample = {"State": "usable", "Setup": False, "Name": "initialize" if scenario in ("BP01","BP08-cold") else "force_full" if scenario in ("BP05","BP08-warm") else "incremental",
+                          "EmptySlotsVerified": scenario == "BP06", "CacheCondition": "synthetic cache condition" if scenario.startswith("BP08-") else "",
                           "BuildToUsableNS": 1_000_000_000, "Expected": tables,
                           "Timing": {"build_started_at": "2026-10-08T00:00:00Z", "usable_at": "2026-10-08T00:00:01Z", "bundle_id": "bundle"}}
                 stages = [{"phase": "finished", "outcome": "succeeded", "identity": {"task_id": "b01-"+sample["Name"], "instance": instance},
@@ -34,11 +35,11 @@ class EvidenceTests(unittest.TestCase):
             self.assertFalse(report["full_acceptance_passed"])
 
     def test_missing_failed_profiled_mixed_and_boundary_samples_rejected(self):
-        for mode in ("missing", "failure", "profile", "sha", "shape", "boundary", "diagnostic", "distribution", "copy"):
+        for mode in ("missing", "failure", "profile", "sha", "shape", "boundary", "diagnostic", "distribution", "copy", "empty", "cache"):
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 self.fixture(root)
-                path = root / "BP03-2"
+                path = root / ("BP06-2" if mode == "empty" else "BP08-warm-2" if mode == "cache" else "BP03-2")
                 if mode == "missing":
                     (path / "stages.json").unlink()
                 elif mode == "failure":
@@ -55,6 +56,8 @@ class EvidenceTests(unittest.TestCase):
                     if mode == "diagnostic": data["DiagnosticOnly"] = True
                     if mode == "distribution": data["Scenarios"][0]["Expected"][0]["changed"] = 0
                     if mode == "copy": data["Stages"].pop()
+                    if mode == "empty": data["Scenarios"][0]["EmptySlotsVerified"] = False
+                    if mode == "cache": data["Scenarios"][0]["CacheCondition"] = ""
                     file.write_text(json.dumps(data))
                 self.assertFalse(summarize(root, "sha")["core_passed"])
 

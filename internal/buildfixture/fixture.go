@@ -43,17 +43,19 @@ type Fixture struct {
 	Small            bool
 	Percent          int
 	OnePerTable      bool
+	Scale            int
+	Wide, Hotspot    bool
 	Epoch, ChangedAt time.Time
 }
 
 func (f Fixture) Valid() bool {
-	return (f.Percent == 0 || f.Percent == 1 || f.Percent == 100) && (!f.OnePerTable || f.Percent == 1) && !f.Epoch.IsZero() && (f.Percent == 0 || f.ChangedAt.After(f.Epoch))
+	return f.Scale >= 0 && f.Scale <= 2 && (f.Percent == 0 || f.Percent == 1 || f.Percent == 100) && (!f.OnePerTable || f.Percent == 1) && !f.Epoch.IsZero() && (f.Percent == 0 || f.ChangedAt.After(f.Epoch))
 }
 func (f Fixture) Count(t Table) int {
 	if f.Small {
-		return min(t.Rows, 24)
+		return min(t.Rows, 24) * max(1, f.Scale)
 	}
-	return t.Rows
+	return t.Rows * max(1, f.Scale)
 }
 func (f Fixture) Changed(t Table) int {
 	if f.Percent == 0 {
@@ -96,6 +98,9 @@ func (f Fixture) Row(t Table, i int) (json.RawMessage, error) {
 	if f.Small {
 		class = i % courses
 	}
+	if f.Hotspot {
+		students, staff, course, class = 1, min(2, staff), 0, 0
+	}
 	switch t.Name {
 	case "dwd_bzkscjzlb":
 		m["ID"] = fmt.Sprintf("G%023d", i)
@@ -118,6 +123,9 @@ func (f Fixture) Row(t Table, i int) (json.RawMessage, error) {
 		m["JSJGH"] = id("0", i%staff) + "," + id("0", (i+1)%staff)
 		m["JSXM"] = "合成教师甲,合成教师乙"
 		m["JXBMC"] = fmt.Sprintf("合成教学班%04d", class)
+		if f.Wide {
+			m["JXBMC"] = strings.Repeat("W", 4096)
+		}
 		m["JXDD"] = fmt.Sprintf("合成教室%03d", (n+revision)%120)
 		m["XDRS"] = 30 + i%50
 	case "dwd_bzkskbsjzlb":
