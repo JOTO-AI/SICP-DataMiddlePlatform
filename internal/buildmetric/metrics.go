@@ -23,6 +23,7 @@ const (
 	Cases
 	LockWaitNS
 	SpoolWritten
+	LockHeldNS
 	counterCount
 )
 
@@ -37,6 +38,7 @@ type Summary struct {
 	SQL             int64 `json:"sql"`
 	Cases           int64 `json:"cases"`
 	LockWaitNS      int64 `json:"lock_wait_ns"`
+	LockHeldNS      int64 `json:"fenced_hold_ns"`
 	SpoolWritten    int64 `json:"spool_bytes_written"`
 	BufferPeak      int64 `json:"buffer_peak_bytes"`
 	DiskPeak        int64 `json:"temporary_disk_peak_bytes"`
@@ -113,8 +115,8 @@ func (s *Scope) Snapshot() Summary {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	v := s.values
-	return Summary{RowsRead: v[RowsRead], RowsWritten: v[RowsWritten], BytesRead: v[BytesRead], BytesWritten: v[BytesWritten], Batches: v[Batches], FileValidations: v[FileValidations], Decodes: v[Decodes], SQL: v[SQL], Cases: v[Cases], LockWaitNS: v[LockWaitNS], SpoolWritten: v[SpoolWritten], BufferPeak: s.bufferPeak, DiskPeak: s.diskPeak, Invalid: s.invalid}
+	return Summary{RowsRead: v[RowsRead], RowsWritten: v[RowsWritten], BytesRead: v[BytesRead], BytesWritten: v[BytesWritten], Batches: v[Batches], FileValidations: v[FileValidations], Decodes: v[Decodes], SQL: v[SQL], Cases: v[Cases], LockWaitNS: v[LockWaitNS], LockHeldNS: v[LockHeldNS], SpoolWritten: v[SpoolWritten], BufferPeak: s.bufferPeak, DiskPeak: s.diskPeak, Invalid: s.invalid}
 }
 func (s Summary) Valid() bool {
-	return s.RowsRead >= 0 && s.RowsWritten >= 0 && s.BytesRead >= 0 && s.BytesWritten >= 0 && s.Batches >= 0 && s.FileValidations >= 0 && s.Decodes >= 0 && s.SQL >= 0 && s.Cases >= 0 && s.LockWaitNS >= 0 && s.SpoolWritten >= 0 && s.BufferPeak >= 0 && s.DiskPeak >= 0
+	return s.RowsRead >= 0 && s.RowsWritten >= 0 && s.BytesRead >= 0 && s.BytesWritten >= 0 && s.Batches >= 0 && s.FileValidations >= 0 && s.Decodes >= 0 && s.SQL >= 0 && s.Cases >= 0 && s.LockWaitNS >= 0 && s.LockHeldNS >= 0 && s.SpoolWritten >= 0 && s.BufferPeak >= 0 && s.DiskPeak >= 0
 }

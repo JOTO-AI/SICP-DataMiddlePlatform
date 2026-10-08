@@ -3,8 +3,10 @@ package control
 import (
 	"context"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 )
 
@@ -43,7 +45,35 @@ func (r Repository) BeginFenced(ctx context.Context, positions ...storage.Positi
 			return fail(e)
 		}
 	}
+	if buildmetric.Enabled(ctx) {
+		return &measuredFence{Transaction: tx, ctx: ctx, started: time.Now()}, nil
+	}
 	return tx, nil
+}
+
+type measuredFence struct {
+	storage.Transaction
+	ctx     context.Context
+	started time.Time
+	once    sync.Once
+}
+
+func (t *measuredFence) ended() {
+	t.once.Do(func() { buildmetric.Add(t.ctx, buildmetric.LockHeldNS, time.Since(t.started).Nanoseconds()) })
+}
+func (t *measuredFence) Commit(ctx context.Context) error {
+	err := t.Transaction.Commit(ctx)
+	if err == nil {
+		t.ended()
+	}
+	return err
+}
+func (t *measuredFence) Rollback(ctx context.Context) error {
+	err := t.Transaction.Rollback(ctx)
+	if err == nil {
+		t.ended()
+	}
+	return err
 }
 func (r Repository) Fenced(ctx context.Context, fn func(storage.Transaction) error) error {
 	if fn == nil {
