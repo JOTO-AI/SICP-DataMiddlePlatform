@@ -1,4 +1,4 @@
-name: B01 build baseline
+name: Build capacity and core acceptance
 on:
   push:
     branches: [perf/build-to-ready-30min]
@@ -8,6 +8,10 @@ on:
         description: Capture CPU and heap profiles (diagnostic timing only)
         type: boolean
         default: false
+      acceptance:
+        description: Run BP01-BP05, three isolated attempts each, enforce T < 1800s (remaining BP gates are separate)
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -15,6 +19,12 @@ concurrency:
   cancel-in-progress: true
 jobs:
   baseline:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        scenario: ${{ fromJSON(inputs.acceptance && '["BP01","BP02","BP03","BP04","BP05"]' || '["baseline"]') }}
+        attempt: ${{ fromJSON(inputs.acceptance && '[1,2,3]' || '[1]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
@@ -22,6 +32,9 @@ jobs:
       SICP_INTEGRATION: '1'
       SICP_BUILD_PERFORMANCE: '1'
       SICP_BUILD_PROFILE: ${{ inputs.profile && '1' || '0' }}
+      SICP_BUILD_ACCEPTANCE: ${{ inputs.acceptance && '1' || '0' }}
+      SICP_BUILD_SCENARIO: ${{ matrix.scenario }}
+      SICP_BUILD_ATTEMPT: ${{ matrix.attempt }}
       SICP_PROJECT: sicp-build-baseline
     steps:
       - uses: actions/checkout@v4
@@ -55,8 +68,26 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: b01-baseline-${{ github.sha }}
+          name: build-${{ matrix.scenario }}-${{ matrix.attempt }}-${{ github.sha }}
           path: |
             artifacts/build-performance/
             !artifacts/build-performance/integration.test
+          if-no-files-found: error
+  report:
+    if: ${{ always() && inputs.acceptance }}
+    needs: baseline
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: build-*
+          path: artifacts/acceptance-input
+      - name: Reject incomplete samples and summarize all core measurements
+        run: python3 scripts/build_acceptance.py artifacts/acceptance-input --sha "$GITHUB_SHA" --output artifacts/core-acceptance.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: core-acceptance-${{ github.sha }}
+          path: artifacts/core-acceptance.json
           if-no-files-found: error

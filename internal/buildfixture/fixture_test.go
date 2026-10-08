@@ -18,6 +18,35 @@ func fixture() buildfixture.Fixture {
 	at := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	return buildfixture.Fixture{Seed: 73, Small: true, Epoch: at, ChangedAt: at.Add(time.Hour)}
 }
+
+func TestB10ExactlyOneChangedRowPerTable(t *testing.T) {
+	f := fixture()
+	f.Small = false
+	f.Percent, f.OnePerTable = 1, true
+	if !f.Valid() {
+		t.Fatal("invalid one-row scenario")
+	}
+	for _, table := range buildfixture.Tables() {
+		if f.Changed(table) != 1 {
+			t.Fatal("not exactly one changed row", table.Name)
+		}
+		changed, err := f.Row(table, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		base := f
+		base.Percent, base.OnePerTable = 0, false
+		original, _ := base.Row(table, 0)
+		if bytes.Equal(changed, original) {
+			t.Fatal("unchanged first row", table.Name)
+		}
+		unchanged, _ := f.Row(table, 1)
+		original, _ = base.Row(table, 1)
+		if !bytes.Equal(unchanged, original) {
+			t.Fatal("changed second row", table.Name)
+		}
+	}
+}
 func TestBT01_07DeterministicIndependentDigestsAndAllTableChanges(t *testing.T) {
 	f := fixture()
 	a, err := f.Expected(context.Background(), "scope")

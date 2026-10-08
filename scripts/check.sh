@@ -9,6 +9,7 @@ for script in scripts/sicp.sh scripts/check-compose.sh scripts/check-build-perfo
 done
 python3 -c 'import ast; from pathlib import Path; [ast.parse(Path(p).read_text()) for p in ("deploy/mock.py", "scripts/check-compose-config.py", "scripts/build-runner-spec.py")]'
 go vet ./...
+python3 -m unittest discover -s scripts -p 'test_build_acceptance.py'
 mkdir -p artifacts
 go test -race -count=1 -coverprofile=artifacts/coverage.out -json ./... | tee artifacts/unit-tests.jsonl
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o artifacts/query-service ./cmd/query-service

@@ -63,6 +63,9 @@ func (p pausedTransaction) Exec(ctx context.Context, sql string, args ...any) (i
 func (p pausedTransaction) Query(ctx context.Context, sql string, args ...any) (storage.Rows, error) {
 	return p.Transaction.(storage.QueryExecutor).Query(ctx, sql, args...)
 }
+func (p pausedTransaction) CopyFrom(ctx context.Context, table string, columns []string, rows [][]any) (int64, error) {
+	return p.Transaction.(storage.CopyExecutor).CopyFrom(ctx, table, columns, rows)
+}
 func admitTask(t *testing.T, f *runtimeFixture, mode, id string) {
 	t.Helper()
 	if _, err := f.wr.Control.Admit(f.e.ctx, control.Request{ID: id, IdempotencyKey: id, Mode: mode, RequestedBy: "synthetic", AcceptedAt: realClock{}.Now()}); err != nil {

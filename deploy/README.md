@@ -116,3 +116,5 @@ SICP_PROJECT=sicp-${ENVIRONMENT}
 自定义本机项目/端口可显式设置 `SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`。脚本不提供自动删卷命令；销毁仅限操作者已核对的独立测试项目。
 
 GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 语法和镜像构建，再串行执行 I01—I06。I06 从同一 job 的干净 checkout 构建镜像，每个编号独立创建项目与空卷，通过 Bash 脚本迁移、启动并等待自动初始化；定时同步测试在隔离数据库推进计划时间。历史验收记录见 verification/I06.md，本次行为变更需以新一轮 CI 结果为准。集成 JSON 结果及容器日志保存在 linux-integration-evidence artifact。
+
+构建专项新增 business_003 事务索引迁移、worker MAINTAIN 权限、BUILD_CHECK_TIMEOUT 与 BUILD_IMPORT_MODE；请按[专项升级与回退说明](../development_docs/BUILD_TO_READY_ROLLOUT.md)安排窗口。COPY 默认启用，额外数据库并发未启用，完整容量验收尚未完成。

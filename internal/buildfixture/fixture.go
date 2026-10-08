@@ -42,11 +42,12 @@ type Fixture struct {
 	Seed             uint64
 	Small            bool
 	Percent          int
+	OnePerTable      bool
 	Epoch, ChangedAt time.Time
 }
 
 func (f Fixture) Valid() bool {
-	return (f.Percent == 0 || f.Percent == 1 || f.Percent == 100) && !f.Epoch.IsZero() && (f.Percent == 0 || f.ChangedAt.After(f.Epoch))
+	return (f.Percent == 0 || f.Percent == 1 || f.Percent == 100) && (!f.OnePerTable || f.Percent == 1) && !f.Epoch.IsZero() && (f.Percent == 0 || f.ChangedAt.After(f.Epoch))
 }
 func (f Fixture) Count(t Table) int {
 	if f.Small {
@@ -57,6 +58,9 @@ func (f Fixture) Count(t Table) int {
 func (f Fixture) Changed(t Table) int {
 	if f.Percent == 0 {
 		return 0
+	}
+	if f.OnePerTable {
+		return 1
 	}
 	return max(1, (f.Count(t)*f.Percent+99)/100)
 }

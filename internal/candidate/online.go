@@ -22,9 +22,11 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
 
+const MaxBackgroundCases = 1000000
+
 // Online invokes the production services against the exclusively held candidate.
 // Cases are derived from candidate source rows, not fabricated success fixtures.
-// No cache, derived-table writer, or publisher is available in this component.
+// Caches are invocation-scoped; no derived-table writer or publisher is available.
 type Online struct {
 	Source    read.Matcher
 	Grades    grades.Service
@@ -50,8 +52,6 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 	count := 0
 	advance := activity.Begin(ctx, "business_check", "", string(h.Position.Instance), "cases", string(op), -1)
 	hash := sha256.New()
-	seen := map[string]bool{}
-	seenBytes := 0
 	visit := func(request any) error {
 		if err := budget.Check(ctx); err != nil {
 			return err
@@ -60,18 +60,11 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 		if err != nil {
 			return err
 		}
-		identity := string(encoded)
-		if seen[identity] {
-			return nil
-		}
+		// cases deduplicates the exact student / teacher / term identities before
+		// constructing requests. A second serialized-request set duplicates memory.
 		if count >= o.MaxCases {
 			return read.ErrBudget
 		}
-		if len(identity) > 16<<20-seenBytes {
-			return read.ErrBudget
-		}
-		seenBytes += len(identity)
-		seen[identity] = true
 		parsed, err := transport.Parse(op, bytes.NewReader(encoded))
 		if err != nil {
 			return err
@@ -146,7 +139,7 @@ func (o Online) cases(ctx context.Context, h read.Handle, op contract.Operation,
 			return nil
 		}
 		charge := len(id) + len(year) + len(semester) + 64
-		if len(seenTerms) >= o.MaxCases || charge > 8<<20-termBytes {
+		if len(seenTerms) >= o.MaxCases || charge > 32<<20-termBytes {
 			return read.ErrBudget
 		}
 		termBytes += charge

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/observability"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/worker"
 )
 
@@ -30,6 +32,8 @@ type buildEvidence struct {
 	Scenarios                 []buildScenario
 	Stages                    []events.Event
 	DiagnosticOnly            bool
+	Scenario                  string
+	Attempt                   int
 	Configuration             map[string]int
 }
 type buildScenario struct {
@@ -38,6 +42,9 @@ type buildScenario struct {
 	Expected                                 []buildfixture.Summary
 	Timing                                   *control.BuildTiming
 	PreparationNS, WorkerNS, BuildToUsableNS int64
+	Setup                                    bool
+	ClusterWALBytes                          map[string]int64
+	ReadIndexBytes                           map[string]int64
 }
 type stageCapture struct {
 	mu       sync.Mutex
@@ -133,12 +140,37 @@ func runBuildBaseline(t *testing.T, small bool) {
 			}
 		}()
 	}
-	report := buildEvidence{Version: buildfixture.Version, Scale: "capacity", Seed: 73, GoVersion: runtime.Version(), DiagnosticOnly: true}
+	report := buildEvidence{Version: buildfixture.Version, Scale: "capacity", Seed: 73, GoVersion: runtime.Version(), DiagnosticOnly: true, Attempt: 1}
+	if !small {
+		report.Scenario = os.Getenv("SICP_BUILD_SCENARIO")
+		if report.Scenario == "baseline" {
+			report.Scenario = ""
+		}
+		if raw := os.Getenv("SICP_BUILD_ATTEMPT"); raw != "" {
+			attempt, parseErr := strconv.Atoi(raw)
+			if parseErr != nil || attempt < 1 || attempt > 3 {
+				t.Fatal("invalid attempt")
+			}
+			report.Attempt = attempt
+		}
+		report.DiagnosticOnly = os.Getenv("SICP_BUILD_ACCEPTANCE") != "1"
+		if !report.DiagnosticOnly && (report.Scenario == "" || os.Getenv("SICP_BUILD_PROFILE") == "1") {
+			t.Fatal("acceptance requires selected scenario and no profiler")
+		}
+	}
 	report.Configuration = map[string]int{"source_page_size": f.wc.SourcePageSize, "source_page_concurrency": f.wc.SourcePageConcurrency, "build_table_concurrency": f.wc.BuildTableConcurrency, "write_batch_rows": 500, "pool_max_per_database": 16}
 	if small {
 		report.Scale = "small"
 	}
 	dir := filepath.Join("..", "..", "artifacts", "build-performance", report.Scale)
+	if report.Scenario != "" {
+		switch report.Scenario {
+		case "BP01", "BP02", "BP03", "BP04", "BP05":
+		default:
+			t.Fatal("unsupported capacity scenario")
+		}
+		dir = filepath.Join("..", "..", "artifacts", "build-performance", report.Scenario, strconv.Itoa(report.Attempt))
+	}
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -194,13 +226,33 @@ func runBuildBaseline(t *testing.T, small bool) {
 	// later, immediately before the first seal: acquisition stays outside T.
 	epoch := time.Now().UTC().Add(-24 * time.Hour).Truncate(time.Second)
 	fixture := buildfixture.Fixture{Seed: report.Seed, Small: small, Epoch: epoch}
-	for i, mode := range []string{"initialize", "incremental", "force_full"} {
-		pct := []int{0, 1, 100}[i]
+	type input struct {
+		mode    string
+		percent int
+		one     bool
+	}
+	inputs := []input{{"initialize", 0, false}, {"incremental", 1, false}, {"force_full", 100, false}}
+	if report.Scenario != "" {
+		inputs = inputs[:1]
+		switch report.Scenario {
+		case "BP02":
+			inputs = append(inputs, input{"incremental", 1, true})
+		case "BP03":
+			inputs = append(inputs, input{"incremental", 1, false})
+		case "BP04":
+			inputs = append(inputs, input{"incremental", 100, false})
+		case "BP05":
+			inputs = append(inputs, input{"force_full", 100, false})
+		}
+	}
+	for i, in := range inputs {
+		mode, pct := in.mode, in.percent
 		fixture.Percent = pct
+		fixture.OnePerTable = in.one
 		if i > 0 {
 			fixture.ChangedAt = time.Now().UTC().Add(-time.Microsecond)
 		}
-		scenario := buildScenario{Name: mode, State: "preparing", Fixture: fixture}
+		scenario := buildScenario{Name: mode, State: "preparing", Fixture: fixture, Setup: report.Scenario != "" && len(inputs) > 1 && i == 0}
 		started := time.Now()
 		scenario.Expected, err = fixture.Expected(f.e.ctx, f.wc.SourceScope)
 		scenario.PreparationNS = time.Since(started).Nanoseconds()
@@ -230,6 +282,14 @@ func runBuildBaseline(t *testing.T, small bool) {
 		_, err = f.wr.Control.Admit(f.e.ctx, control.Request{ID: id, IdempotencyKey: id, Mode: mode, RequestedBy: "synthetic", AcceptedAt: realClock{}.Now()})
 		if err != nil {
 			t.Fatal("baseline admission failed")
+		}
+		walBefore := map[int]string{}
+		for _, index := range []int{0, 2} {
+			var lsn string
+			if err := f.e.connection(t, index).QueryRow(f.e.ctx, "SELECT pg_current_wal_lsn()::text").Scan(&lsn); err != nil {
+				t.Fatal(err)
+			}
+			walBefore[index] = lsn
 		}
 		started = time.Now()
 		workErr := f.worker.Engine.Cycle(f.e.ctx)
@@ -271,8 +331,33 @@ func runBuildBaseline(t *testing.T, small bool) {
 				t.Fatal("target differs from independent reference")
 			}
 		}
+		scenario.ClusterWALBytes = map[string]int64{}
+		for index, lsn := range walBefore {
+			var size int64
+			if err := f.e.connection(t, index).QueryRow(f.e.ctx, "SELECT pg_wal_lsn_diff(pg_current_wal_lsn(),$1::pg_lsn)::bigint", lsn).Scan(&size); err != nil {
+				t.Fatal(err)
+			}
+			scenario.ClusterWALBytes[map[int]string{0: "M", 2: "S"}[index]] = size
+		}
+		var indexes []string
+		for _, table := range source.Catalog() {
+			for _, index := range source.ReadIndexes(table.Name) {
+				indexes = append(indexes, index.Name)
+			}
+		}
+		scenario.ReadIndexBytes = map[string]int64{}
+		for index, slot := range []string{"M0", "M1", "S0", "S1"} {
+			var size int64
+			if err := f.e.connection(t, index).QueryRow(f.e.ctx, "SELECT COALESCE(sum(pg_relation_size(c.oid)),0)::bigint FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='source' AND c.relkind='i' AND c.relname=ANY($1::text[])", indexes).Scan(&size); err != nil {
+				t.Fatal(err)
+			}
+			scenario.ReadIndexBytes[slot] = size
+		}
 		scenario.State = "usable"
 		report.Scenarios = append(report.Scenarios, scenario)
+		if !report.DiagnosticOnly && !scenario.Setup && scenario.BuildToUsableNS >= (30*time.Minute).Nanoseconds() {
+			t.Fatal("build-to-usable exceeded the strict 1800 second gate")
+		}
 	}
 	capture.mu.Lock()
 	defer capture.mu.Unlock()
@@ -296,5 +381,6 @@ func runBuildBaseline(t *testing.T, small bool) {
 	if small && (sql == 0 || decodes == 0 || cases == 0 || buffer == 0 || disk == 0 || !stages["usable_probe"] || !stages["old_copy_check"] || !stages["drain"]) {
 		t.Error("incomplete stage/counter coverage")
 	}
-	// No 30-minute assertion in B01: this is a diagnostic baseline, not B10.
+	// Selected acceptance scenarios enforce T; diagnostic baselines retain failures
+	// and measurements without converting them into an overall B10 pass.
 }
