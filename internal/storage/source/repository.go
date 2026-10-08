@@ -92,6 +92,14 @@ func (r Repository) Rebuild(ctx context.Context, target Target, tableName string
 	if (state.ActiveInstance == "" && !state.Initializing) || (state.Initializing && state.ActiveInstance != "") || (state.ActiveInstance != "" && state.ActiveInstance != storage.Main && state.ActiveInstance != storage.Standby) || state.ActiveInstance == target.Position.Instance || state.Generation != target.Generation || state.CandidateID != target.CandidateID || state.Readers != 0 || state.AdmissionOpen || !state.OwnerValid {
 		return report, ErrTarget
 	}
+	defer func() {
+		if err == nil && report.Complete {
+			err = analyze(ctx, r.Database, connection, table)
+			if err != nil {
+				report.Complete = false
+			}
+		}
+	}()
 	first := true
 	var buffered int64
 	defer func() { buildmetric.Memory(ctx, -buffered) }()
@@ -145,6 +153,25 @@ func (r Repository) Rebuild(ctx context.Context, target Target, tableName string
 			return report, nil
 		}
 	}
+}
+
+func analyze(ctx context.Context, db storage.Database, connection storage.Connection, table Table) error {
+	tx, err := db.Begin(ctx, connection)
+	if err != nil {
+		return err
+	}
+	defer rollback(ctx, tx)
+	var allowed bool
+	if err = tx.QueryRow(ctx, "SELECT has_table_privilege($1,'MAINTAIN')", "source."+table.Name).Scan(&allowed); err != nil {
+		return err
+	}
+	if !allowed {
+		return ErrTarget
+	} // ANALYZE alone would silently skip it.
+	if _, err = tx.Exec(ctx, "ANALYZE source."+table.Name); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func bindRow(table Table, row SourceRow) ([]any, error) {

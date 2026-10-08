@@ -30,7 +30,13 @@ func newEnvironment(t *testing.T) *environment {
 	return newEnvironmentWithTimeout(t, 3*time.Minute)
 }
 func newEnvironmentWithTimeout(t *testing.T, budget time.Duration) *environment {
+	return newEnvironmentWithLocale(t, budget, "")
+}
+func newEnvironmentWithLocale(t *testing.T, budget time.Duration, locale string) *environment {
 	t.Helper()
+	if locale != "" && locale != "en_US.utf8" {
+		t.Fatal("unsupported synthetic locale")
+	}
 	if os.Getenv("SICP_INTEGRATION") != "1" || os.Getenv("GITHUB_ACTIONS") != "true" {
 		t.Fatal("integration requires the isolated GitHub Actions runner")
 	}
@@ -71,7 +77,11 @@ func newEnvironmentWithTimeout(t *testing.T, budget time.Duration) *environment 
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = conn.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize())
+		create := "CREATE DATABASE " + pgx.Identifier{name}.Sanitize()
+		if locale != "" {
+			create += " TEMPLATE template0 LC_COLLATE 'en_US.utf8' LC_CTYPE 'en_US.utf8'"
+		}
+		_, err = conn.Exec(ctx, create)
 		conn.Close(ctx)
 		if err != nil {
 			t.Fatal(err)

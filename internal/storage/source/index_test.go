@@ -41,7 +41,11 @@ func TestT12_04PrimaryIndexValidationUsesFixedTableAndAcknowledgedRead(t *testin
 			if (kind == "valid") != (err == nil) {
 				t.Fatal(kind, err)
 			}
-			if len(d.calls) != 1 || d.calls[0].args[0] != "source.dwd_xqjbsjzlb" || d.calls[0].args[1] != "XQH" {
+			wantCalls := 2
+			if kind == "invalid" {
+				wantCalls = 1
+			}
+			if len(d.calls) != wantCalls || d.calls[0].args[0] != "source.dwd_xqjbsjzlb" || d.calls[0].args[1] != "XQH" {
 				t.Fatal(d.calls)
 			}
 			for _, required := range []string{"indisprimary", "indisvalid", "indisready", "indnkeyatts=1", "attnotnull", "has_table_privilege"} {
