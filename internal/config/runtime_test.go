@@ -4,10 +4,29 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/config"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/testkit"
 )
+
+func TestBT02_BackgroundTimeoutIsWorkerOnly(t *testing.T) {
+	for _, duration := range []string{"", "0s", "-1s", "61m", "30m"} {
+		v := testkit.RuntimeValues("/data")
+		v["BUILD_CHECK_TIMEOUT"] = duration
+		lookup := func(k string) (string, bool) { x, ok := v[k]; return x, ok }
+		c, err := config.LoadRuntime(config.Worker, lookup)
+		if (err == nil) != (duration == "30m") {
+			t.Fatal("invalid background timeout handling", duration, err)
+		}
+		if err == nil && c.BuildCheckTimeout != 30*time.Minute {
+			t.Fatal("wrong timeout")
+		}
+		if _, err = config.LoadRuntime(config.Query, lookup); err != nil {
+			t.Fatal("worker budget affected frontend", err)
+		}
+	}
+}
 
 func TestT15_09RuntimeRejectsIncompleteOrConflictingDeployment(t *testing.T) {
 	for _, tc := range []struct{ key, value string }{

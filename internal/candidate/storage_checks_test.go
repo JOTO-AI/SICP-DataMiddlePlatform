@@ -15,7 +15,7 @@ import (
 )
 
 func TestT12_04StorageValidationComparesEveryColumnWithoutLosingJSONPrecision(t *testing.T) {
-	for _, kind := range []string{"valid", "stale-field", "missing-column", "missing-row", "json-number", "json-null"} {
+	for _, kind := range []string{"valid", "stale-field", "missing-column", "missing-row", "extra-row", "json-number", "json-null"} {
 		t.Run(kind, func(t *testing.T) {
 			_, target, m, _, original, _ := buildFixture(t)
 			table := source.Catalog()[0]
@@ -65,12 +65,19 @@ func TestT12_04StorageValidationComparesEveryColumnWithoutLosingJSONPrecision(t 
 				delete(first, jsonField)
 			case "missing-row":
 				stored.rows[table.Name] = stored.rows[table.Name][:1]
+			case "extra-row":
+				extra := source.SourceRow{}
+				for key, raw := range first {
+					extra[key] = raw
+				}
+				extra[table.PrimaryKey] = json.RawMessage(`"zzzz"`)
+				stored.rows[table.Name] = append(stored.rows[table.Name], extra)
 			case "json-number":
 				first[jsonField] = json.RawMessage(`9007199254740992`)
 			case "json-null":
 				first[jsonField] = nil
 			}
-			checker := candidate.StorageChecks{Target: original, Source: stored, Clock: testkit.FakeClock{Time: time.Date(2026, 9, 18, 2, 0, 0, 0, time.UTC)}, Limits: read.DefaultLimits()}
+			checker := candidate.StorageChecks{Target: original, Source: stored, Clock: testkit.FakeClock{Time: time.Date(2026, 9, 18, 2, 0, 0, 0, time.UTC)}, Limits: read.BackgroundLimits(time.Minute), BackgroundTimeout: time.Minute}
 			h := read.Handle{Position: target.Position, Generation: target.Generation, Combination: m.Combination}
 			err := checker.SourceStorage(t.Context(), h, m)
 			if (kind == "valid") != (err == nil) {

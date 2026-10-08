@@ -34,7 +34,7 @@ shape = {
     "go": command("go", "version"),
     "postgres": command(*compose, "exec", "-T", "db-m", "psql", "-U", "postgres", "-d", "postgres", "-Atc", "SELECT version()"),
     "pool_max_connections_per_database": 16,
-    "worker": {"batch_rows": 500, "background_limits": "unchanged read.DefaultLimits", "source_timezone": "UTC"},
+    "worker": {"batch_rows": 500, "background_limits": "B02 manifest-bound streaming; 16 MiB batch / 64 MiB retained payload; default 30m stage deadline", "source_timezone": "UTC"},
     "production_difference": "Isolated hosted runner; no production hardware equivalence or concurrent production load claim.",
 }
 stable_shape = {key: value for key, value in shape.items() if key != "filesystem"}

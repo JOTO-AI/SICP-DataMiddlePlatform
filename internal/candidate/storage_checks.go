@@ -19,11 +19,12 @@ type IndexReader interface {
 	CheckPrimaryIndex(context.Context, storage.Position, string) error
 }
 type StorageChecks struct {
-	Target  CompleteSource
-	Source  read.Matcher
-	Indexes IndexReader
-	Clock   ports.Clock
-	Limits  read.Limits
+	Target            CompleteSource
+	Source            read.Matcher
+	Indexes           IndexReader
+	Clock             ports.Clock
+	Limits            read.Limits
+	BackgroundTimeout time.Duration
 }
 
 func (s StorageChecks) SourceStorage(ctx context.Context, h read.Handle, m Manifest) (err error) {
@@ -31,6 +32,14 @@ func (s StorageChecks) SourceStorage(ctx context.Context, h read.Handle, m Manif
 	defer func() { end(err) }()
 	if s.Target == nil || s.Source == nil || s.Clock == nil || m.Validate() != nil || h.Combination != m.Combination {
 		return ErrBuild
+	}
+	if s.BackgroundTimeout != 0 {
+		if s.BackgroundTimeout <= 0 || s.BackgroundTimeout > time.Hour {
+			return read.ErrBudget
+		}
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.BackgroundTimeout)
+		defer cancel()
 	}
 	if err := s.Target.Validate(ctx, m); err != nil {
 		return err
@@ -40,6 +49,16 @@ func (s StorageChecks) SourceStorage(ctx context.Context, h read.Handle, m Manif
 		return err
 	}
 	for _, version := range m.Tables {
+		if s.BackgroundTimeout != 0 {
+			limits, limitErr := read.TableLimits(version.Rows, s.BackgroundTimeout)
+			if limitErr != nil {
+				return limitErr
+			}
+			b, err = read.NewBudget(limits, s.Clock)
+			if err != nil {
+				return err
+			}
+		}
 		var table source.Table
 		for _, t := range source.Catalog() {
 			if t.Name == version.Table {

@@ -31,7 +31,7 @@ set +e
 result=${PIPESTATUS[0]}
 set -e
 printf '%s\n' "$result" > artifacts/build-performance/exit-code.txt
-# Never describe an expected B02 budget failure as a usable/30-minute result.
+# A completed diagnostic run still does not establish B10 acceptance.
 python3 - <<'PY'
 import json, os
 from pathlib import Path

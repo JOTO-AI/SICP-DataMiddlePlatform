@@ -17,6 +17,9 @@ var ErrOrder = errors.New("invalid source cursor order")
 type Limits struct {
 	Batches, Rows, Bytes, BatchSize int
 	Duration                        time.Duration
+	// BatchBytes enables streaming accounting; Bytes then bounds retained
+	// Collect payloads instead of cumulative traffic across streaming scans.
+	BatchBytes int
 }
 
 func DefaultLimits() Limits {
@@ -31,10 +34,11 @@ type Budget struct {
 	clock                ports.Clock
 	started              time.Time
 	batches, rows, bytes int
+	retained             int
 }
 
 func NewBudget(l Limits, clock ports.Clock) (*Budget, error) {
-	if clock == nil || l.Batches < 1 || l.Rows < 1 || l.Bytes < 1 || l.BatchSize < 1 || l.BatchSize > source.MaxBatchRows || l.Duration <= 0 || l.Duration > time.Hour {
+	if clock == nil || l.Batches < 1 || l.Rows < 1 || l.Bytes < 1 || l.BatchSize < 1 || l.BatchSize > source.MaxBatchRows || l.Duration <= 0 || l.Duration > time.Hour || l.BatchBytes < 0 || l.BatchBytes > 64<<20 {
 		return nil, ErrBudget
 	}
 	return &Budget{limits: l, clock: clock, started: clock.Now()}, nil
@@ -117,20 +121,25 @@ func Scan(ctx context.Context, r Matcher, h Handle, table string, filters []sour
 		if len(rows) > limit {
 			return ErrBudget
 		}
+		batchBytes := 0
 		for _, row := range rows {
 			if b.rows >= b.limits.Rows {
 				return ErrBudget
 			}
 			b.rows++
 			for name, raw := range row {
-				if len(name) > b.limits.Bytes-b.bytes {
+				used, maximum := &b.bytes, b.limits.Bytes
+				if b.limits.BatchBytes > 0 {
+					used, maximum = &batchBytes, b.limits.BatchBytes
+				}
+				if len(name) > maximum-*used {
 					return ErrBudget
 				}
-				b.bytes += len(name)
-				if len(raw) > b.limits.Bytes-b.bytes {
+				*used += len(name)
+				if len(raw) > maximum-*used {
 					return ErrBudget
 				}
-				b.bytes += len(raw)
+				*used += len(raw)
 			}
 			var key string
 			if json.Unmarshal(row[pk], &key) != nil || key == "" || key <= after {
@@ -152,7 +161,22 @@ func Scan(ctx context.Context, r Matcher, h Handle, table string, filters []sour
 
 func Collect(ctx context.Context, r Matcher, h Handle, table string, filters []source.Filter, b *Budget) ([]source.SourceRow, error) {
 	result := []source.SourceRow{}
-	err := Scan(ctx, r, h, table, filters, b, func(row source.SourceRow) error { result = append(result, row); return nil })
+	err := Scan(ctx, r, h, table, filters, b, func(row source.SourceRow) error {
+		if b.limits.BatchBytes > 0 {
+			for name, raw := range row {
+				if len(name) > b.limits.Bytes-b.retained {
+					return ErrBudget
+				}
+				b.retained += len(name)
+				if len(raw) > b.limits.Bytes-b.retained {
+					return ErrBudget
+				}
+				b.retained += len(raw)
+			}
+		}
+		result = append(result, row)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}

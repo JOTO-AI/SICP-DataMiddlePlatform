@@ -20,7 +20,6 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/observability"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
-	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/worker"
 )
@@ -195,7 +194,6 @@ func runBuildBaseline(t *testing.T, small bool) {
 	// later, immediately before the first seal: acquisition stays outside T.
 	epoch := time.Now().UTC().Add(-24 * time.Hour).Truncate(time.Second)
 	fixture := buildfixture.Fixture{Seed: report.Seed, Small: small, Epoch: epoch}
-	blocked := false
 	for i, mode := range []string{"initialize", "incremental", "force_full"} {
 		pct := []int{0, 1, 100}[i]
 		fixture.Percent = pct
@@ -225,11 +223,6 @@ func runBuildBaseline(t *testing.T, small bool) {
 			report.Scenarios = append(report.Scenarios, scenario)
 			t.Fatalf("capacity mismatch: rows=%d bytes=%d", rows, bytes)
 		}
-		if blocked {
-			scenario.State = "blocked_by_initial_baseline"
-			report.Scenarios = append(report.Scenarios, scenario)
-			continue
-		}
 		f.source.mu.Lock()
 		f.source.generated = fixture.Handler("synthetic-source-token")
 		f.source.mu.Unlock()
@@ -251,16 +244,6 @@ func runBuildBaseline(t *testing.T, small bool) {
 			t.Fatal("missing persisted build boundary")
 		}
 		if workErr != nil {
-			if !small && errors.Is(workErr, read.ErrBudget) && timing.UsableAt == nil {
-				active, exists, e := f.wr.Active.Read(f.e.ctx)
-				if e != nil || exists && active.TaskID == id {
-					t.Fatal("failed candidate was published")
-				}
-				scenario.State = "known_background_budget_limit"
-				blocked = true
-				report.Scenarios = append(report.Scenarios, scenario)
-				continue
-			}
 			report.Scenarios = append(report.Scenarios, scenario)
 			t.Fatalf("real worker failed: %v", workErr)
 		}

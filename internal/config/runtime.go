@@ -45,6 +45,7 @@ type Runtime struct {
 	ConsoleCookieSecure                                             bool
 	SnapshotKey, AuditKey, Environment                              string
 	DependencyTimeout                                               time.Duration
+	BuildCheckTimeout                                               time.Duration
 }
 
 func (Runtime) String() string     { return "[runtime configuration redacted]" }
@@ -102,6 +103,13 @@ func LoadRuntime(role Role, lookup func(string) (string, bool)) (Runtime, error)
 		}
 	}
 	if role == Worker {
+		c.BuildCheckTimeout = 30 * time.Minute
+		if value, ok := lookup("BUILD_CHECK_TIMEOUT"); ok {
+			c.BuildCheckTimeout, err = time.ParseDuration(value)
+			if err != nil {
+				return Runtime{}, fmt.Errorf("BUILD_CHECK_TIMEOUT: invalid duration")
+			}
+		}
 		c.BuildTableConcurrency = DefaultBuildTableConcurrency
 		if value, ok := lookup("BUILD_TABLE_CONCURRENCY"); ok {
 			c.BuildTableConcurrency, err = strconv.Atoi(value)
@@ -188,6 +196,9 @@ func (c Runtime) Validate() error {
 	}
 	paths := []string{c.LogDirectory}
 	if c.Service.Role == Worker {
+		if c.BuildCheckTimeout < time.Second || c.BuildCheckTimeout > time.Hour {
+			return bad("BUILD_CHECK_TIMEOUT")
+		}
 		if c.SourcePageSize < 1 || c.SourcePageSize > MaxSourcePageSize {
 			return bad("SOURCE_PAGE_SIZE")
 		}

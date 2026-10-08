@@ -190,12 +190,12 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 	if e != nil {
 		return e
 	}
-	limits := read.DefaultLimits()
+	limits := read.BackgroundLimits(c.BuildCheckTimeout)
 	online := func(reader read.Matcher) candidate.Online {
 		return candidate.Online{Source: reader, Grades: grades.Service{Source: reader, Times: times, Clock: w.Clock, Limits: limits}, Timetable: timetable.Service{Source: reader, Times: times, Clock: w.Clock, Limits: limits}, Clock: w.Clock, Limits: limits, MaxCases: 100000}
 	}
 	checks := func(reads read.Matcher) candidate.StorageChecks {
-		return candidate.StorageChecks{Target: targets, Source: reads, Indexes: reader, Clock: w.Clock, Limits: limits}
+		return candidate.StorageChecks{Target: targets, Source: reads, Indexes: reader, Clock: w.Clock, Limits: limits, BackgroundTimeout: c.BuildCheckTimeout}
 	}
 	builder := candidate.Builder{Ledger: store, Source: targets, Writer: writer, BatchSize: 500}
 	validator := candidate.Validator{Store: store, Checks: checks(candidateReads), Queries: online(candidateReads), Clock: w.Clock}

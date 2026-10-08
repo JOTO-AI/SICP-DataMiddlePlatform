@@ -43,6 +43,8 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 	if err != nil {
 		return 0, "", err
 	}
+	ctx, cancel := context.WithTimeout(ctx, o.Limits.Duration)
+	defer cancel()
 	count := 0
 	hash := sha256.New()
 	seen := map[string]bool{}
