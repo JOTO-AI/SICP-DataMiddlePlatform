@@ -235,8 +235,13 @@ func (c *checked) Next(ctx context.Context) (source.SourceRow, bool, error) {
 	if err != nil {
 		return nil, false, ErrBuild
 	}
-	validated, err := ingest.DecodeRecord(c.version.Table, raw)
-	buildmetric.Add(ctx, buildmetric.Decodes, 1)
+	validated := record
+	// Only our private file iterator guarantees DecodeRecord already checked
+	// this object. Arbitrary CompleteSource implementations retain validation.
+	if _, native := c.rows.(*fileRows); !native {
+		validated, err = ingest.DecodeRecord(c.version.Table, raw)
+		buildmetric.Add(ctx, buildmetric.Decodes, 1)
+	}
 	if err != nil || validated.Key != record.Key || record.Key <= c.previous || c.count >= c.version.Rows {
 		return nil, false, ErrBuild
 	}

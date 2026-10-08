@@ -41,7 +41,16 @@ func (s StorageChecks) SourceStorage(ctx context.Context, h read.Handle, m Manif
 		ctx, cancel = context.WithTimeout(ctx, s.BackgroundTimeout)
 		defer cancel()
 	}
-	if err := s.Target.Validate(ctx, m); err != nil {
+	if files, native := s.Target.(TargetFiles); native {
+		// Initial full-file verification is performed by the mandatory database
+		// comparison below. The closing full scan remains a mutation guard.
+		session, closeSession, sessionErr := files.session(ctx, m)
+		if sessionErr != nil {
+			return sessionErr
+		}
+		defer closeSession()
+		s.Target = session
+	} else if err := s.Target.Validate(ctx, m); err != nil {
 		return err
 	}
 	b, err := read.NewBudget(s.Limits, s.Clock)

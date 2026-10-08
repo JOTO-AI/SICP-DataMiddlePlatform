@@ -334,17 +334,23 @@ func (f TargetFiles) Open(ctx context.Context, m Manifest, v TableVersion) (Rows
 }
 
 type fileRows struct {
-	metricContext context.Context
-	bufferBytes   int64
-	files         TargetFiles
-	table         string
-	chunks        []targetChunk
-	chunk, line   int
-	lines         [][]byte
-	closed        bool
+	sessionContext context.Context
+	metricContext  context.Context
+	bufferBytes    int64
+	files          TargetFiles
+	table          string
+	chunks         []targetChunk
+	chunk, line    int
+	lines          [][]byte
+	closed         bool
 }
 
 func (r *fileRows) Next(ctx context.Context) (ingest.Record, error) {
+	if r.sessionContext != nil {
+		if err := r.sessionContext.Err(); err != nil {
+			return ingest.Record{}, err
+		}
+	}
 	if err := ctx.Err(); err != nil {
 		return ingest.Record{}, err
 	}
