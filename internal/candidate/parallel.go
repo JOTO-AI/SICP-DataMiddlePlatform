@@ -114,7 +114,7 @@ func (f TargetFiles) prepareTable(ctx context.Context, o PrepareOptions, input *
 		baseDigest = old.SHA256
 	}
 	sink := &fileSink{files: f, combination: o.Combination, table: name, remaining: f.MaxChunks, reserve: reserve}
-	summary, err := merge.Stream(ctx, merge.StreamOptions{Table: name, Scope: o.Scope, BaselineSHA256: baseDigest, SpoolDirectory: o.SpoolDirectory, Limits: o.Limits, Quality: o.Quality[name]}, current, merge.SealedInput{Scope: o.Scope, Lease: input}, sink)
+	summary, err := merge.Stream(ctx, merge.StreamOptions{Table: name, Scope: o.Scope, BaselineSHA256: baseDigest, SpoolDirectory: o.SpoolDirectory, Limits: o.Limits, Quality: o.Quality[name], OrderedBaseline: true}, current, merge.SealedInput{Scope: o.Scope, Lease: input}, sink)
 	if opened != nil {
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		err = errors.Join(err, opened.Close(cleanup))

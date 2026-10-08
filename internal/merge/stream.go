@@ -44,6 +44,7 @@ type StreamOptions struct {
 	Table, Scope, BaselineSHA256, SpoolDirectory string
 	Limits                                       Limits
 	Quality                                      Quality
+	OrderedBaseline                              bool
 }
 type SealedInput struct {
 	Scope string // From the persisted trusted task/source configuration.
@@ -156,7 +157,8 @@ func Stream(ctx context.Context, options StreamOptions, base RowIterator, input 
 		}
 		buildmetric.Memory(ctx, -s.bytes)
 	}()
-	for {
+	ordered := options.OrderedBaseline && mode == ingest.Incremental
+	for !ordered {
 		if err := ctx.Err(); err != nil {
 			return Summary{}, err
 		}
@@ -212,6 +214,12 @@ func Stream(ctx context.Context, options StreamOptions, base RowIterator, input 
 		return Summary{}, err
 	}
 	defer merged.close()
+	nextEntry := merged.next
+	if ordered {
+		join := orderedJoin{ctx: ctx, table: options.Table, base: base, delta: merged, maxBytes: options.Limits.BatchBytes}
+		nextEntry = join.next
+		defer join.close()
+	}
 	baseHash, targetHash := digestHeader(options.Table, options.Scope), digestHeader(options.Table, options.Scope)
 	var output []ingest.Record
 	var outputBytes int64
@@ -271,7 +279,7 @@ func Stream(ctx context.Context, options StreamOptions, base RowIterator, input 
 		return nil
 	}
 	for {
-		entry, readErr := merged.next()
+		entry, readErr := nextEntry()
 		if readErr == io.EOF {
 			if err := emit(); err != nil {
 				return Summary{}, err
