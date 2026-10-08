@@ -149,6 +149,12 @@ func (t pgTransaction) Exec(ctx context.Context, q string, args ...any) (int64, 
 	tag, e := t.tx.Exec(ctx, q, args...)
 	return tag.RowsAffected(), pgError(ctx, e)
 }
+
+func (t pgTransaction) CopyFrom(ctx context.Context, table string, columns []string, rows [][]any) (int64, error) {
+	buildmetric.Add(ctx, buildmetric.SQL, 1)
+	n, err := t.tx.CopyFrom(ctx, pgx.Identifier{"source", table}, columns, pgx.CopyFromRows(rows))
+	return n, pgError(ctx, err)
+}
 func (t pgTransaction) QueryRow(ctx context.Context, q string, args ...any) storage.Row {
 	buildmetric.Add(ctx, buildmetric.SQL, 1)
 	return pgRow{ctx, t.tx.QueryRow(ctx, q, args...)}

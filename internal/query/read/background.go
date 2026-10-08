@@ -8,7 +8,7 @@ const MaxBackgroundTableRows int64 = 10000000
 // Repeated joins are bounded separately from manifest cardinality. Collect has
 // a shared retained-payload cap even though streaming traffic is not capped.
 func BackgroundLimits(duration time.Duration) Limits {
-	return Limits{Rows: 1000000000, Batches: 10000000, Bytes: 64 << 20, BatchBytes: 16 << 20, BatchSize: 500, Duration: duration}
+	return Limits{Rows: 1000000000, Batches: 10000000, Bytes: 64 << 20, BatchBytes: 16 << 20, BatchSize: 1000, Duration: duration}
 }
 
 // TableLimits permits exactly the trusted table count plus an EOF probe. An

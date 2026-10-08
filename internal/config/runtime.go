@@ -46,6 +46,7 @@ type Runtime struct {
 	SnapshotKey, AuditKey, Environment                              string
 	DependencyTimeout                                               time.Duration
 	BuildCheckTimeout                                               time.Duration
+	BuildImportMode                                                 string
 }
 
 func (Runtime) String() string     { return "[runtime configuration redacted]" }
@@ -103,6 +104,10 @@ func LoadRuntime(role Role, lookup func(string) (string, bool)) (Runtime, error)
 		}
 	}
 	if role == Worker {
+		c.BuildImportMode = "copy"
+		if value, ok := lookup("BUILD_IMPORT_MODE"); ok {
+			c.BuildImportMode = value
+		}
 		c.BuildCheckTimeout = 30 * time.Minute
 		if value, ok := lookup("BUILD_CHECK_TIMEOUT"); ok {
 			c.BuildCheckTimeout, err = time.ParseDuration(value)
@@ -196,6 +201,9 @@ func (c Runtime) Validate() error {
 	}
 	paths := []string{c.LogDirectory}
 	if c.Service.Role == Worker {
+		if c.BuildImportMode != "copy" && c.BuildImportMode != "insert" {
+			return bad("BUILD_IMPORT_MODE")
+		}
 		if c.BuildCheckTimeout < time.Second || c.BuildCheckTimeout > time.Hour {
 			return bad("BUILD_CHECK_TIMEOUT")
 		}

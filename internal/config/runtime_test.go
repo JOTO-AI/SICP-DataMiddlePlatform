@@ -28,6 +28,17 @@ func TestBT02_BackgroundTimeoutIsWorkerOnly(t *testing.T) {
 	}
 }
 
+func TestBT05_ExplicitImportMode(t *testing.T) {
+	for _, mode := range []string{"copy", "insert", "", "automatic"} {
+		v := testkit.RuntimeValues("/data")
+		v["BUILD_IMPORT_MODE"] = mode
+		_, err := config.LoadRuntime(config.Worker, func(k string) (string, bool) { s, ok := v[k]; return s, ok })
+		if (err == nil) != (mode == "copy" || mode == "insert") {
+			t.Fatal(mode, err)
+		}
+	}
+}
+
 func TestT15_09RuntimeRejectsIncompleteOrConflictingDeployment(t *testing.T) {
 	for _, tc := range []struct{ key, value string }{
 		{"DATABASE_M1_URL", ""}, {"SOURCE_ORIGIN", ""}, {"SOURCE_ORIGIN", "http://mock.invalid/production-path"}, {"SOURCE_TOKEN", ""}, {"MAIL_ADDRESS", ""}, {"MAIL_TLS", ""}, {"MAIL_TO", "attacker\r\nBcc:someone"},

@@ -18,6 +18,12 @@ type QueryExecutor interface {
 	Query(context.Context, string, ...any) (Rows, error)
 }
 
+// CopyExecutor writes one bounded, already type-bound batch in the existing
+// transaction. Callers must verify the count and commit acknowledgement.
+type CopyExecutor interface {
+	CopyFrom(context.Context, string, []string, [][]any) (int64, error)
+}
+
 type Executor interface {
 	Exec(context.Context, string, ...any) (int64, error)
 	QueryRow(context.Context, string, ...any) Row

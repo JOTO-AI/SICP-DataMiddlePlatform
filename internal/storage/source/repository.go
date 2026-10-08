@@ -56,6 +56,7 @@ type Repository struct {
 	Registry storage.Registry
 	Database storage.Database
 	Gate     Gate
+	UseCopy  bool
 }
 
 var ErrTarget = errors.New("target is not an exclusively held inactive candidate")
@@ -120,6 +121,9 @@ func (r Repository) Rebuild(ctx context.Context, target Target, tableName string
 				break
 			}
 			for _, raw := range row {
+				if len(raw) > MaxBatchBytes-bytesRead {
+					return report, ErrInput
+				}
 				bytesRead += len(raw)
 			}
 			buildmetric.Memory(ctx, int64(bytesRead)-buffered)
@@ -137,7 +141,7 @@ func (r Repository) Rebuild(ctx context.Context, target Target, tableName string
 			report.Complete = true
 			return report, nil
 		}
-		if err := writeBatch(ctx, r.Database, connection, table, batch, first); err != nil {
+		if err := writeBatch(ctx, r.Database, connection, table, batch, first, r.UseCopy); err != nil {
 			return report, err
 		}
 		report.CompletedBatches++
@@ -200,7 +204,7 @@ func bindRow(table Table, row SourceRow) ([]any, error) {
 	return parameters, nil
 }
 
-func writeBatch(ctx context.Context, db storage.Database, connection storage.Connection, table Table, batch [][]any, truncate bool) error {
+func writeBatch(ctx context.Context, db storage.Database, connection storage.Connection, table Table, batch [][]any, truncate, useCopy bool) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -215,29 +219,47 @@ func writeBatch(ctx context.Context, db storage.Database, connection storage.Con
 		}
 	}
 	if len(batch) > 0 {
-		columns := make([]string, len(table.Columns))
-		for i, column := range table.Columns {
-			columns[i] = `"` + column.Name + `"`
-		}
-		groups := make([]string, len(batch))
-		parameters := make([]any, 0, len(batch)*len(columns))
-		for i, row := range batch {
-			placeholders := make([]string, len(row))
-			for j, v := range row {
-				parameters = append(parameters, v)
-				placeholders[j] = fmt.Sprintf("$%d", len(parameters))
+		if useCopy {
+			copier, ok := tx.(storage.CopyExecutor)
+			if !ok {
+				return errors.New("source COPY adapter unavailable")
 			}
-			groups[i] = "(" + strings.Join(placeholders, ",") + ")"
-		}
-		// Rebuilds reject duplicate keys. Incremental merging happens in P04,
-		// before this complete-candidate writer, so no implicit upsert is allowed.
-		sql := "INSERT INTO source." + table.Name + " (" + strings.Join(columns, ",") + ") VALUES " + strings.Join(groups, ",")
-		count, err := tx.Exec(ctx, sql, parameters...)
-		if err != nil {
-			return err
-		}
-		if count != int64(len(batch)) {
-			return errors.New("source batch row count mismatch")
+			columns := make([]string, len(table.Columns))
+			for i, column := range table.Columns {
+				columns[i] = column.Name
+			}
+			count, err := copier.CopyFrom(ctx, table.Name, columns, batch)
+			if err != nil {
+				return err
+			}
+			if count != int64(len(batch)) {
+				return errors.New("source COPY row count mismatch")
+			}
+		} else {
+			columns := make([]string, len(table.Columns))
+			for i, column := range table.Columns {
+				columns[i] = `"` + column.Name + `"`
+			}
+			groups := make([]string, len(batch))
+			parameters := make([]any, 0, len(batch)*len(columns))
+			for i, row := range batch {
+				placeholders := make([]string, len(row))
+				for j, v := range row {
+					parameters = append(parameters, v)
+					placeholders[j] = fmt.Sprintf("$%d", len(parameters))
+				}
+				groups[i] = "(" + strings.Join(placeholders, ",") + ")"
+			}
+			// Rebuilds reject duplicate keys. Incremental merging happens in P04,
+			// before this complete-candidate writer, so no implicit upsert is allowed.
+			sql := "INSERT INTO source." + table.Name + " (" + strings.Join(columns, ",") + ") VALUES " + strings.Join(groups, ",")
+			count, err := tx.Exec(ctx, sql, parameters...)
+			if err != nil {
+				return err
+			}
+			if count != int64(len(batch)) {
+				return errors.New("source batch row count mismatch")
+			}
 		}
 	}
 	if err := ctx.Err(); err != nil {
@@ -328,14 +350,14 @@ func (r Repository) ReadMatching(ctx context.Context, position storage.Position,
 	defer rows.Close()
 	result = make([]SourceRow, 0, limit)
 	bytesRead := 0
+	values := make([]any, len(table.Columns))
+	destinations := make([]any, len(values))
+	for i := range values {
+		destinations[i] = &values[i]
+	}
 	for rows.Next() {
 		if len(result) >= limit {
 			return nil, errors.New("source read limit exceeded")
-		}
-		values := make([]any, len(table.Columns))
-		destinations := make([]any, len(values))
-		for i := range values {
-			destinations[i] = &values[i]
 		}
 		if err := rows.Scan(destinations...); err != nil {
 			return nil, err

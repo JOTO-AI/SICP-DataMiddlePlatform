@@ -183,7 +183,7 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 		return e
 	}
 	targets, options := targetPreparation(c, r.Files.Targets, "C"+task.ID)
-	writer := source.Repository{Registry: c.Databases, Database: r.Database, Gate: store}
+	writer := source.Repository{Registry: c.Databases, Database: r.Database, Gate: store, UseCopy: c.BuildImportMode == "copy"}
 	reader := source.Repository{Registry: c.Databases, Database: adapters.QueryDatabase{Database: r.Database}}
 	candidateReads := read.Repository{Storage: reader, Gate: store}
 	times, e := compute.NewTimes(c.Service.Timezone)
