@@ -644,3 +644,74 @@ for (const entry of [
     expect(payload).toEqual(entry.expected)
   })
 }
+
+for (const returnBeforeResponse of [false, true]) {
+  test(`overview ignores a late response after leaving (returned=${returnBeforeResponse})`, async ({ page }) => {
+    await setup(page)
+    await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+    let release!: () => void, entered!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const seen = new Promise<void>(resolve => { entered = resolve })
+    let lists = 0, obsoleteDetails = 0
+    await page.route('**/admin/v1/tasks/', async route => {
+      const first = ++lists === 1
+      if (first) { entered(); await gate }
+      await route.fulfill({ json: { code: 'ok', data: { initialized: true, items: first ? [{ task_id: 'obsolete-overview', mode: 'initialize', status: 'running' }] : [] } } })
+    })
+    await page.route('**/admin/v1/tasks/obsolete-overview', route => {
+      obsoleteDetails++
+      return route.fulfill({ json: { code: 'ok', data: { task_id: 'obsolete-overview', mode: 'initialize', status: 'running' } } })
+    })
+    try {
+      await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+      await seen
+      await page.getByRole('link', { name: '业务查询', exact: true }).click()
+      await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
+      if (returnBeforeResponse) {
+        await page.getByRole('link', { name: '运行总览', exact: true }).click()
+        await expect.poll(() => lists).toBe(2)
+        await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+      }
+      const response = page.waitForResponse(r => r.url().endsWith('/admin/v1/tasks/'))
+      release()
+      await (await response).finished()
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+      expect(obsoleteDetails).toBe(0)
+      if (!returnBeforeResponse) await page.getByRole('link', { name: '运行总览', exact: true }).click()
+      await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+      await expect(page.getByRole('region', { name: '正在初始化' })).toHaveCount(0)
+    } finally { release() }
+  })
+}
+
+test('task page resumes while an old detail request is still pending', async ({ page }) => {
+  await setup(page)
+  await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+  const tasks = ['slow-old-task', 'selected-new-task'].map(task_id => ({ task_id, mode: 'incremental', status: 'success_published', accepted_at: '2026-10-08T00:00:00Z' }))
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, interval_seconds: 7200, items: tasks } } }))
+  let release!: () => void, entered!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const seen = new Promise<void>(resolve => { entered = resolve })
+  let oldCalls = 0
+  await page.route('**/admin/v1/tasks/slow-old-task', async route => {
+    if (++oldCalls === 1) { entered(); await gate }
+    await route.fulfill({ json: { code: 'ok', data: tasks[0] } })
+  })
+  await page.route('**/admin/v1/tasks/selected-new-task', route => route.fulfill({ json: { code: 'ok', data: tasks[1] } }))
+  try {
+    await page.getByRole('link', { name: '更新任务', exact: true }).click()
+    await page.getByRole('button', { name: /slow-old-task/ }).click()
+    await seen
+    await page.getByRole('link', { name: '业务查询', exact: true }).click()
+    await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
+    await page.getByRole('link', { name: '更新任务', exact: true }).click()
+    await page.getByRole('button', { name: /selected-new-task/ }).click()
+    await expect(page.locator('.task-detail .task-id')).toHaveText('selected-new-task')
+    const response = page.waitForResponse(r => r.url().endsWith('/admin/v1/tasks/slow-old-task'))
+    release()
+    await (await response).finished()
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+    await expect(page.locator('.task-detail .task-id')).toHaveText('selected-new-task')
+    await expect(page.getByLabel('查找任务')).toHaveValue('selected-new-task')
+  } finally { release() }
+})
