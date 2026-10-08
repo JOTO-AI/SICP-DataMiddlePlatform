@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/value"
@@ -146,6 +147,7 @@ func (r Repository) Rebuild(ctx context.Context, target Target, tableName string
 		}
 		report.CompletedBatches++
 		report.WrittenRows += len(batch)
+		activity.Advance(ctx, int64(len(batch)), 1)
 		buildmetric.Add(ctx, buildmetric.Batches, 1)
 		buildmetric.Add(ctx, buildmetric.RowsWritten, int64(len(batch)))
 		buildmetric.Add(ctx, buildmetric.BytesWritten, int64(bytesRead))

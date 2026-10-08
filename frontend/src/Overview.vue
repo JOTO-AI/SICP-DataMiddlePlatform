@@ -60,7 +60,7 @@ onUnmounted(stop)
       <p v-else-if="services[0]!.ready">当前已发布数据仍可查询。</p>
       <p v-if="!workerExecuting" class="hint">更新服务状态异常或尚未确认，请结合下方检查结果判断任务是否仍在推进。</p>
       <div class="result-meta"><span v-if="currentTask.started_at">开始时间：{{ time(currentTask.started_at) }} · 已运行 {{ elapsed }}</span><span v-else>受理时间：{{ time(currentTask.accepted_at) }}</span><span>任务号：<code>{{ currentTask.task_id }}</code></span></div>
-      <WorkProgress :progress="currentTask.work_progress" :status="currentTask.status" />
+      <WorkProgress :progress="currentTask.work_progress" :status="currentTask.status" :started-at="currentTask.started_at" />
       <AcquisitionProgress :progress="currentTask.acquisition" :status="currentTask.status" compact />
     </section>
     <p v-if="taskError" class="error" role="alert">{{ taskError }}</p>

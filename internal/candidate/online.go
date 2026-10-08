@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
@@ -47,6 +48,7 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 	ctx, cancel := context.WithTimeout(ctx, o.Limits.Duration)
 	defer cancel()
 	count := 0
+	advance := activity.Begin(ctx, "business_check", "", string(h.Position.Instance), "cases", string(op), -1)
 	hash := sha256.New()
 	seen := map[string]bool{}
 	seenBytes := 0
@@ -102,6 +104,7 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 		hash.Write(payload)
 		hash.Write([]byte{'\n'})
 		count++
+		advance(1, 0)
 		buildmetric.Add(ctx, buildmetric.Cases, 1)
 		return budget.Check(ctx)
 	}

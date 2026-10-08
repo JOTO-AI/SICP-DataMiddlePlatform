@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/publication"
@@ -71,6 +72,7 @@ func (s Shifter) Shift(ctx context.Context, p ReadabilityProof) (out ShiftResult
 }
 
 func (s Shifter) drain(ctx context.Context, event control.Publication) (drained bool, err error) {
+	activity.Report(ctx, "draining", "", "")
 	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "drain"}, "")
 	defer func() {
 		measurementErr := err

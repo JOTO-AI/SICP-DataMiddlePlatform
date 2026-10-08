@@ -6,7 +6,9 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
@@ -52,7 +54,15 @@ func TestBT05_CopyBindingAndFailuresNeverFallback(t *testing.T) {
 		if mode != "missing-adapter" {
 			r.Database = d
 		}
-		report, err := r.Rebuild(t.Context(), target, "dwd_xqjbsjzlb", &iterator{rows: []source.SourceRow{campus("001")}}, 500)
+		var progress activity.Snapshot
+		ctx, stop := activity.Track(t.Context(), time.Now, func(_ context.Context, p activity.Snapshot) error { progress = p; return nil }, nil)
+		ctx = activity.Work(ctx, "writing_table", "dwd_xqjbsjzlb", "M", "rows", "", 1)
+		report, err := r.Rebuild(ctx, target, "dwd_xqjbsjzlb", &iterator{rows: []source.SourceRow{campus("001")}}, 500)
+		activity.Report(ctx, "writing_table", "dwd_xqjbsjzlb", "M")
+		stop()
+		if (progress.Completed == 1) != (mode == "success") {
+			t.Fatal("uncommitted rows counted", progress)
+		}
 		if (err == nil) != (mode == "success") || report.Complete != (mode == "success") {
 			t.Fatal(mode, report, err)
 		}

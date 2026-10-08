@@ -180,3 +180,4 @@ dialog .actions { justify-content: flex-end; margin-top: 24px; }
 .work-progress { margin: 20px 0; padding: 16px; border: 1px solid var(--line); border-radius: 8px; }
 .work-progress .section-bar { flex-wrap: wrap; gap: 8px; }
 .work-progress code { overflow-wrap: anywhere; }
+.work-progress progress { width: 100%; accent-color: var(--brand); }

@@ -1,5 +1,46 @@
 import { test, expect, type Page } from '@playwright/test'
 
+test('BT09 real work, unknown totals, stalls and final timers', async ({ page }) => {
+  const start = new Date('2026-10-08T08:00:00Z')
+  await page.clock.install({ time: start })
+  await setup(page)
+  let phase = 'writing_table', status = 'running', instance = 'M', known = true
+  let completed = 500, unit = 'rows', finished: string | undefined
+  const task = () => ({ task_id: 'actual-progress', mode: 'initialize', status, accepted_at: start.toISOString(), started_at: start.toISOString(), finished_at: finished })
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [task()] } } }))
+  await page.route('**/admin/v1/tasks/actual-progress', async route => {
+    const heartbeat = await page.evaluate(() => new Date().toISOString())
+    await route.fulfill({ json: { code: 'ok', data: { ...task(), work_progress: { phase, instance, unit, completed, total: 1000, total_known: known, attempt: 2, cumulative_completed: 1500, cumulative_elapsed_ms: 60000, started_at: start.toISOString(), heartbeat_at: heartbeat, last_progress_at: start.toISOString() } } } })
+  })
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await page.getByRole('button', { name: /actual-progress/ }).click()
+  const stage = page.getByRole('region', { name: '当前执行阶段' })
+  await expect(stage.getByRole('progressbar')).toHaveAttribute('value', '500')
+  await expect(stage).toContainText('第 2 次执行')
+  await page.clock.runFor(51000)
+  await expect(stage).toContainText('执行器在线，但超过 45 秒没有已确认的工作量进展')
+  completed = 1000
+  await page.clock.runFor(5100)
+  await expect(stage).toContainText('100%')
+  await expect(stage).toContainText('仍需等待完整校验与发布')
+  for (const next of ['content_check', 'business_check', 'draining', 'publishing']) {
+    phase = next; instance = 'S'; known = false; unit = next === 'business_check' ? 'cases' : ''
+    await page.clock.runFor(5100)
+    await expect(stage.getByRole('progressbar')).toHaveCount(0)
+    await expect(stage).toContainText('数据库副本：S')
+  }
+  phase = 'business_check'; unit = 'cases'; status = 'failed'; finished = await page.evaluate(() => new Date().toISOString())
+  await page.clock.runFor(5100)
+  await expect(stage).toContainText('失败前阶段：核对业务案例')
+  await expect(stage.getByRole('status')).toHaveCount(0)
+  const timer = stage.getByText(/任务总耗时/)
+  const frozen = await timer.textContent()
+  await page.clock.runFor(61000)
+  await expect(timer).toHaveText(frozen!)
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+})
+
 test('post-acquisition stages show heartbeat, stale execution and publication', async ({ page }, testInfo) => {
   const started = new Date('2026-09-30T08:00:00Z')
   await page.clock.install({ time: started })
@@ -12,14 +53,14 @@ test('post-acquisition stages show heartbeat, stale execution and publication', 
   await page.route('**/admin/v1/tasks/build-progress', route => route.fulfill({ json: { code: 'ok', data: { ...task(), work_progress: { phase, table, tables, instance, started_at: started.toISOString(), heartbeat_at: heartbeat }, acquisition: { updated_at: started.toISOString(), tables: [{ table: 'dwd_bzkscjzlb', status: 'collected', completed_pages: 1440, total_pages: 1440 }] } } } })))
   await page.getByRole('button', { name: '刷新状态', exact: true }).click()
   const stage = page.getByRole('region', { name: '当前执行阶段' })
-  await expect(stage.getByRole('heading', { name: '正在构建表数据' })).toBeVisible()
+  await expect(stage.getByRole('heading', { name: '当前阶段：构建表数据' })).toBeVisible()
   await expect(stage).toContainText('dwd_bzkscjzlb')
   await expect(stage).toContainText('执行器在线')
   await page.getByRole('link', { name: '更新任务', exact: true }).click()
-  await expect(stage.getByRole('heading', { name: '正在构建表数据' })).toBeVisible()
+  await expect(stage.getByRole('heading', { name: '当前阶段：构建表数据' })).toBeVisible()
   table = undefined; tables = ['dwd_bzkscjzlb', 'dwd_bzkskbsjzlb']
   await page.clock.runFor(5100)
-  await expect(stage).toContainText('正在构建的表：')
+  await expect(stage).toContainText('当前构建的表：')
   await expect(stage).toContainText('dwd_bzkskbsjzlb')
   await page.clock.runFor(46000)
   await expect(stage).toContainText('状态待确认')
@@ -27,7 +68,7 @@ test('post-acquisition stages show heartbeat, stale execution and publication', 
   heartbeat = await page.evaluate(() => new Date().toISOString())
   phase = 'writing_table'; instance = 'M'; table = 'dwd_bzkscjzlb'; tables = undefined
   await page.clock.runFor(5100)
-  await expect(stage.getByRole('heading', { name: '正在写入数据库' })).toBeVisible()
+  await expect(stage.getByRole('heading', { name: '当前阶段：写入数据库' })).toBeVisible()
   await expect(stage).toContainText('数据库副本：M')
   await expect(stage).toContainText('执行器在线')
   await page.screenshot({ path: testInfo.outputPath('build-progress-desktop.png'), fullPage: true })
@@ -36,10 +77,10 @@ test('post-acquisition stages show heartbeat, stale execution and publication', 
   await page.screenshot({ path: testInfo.outputPath('build-progress-mobile.png'), fullPage: true })
   phase = 'publishing'; table = undefined; instance = undefined
   await page.clock.runFor(5100)
-  await expect(stage.getByRole('heading', { name: '正在发布数据版本' })).toBeVisible()
+  await expect(stage.getByRole('heading', { name: '当前阶段：发布数据版本' })).toBeVisible()
   status = 'published_pending_progress'; phase = 'confirming_progress'
   await page.clock.runFor(5100)
-  await expect(stage.getByRole('heading', { name: '正在确认同步进度' })).toBeVisible()
+  await expect(stage.getByRole('heading', { name: '当前阶段：确认同步进度' })).toBeVisible()
   status = 'success_published'
   await page.clock.runFor(5100)
   await expect(stage).toContainText('已结束')

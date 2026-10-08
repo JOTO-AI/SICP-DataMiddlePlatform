@@ -42,3 +42,45 @@ func TestTelemetryFailureIsObservedWithoutCancellingWork(t *testing.T) {
 		t.Fatal("telemetry changed work lifecycle", observed, ctx.Err())
 	}
 }
+
+func TestBT09_RealWorkRetryAndHeartbeatAreSeparate(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	now := time.Date(2026, 10, 8, 8, 0, 0, 0, time.UTC)
+	var saved []Snapshot
+	tr := &tracker{ctx: ctx, now: func() time.Time { return now }, save: func(_ context.Context, s Snapshot) error { saved = append(saved, s); return nil }}
+	advance := tr.begin("writing_table", "dwd_bzkscjzlb", "M", "rows", "", 10)
+	advance(10, 1)
+	if len(saved) != 1 {
+		t.Fatal("per-row control write")
+	}
+	progress := now
+	now = now.Add(time.Minute)
+	tr.pulse()
+	s := saved[len(saved)-1]
+	if s.Completed != 10 || s.Batches != 1 || s.LastProgressAt == nil || !s.LastProgressAt.Equal(progress) || s.Phase != "writing_table" {
+		t.Fatal(s)
+	}
+	check := tr.begin("content_check", "dwd_bzkscjzlb", "S", "rows", "", 10)
+	advance(100, 1) // A late writer may not contaminate S validation.
+	check(2, 0)
+	tr.pulse()
+	if tr.latest.Completed != 2 || tr.latest.Batches != 0 {
+		t.Fatal(tr.latest)
+	}
+	advance = tr.begin("writing_table", "dwd_bzkscjzlb", "M", "rows", "", 10)
+	advance(3, 1)
+	tr.pulse()
+	if tr.latest.Attempt != 2 || tr.latest.Completed != 3 || tr.latest.CumulativeCompleted != 13 || tr.latest.CumulativeElapsedMS != 60000 {
+		t.Fatal(tr.latest)
+	}
+	tr.report("publishing", "", "")
+	if tr.latest.Completed != 0 || tr.latest.Unit != "" || tr.latest.LastProgressAt != nil {
+		t.Fatal(tr.latest)
+	}
+	cancel()
+	advance(1, 1)
+	if tr.latest.Completed != 0 {
+		t.Fatal("cancelled work advanced")
+	}
+}

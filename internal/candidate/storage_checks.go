@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
@@ -78,6 +79,7 @@ func (s StorageChecks) SourceStorage(ctx context.Context, h read.Handle, m Manif
 			return err
 		}
 	}
+	activity.Report(ctx, "validating_target", "", string(h.Position.Instance))
 	return s.Target.Validate(ctx, m)
 }
 func (s StorageChecks) table(ctx context.Context, h read.Handle, m Manifest, v TableVersion, table source.Table, b *read.Budget) (err error) {
@@ -96,6 +98,7 @@ func (s StorageChecks) table(ctx context.Context, h read.Handle, m Manifest, v T
 		err = errors.Join(err, rows.Close(cleanup))
 	}()
 	original := newChecked(v, rows)
+	advance := activity.Begin(ctx, "content_check", v.Table, string(h.Position.Instance), "rows", "", v.Rows)
 	err = read.Scan(ctx, s.Source, h, table.Name, nil, b, func(actual source.SourceRow) error {
 		expected, more, err := original.Next(ctx)
 		if err != nil {
@@ -135,6 +138,7 @@ func (s StorageChecks) table(ctx context.Context, h read.Handle, m Manifest, v T
 				return ErrBuild
 			}
 		}
+		advance(1, 0)
 		return nil
 	})
 	if err != nil {
@@ -150,6 +154,7 @@ func (s StorageChecks) table(ctx context.Context, h read.Handle, m Manifest, v T
 	return nil
 }
 func (s StorageChecks) SourceIndexes(ctx context.Context, h read.Handle, m Manifest) (err error) {
+	activity.Report(ctx, "index_check", "", string(h.Position.Instance))
 	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "index_check", Combination: h.Combination, Slot: h.Position.Slot, Generation: h.Generation}, string(h.Position.Instance))
 	defer func() { end(err) }()
 	if s.Indexes == nil || m.Validate() != nil || h.Validate() != nil || h.Combination != m.Combination {

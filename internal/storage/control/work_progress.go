@@ -10,6 +10,12 @@ import (
 )
 
 func validWorkProgress(p activity.Snapshot) bool {
+	if p.Completed < 0 || p.Total < 0 || p.Batches < 0 || p.Attempt < 0 || p.CumulativeCompleted < p.Completed || p.CumulativeElapsedMS < 0 || len(p.Detail) > 64 || (p.Unit != "" && p.Unit != "rows" && p.Unit != "cases") {
+		return false
+	}
+	if p.LastProgressAt != nil && (p.LastProgressAt.Before(p.StartedAt) || p.LastProgressAt.After(p.HeartbeatAt)) {
+		return false
+	}
 	if len(p.Tables) > 4 || (len(p.Tables) > 0 && (p.Phase != "building_table" || p.Table != "")) {
 		return false
 	}
@@ -24,7 +30,7 @@ func validWorkProgress(p activity.Snapshot) bool {
 		return false
 	}
 	switch p.Phase {
-	case "preparing", "recovering", "acquiring", "sealing", "validating_input", "building_table", "validating_target", "writing_table", "validating_copy", "checking_unchanged", "publishing", "confirming_progress":
+	case "preparing", "recovering", "acquiring", "sealing", "validating_input", "building_table", "validating_target", "writing_table", "validating_copy", "checking_unchanged", "publishing", "confirming_progress", "content_check", "business_check", "index_check", "draining":
 		return true
 	}
 	return false

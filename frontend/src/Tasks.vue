@@ -166,7 +166,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
           <p class="task-id">{{ task.task_id }}</p>
           <label class="check-row"><input type="checkbox" v-model="auto" :disabled="terminal || busy || loading" @change="toggleAuto">每 5 秒刷新，任务结束或查询失败后停止</label>
           <p v-if="task.selected_table" class="hint">本次强制更新表：{{ task.selected_table }}</p>
-          <WorkProgress :progress="task.work_progress" :status="task.status" />
+          <WorkProgress :progress="task.work_progress" :status="task.status" :started-at="task.started_at" :finished-at="task.finished_at" />
           <AcquisitionProgress :progress="task.acquisition" :status="task.status" :allow-update="tableUpdateAllowed" @update-table="forceTable" />
           <dl class="facts"><div><dt>更新模式</dt><dd>{{ modeLabels[task.mode] || task.mode }}</dd></div><div><dt>操作人</dt><dd>{{ task.operator === 'scheduler' ? '系统调度' : task.operator || '未提供' }}</dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed ? '已确认' : '未确认' }}</dd></div><div v-if="task.predecessor_id"><dt>前序任务</dt><dd>{{ task.predecessor_id }}</dd></div></dl>
           <p v-if="task.failure" class="error">失败原因：{{ task.failure }}</p>

@@ -166,6 +166,7 @@ func (b Builder) Build(ctx context.Context, target source.Target, m Manifest, fo
 		iterator := newChecked(table, rows)
 		var report source.Report
 		writeCtx, writeEnd := events.TraceBuild(ctx, events.BuildScope{Stage: "write_table", Table: table.Table, Combination: m.Combination, Candidate: target.CandidateID, Slot: target.Position.Slot, Generation: target.Generation}, string(target.Position.Instance))
+		writeCtx = activity.Work(writeCtx, "writing_table", table.Table, string(target.Position.Instance), "rows", "", table.Rows)
 		report, err = b.Writer.Rebuild(writeCtx, target, table.Table, iterator, b.BatchSize)
 		out.WrittenRows += int64(report.WrittenRows)
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
