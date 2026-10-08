@@ -23,4 +23,4 @@
 
 前端显示表、副本、成功处理行/案例、已提交批次、阶段与任务耗时，以及独立的心跳/真实进展时间。未知总量不显示百分比；45 秒无进展提示与心跳失联区分，终态计时停止。当前执行器内的阶段重试累计与跨进程持久事件分开解释。任何展示字段都不能授权发布、接管或水位推进。
 
-GitHub 手动核心验收选择 `acceptance=true`、`profile=false`，覆盖 BP01—BP06 和 BP08 冷/暖近似各三轮；`acceptance=false` 时可通过 `scenario` 选择 BP09 或 BP10-double/wide/hot 等诊断入口。诊断 profile 单独运行。下载所有场景与次数的工件，保留失败、环境规格、WAL/索引空间和资源曲线。BP07 在线负载及完整资源验收未齐，核心汇总结果不是完整 B10 通过结论。
+GitHub 手动核心验收选择 `acceptance=true`、`profile=false`，覆盖 BP01—BP06 和 BP08 冷/暖近似各三轮；`acceptance=false` 时可通过 `scenario` 选择 BP07、BP09 或 BP10-double/wide/hot 等诊断入口。诊断 profile 单独运行。下载所有场景与次数的工件，保留失败、环境规格、WAL/索引空间和资源曲线。BP07 已有独立在线负载入口，重复样本及完整资源验收未齐，核心汇总结果不是完整 B10 通过结论。

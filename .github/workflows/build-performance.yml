@@ -16,7 +16,7 @@ on:
         description: Diagnostic scenario (ignored when acceptance=true)
         type: choice
         default: baseline
-        options: [baseline, BP01, BP02, BP03, BP04, BP05, BP06, BP08-cold, BP08-warm, BP09, BP10-double, BP10-wide, BP10-hot]
+        options: [baseline, BP01, BP02, BP03, BP04, BP05, BP06, BP07, BP08-cold, BP08-warm, BP09, BP10-double, BP10-wide, BP10-hot]
 permissions:
   contents: read
 concurrency:

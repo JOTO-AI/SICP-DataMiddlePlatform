@@ -48,6 +48,7 @@ type buildScenario struct {
 	CheckedNS                                int64
 	EmptySlotsVerified                       bool
 	CacheCondition                           string
+	Online                                   *onlineEvidence
 }
 type stageCapture struct {
 	mu       sync.Mutex
@@ -133,6 +134,8 @@ func TestI05_B10EmptySlotsAndUnchanged(t *testing.T) {
 	}
 }
 
+func TestI05_B10QueriesDuringBuild(t *testing.T) { runBuildScenario(t, true, "BP07") }
+
 func runBuildScenario(t *testing.T, small bool, selected string) {
 	t.Helper()
 	budget := 100 * time.Minute
@@ -179,7 +182,7 @@ func runBuildScenario(t *testing.T, small bool, selected string) {
 	dir := filepath.Join("..", "..", "artifacts", "build-performance", report.Scale)
 	if report.Scenario != "" {
 		switch report.Scenario {
-		case "BP01", "BP02", "BP03", "BP04", "BP05", "BP06", "BP08-cold", "BP08-warm", "BP09", "BP10-double", "BP10-wide", "BP10-hot":
+		case "BP01", "BP02", "BP03", "BP04", "BP05", "BP06", "BP07", "BP08-cold", "BP08-warm", "BP09", "BP10-double", "BP10-wide", "BP10-hot":
 		default:
 			t.Fatal("unsupported capacity scenario")
 		}
@@ -248,7 +251,7 @@ func runBuildScenario(t *testing.T, small bool, selected string) {
 	case "BP10-hot":
 		fixture.Hotspot = true
 	}
-	if !report.DiagnosticOnly && (report.Scenario == "BP09" || fixture.Scale == 2 || fixture.Wide || fixture.Hotspot) {
+	if !report.DiagnosticOnly && (report.Scenario == "BP07" || report.Scenario == "BP09" || fixture.Scale == 2 || fixture.Wide || fixture.Hotspot) {
 		t.Fatal("diagnostic scenarios cannot be core acceptance")
 	}
 	type input struct {
@@ -268,7 +271,7 @@ func runBuildScenario(t *testing.T, small bool, selected string) {
 			inputs = append(inputs, input{"incremental", 100, false})
 		case "BP05":
 			inputs = append(inputs, input{"force_full", 100, false})
-		case "BP06":
+		case "BP06", "BP07":
 			inputs = append(inputs, input{"incremental", 1, false})
 		case "BP08-warm":
 			inputs = append(inputs, input{"force_full", 0, false})
@@ -332,6 +335,37 @@ func runBuildScenario(t *testing.T, small bool, selected string) {
 		if report.Scenario == "BP09" && !scenario.Setup {
 			before = activeMetadata(t, f)
 		}
+		var references map[string]map[string]string
+		if report.Scenario == "BP07" && !scenario.Setup {
+			minimum, duration := 30, 60*time.Second
+			if small {
+				minimum, duration = 1, 2*time.Second
+			}
+			scenario.Online = &onlineEvidence{Version: onlineLoadVersion, Concurrency: 4, IntervalMS: 1000, MinimumSamples: minimum, LatencyGate: !small}
+			old := activeMetadata(t, f).Position.BundleID
+			reference, referenceErr := loadReference(f.e.ctx, f.server.URL, f.qc.Service.APIKey, old)
+			if referenceErr != nil {
+				scenario.State, scenario.Online.Failure = "online_reference_failed", referenceErr.Error()
+				report.Scenarios = append(report.Scenarios, scenario)
+				t.Fatal(referenceErr)
+			}
+			references = map[string]map[string]string{old: reference}
+			scenario.Online.References = references
+			stopBaseline := startOnlineLoad(f.e.ctx, f.server.URL, f.qc.Service.APIKey)
+			defer stopBaseline()
+			timer := time.NewTimer(duration)
+			select {
+			case <-timer.C:
+			case <-f.e.ctx.Done():
+			}
+			timer.Stop()
+			scenario.Online.Baseline = stopBaseline()
+			if err := verifyLoadPhase(scenario.Online.Baseline, references, minimum); err != nil {
+				scenario.State, scenario.Online.Failure = "online_baseline_failed", err.Error()
+				report.Scenarios = append(report.Scenarios, scenario)
+				t.Fatal(err)
+			}
+		}
 		_, err = f.wr.Control.Admit(f.e.ctx, control.Request{ID: id, IdempotencyKey: id, Mode: mode, RequestedBy: "synthetic", AcceptedAt: realClock{}.Now()})
 		if err != nil {
 			t.Fatal("baseline admission failed")
@@ -345,8 +379,16 @@ func runBuildScenario(t *testing.T, small bool, selected string) {
 			walBefore[index] = lsn
 		}
 		started = time.Now()
+		var stopLoad func() loadPhase
+		if scenario.Online != nil {
+			stopLoad = startOnlineLoad(f.e.ctx, f.server.URL, f.qc.Service.APIKey)
+			defer stopLoad()
+		}
 		workErr := f.worker.Engine.Cycle(f.e.ctx)
 		scenario.WorkerNS = time.Since(started).Nanoseconds()
+		if stopLoad != nil {
+			scenario.Online.Updating = stopLoad()
+		}
 		diagnostic, cancel := context.WithTimeout(context.WithoutCancel(f.e.ctx), 15*time.Second)
 		timing, timingErr := f.wr.Control.BuildTiming(diagnostic, id)
 		cancel()
@@ -376,10 +418,37 @@ func runBuildScenario(t *testing.T, small bool, selected string) {
 			t.Fatal("publication did not produce authenticated usable evidence")
 		}
 		scenario.BuildToUsableNS = timing.UsableAt.Sub(timing.BuildStartedAt).Nanoseconds()
+		if scenario.Online != nil {
+			reference, loadErr := loadReference(f.e.ctx, f.server.URL, f.qc.Service.APIKey, timing.BundleID)
+			if loadErr == nil {
+				if references[timing.BundleID] != nil {
+					loadErr = errors.New("load update did not publish a new version")
+				} else {
+					references[timing.BundleID] = reference
+				}
+			}
+			if loadErr == nil && (scenario.Online.Updating.StartedAt.After(timing.BuildStartedAt) || scenario.Online.Updating.FinishedAt.Before(*timing.UsableAt)) {
+				loadErr = errors.New("load did not cover complete build-to-usable interval")
+			}
+			if loadErr == nil {
+				loadErr = verifyOnlineLoad(scenario.Online, references, !small)
+			}
+			if loadErr == nil && !small && scenario.BuildToUsableNS >= (30*time.Minute).Nanoseconds() {
+				loadErr = errors.New("loaded build exceeded 1800 seconds")
+			}
+			if loadErr != nil {
+				scenario.State, scenario.Online.Failure = "online_load_failed", loadErr.Error()
+				report.Scenarios = append(report.Scenarios, scenario)
+				t.Fatal(loadErr)
+			}
+			scenario.Online.Verified = true
+		}
 		if scenario.EmptySlotsVerified && countControl(t, f, "SELECT count(*) FROM control.candidates WHERE task_id=$1 AND bundle_id=$2 AND slot=1 AND state='ready'", id, timing.BundleID) != 2 {
 			t.Fatal("BP06 did not rebuild both previously empty slots")
 		}
-		if countControl(t, f, "SELECT count(*) FROM control.query_snapshots") != 0 {
+		// Ordinary BP07 clients retain their snapshots under the normal TTL;
+		// only worker-owned usability probe receipts are released by production.
+		if scenario.Online == nil && countControl(t, f, "SELECT count(*) FROM control.query_snapshots") != 0 {
 			t.Fatal("build probes retained pagination snapshots")
 		}
 		stored := control.Bundle{ID: timing.BundleID}

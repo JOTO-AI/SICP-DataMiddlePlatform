@@ -45,6 +45,12 @@ for p in sorted(Path('artifacts/build-performance').rglob('stages.json')):
     for scenario in report['Scenarios']:
         duration = f"check={scenario.get('CheckedNS', 0)/1e9:.3f}s" if scenario['State'] == 'unchanged_verified' else f"T={scenario['BuildToUsableNS']/1e9:.3f}s"
         lines.append(f"- {scenario['Name']}: {scenario['State']}, {duration}, setup={scenario.get('Setup', False)}")
+        online = scenario.get('Online')
+        if online:
+            lines.append(f"  - Online workload {online['Version']}: verified={online['Verified']}, failure={online['Failure']}")
+            for operation, sample in (online['Updating']['Operations'] or {}).items():
+                base = online['Baseline']['Operations'].get(operation, {})
+                lines.append(f"  - {operation}: requests={sample['Count']}, errors={sample['Errors']}, p95={sample['P95NS']/1e6:.3f}ms, baseline={base.get('P95NS', 0)/1e6:.3f}ms")
     with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
         out.write('\n'.join(lines) + '\n')
 PY
