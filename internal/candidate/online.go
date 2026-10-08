@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/compute"
@@ -33,7 +34,7 @@ type Online struct {
 }
 
 func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation, at time.Time) (result int, summary string, err error) {
-	end := events.BeginBuild(ctx, events.BuildScope{Stage: "business_check", Combination: h.Combination, Slot: h.Position.Slot, Generation: h.Generation, Operation: op}, string(h.Position.Instance))
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "business_check", Combination: h.Combination, Slot: h.Position.Slot, Generation: h.Generation, Operation: op}, string(h.Position.Instance))
 	defer func() { end(err) }()
 	if o.Source == nil || o.Clock == nil || o.Grades.Source == nil || o.Grades.Clock == nil || o.Timetable.Source == nil || o.Timetable.Clock == nil || o.MaxCases < 1 || at.IsZero() {
 		return 0, "", ErrBuild
@@ -93,6 +94,7 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 		hash.Write(payload)
 		hash.Write([]byte{'\n'})
 		count++
+		buildmetric.Add(ctx, buildmetric.Cases, 1)
 		return budget.Check(ctx)
 	}
 	if err = o.cases(ctx, h, op, budget, visit); err != nil {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/cache"
@@ -76,6 +77,13 @@ func business(op contract.Operation, key string, recorder *events.Recorder, obse
 			return
 		}
 		if reply, ok := data.(Reply); ok {
+			if reply.Combination != "" {
+				if len(reply.Combination) > 256 || strings.ContainsAny(reply.Combination, "\r\n") {
+					WriteFailure(w, r, &Failure{Category: contract.Internal})
+					return
+				}
+				w.Header().Set(CombinationHeader, reply.Combination)
+			}
 			if reply.Snapshot != "" {
 				if !snapshots || op != contract.StudentGrades && op != contract.BatchGrades || !validSnapshot(reply.Snapshot) {
 					WriteFailure(w, r, &Failure{Category: contract.Internal})
@@ -116,6 +124,7 @@ func business(op contract.Operation, key string, recorder *events.Recorder, obse
 		if status >= 400 {
 			outcome = events.Failed
 			buffer.header.Del(snapshot.Header)
+			buffer.header.Del(CombinationHeader)
 		}
 		if err := span.Finish(ctx, outcome, &status, nil); err != nil {
 			observe(span, err)

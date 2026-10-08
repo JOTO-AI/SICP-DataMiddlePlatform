@@ -4,10 +4,10 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 expected="go$(awk '$1 == "go" { print $2 }' go.mod)"
 test "$(go env GOVERSION)" = "$expected"
 test -z "$(gofmt -l cmd internal tests/integration)"
-for script in scripts/sicp.sh scripts/check-compose.sh deploy/init-postgres.sh deploy/worker-entrypoint.sh; do
+for script in scripts/sicp.sh scripts/check-compose.sh scripts/check-build-performance.sh deploy/init-postgres.sh deploy/worker-entrypoint.sh; do
   bash -n "$script"
 done
-python3 -c 'import ast; from pathlib import Path; [ast.parse(Path(p).read_text()) for p in ("deploy/mock.py", "scripts/check-compose-config.py")]'
+python3 -c 'import ast; from pathlib import Path; [ast.parse(Path(p).read_text()) for p in ("deploy/mock.py", "scripts/check-compose-config.py", "scripts/build-runner-spec.py")]'
 go vet ./...
 mkdir -p artifacts
 go test -race -count=1 -coverprofile=artifacts/coverage.out -json ./... | tee artifacts/unit-tests.jsonl

@@ -74,7 +74,7 @@ func (v Readability) Check(ctx context.Context, p control.UpdatePlan, next, old 
 // VerifyPublished performs ordinary pinned reads without changing readiness or
 // publication state. It is shared by old-copy transfer checks and no-change rounds.
 func (v Readability) VerifyPublished(ctx context.Context, p control.UpdatePlan, old Copy) (checked time.Time, err error) {
-	end := events.BeginBuild(ctx, events.BuildScope{Stage: "old_copy_check", Combination: old.Manifest.Combination, Candidate: old.Target.CandidateID, Slot: old.Target.Position.Slot, Generation: old.Target.Generation}, string(old.Target.Position.Instance))
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "old_copy_check", Combination: old.Manifest.Combination, Candidate: old.Target.CandidateID, Slot: old.Target.Position.Slot, Generation: old.Target.Generation}, string(old.Target.Position.Instance))
 	defer func() { end(err) }()
 	if v.Admission == nil || v.Checks == nil || v.Queries == nil || v.Clock == nil || p.Validate() != nil || old.Target.Position.Validate() != nil || old.Target.Generation < 1 || old.Target.CandidateID == "" || old.Manifest.Combination != p.Origin.Position.BundleID || old.Evidence.Validate(old.Target, old.Manifest) != nil {
 		return checked, ErrOldCopy

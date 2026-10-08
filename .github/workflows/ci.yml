@@ -149,5 +149,7 @@ jobs:
         if: always()
         with:
           name: linux-integration-evidence
-          path: artifacts/integration/
+          path: |
+            artifacts/integration/
+            artifacts/build-performance/small/
           if-no-files-found: error

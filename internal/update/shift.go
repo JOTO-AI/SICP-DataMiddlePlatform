@@ -71,7 +71,7 @@ func (s Shifter) Shift(ctx context.Context, p ReadabilityProof) (out ShiftResult
 }
 
 func (s Shifter) drain(ctx context.Context, event control.Publication) (drained bool, err error) {
-	end := events.BeginBuild(ctx, events.BuildScope{Stage: "drain"}, "")
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "drain"}, "")
 	defer func() {
 		measurementErr := err
 		if measurementErr == nil && !drained {

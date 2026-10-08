@@ -27,11 +27,14 @@ type environment struct {
 }
 
 func newEnvironment(t *testing.T) *environment {
+	return newEnvironmentWithTimeout(t, 3*time.Minute)
+}
+func newEnvironmentWithTimeout(t *testing.T, budget time.Duration) *environment {
 	t.Helper()
 	if os.Getenv("SICP_INTEGRATION") != "1" || os.Getenv("GITHUB_ACTIONS") != "true" {
 		t.Fatal("integration requires the isolated GitHub Actions runner")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), budget)
 	t.Cleanup(cancel)
 	e := &environment{ctx: ctx}
 	prefix := fmt.Sprintf("it_%x", rand.Text()[:12])

@@ -94,7 +94,7 @@ func (f TargetFiles) prepareTables(ctx context.Context, o PrepareOptions, input 
 }
 
 func (f TargetFiles) prepareTable(ctx context.Context, o PrepareOptions, input *staging.Lease, base map[string]TableVersion, name string, reserve func() bool) (result targetTable, changes ChangeCounts, err error) {
-	end := events.BeginBuild(ctx, events.BuildScope{Stage: "merge_table", Table: name, Combination: o.Combination}, "")
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "merge_table", Table: name, Combination: o.Combination}, "")
 	defer func() { end(err) }()
 	var current merge.RowIterator = emptyRows{}
 	baseDigest, err := merge.SourceDigest(ctx, name, o.Scope, nil)

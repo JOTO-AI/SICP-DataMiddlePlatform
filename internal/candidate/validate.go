@@ -89,7 +89,7 @@ func dependencies(m Manifest, op contract.Operation) (map[string]string, error) 
 }
 
 func (v Validator) Validate(ctx context.Context, target source.Target, m Manifest) (result Evidence, err error) {
-	end := events.BeginBuild(ctx, events.BuildScope{Stage: "validate_copy", Combination: m.Combination, Candidate: target.CandidateID, Slot: target.Position.Slot, Generation: target.Generation}, string(target.Position.Instance))
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "validate_copy", Combination: m.Combination, Candidate: target.CandidateID, Slot: target.Position.Slot, Generation: target.Generation}, string(target.Position.Instance))
 	defer func() { end(err) }()
 	activity.Report(ctx, "validating_copy", "", string(target.Position.Instance))
 	if v.Store == nil || v.Checks == nil || v.Queries == nil || v.Clock == nil || m.Validate() != nil {

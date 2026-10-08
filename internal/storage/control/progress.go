@@ -143,7 +143,7 @@ func (r Repository) StageProgress(ctx context.Context, p ProgressPlan) error {
 // progress. A prior acknowledged atomic application is mandatory; GET alone is
 // never application evidence. Replays preserve the original publication time.
 func (r Repository) ConfirmPublication(ctx context.Context, offered Publication, at time.Time) (result Publication, err error) {
-	end := events.BeginBuild(ctx, events.BuildScope{Stage: "publish_confirm"}, "")
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "publish_confirm"}, "")
 	defer func() { end(err) }()
 	if r.owner == nil {
 		return Publication{}, ErrOwnership
@@ -234,7 +234,7 @@ func (r Repository) ConfirmPublication(ctx context.Context, offered Publication,
 // transaction. A failed/unknown commit can be retried using
 // only its persisted event/plan; no source acquisition or physical write occurs.
 func (r Repository) CompletePublished(ctx context.Context, offered Publication, at time.Time) (err error) {
-	end := events.BeginBuild(ctx, events.BuildScope{Stage: "confirm_progress"}, "")
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "confirm_progress"}, "")
 	defer func() { end(err) }()
 	if r.owner == nil {
 		return ErrOwnership

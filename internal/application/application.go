@@ -18,6 +18,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/notification"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/observability"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/cache"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/compute"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
@@ -66,7 +67,7 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 	if e != nil {
 		return nil, e
 	}
-	recorder, e := events.New(clock, rand.Reader, guard, 2*time.Second)
+	recorder, e := events.New(ports.SystemClock{}, rand.Reader, guard, 2*time.Second)
 	if e != nil {
 		return nil, e
 	}

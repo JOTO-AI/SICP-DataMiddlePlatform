@@ -1,6 +1,6 @@
 # 构建到可用 30 分钟专项开发计划
 
-编写日期：2026-09-30。基准代码：`main / 1e8bc0e`。状态：**实施中：B01 阶段事件首批代码已编写，待 GitHub CI；尚未性能验收**。开发分支：`perf/build-to-ready-30min`。实施范围和待办见 [B01 开发记录](verification/B01.md)。
+编写日期：2026-09-30，更新：2026-10-08。基准代码：`main / 1e8bc0e`。状态：**B01 三个小步的代码、测试和 GitHub 入口已补齐；待对应 SHA 的 CI 与容量工件，尚未验收**。开发分支：`perf/build-to-ready-30min`。实现、指标口径及验证状态见 [B01 开发记录](verification/B01.md)。
 
 目标：在当前十四张表、约 259 万行的容量下，将“采集完成后的本地处理 → 两份副本就绪 → 正式发布 → 新版本实际可查询”控制在 **30 分钟以内**。所有表均有变化是主要验收场景，不能用无变化或只更新小表的成绩代替。
 
@@ -225,7 +225,7 @@
 
 ### 7.1 工作流设计
 
-拟新增 `.github/workflows/build-performance.yml` 和专用合成基准脚本／测试入口；这些路径是计划交付物，目前尚未创建。
+已新增 `.github/workflows/build-performance.yml`、`scripts/check-build-performance.sh` 和 `tests/integration/build_performance_test.go`；对应 SHA 的运行结果与工件仍待 GitHub 验证。
 
 - 所有单元、race、集成、前端和性能测试只在 GitHub Actions 运行；本地仅编辑、格式化和文档／差异复核。
 - 普通 PR 执行小规模正确性和扫描次数回归；完整容量使用 `workflow_dispatch` 与发布候选触发，固定被测 SHA，不混用不同版本镜像。

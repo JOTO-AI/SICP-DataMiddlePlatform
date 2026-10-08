@@ -9,6 +9,8 @@ import (
 	"errors"
 	"reflect"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 )
 
@@ -118,7 +120,9 @@ func (s *Store) OpenSealed(ctx context.Context, reference SealRef) (*Sealed, err
 	return &Sealed{store: s, reference: reference, entries: entries, tables: tables}, nil
 }
 
-func (s *Store) verifyEntries(ctx context.Context, entries []Entry, limits ingest.PageLimits) ([]ingest.Manifest, error) {
+func (s *Store) verifyEntries(ctx context.Context, entries []Entry, limits ingest.PageLimits) (result []ingest.Manifest, err error) {
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "input_check"}, "")
+	defer func() { end(err) }()
 	bySource := map[string][]Entry{}
 	for _, entry := range entries {
 		if entry.Request.Mode != entries[0].Request.Mode || (entry.Request.Mode == ingest.Incremental && entry.Request.EndTime != entries[0].Request.EndTime) {
@@ -174,6 +178,11 @@ func (s *Store) readPage(ctx context.Context, entry Entry) (ingest.Page, error) 
 		return ingest.Page{}, ErrCorrupt
 	}
 	hash := sha256.Sum256(raw)
+	buildmetric.Add(ctx, buildmetric.FileValidations, 1)
+	buildmetric.Add(ctx, buildmetric.BytesRead, int64(len(raw)))
+	buffered := int64(len(raw))
+	buildmetric.Memory(ctx, buffered)
+	defer buildmetric.Memory(ctx, -buffered)
 	if hex.EncodeToString(hash[:]) != entry.SHA256 || int64(len(raw)) != entry.PayloadBytes {
 		return ingest.Page{}, ErrCorrupt
 	}
@@ -187,6 +196,8 @@ func (s *Store) readPage(ctx context.Context, entry Entry) (ingest.Page, error) 
 			return ingest.Page{}, ErrCorrupt
 		}
 		record, err := ingest.DecodeRecord(entry.Request.Table, raw[:end])
+		buildmetric.Add(ctx, buildmetric.Decodes, 1)
+		buildmetric.Add(ctx, buildmetric.RowsRead, 1)
 		if err != nil {
 			return ingest.Page{}, ErrCorrupt
 		}

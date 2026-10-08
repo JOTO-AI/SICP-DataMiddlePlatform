@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/value"
 )
@@ -92,6 +93,8 @@ func (r Repository) Rebuild(ctx context.Context, target Target, tableName string
 		return report, ErrTarget
 	}
 	first := true
+	var buffered int64
+	defer func() { buildmetric.Memory(ctx, -buffered) }()
 	for {
 		if err := ctx.Err(); err != nil {
 			return report, err
@@ -111,6 +114,8 @@ func (r Repository) Rebuild(ctx context.Context, target Target, tableName string
 			for _, raw := range row {
 				bytesRead += len(raw)
 			}
+			buildmetric.Memory(ctx, int64(bytesRead)-buffered)
+			buffered = int64(bytesRead)
 			if bytesRead > MaxBatchBytes {
 				return report, ErrInput
 			}
@@ -129,6 +134,11 @@ func (r Repository) Rebuild(ctx context.Context, target Target, tableName string
 		}
 		report.CompletedBatches++
 		report.WrittenRows += len(batch)
+		buildmetric.Add(ctx, buildmetric.Batches, 1)
+		buildmetric.Add(ctx, buildmetric.RowsWritten, int64(len(batch)))
+		buildmetric.Add(ctx, buildmetric.BytesWritten, int64(bytesRead))
+		buildmetric.Memory(ctx, -buffered)
+		buffered = 0
 		first = false
 		if done {
 			report.Complete = true
@@ -316,7 +326,10 @@ func (r Repository) ReadMatching(ctx context.Context, position storage.Position,
 			row[column.Name] = raw
 		}
 		result = append(result, row)
+		buildmetric.Add(ctx, buildmetric.RowsRead, 1)
 	}
+	buildmetric.Add(ctx, buildmetric.BytesRead, int64(bytesRead))
+	buildmetric.Add(ctx, buildmetric.Batches, 1)
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}

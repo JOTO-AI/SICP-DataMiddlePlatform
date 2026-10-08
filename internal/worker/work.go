@@ -44,7 +44,9 @@ type retained struct {
 	task     string
 }
 
-func (r retained) Full(ctx context.Context) (*staging.Lease, error) {
+func (r retained) Full(ctx context.Context) (lease *staging.Lease, err error) {
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "sealing", Combination: r.manifest.Combination}, "")
+	defer func() { end(err) }()
 	l, e := r.store.Retain(ctx, r.manifest.Input, r.task)
 	if e != nil {
 		return nil, errors.Join(update.ErrReacquire, e)
@@ -78,11 +80,12 @@ func (w Executor) Run(ctx context.Context, task control.Task, owner control.Owne
 	if err = w.taskEvent(ctx, task, false); err != nil {
 		return err
 	}
+	ctx = events.WithRecorder(ctx, w.Recorder, events.Identity{TaskID: task.ID})
+	ctx = events.WithBuildTrace(ctx, owner.Generation, w.Observe)
+	ctx = events.WithBuildStart(ctx, w.Clock.Now, repo.StartBuildTiming, w.Observe)
 	if task.Status == "failed" || task.Status == "success_published" || task.Status == "success_unchanged" {
 		return w.finish(ctx, task, owner)
 	}
-	ctx = events.WithRecorder(ctx, w.Recorder, events.Identity{TaskID: task.ID})
-	ctx = events.WithBuildTrace(ctx, owner.Generation, w.Observe)
 	ctx, stopActivity := activity.Track(ctx, w.Clock.Now, repo.SaveWorkProgress, w.Observe)
 	defer stopActivity()
 	finish := func(finishCtx context.Context) error { stopActivity(); return w.finish(finishCtx, task, owner) }
@@ -151,6 +154,11 @@ func (w Executor) finish(ctx context.Context, t control.Task, owner control.Owne
 	}
 	if e = w.taskEvent(ctx, view.Task, true); e != nil {
 		return e
+	}
+	if view.Task.Status == "success_published" {
+		if e := w.recordUsability(ctx, view.Task, owner); e != nil && w.Observe != nil {
+			w.Observe(e)
+		}
 	}
 	if view.Task.Status != "failed" {
 		if e := w.maintain(ctx, view.Task, owner); e != nil {

@@ -163,7 +163,8 @@ func (a Acquirer) collect(ctx context.Context, request func(string) ingest.PageR
 // This boundary starts only after every required page is durably acquired or
 // reused, and includes both sealing and retention in measured local work.
 func (a Acquirer) seal(ctx context.Context) (lease *staging.Lease, err error) {
-	end := events.BeginBuild(ctx, events.BuildScope{Stage: "sealing"}, "")
+	events.MarkBuildStarted(ctx)
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "sealing"}, "")
 	defer func() { end(err) }()
 	activity.Report(ctx, "sealing", "", "")
 	ref, err := a.Staging.Seal(ctx, a.Limits)

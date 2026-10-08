@@ -18,9 +18,12 @@ func SnapshotToken(ctx context.Context) string {
 
 // Reply adds transport metadata without changing the documented business DTO.
 type Reply struct {
-	Data     any
-	Snapshot string
+	Data        any
+	Snapshot    string
+	Combination string
 }
+
+const CombinationHeader = "X-SICP-Combination"
 
 func requestSnapshot(header http.Header, op contract.Operation, enabled bool) (string, error) {
 	var values []string

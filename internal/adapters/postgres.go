@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/coord"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 	"github.com/jackc/pgx/v5"
@@ -144,13 +145,16 @@ type pgTransaction struct {
 }
 
 func (t pgTransaction) Exec(ctx context.Context, q string, args ...any) (int64, error) {
+	buildmetric.Add(ctx, buildmetric.SQL, 1)
 	tag, e := t.tx.Exec(ctx, q, args...)
 	return tag.RowsAffected(), pgError(ctx, e)
 }
 func (t pgTransaction) QueryRow(ctx context.Context, q string, args ...any) storage.Row {
+	buildmetric.Add(ctx, buildmetric.SQL, 1)
 	return pgRow{ctx, t.tx.QueryRow(ctx, q, args...)}
 }
 func (t pgTransaction) Query(ctx context.Context, q string, args ...any) (storage.Rows, error) {
+	buildmetric.Add(ctx, buildmetric.SQL, 1)
 	r, e := t.tx.Query(ctx, q, args...)
 	if e != nil {
 		return nil, pgError(ctx, e)

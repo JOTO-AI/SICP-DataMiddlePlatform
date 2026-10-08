@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
@@ -81,7 +82,11 @@ func Scan(ctx context.Context, r Matcher, h Handle, table string, filters []sour
 	ctx, cancel := context.WithTimeout(ctx, remaining)
 	defer cancel()
 	after := ""
+	var buffered int64
+	defer func() { buildmetric.Memory(ctx, -buffered) }()
 	for {
+		buildmetric.Memory(ctx, -buffered)
+		buffered = 0
 		if err := b.Check(ctx); err != nil {
 			return err
 		}
@@ -98,6 +103,14 @@ func Scan(ctx context.Context, r Matcher, h Handle, table string, filters []sour
 		if err != nil {
 			return err
 		}
+		if buildmetric.Enabled(ctx) {
+			for _, row := range rows {
+				for _, raw := range row {
+					buffered += int64(len(raw))
+				}
+			}
+		}
+		buildmetric.Memory(ctx, buffered)
 		if err = b.Check(ctx); err != nil {
 			return err
 		}

@@ -6,6 +6,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 )
 
@@ -66,6 +67,7 @@ func (r Repository) fenceWriter(ctx context.Context, tx storage.Transaction) err
 }
 
 func readExecution(ctx context.Context, tx storage.Transaction) (Ownership, error) {
+	defer buildmetric.LockAcquisition(ctx)()
 	var taskID, ownerID *string
 	var generation int64
 	if err := tx.QueryRow(ctx, "SELECT task_id,owner_id,generation FROM control.execution WHERE singleton=TRUE FOR UPDATE").Scan(&taskID, &ownerID, &generation); err != nil {

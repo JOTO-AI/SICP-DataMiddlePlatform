@@ -27,7 +27,7 @@ type StorageChecks struct {
 }
 
 func (s StorageChecks) SourceStorage(ctx context.Context, h read.Handle, m Manifest) (err error) {
-	end := events.BeginBuild(ctx, events.BuildScope{Stage: "content_check", Combination: h.Combination, Slot: h.Position.Slot, Generation: h.Generation}, string(h.Position.Instance))
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "content_check", Combination: h.Combination, Slot: h.Position.Slot, Generation: h.Generation}, string(h.Position.Instance))
 	defer func() { end(err) }()
 	if s.Target == nil || s.Source == nil || s.Clock == nil || m.Validate() != nil || h.Combination != m.Combination {
 		return ErrBuild
@@ -53,7 +53,7 @@ func (s StorageChecks) SourceStorage(ctx context.Context, h read.Handle, m Manif
 	return s.Target.Validate(ctx, m)
 }
 func (s StorageChecks) table(ctx context.Context, h read.Handle, m Manifest, v TableVersion, table source.Table, b *read.Budget) (err error) {
-	end := events.BeginBuild(ctx, events.BuildScope{Stage: "content_table", Table: v.Table, Combination: h.Combination, Slot: h.Position.Slot, Generation: h.Generation}, string(h.Position.Instance))
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "content_table", Table: v.Table, Combination: h.Combination, Slot: h.Position.Slot, Generation: h.Generation}, string(h.Position.Instance))
 	defer func() { end(err) }()
 	rows, err := s.Target.Open(ctx, m, v)
 	if err != nil {
@@ -122,7 +122,7 @@ func (s StorageChecks) table(ctx context.Context, h read.Handle, m Manifest, v T
 	return nil
 }
 func (s StorageChecks) SourceIndexes(ctx context.Context, h read.Handle, m Manifest) (err error) {
-	end := events.BeginBuild(ctx, events.BuildScope{Stage: "index_check", Combination: h.Combination, Slot: h.Position.Slot, Generation: h.Generation}, string(h.Position.Instance))
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "index_check", Combination: h.Combination, Slot: h.Position.Slot, Generation: h.Generation}, string(h.Position.Instance))
 	defer func() { end(err) }()
 	if s.Indexes == nil || m.Validate() != nil || h.Validate() != nil || h.Combination != m.Combination {
 		return ErrBuild

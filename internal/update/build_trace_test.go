@@ -43,7 +43,16 @@ func TestBT01_01SealingStartsOnlyAfterAllSourcesComplete(t *testing.T) {
 				}
 				return
 			}
-			if err != nil || len(saved) < 4 || saved[0].Metadata.Build.Stage != "sealing" || saved[1].Metadata.Build.Stage != "sealing" || saved[1].Outcome != events.Succeeded || saved[2].Metadata.Build.Stage != "prepare_target" {
+			sealed, prepare := -1, -1
+			for index, e := range saved {
+				if e.Metadata.Build.Stage == "sealing" && e.Phase == events.Finished && e.Outcome == events.Succeeded {
+					sealed = index
+				}
+				if e.Metadata.Build.Stage == "prepare_target" && e.Phase == events.Started {
+					prepare = index
+				}
+			}
+			if err != nil || len(saved) < 4 || saved[0].Metadata.Build.Stage != "sealing" || sealed < 1 || prepare <= sealed {
 				t.Fatal("seal/retention must complete before target preparation", err)
 			}
 		})

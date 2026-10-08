@@ -22,7 +22,7 @@ func Submit(ctx context.Context, outbox Outbox, delivery Delivery, intent contro
 	if intent.Kind == "route_shift" {
 		stage = "route_shift"
 	}
-	end := events.BeginBuild(ctx, events.BuildScope{Stage: stage, Combination: intent.Target.BundleID, Slot: intent.Target.Position.Slot, Generation: intent.Target.Generation}, string(intent.Target.Position.Instance))
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: stage, Combination: intent.Target.BundleID, Slot: intent.Target.Position.Slot, Generation: intent.Target.Generation}, string(intent.Target.Position.Instance))
 	defer func() { end(err) }()
 	if outbox == nil || delivery == nil {
 		return control.Publication{}, control.ErrEntity

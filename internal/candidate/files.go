@@ -13,6 +13,7 @@ import (
 	"regexp"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/merge"
@@ -105,7 +106,7 @@ type emptyRows struct{}
 func (emptyRows) Next(context.Context) (ingest.Record, error) { return ingest.Record{}, io.EOF }
 
 func (f TargetFiles) Prepare(ctx context.Context, o PrepareOptions, input *staging.Lease) (result Manifest, err error) {
-	end := events.BeginBuild(ctx, events.BuildScope{Stage: "prepare_target", Combination: o.Combination}, "")
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "prepare_target", Combination: o.Combination}, "")
 	defer func() { end(err) }()
 	if o.TableConcurrency < 0 || o.TableConcurrency > MaxTableConcurrency {
 		return Manifest{}, ErrBuild
@@ -192,6 +193,8 @@ func (s *fileSink) WriteBatch(ctx context.Context, rows []ingest.Record) error {
 		return staging.ErrCapacity
 	}
 	var buf bytes.Buffer
+	var buffered int64
+	defer func() { buildmetric.Memory(ctx, -buffered) }()
 	for _, row := range rows {
 		raw, err := row.Canonical()
 		if err != nil {
@@ -202,6 +205,9 @@ func (s *fileSink) WriteBatch(ctx context.Context, rows []ingest.Record) error {
 		}
 		buf.Write(raw)
 		buf.WriteByte('\n')
+		charge := int64(len(raw) + 1)
+		buffered += charge
+		buildmetric.Memory(ctx, charge)
 	}
 	raw := buf.Bytes()
 	hash := sha256.Sum256(raw)
@@ -213,6 +219,9 @@ func (s *fileSink) WriteBatch(ctx context.Context, rows []ingest.Record) error {
 	if err := s.files.put(ctx, name, raw, s.files.MaxChunkBytes); err != nil {
 		return err
 	}
+	buildmetric.Add(ctx, buildmetric.RowsWritten, int64(len(rows)))
+	buildmetric.Add(ctx, buildmetric.BytesWritten, int64(len(raw)))
+	buildmetric.Add(ctx, buildmetric.Batches, 1)
 	s.chunks = append(s.chunks, targetChunk{Name: name, SHA256: sha, Bytes: int64(len(raw)), Rows: len(rows)})
 	return nil
 }
@@ -271,13 +280,16 @@ func (f TargetFiles) document(ctx context.Context, m Manifest) (targetDocument, 
 	}
 	return doc, nil
 }
-func (f TargetFiles) Validate(ctx context.Context, m Manifest) error {
+func (f TargetFiles) Validate(ctx context.Context, m Manifest) (err error) {
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "target_check", Combination: m.Combination}, "")
+	defer func() { end(err) }()
 	doc, err := f.document(ctx, m)
 	if err != nil {
 		return err
 	}
 	for _, table := range doc.Tables {
 		rows := &fileRows{files: f, table: table.Version.Table, chunks: table.Chunks}
+		defer rows.Close(ctx)
 		checked := newChecked(table.Version, rows)
 		for {
 			_, more, err := checked.Next(ctx)
@@ -322,12 +334,14 @@ func (f TargetFiles) Open(ctx context.Context, m Manifest, v TableVersion) (Rows
 }
 
 type fileRows struct {
-	files       TargetFiles
-	table       string
-	chunks      []targetChunk
-	chunk, line int
-	lines       [][]byte
-	closed      bool
+	metricContext context.Context
+	bufferBytes   int64
+	files         TargetFiles
+	table         string
+	chunks        []targetChunk
+	chunk, line   int
+	lines         [][]byte
+	closed        bool
 }
 
 func (r *fileRows) Next(ctx context.Context) (ingest.Record, error) {
@@ -338,6 +352,7 @@ func (r *fileRows) Next(ctx context.Context) (ingest.Record, error) {
 		return ingest.Record{}, ErrBuild
 	}
 	if r.line == len(r.lines) {
+		r.releaseBuffer()
 		if r.chunk == len(r.chunks) {
 			return ingest.Record{}, io.EOF
 		}
@@ -347,6 +362,10 @@ func (r *fileRows) Next(ctx context.Context) (ingest.Record, error) {
 			return ingest.Record{}, err
 		}
 		hash := sha256.Sum256(raw)
+		buildmetric.Add(ctx, buildmetric.FileValidations, 1)
+		buildmetric.Add(ctx, buildmetric.BytesRead, int64(len(raw)))
+		buildmetric.Memory(ctx, int64(len(raw)))
+		r.metricContext, r.bufferBytes = ctx, int64(len(raw))
 		if int64(len(raw)) != chunk.Bytes || hex.EncodeToString(hash[:]) != chunk.SHA256 || len(raw) == 0 || raw[len(raw)-1] != '\n' {
 			return ingest.Record{}, ErrBuild
 		}
@@ -359,6 +378,17 @@ func (r *fileRows) Next(ctx context.Context) (ingest.Record, error) {
 	}
 	raw := r.lines[r.line]
 	r.line++
+	buildmetric.Add(ctx, buildmetric.Decodes, 1)
+	buildmetric.Add(ctx, buildmetric.RowsRead, 1)
 	return ingest.DecodeRecord(r.table, raw)
 }
-func (r *fileRows) Close(context.Context) error { r.closed = true; r.lines = nil; return nil }
+func (r *fileRows) releaseBuffer() {
+	if r.metricContext != nil {
+		buildmetric.Memory(r.metricContext, -r.bufferBytes)
+	}
+	r.metricContext = nil
+	r.bufferBytes = 0
+	r.lines = nil
+	r.line = 0
+}
+func (r *fileRows) Close(context.Context) error { r.closed = true; r.releaseBuffer(); return nil }

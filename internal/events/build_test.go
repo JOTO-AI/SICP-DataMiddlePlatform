@@ -10,9 +10,53 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/testkit"
 )
+
+func TestBT01_04NestedStagesInheritCopyAndAggregateMetrics(t *testing.T) {
+	r, saved, _ := recorder(t)
+	root := events.WithBuildTrace(events.WithRecorder(t.Context(), r, events.Identity{TaskID: "task"}), 1, nil)
+	for _, instance := range []string{"M", "S"} {
+		ctx, end := events.TraceBuild(root, events.BuildScope{Stage: "write_copy", Combination: "C1", Candidate: "candidate" + instance, Slot: 1, Generation: 7}, instance)
+		child, done := events.TraceBuild(ctx, events.BuildScope{Stage: "target_check"}, "")
+		buildmetric.Add(child, buildmetric.Decodes, 3)
+		done(nil)
+		end(nil)
+	}
+	for i, e := range *saved {
+		if e.Phase != events.Finished {
+			continue
+		}
+		b := e.Metadata.Build
+		want := "M"
+		if i >= 4 {
+			want = "S"
+		}
+		if e.Identity.Instance != want || b.Candidate != "candidate"+want || b.Combination != "C1" || b.Slot != 1 || b.Generation != 7 || b.Metrics.Decodes != 3 || b.Attempt != 1 {
+			t.Fatal("child metrics lost physical scope")
+		}
+	}
+}
+
+func TestBT01_03BuildStartPersistenceHasBoundedContext(t *testing.T) {
+	now := time.Now()
+	called := false
+	reported := false
+	ctx := events.WithBuildStart(t.Context(), func() time.Time { return now }, func(c context.Context, at time.Time) error {
+		called = true
+		deadline, ok := c.Deadline()
+		if !ok || time.Until(deadline) > 2*time.Second || !at.Equal(now) || at.Location() != time.UTC {
+			t.Fatal("invalid persisted start boundary")
+		}
+		return errors.New("private SQL")
+	}, func(err error) { reported = err == events.ErrRecord })
+	events.MarkBuildStarted(ctx)
+	if !called || !reported || ctx.Err() != nil {
+		t.Fatal("timing failure changed task context")
+	}
+}
 
 func TestBT01_01BuildBoundariesAndRetryTotals(t *testing.T) {
 	r, saved, clock := recorder(t)

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"sort"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 )
 
@@ -45,12 +46,13 @@ func definition(table string) (ingest.Definition, error) {
 
 // validated detaches caller-owned tokens and checks the declared key against
 // the source object. A manually constructed Record cannot bypass source checks.
-func validated(table string, r ingest.Record) (ingest.Record, []byte, error) {
+func validated(ctx context.Context, table string, r ingest.Record) (ingest.Record, []byte, error) {
 	raw, err := r.Canonical()
 	if err != nil {
 		return ingest.Record{}, nil, ErrInvalid
 	}
 	copy, err := ingest.DecodeRecord(table, raw)
+	buildmetric.Add(ctx, buildmetric.Decodes, 1)
 	if err != nil || copy.Key != r.Key {
 		return ingest.Record{}, nil, ErrInvalid
 	}
@@ -70,7 +72,7 @@ func Compare(ctx context.Context, table string, before, after []ingest.Record) (
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			_, raw, err := validated(table, r)
+			_, raw, err := validated(ctx, table, r)
 			if err != nil {
 				return nil, err
 			}

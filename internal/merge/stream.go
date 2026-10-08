@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/staging"
 )
@@ -145,10 +146,16 @@ func Stream(ctx context.Context, options StreamOptions, base RowIterator, input 
 	if err != nil {
 		return Summary{}, ErrSpool
 	}
-	defer os.RemoveAll(scratch) // Only this freshly-created private task directory.
 	summary.Input = input.Lease.Reference()
 	summary.DeletionsKnown = mode != ingest.Incremental
 	s := sorter{ctx: ctx, table: options.Table, root: scratch, limits: options.Limits, stats: &summary.Buffers}
+	defer func() {
+		// Release disk accounting only after the private scratch files disappear.
+		if os.RemoveAll(scratch) == nil {
+			buildmetric.Disk(ctx, -s.disk)
+		}
+		buildmetric.Memory(ctx, -s.bytes)
+	}()
 	for {
 		if err := ctx.Err(); err != nil {
 			return Summary{}, err
@@ -160,7 +167,7 @@ func Stream(ctx context.Context, options StreamOptions, base RowIterator, input 
 		if err != nil {
 			return Summary{}, err
 		}
-		entry, err := makeItem(options.Table, row, true)
+		entry, err := makeItem(ctx, options.Table, row, true)
 		if err != nil {
 			return Summary{}, err
 		}
@@ -168,14 +175,20 @@ func Stream(ctx context.Context, options StreamOptions, base RowIterator, input 
 			return Summary{}, err
 		}
 	}
+	var pageBytes int64
+	defer func() { buildmetric.Memory(ctx, -pageBytes) }()
 	for i, entry := range entries {
 		if entry.Request.Table != options.Table {
 			continue
 		}
+		buildmetric.Memory(ctx, -pageBytes)
+		pageBytes = 0
 		page, err := input.Lease.ReadPage(ctx, i)
 		if err != nil {
 			return Summary{}, err
 		}
+		pageBytes = entry.PayloadBytes
+		buildmetric.Memory(ctx, pageBytes)
 		if len(page.Records) > summary.Buffers.PeakInputPageRows {
 			summary.Buffers.PeakInputPageRows = len(page.Records)
 		}
@@ -183,7 +196,7 @@ func Stream(ctx context.Context, options StreamOptions, base RowIterator, input 
 			summary.Buffers.PeakInputPageBytes = entry.PayloadBytes
 		}
 		for _, row := range page.Records {
-			entry, err := makeItem(options.Table, row, false)
+			entry, err := makeItem(ctx, options.Table, row, false)
 			if err != nil {
 				return Summary{}, err
 			}
@@ -192,6 +205,8 @@ func Stream(ctx context.Context, options StreamOptions, base RowIterator, input 
 			}
 		}
 	}
+	buildmetric.Memory(ctx, -pageBytes)
+	pageBytes = 0
 	merged, err := s.finish()
 	if err != nil {
 		return Summary{}, err
@@ -200,6 +215,7 @@ func Stream(ctx context.Context, options StreamOptions, base RowIterator, input 
 	baseHash, targetHash := digestHeader(options.Table, options.Scope), digestHeader(options.Table, options.Scope)
 	var output []ingest.Record
 	var outputBytes int64
+	defer func() { buildmetric.Memory(ctx, -outputBytes) }()
 	flush := func() error {
 		if len(output) == 0 {
 			return nil
@@ -208,6 +224,7 @@ func Stream(ctx context.Context, options StreamOptions, base RowIterator, input 
 			return err
 		}
 		output = nil
+		buildmetric.Memory(ctx, -outputBytes)
 		outputBytes = 0
 		return nil
 	}
@@ -244,6 +261,7 @@ func Stream(ctx context.Context, options StreamOptions, base RowIterator, input 
 		}
 		output = append(output, target.row)
 		outputBytes += int64(len(target.raw))
+		buildmetric.Memory(ctx, int64(len(target.raw)))
 		if len(output) > summary.Buffers.PeakOutputRows {
 			summary.Buffers.PeakOutputRows = len(output)
 		}

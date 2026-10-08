@@ -16,6 +16,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 )
 
@@ -30,8 +31,8 @@ type item struct {
 	timed bool
 }
 
-func makeItem(table string, r ingest.Record, base bool) (item, error) {
-	copy, raw, err := validated(table, r)
+func makeItem(ctx context.Context, table string, r ingest.Record, base bool) (item, error) {
+	copy, raw, err := validated(ctx, table, r)
 	if err != nil {
 		return item{}, err
 	}
@@ -55,9 +56,10 @@ func less(a, b item) bool {
 }
 
 type run struct {
-	path string
-	sum  [32]byte
-	rows int64
+	path  string
+	sum   [32]byte
+	rows  int64
+	bytes int64
 }
 type sorter struct {
 	ctx         context.Context
@@ -68,6 +70,7 @@ type sorter struct {
 	bytes       int64
 	runs        []run
 	written     int64
+	disk        int64
 	sequence    int
 }
 
@@ -85,6 +88,7 @@ func (s *sorter) add(value item) error {
 	}
 	s.buffer = append(s.buffer, value)
 	s.bytes += int64(len(value.raw))
+	buildmetric.Memory(s.ctx, int64(len(value.raw)))
 	if len(s.buffer) > s.stats.PeakSortRows {
 		s.stats.PeakSortRows = len(s.buffer)
 	}
@@ -120,6 +124,7 @@ func (s *sorter) flush() error {
 		s.stats.PeakRuns = len(s.runs)
 	}
 	s.buffer = nil
+	buildmetric.Memory(s.ctx, -s.bytes)
 	s.bytes = 0
 	return nil
 }
@@ -129,6 +134,7 @@ type runWriter struct {
 	file   *os.File
 	hash   hash.Hash
 	rows   int64
+	bytes  int64
 }
 
 func (s *sorter) writer() (*runWriter, error) {
@@ -163,6 +169,10 @@ func (w *runWriter) put(entry item) error {
 		return ErrSpool
 	}
 	w.sorter.written += charge
+	w.sorter.disk += charge
+	w.bytes += charge
+	buildmetric.Disk(w.sorter.ctx, charge)
+	buildmetric.Add(w.sorter.ctx, buildmetric.SpoolWritten, charge)
 	w.rows++
 	return nil
 }
@@ -172,10 +182,11 @@ func (w *runWriter) finish() (run, error) {
 	}
 	var sum [32]byte
 	copy(sum[:], w.hash.Sum(nil))
-	return run{path: w.file.Name(), sum: sum, rows: w.rows}, nil
+	return run{path: w.file.Name(), sum: sum, rows: w.rows, bytes: w.bytes}, nil
 }
 
 type runReader struct {
+	ctx            context.Context
 	file           *os.File
 	input          *bufio.Reader
 	hash           hash.Hash
@@ -202,6 +213,9 @@ func (r *runReader) next() (item, error) {
 	_, err := io.ReadFull(r.input, header[:])
 	if err == io.EOF {
 		r.done = true
+		if r.ctx != nil {
+			buildmetric.Add(r.ctx, buildmetric.FileValidations, 1)
+		}
 		if r.rows != r.expected.rows || !bytes.Equal(r.hash.Sum(nil), r.expected.sum[:]) {
 			return item{}, ErrSpool
 		}
@@ -219,6 +233,11 @@ func (r *runReader) next() (item, error) {
 		return item{}, ErrSpool
 	}
 	row, err := ingest.DecodeRecord(r.table, raw)
+	if r.ctx != nil {
+		buildmetric.Add(r.ctx, buildmetric.Decodes, 1)
+		buildmetric.Add(r.ctx, buildmetric.RowsRead, 1)
+		buildmetric.Add(r.ctx, buildmetric.BytesRead, int64(len(raw)+5))
+	}
 	if err != nil {
 		return item{}, ErrSpool
 	}
@@ -244,6 +263,7 @@ func openMerge(ctx context.Context, table string, runs []run, maxRecordBytes int
 			return nil, err
 		}
 		m.readers = append(m.readers, r)
+		r.ctx = ctx
 		entry, err := r.next()
 		if err != nil && err != io.EOF {
 			m.close()
@@ -336,6 +356,8 @@ func (s *sorter) finish() (*runMerge, error) {
 				if err := os.Remove(old.path); err != nil {
 					return nil, ErrSpool
 				}
+				s.disk -= old.bytes
+				buildmetric.Disk(s.ctx, -old.bytes)
 			}
 		}
 		s.runs = next

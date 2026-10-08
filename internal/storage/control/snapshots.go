@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 )
 
@@ -17,6 +18,7 @@ type Snapshot struct {
 // Snapshot retention and last-copy replacement use this common persistent lock.
 // P14 garbage collection must also take it before retiring retained bundles.
 func lockSnapshots(ctx context.Context, tx storage.Transaction) error {
+	defer buildmetric.LockAcquisition(ctx)()
 	_, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", int64(734219003))
 	return err
 }
