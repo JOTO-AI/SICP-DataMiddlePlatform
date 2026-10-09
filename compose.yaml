@@ -232,7 +232,7 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     tmpfs: ["/tmp:size=32m,mode=1777"]
-    ports: ["127.0.0.1:${SICP_CONSOLE_PORT:-18082}:8080"]
+    ports: ["0.0.0.0:${SICP_CONSOLE_PORT:-18082}:8080"]
     networks: [ingress]
     healthcheck:
       test: [CMD, wget, -q, --spider, "http://127.0.0.1:8080/console/"]
