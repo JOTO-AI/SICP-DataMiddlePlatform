@@ -50,7 +50,7 @@ test('post-acquisition stages show heartbeat, stale execution and publication', 
   let tables: string[] | undefined
   const task = () => ({ task_id: 'build-progress', mode: 'initialize', status, accepted_at: started.toISOString(), started_at: started.toISOString() })
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [task()] } } }))
-  await page.route('**/admin/v1/tasks/build-progress', route => route.fulfill({ json: { code: 'ok', data: { ...task(), work_progress: { phase, table, tables, instance, started_at: started.toISOString(), heartbeat_at: heartbeat }, acquisition: { updated_at: started.toISOString(), tables: [{ table: 'dwd_bzkscjzlb', status: 'collected', completed_pages: 1440, total_pages: 1440 }] } } } })))
+  await page.route('**/admin/v1/tasks/build-progress', route => route.fulfill({ json: { code: 'ok', data: { ...task(), work_progress: { phase, table, tables, instance, started_at: started.toISOString(), heartbeat_at: heartbeat }, acquisition: { updated_at: started.toISOString(), tables: [{ table: 'dwd_bzkscjzlb', status: 'collected', completed_pages: 1440, total_pages: 1440 }] } } } }))
   await page.getByRole('button', { name: '刷新状态', exact: true }).click()
   const stage = page.getByRole('region', { name: '当前执行阶段' })
   await expect(stage.getByRole('heading', { name: '当前阶段：构建表数据' })).toBeVisible()
@@ -97,7 +97,7 @@ test('historical data verification and reuse stay visible as active work', async
     { table: 'dwd_bzksbjsjzlb', status: 'collected', completed_pages: 1, total_pages: 1, reused: true },
     { table: 'dwd_bzkscjzlb', status: phase, completed_pages: completed, total_pages: total },
     { table: 'dwd_bzksgrtxsjzlb', status: 'waiting', completed_pages: 0, total_pages: null },
-  ] } } } })))
+  ] } } } }))
   await page.getByRole('button', { name: '刷新状态', exact: true }).click()
   await expect(page.getByText('正在校验历史数据', { exact: true })).toBeVisible()
   await expect(page.getByText('正在检查已保存的分页数据，确认完整后复用。')).toBeVisible()
