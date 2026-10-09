@@ -1,3 +1,6 @@
 *
 !Mock.Dockerfile
 !mock.py
+!QueryGateway.Dockerfile
+!query-gateway.conf
+!query-gateway-entrypoint.sh

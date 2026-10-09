@@ -8,3 +8,4 @@
 !deploy/
 !deploy/Dockerfile
 !deploy/worker-entrypoint.sh
+!deploy/query-entrypoint.sh
