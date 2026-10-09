@@ -67,13 +67,14 @@ def entrypoint(environment, success=True):
     return dict(line.split("=", 1) for line in result.stdout.splitlines() if "=" in line)
 
 
-def render(env_file, success=True, all_profiles=False):
+def render(env_file, success=True, all_profiles=False, project=None):
     # CI project/port overrides should not change the sample contract check.
-    environment = {k: v for k, v in os.environ.items() if k not in values(EXAMPLE)}
+    environment = {k: v for k, v in os.environ.items() if k not in values(EXAMPLE) and k != "COMPOSE_PROJECT_NAME"}
     result = subprocess.run(
         ["docker", "compose", "--project-directory", str(ROOT),
          "--file", str(ROOT / "compose.yaml"), "--env-file", str(env_file),
-         *(["--profile", "*"] if all_profiles else []), "config", "--format", "json"],
+         *(["--profile", "*"] if all_profiles else []),
+         *(["--project-name", project] if project else []), "config", "--format", "json"],
         env=environment, capture_output=True, text=True, check=False,
     )
     if not success:
@@ -149,6 +150,54 @@ def check_modes(env_file):
     return development
 
 
+def check_host_mounts(env_file):
+    # One root controls every business mount; application paths remain fixed.
+    bindings = {
+        "pg-m": [("db-m", "/var/lib/postgresql")],
+        "pg-s": [("db-s", "/var/lib/postgresql")],
+        "pg-log": [("db-log", "/var/lib/postgresql")],
+        "redis": [("redis", "/data")],
+        "query-logs": [("query", "/var/lib/sicp/logs"), ("volumes", "/query-logs")],
+        "worker-logs": [("worker", "/var/lib/sicp/logs"), ("volumes", "/worker-logs")],
+        "staging": [("worker", "/var/lib/sicp/staging"), ("volumes", "/staging")],
+        "targets": [("worker", "/var/lib/sicp/targets"), ("volumes", "/targets")],
+        "spool": [("worker", "/var/lib/sicp/spool"), ("volumes", "/spool")],
+    }
+    custom = fixture_text("development").replace("SICP_DATA_ROOT=/home/ubuntu/sicp", "SICP_DATA_ROOT=/custom-storage")
+    env_file.write_text(custom, encoding="utf-8")
+    config = render(env_file)
+    assert set(config.get("volumes", {})) == {"mock-mail"}
+    for service, target in (("mock", "/mail"), ("mock-volumes", "/mock-mail")):
+        mount, = [v for v in config["services"][service]["volumes"] if v["target"] == target]
+        assert mount["type"] == "volume" and mount["source"] == "mock-mail"
+    for folder, consumers in bindings.items():
+        for service, target in consumers:
+            mount, = [v for v in config["services"][service]["volumes"] if v["target"] == target]
+            assert mount["type"] == "bind"
+            assert mount["source"].replace("\\", "/").endswith(f"/custom-storage/sicp-development/{folder}")
+            assert not mount.get("read_only", False)
+    for service in ("query", "worker"):
+        assert config["services"][service]["environment"]["LOG_DIRECTORY"] == "/var/lib/sicp/logs"
+    for key, directory in (("STAGING_DIRECTORY", "staging"), ("TARGET_DIRECTORY", "targets"), ("SPOOL_DIRECTORY", "spool")):
+        assert config["services"]["worker"]["environment"][key] == "/var/lib/sicp/" + directory
+    env_file.write_text(custom.replace("SICP_PROJECT=sicp-${ENVIRONMENT}", "SICP_PROJECT=isolated-project"), encoding="utf-8")
+    isolated = render(env_file)
+    for folder, consumers in bindings.items():
+        for service, target in consumers:
+            mount, = [v for v in isolated["services"][service]["volumes"] if v["target"] == target]
+            assert mount["source"].replace("\\", "/").endswith(f"/custom-storage/isolated-project/{folder}")
+    # CLI project overrides must isolate mounts even when SICP_PROJECT differs.
+    env_file.write_text(custom, encoding="utf-8")
+    cli_project = render(env_file, project="cli-isolated-project")
+    assert cli_project["name"] == "cli-isolated-project"
+    for folder, consumers in bindings.items():
+        for service, target in consumers:
+            mount, = [v for v in cli_project["services"][service]["volumes"] if v["target"] == target]
+            assert mount["source"].replace("\\", "/").endswith(f"/custom-storage/cli-isolated-project/{folder}")
+    env_file.write_text(custom.replace("SICP_DATA_ROOT=/custom-storage", "SICP_DATA_ROOT="), encoding="utf-8")
+    render(env_file, success=False)
+
+
 def main(directory):
     env_file = Path(directory) / ".env"
     config = check_modes(env_file)
@@ -197,9 +246,10 @@ def main(directory):
     for name, cluster in (("db-m", "M"), ("db-s", "S"), ("db-log", "log")):
         # Keep deployment aligned with the P01 database decision and PG 18 layout.
         assert services[name]["image"] == "postgres:18.6-trixie", f"{name} database version drift"
-        data_volumes = [v for v in services[name]["volumes"] if v["type"] == "volume"]
+        data_volumes = [v for v in services[name]["volumes"] if v["target"] == "/var/lib/postgresql"]
         assert len(data_volumes) == 1, f"{name} must have one persistent database volume"
-        assert data_volumes[0]["source"] == "pg-" + name.removeprefix("db-")
+        assert data_volumes[0]["type"] == "bind"
+        assert data_volumes[0]["source"].replace("\\", "/").endswith("/sicp-development/pg-" + name.removeprefix("db-"))
         assert data_volumes[0]["target"] == "/var/lib/postgresql"
         assert not data_volumes[0].get("read_only", False)
         assert services[name]["environment"]["SICP_CLUSTER"] == cluster
@@ -249,7 +299,9 @@ def main(directory):
                 assert bootstrap[key] == prefix + "-@:/?#%$$value"
         env_file.write_text("QUERY_API_KEY=\n", encoding="utf-8")
         render(env_file, success=False)
-    print("Production/development selection, source/mail isolation and password inheritance passed.")
+    with tempfile.TemporaryDirectory() as mount_directory:
+        check_host_mounts(Path(mount_directory) / "host-mounts.env")
+    print("Production/development selection, source/mail isolation, password inheritance and host mounts passed.")
 
 
 if __name__ == "__main__":

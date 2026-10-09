@@ -35,7 +35,7 @@ docker compose logs -f query worker
 docker compose down
 ```
 
-首次数据初始化自动执行，`up --wait` 只等待应用存活，不代表已经发布可查询的数据。`volumes` 和 `migrate` 是一次性任务，成功后显示 `Exited (0)` 属于正常状态。`down` 保留全部持久卷；重新执行启动命令可复用数据，不要加 `--volumes`，除非确实要销毁数据。
+首次数据初始化自动执行，`up --wait` 只等待应用存活，不代表已经发布可查询的数据。`volumes` 和 `migrate` 是一次性任务，成功后显示 `Exited (0)` 属于正常状态。`down` 保留宿主机数据目录；重新执行启动命令可复用数据。`--volumes` 不会删除绑定挂载的宿主机目录。
 
 初始化中途重启后，worker 先恢复已有任务。采集结果未封存或校验失败时，自动创建关联的新任务重新采集；已有 `acquisition_failed` 初始化也可在启动后自动重试。每次启动最多自动重新采集一次，与前次失败至少间隔 5 分钟（结束时间未知时按开始时间计算），并遵守上游冷却，避免持续故障触发重复全量采集。原记录保留，完整数据包可用时仍走本地恢复。容量、认证或源数据错误需先修正，自动恢复不修改这些配置。前端“更新任务”页首提供“强制全量更新”，首次初始化完成后可用；初始化失败由启动恢复或维护区的“失败重跑”处理。
 
@@ -43,9 +43,13 @@ docker compose down
 
 统一配置模板为根目录 `.env.example`，实际部署只维护根目录 `.env`。六个 `DATABASE_*_URL` 只配置共享端点和库名，不含账号密码；`POSTGRES_PASSWORD`、`QUERY_PASSWORD`、`WORKER_PASSWORD`、`LOGGER_PASSWORD` 各填写一次。Compose 按服务分配账号与密码，进程自动编码特殊字符并构造完整连接串；query 不会获得 worker 或迁移账号密码。已有 PG 卷不会因修改环境变量而自动修改角色密码，轮换时仍需先在数据库内修改，再更新 `.env`。
 
+业务持久化数据只需在 `.env` 设置一个宿主机绝对路径：`SICP_DATA_ROOT=/home/ubuntu/sicp`。Compose 启动时自动在 `${SICP_DATA_ROOT}/<Compose 实际项目名>/` 下创建 `pg-m`、`pg-s`、`pg-log`、`redis`、`query-logs`、`worker-logs`、`staging`、`targets`、`spool` 子目录并分别挂载；默认项目名来自 `SICP_PROJECT`；使用 `docker compose -p` 或 `COMPOSE_PROJECT_NAME` 覆盖时，数据子目录也跟随实际项目名，保持隔离。容器内路径由 Compose 固定，无需在 `.env` 配置。开发环境的模拟邮件使用 Docker 管理的 `mock-mail` 命名卷，无需配置宿主机路径；`down --volumes` 会删除该测试邮件卷。
+
+从旧命名卷切换前，先停止写入并备份数据，将各卷内容复制到对应宿主机目录，保留文件所有权和权限；仅修改配置不会自动迁移。已有宿主机目录更换路径时也需迁移数据，再执行 `docker compose up -d --force-recreate` 使挂载生效，单纯 `restart` 不会更新挂载。全新部署会创建缺失目录，应用目录权限仍由初始化服务设置。
+
 项目名和端口也统一在 `.env` 设置：`SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`、`SICP_CONSOLE_PORT`。终端同名环境变量优先。只需后端时可指定服务：`docker compose up -d --build --wait --wait-timeout 300 query worker`。
 
-旧版 `deploy/compose*.yaml`、`deploy/examples/*.env.example` 和 `configs/*.env.example` 已移除。原有 `deploy/runtime/*.env` 不再加载，请先将自定义值迁入根目录 `.env`；旧文件不会自动改写。上一版的 `QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 也不再读取：请将相同的端点与库名合并为六个不含凭据的 `DATABASE_*_URL`，账号密码填写到上方对应变量。旧项目 `sicp-phase1` 的卷不会自动迁移。仅在确认旧卷数据属于目标环境后，才显式设置相同 `SICP_PROJECT` 复用数据；不要将含合成数据的卷直接用于正式环境。
+旧版 `deploy/compose*.yaml`、`deploy/examples/*.env.example` 和 `configs/*.env.example` 已移除。原有 `deploy/runtime/*.env` 不再加载，请先将自定义值迁入根目录 `.env`；旧文件不会自动改写。上一版的 `QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 也不再读取：请将相同的端点与库名合并为六个不含凭据的 `DATABASE_*_URL`，账号密码填写到上方对应变量。旧项目 `sicp-phase1` 的卷不会自动迁移。仅在确认旧卷数据属于目标环境后，才将其迁入对应宿主机目录；不要将含合成数据的卷直接用于正式环境。
 
 升级已有部署时先 `docker compose stop console query worker` 并备份全部卷；如果涉及 PostgreSQL 大版本变化，先完成下节的数据迁移，再运行上述启动命令。如需要明确重跑应用表结构迁移，先执行 `docker compose build`、`docker compose run --rm migrate`。重复迁移校验已应用版本与 checksum。不要在旧服务仍运行时直接进行结构升级。
 
@@ -53,13 +57,13 @@ docker compose down
 
 三个数据库统一使用 `postgres:18.6-trixie`（PostgreSQL 18.6 / Debian 13），与 P01 的数据库版本决策一致。现有实现依赖 PostgreSQL 事务、advisory lock、pgx 批量 COPY 和 JSON 存储，继续使用 PostgreSQL 可直接沿用这些能力。镜像标签明确固定数据库补丁版本和基础系统；后续补丁升级需同步修改配置检查并重新执行部署与集成验证。
 
-按 [Docker 官方镜像约定](https://hub.docker.com/_/postgres)，命名卷挂载到 `/var/lib/postgresql`，实际数据目录为 `/var/lib/postgresql/18/docker`。全新空卷可直接使用一键启动命令；`.env` 中的数据库地址和凭据格式不变。`scripts/check-compose-config.py` 校验三个实例的镜像版本和各自持久卷挂载，防止部署配置再次偏离版本决策。
+按 [Docker 官方镜像约定](https://hub.docker.com/_/postgres)，宿主机的三个数据库目录分别挂载到 `/var/lib/postgresql`，实际数据目录为 `/var/lib/postgresql/18/docker`。全新空卷可直接使用一键启动命令；`.env` 中的数据库地址和凭据格式不变。`scripts/check-compose-config.py` 校验三个实例的镜像版本和各自持久卷挂载，防止部署配置再次偏离版本决策。
 
 已有 PostgreSQL 16 数据不能通过换镜像或移动目录直接升级。旧卷名称仍为 `pg-m`、`pg-s`、`pg-log`；官方入口发现旧格式数据时会拒绝初始化，需要先进行 [PostgreSQL 大版本迁移](https://www.postgresql.org/docs/18/upgrading.html)。应用的 `db-migrate` 只负责表结构，不升级 PG 数据文件。
 
 保留旧数据时，在仍使用 16 的部署配置下停止 console/query/worker 并等待写入结束，备份所有持久卷，分别导出 M、S、日志实例的数据库和角色。M 包含 slot0、slot1、control，S 包含 slot0、slot1，日志实例包含 logs。随后在独立新卷中初始化 18，恢复角色及各库，核对数据、权限、应用迁移记录后再切换应用。恢复方案需要处理初始化脚本已创建的同名角色和空库；不要直接向它们重复执行全实例建库脚本。也可在同时具备 16/18 二进制的专用迁移环境中使用 `pg_upgrade`。迁移验收前保留旧卷和备份，应用恢复写入后回退还需处理新增数据。
 
-若旧环境仅含可丢弃的测试数据，可在停掉旧项目后选择新的 `SICP_PROJECT` 启动全新环境，旧项目的卷仍保留。不要为升级执行 `docker compose down --volumes`，它会连同 Redis、日志、staging、targets、spool 等卷一起删除。
+若旧环境仅含可丢弃的测试数据，可在停掉旧项目后选择新的 `SICP_PROJECT` 启动全新环境，旧项目的卷仍保留。不要为升级删除旧数据。旧命名卷部署中的 `docker compose down --volumes` 会删除其命名卷；当前绑定挂载的宿主机目录不会由该命令删除。
 
 ## 正式与开发环境切换
 
@@ -79,7 +83,7 @@ SICP_PROJECT=sicp-${ENVIRONMENT}
 
 第二、三行保持模板写法即可。开发环境仍需填写数据库和 API 凭据，但真实上游/邮件可以留空；worker 自动使用合成数据源和测试质量门禁。六个邮件参数全空时同样关闭邮件；需要测试邮件时设置 `MAIL_ADDRESS=mock-mail:1025`，入口自动填充测试邮件配置并清空 SMTP 登录凭据，不访问真实 SMTP。Mock 及其卷初始化服务只属于 development profile；其测试控制令牌为固定合成值，不用于正式部署。开发依赖使用 [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/) 按需启用。
 
-默认项目名随环境变为 `sicp-production` / `sicp-development`，对应数据卷隔离。切换前先运行旧环境的 `docker compose down` 再改 `.env`；若同时运行两套环境，还需使用不同的宿主机端口。已有固定项目名不会自动隔离，请勿让两种环境共享项目名。
+默认项目名随环境变为 `sicp-production` / `sicp-development`，宿主机数据子目录随之隔离。切换前先运行旧环境的 `docker compose down` 再改 `.env`；若同时运行两套环境，还需使用不同的宿主机端口。已有固定项目名不会自动隔离，请勿让两种环境共享项目名。
 
 不要单独覆盖 `COMPOSE_PROFILES` 或给启动命令额外传 `--profile` 来替代环境开关；显式启用 development profile 只控制容器选择，worker 数据源仍由 `ENVIRONMENT` 决定。原先的 `ENVIRONMENT=test` 也不会自动启用 Mock，旧演示部署升级时须明确切换为 development。
 
@@ -102,7 +106,7 @@ SICP_PROJECT=sicp-${ENVIRONMENT}
 ./scripts/sicp.sh stop
 ./scripts/sicp.sh start
 ./scripts/sicp.sh restart
-./scripts/sicp.sh down     # 保留所有命名卷
+./scripts/sicp.sh down     # 保留所有宿主机数据目录
 ```
 
 幂等键由操作者为一次动作确定，丢失响应时使用同一个键重试。受理成功仅表示任务持久存在，不表示构建/发布成功。强制全量要求自动初始化已完成；失败重跑新建关联任务，旧历史不变。定时任务按实际 started_at 修订为下一次两小时后，持久冷却未结束时不会提前调用源。
