@@ -88,7 +88,7 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 			return nil, e
 		}
 		limits := read.DefaultLimits()
-		a.Flights, e = cache.NewCoalescer(8, 64, 30*time.Second)
+		a.Flights, e = cache.NewCoalescer(c.QueryMaxExecutions, c.QueryMaxQueue, c.QueryExecutionTimeout)
 		if e != nil {
 			return nil, e
 		}

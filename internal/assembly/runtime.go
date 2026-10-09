@@ -82,7 +82,13 @@ type Runtime struct {
 func RealFactories() Factories {
 	return Factories{
 		Postgres: func(ctx context.Context, c config.Runtime) (Database, error) {
-			p, e := adapters.OpenPostgres(ctx, c.Databases, c.DependencyTimeout, c.ProcessID)
+			var p *adapters.Postgres
+			var e error
+			if c.Service.Role == config.Query {
+				p, e = adapters.OpenPostgresWithLimits(ctx, c.Databases, c.DependencyTimeout, adapters.PostgresPoolLimits{Business: c.QueryDBBusinessMaxConns, Control: c.QueryDBControlMaxConns, Logs: c.QueryDBLogMaxConns}, c.ProcessID)
+			} else {
+				p, e = adapters.OpenPostgres(ctx, c.Databases, c.DependencyTimeout, c.ProcessID)
+			}
 			if p == nil {
 				return nil, e
 			}

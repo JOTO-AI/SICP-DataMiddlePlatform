@@ -92,6 +92,33 @@ def check_modes(env_file):
     services = production["services"]
     assert set(services) == {"db-m", "db-s", "db-log", "redis", "volumes", "migrate", "query", "worker", "console"}
     assert services["worker"].get("depends_on", {}).get("mock", {}).get("required") is False
+    capacity = {
+        "QUERY_MAX_EXECUTIONS": ("8", "32"),
+        "QUERY_MAX_QUEUE": ("64", "0"),
+        "QUERY_EXECUTION_TIMEOUT": ("30s", "45s"),
+        "QUERY_DB_BUSINESS_MAX_CONNS": ("16", "40"),
+        "QUERY_DB_CONTROL_MAX_CONNS": ("16", "48"),
+        "QUERY_DB_LOG_MAX_CONNS": ("16", "12"),
+    }
+    custom = fixture_text("production")
+    omitted = custom
+    for key, (default, override) in capacity.items():
+        assert services["query"]["environment"][key] == default
+        assert key not in services["worker"]["environment"]
+        custom = custom.replace(f"{key}={default}\n", f"{key}={override}\n")
+        omitted = omitted.replace(f"{key}={default}\n", "")
+    for text, index in ((custom, 1), (omitted, 0)):
+        env_file.write_text(text, encoding="utf-8")
+        configured = render(env_file)["services"]
+        for key, pair in capacity.items():
+            assert configured["query"]["environment"][key] == pair[index]
+    blank = fixture_text("production")
+    for key, (default, _) in capacity.items():
+        blank = blank.replace(f"{key}={default}\n", f"{key}=\n")
+    env_file.write_text(blank, encoding="utf-8")
+    configured = render(env_file)["services"]
+    assert all(configured["query"]["environment"][key] == "" for key in capacity)
+    env_file.write_text(fixture_text("production"), encoding="utf-8")
     for service in services.values():
         assert not any("mock" in volume.get("source", "") for volume in service.get("volumes", []))
     runtime = entrypoint(services["worker"]["environment"])
