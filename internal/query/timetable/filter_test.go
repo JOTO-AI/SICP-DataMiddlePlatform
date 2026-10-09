@@ -7,7 +7,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
 
-func TestT09_14UnscheduledExcludedAndMissingPlanFails(t *testing.T) {
+func TestT09_14UnscheduledAndMissingPlanDoNotInventOwnership(t *testing.T) {
 	a := assembler(t)
 	got, err := a.Student([]source.SourceRow{membership()}, nil, studentRequest())
 	if err != nil || got == nil || len(got) != 0 {
@@ -21,8 +21,8 @@ func TestT09_14UnscheduledExcludedAndMissingPlanFails(t *testing.T) {
 			delete(s, "JHKCH")
 		}
 		got, err = a.Student([]source.SourceRow{r}, []source.SourceRow{s}, studentRequest())
-		if err == nil || got != nil {
-			t.Fatalf("missing plan %+v %v", got, err)
+		if err != nil || got == nil || len(got) != 0 {
+			t.Fatalf("missing plan invented ownership %+v %v", got, err)
 		}
 	}
 }
@@ -56,7 +56,7 @@ func TestT09_15CourseFiltersApplyOnlyToLegalOwnArrangements(t *testing.T) {
 		t.Fatalf("name guessed ownership %+v %v", got, err)
 	}
 	bad := termSchedule()
-	delete(bad, "SKRQ")
+	delete(bad, "SKJC")
 	q = "missing"
 	if _, err = a.Student([]source.SourceRow{membership()}, []source.SourceRow{bad}, req); err == nil {
 		t.Fatal("filter concealed malformed own schedule")
