@@ -99,8 +99,8 @@ services:
     platform: linux/amd64
     restart: "no"
     network_mode: none
-    volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-logs:/query-logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/worker-logs:/worker-logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/staging:/staging", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/targets:/targets", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/spool:/spool"]
-    command: [sh, -c, "chown 65532:65532 /query-logs /worker-logs /staging /targets /spool && chmod 700 /query-logs /worker-logs /staging /targets /spool"]
+    volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-logs:/query-logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-replicas:/query-replicas", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/worker-logs:/worker-logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/staging:/staging", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/targets:/targets", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/spool:/spool"]
+    command: [sh, -c, "chown 65532:65532 /query-logs /query-replicas /worker-logs /staging /targets /spool && chmod 700 /query-logs /query-replicas /worker-logs /staging /targets /spool"]
   mock-volumes:
     image: busybox:1.37
     platform: linux/amd64
@@ -133,6 +133,9 @@ services:
         aliases: [mock-source, mock-mail]
   query:
     <<: *service
+    deploy:
+      replicas: ${QUERY_REPLICAS-1}
+    entrypoint: [/bin/sh, /usr/local/bin/query-entrypoint.sh]
     depends_on:
       volumes: {condition: service_completed_successfully}
       migrate: {condition: service_completed_successfully}
@@ -153,10 +156,24 @@ services:
       DATABASE_PASSWORD: "${QUERY_PASSWORD:?Set QUERY_PASSWORD in .env (copy .env.example)}"
       DATABASE_LOG_USER: "sicp_logger"
       DATABASE_LOG_PASSWORD: "${LOGGER_PASSWORD:?Set LOGGER_PASSWORD in .env (copy .env.example)}"
-    volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-logs:/var/lib/sicp/logs"]
-    ports: ["0.0.0.0:${SICP_QUERY_PORT:-18080}:8080"]
+    volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-logs:/var/lib/sicp/logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-replicas:/var/lib/sicp/query-replicas"]
     healthcheck:
       test: [CMD, /usr/local/bin/service, --healthcheck]
+      interval: 5s
+      timeout: 6s
+      retries: 10
+  query-gateway:
+    <<: *service
+    build: {context: ./deploy, dockerfile: QueryGateway.Dockerfile}
+    image: sicp-query-gateway:phase1
+    depends_on:
+      query: {condition: service_healthy}
+    networks: [ingress]
+    environment:
+      QUERY_REPLICAS: "${QUERY_REPLICAS-1}"
+    ports: ["0.0.0.0:${SICP_QUERY_PORT:-18080}:8080"]
+    healthcheck:
+      test: [CMD, wget, -q, --spider, "http://127.0.0.1:8080/livez"]
       interval: 5s
       timeout: 6s
       retries: 10
@@ -202,7 +219,7 @@ services:
       MAIL_PASSWORD: "${MAIL_PASSWORD:-}"
       ADMIN_USERNAME: "${ADMIN_USERNAME:?Set ADMIN_USERNAME in .env (copy .env.example)}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env (copy .env.example)}"
-      CONSOLE_QUERY_URL: "http://query:8080"
+      CONSOLE_QUERY_URL: "http://query-gateway:8080"
       CONSOLE_COOKIE_SECURE: "${CONSOLE_COOKIE_SECURE:-false}"
     volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/worker-logs:/var/lib/sicp/logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/staging:/var/lib/sicp/staging", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/targets:/var/lib/sicp/targets", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/spool:/var/lib/sicp/spool"]
     ports: ["127.0.0.1:${SICP_WORKER_PORT:-18081}:8081"]
@@ -231,7 +248,7 @@ services:
     build: {context: ./frontend}
     image: sicp-console:phase1
     depends_on:
-      query: {condition: service_healthy}
+      query-gateway: {condition: service_healthy}
       worker: {condition: service_healthy}
     restart: unless-stopped
     read_only: true

@@ -11,7 +11,7 @@ python3 - <<'PY'
 from pathlib import Path
 path = Path(".env")
 passwords = {"POSTGRES_PASSWORD", "QUERY_PASSWORD", "WORKER_PASSWORD", "LOGGER_PASSWORD"}
-lines = path.read_text(encoding="utf-8").splitlines()
+lines = path.read_text(encoding="utf-8").replace("QUERY_REPLICAS=1", "QUERY_REPLICAS=2").splitlines()
 lines = [f"{key}='compose-{key}-@:/?#%$ space'" if (key := line.split("=", 1)[0]) in passwords else line for line in lines]
 path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 PY
@@ -39,6 +39,8 @@ curl --fail --silent --show-error -b "$cookies" "$console/console-api/query/read
 
 # Exercise the real console proxy, session/CSRF, worker and PostgreSQL together.
 python3 scripts/check-table-update.py "$console"
+
+python3 scripts/check-query-replicas.py
 
 # Exercise repeated up and a full container recreation with retained volumes.
 docker compose up -d --wait --wait-timeout 300

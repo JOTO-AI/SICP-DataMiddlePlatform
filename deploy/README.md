@@ -47,11 +47,11 @@ docker compose down
 
 从旧命名卷切换前，先停止写入并备份数据，将各卷内容复制到对应宿主机目录，保留文件所有权和权限；仅修改配置不会自动迁移。已有宿主机目录更换路径时也需迁移数据，再执行 `docker compose up -d --force-recreate` 使挂载生效，单纯 `restart` 不会更新挂载。全新部署会创建缺失目录，应用目录权限仍由初始化服务设置。
 
-项目名和端口也统一在 `.env` 设置：`SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`、`SICP_CONSOLE_PORT`。终端同名环境变量优先。只需后端时可指定服务：`docker compose up -d --build --wait --wait-timeout 300 query worker`。
+项目名和端口也统一在 `.env` 设置：`SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`、`SICP_CONSOLE_PORT`。终端同名环境变量优先。只需后端时可指定服务：`docker compose up -d --build --wait --wait-timeout 300 query-gateway worker`。
 
 旧版 `deploy/compose*.yaml`、`deploy/examples/*.env.example` 和 `configs/*.env.example` 已移除。原有 `deploy/runtime/*.env` 不再加载，请先将自定义值迁入根目录 `.env`；旧文件不会自动改写。上一版的 `QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 也不再读取：请将相同的端点与库名合并为六个不含凭据的 `DATABASE_*_URL`，账号密码填写到上方对应变量。旧项目 `sicp-phase1` 的卷不会自动迁移。仅在确认旧卷数据属于目标环境后，才将其迁入对应宿主机目录；不要将含合成数据的卷直接用于正式环境。
 
-升级已有部署时先 `docker compose stop console query worker` 并备份全部卷；如果涉及 PostgreSQL 大版本变化，先完成下节的数据迁移，再运行上述启动命令。如需要明确重跑应用表结构迁移，先执行 `docker compose build`、`docker compose run --rm migrate`。重复迁移校验已应用版本与 checksum。不要在旧服务仍运行时直接进行结构升级。
+升级已有部署时先 `docker compose stop console query-gateway query worker` 并备份全部卷；如果涉及 PostgreSQL 大版本变化，先完成下节的数据迁移，再运行上述启动命令。如需要明确重跑应用表结构迁移，先执行 `docker compose build`、`docker compose run --rm migrate`。重复迁移校验已应用版本与 checksum。不要在旧服务仍运行时直接进行结构升级。
 
 ## PostgreSQL 18 与旧数据升级
 
@@ -100,7 +100,7 @@ SICP_PROJECT=sicp-${ENVIRONMENT}
 
 `prepare` 只在根目录 `.env` 缺失时复制 `.env.example`，生成文件权限受 umask 077 约束；已有 `.env` 保持不变。`.env` 被 Git 和镜像构建上下文排除。文件使用 Compose dotenv 语法，不作为 Shell 脚本执行；包含字面量 `$` 或 `#` 的值使用单引号，JSON 保持单行。参数列表详见 [运行配置](../development_docs/P15_RUNTIME_CONFIGURATION.md)。
 
-部署凭据由操作者填写。query 使用 sicp_query，worker 使用 sicp_worker，日志使用 sicp_logger；配置文件统一管理凭据，但迁移账号只传给 migrate，管理员账号密码只传给 worker。查询与管理服务同时连接内部依赖网络和入口网络，仅向宿主机的 127.0.0.1 发布 18080、18081。数据库、Redis 和开发模式的 Mock 仅连接 internal 网络，不发布宿主端口，可通过 `docker compose exec` 在对应容器内排查。仅开发模式的 Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
+部署凭据由操作者填写。query 使用 sicp_query，worker 使用 sicp_worker，日志使用 sicp_logger；配置文件统一管理凭据，但迁移账号只传给 migrate，管理员账号密码只传给 worker。query 通过 query-gateway 向宿主机的 0.0.0.0 发布 18080，管理服务仍仅向 127.0.0.1 发布 18081。数据库、Redis 和开发模式的 Mock 仅连接 internal 网络，不发布宿主端口，可通过 `docker compose exec` 在对应容器内排查。仅开发模式的 Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
 
 ```bash
 ./scripts/sicp.sh stop
@@ -153,3 +153,18 @@ GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 
 上述参数仅对 query 生效，也可直接作为 query 进程的环境变量。worker 和数据库迁移工具保留原有默认池上限。BUSINESS 设置分别作用于 M0、M1、S0、S1，不表示四池共享该数量；池按需建连，最小连接数仍为 0。内置 db-m 同时承载两个业务槽位和 control，需将 query、worker 各池、迁移及其他客户端的连接需求合计，与 PostgreSQL max_connections 和保留连接额度核对。此配置不自动修改数据库服务端连接上限。
 
 首次升级需要重新构建镜像；之后修改 .env 需通过 docker compose up -d 重新创建 query 服务，单纯 restart 不会重新注入环境变量。配置变大仅改变资源门限，不代表已经达到 300 并发吞吐目标；缓存命中仍有快照、控制库和日志开销。共享查询被所有调用者取消时仍会取消实际执行，发布、快照与副本切换的一致性规则不变。
+
+
+### 多 query 实例与负载均衡
+
+`.env` 中设置 `QUERY_REPLICAS=4` 即配置四个 query 容器，默认 1，支持 1—32。外部仍访问 `SICP_QUERY_PORT`（默认 18080）；query-gateway 使用最少连接策略分配请求，通过 Docker DNS 每 2 秒更新后端地址。控制台的 worker 代理也经过该入口。Redis、业务库和日志库共享；worker 仍为一个实例，原有容量设置不变。
+
+首次从直接发布 query 端口的版本升级，需要短暂查询维护窗口：先 `docker compose build query query-gateway`，然后 `docker compose stop query` 并执行 `docker compose run --rm --no-deps volumes` 初始化新增日志目录权限，最后 `docker compose up -d --no-deps query query-gateway worker`。worker 需重建容器以更新控制台代理地址；请在同步任务空闲时执行。后续只调整副本数量或 query 参数时，执行 `docker compose up -d --no-deps query query-gateway`，无需重启 worker。`restart` 不会应用副本数量或新环境变量。控制台首次升级也应在随后完整 `docker compose up -d` 时同步依赖配置。
+
+六个查询容量参数均为每实例预算。例如四个实例各设置 8 个执行任务，合计最多 32 个缓存未命中任务。db-m 的 query 连接上限预算为 `QUERY_REPLICAS × (2 × QUERY_DB_BUSINESS_MAX_CONNS + QUERY_DB_CONTROL_MAX_CONNS)`，还需加 worker、迁移、保留连接与其他客户端。此功能不自动调整 PostgreSQL 上限，也不代表 300 并发验收通过。
+
+日志最终仍统一写入 logs 数据库。本地文件是入库前的持久缓冲：第一个取得目录锁的实例复用原 `query-logs`，其余实例使用 `query-replicas/2` 至 `query-replicas/32`。编号是目录租约，不对应固定容器编号。锁保持到进程退出，异常退出后由内核释放；新实例会复用空闲目录并处理其中的日志。两个宿主机目录必须放在支持 Linux flock 的本地文件系统上，不适用于跨主机共享卷。不得删除 `.lock` 文件。
+
+缩容不会删除日志；停用目录中尚未入库的缓冲仍会保留，后续再次分配该目录时继续处理。若日志库故障期间需要缩容，恢复日志库、确认缓冲入库后再缩容，避免历史日志延迟可见。LOG_MAX_BYTES / LOG_MAX_FILES 为每实例限额，需按副本数计算总磁盘预算。
+
+入口保留 API 密钥、快照头和响应内容，不自动重放已发送到后端的 POST。扩缩容期间地址刷新和在途请求仍可能出现短暂失败；这不是无损滚动升级承诺。GitHub Compose 验证覆盖多实例分流、跨实例快照查询、共享日志入库、实例重建、扩缩容及独立目录租约。

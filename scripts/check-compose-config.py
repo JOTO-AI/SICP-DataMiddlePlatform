@@ -90,8 +90,22 @@ def check_modes(env_file):
     production = render(env_file)
     assert production["name"] == "sicp-production"
     services = production["services"]
-    assert set(services) == {"db-m", "db-s", "db-log", "redis", "volumes", "migrate", "query", "worker", "console"}
+    assert set(services) == {"db-m", "db-s", "db-log", "redis", "volumes", "migrate", "query", "query-gateway", "worker", "console"}
     assert services["worker"].get("depends_on", {}).get("mock", {}).get("required") is False
+    assert services["query"]["deploy"]["replicas"] == 1
+    assert not services["query"].get("ports")
+    assert "container_name" not in services["query"]
+    assert services["query-gateway"]["ports"][0]["published"] == "18080"
+    assert services["query-gateway"]["depends_on"]["query"]["condition"] == "service_healthy"
+    assert services["worker"]["environment"]["CONSOLE_QUERY_URL"] == "http://query-gateway:8080"
+    assert "QUERY_REPLICAS" not in services["worker"]["environment"]
+    for count in (2, 4):
+        env_file.write_text(fixture_text("production").replace("QUERY_REPLICAS=1", f"QUERY_REPLICAS={count}"), encoding="utf-8")
+        scaled = render(env_file)["services"]
+        assert scaled["query"]["deploy"]["replicas"] == count
+        assert scaled["query-gateway"]["environment"]["QUERY_REPLICAS"] == str(count)
+    env_file.write_text(fixture_text("production").replace("QUERY_REPLICAS=1\n", ""), encoding="utf-8")
+    assert render(env_file)["services"]["query"]["deploy"]["replicas"] == 1
     capacity = {
         "QUERY_MAX_EXECUTIONS": ("8", "32"),
         "QUERY_MAX_QUEUE": ("64", "0"),
@@ -185,6 +199,7 @@ def check_host_mounts(env_file):
         "pg-log": [("db-log", "/var/lib/postgresql")],
         "redis": [("redis", "/data")],
         "query-logs": [("query", "/var/lib/sicp/logs"), ("volumes", "/query-logs")],
+        "query-replicas": [("query", "/var/lib/sicp/query-replicas"), ("volumes", "/query-replicas")],
         "worker-logs": [("worker", "/var/lib/sicp/logs"), ("volumes", "/worker-logs")],
         "staging": [("worker", "/var/lib/sicp/staging"), ("volumes", "/staging")],
         "targets": [("worker", "/var/lib/sicp/targets"), ("volumes", "/targets")],
@@ -232,7 +247,7 @@ def main(directory):
     assert config["name"] == "sicp-development"
     assert set(services) == {
         "db-m", "db-s", "db-log", "redis", "volumes", "mock",
-        "migrate", "query", "worker", "console", "mock-volumes",
+        "migrate", "query", "query-gateway", "worker", "console", "mock-volumes",
     }
     # These fixtures also reach actual Go assembly in the unit/integration tests.
     for role in ("query", "worker"):
@@ -282,7 +297,7 @@ def main(directory):
         assert services[name]["environment"]["SICP_CLUSTER"] == cluster
         assert services[name]["environment"]["POSTGRES_USER"] == "postgres"
         assert "127.0.0.1" in services[name]["healthcheck"]["test"][1]
-    for role in ("query", "worker"):
+    for role in ("query-gateway", "worker"):
         assert services["console"]["depends_on"][role]["condition"] == "service_healthy"
     assert Path(services["console"]["build"]["context"]) == ROOT / "frontend"
     assert Path(services["mock"]["build"]["context"]) == ROOT / "deploy"

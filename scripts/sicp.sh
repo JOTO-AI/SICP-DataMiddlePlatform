@@ -26,7 +26,7 @@ case "$operation" in
     done
     ;;
   migrate) "${compose[@]}" run --rm --no-deps migrate ;;
-  start) "${compose[@]}" up -d --wait --wait-timeout 90 query worker console ;;
+  start) "${compose[@]}" up -d --wait --wait-timeout 90 query-gateway worker console ;;
   deploy)
     "$0" prepare
     "$0" build
@@ -39,7 +39,7 @@ case "$operation" in
     "${compose[@]}" ps
     ;;
   stop) "${compose[@]}" stop ;;
-  restart) "${compose[@]}" restart query worker ;;
+  restart) "${compose[@]}" restart query query-gateway worker ;;
   down) "${compose[@]}" down ;; # Volumes deliberately retained.
   *) printf '%s\n' 'Usage: scripts/sicp.sh prepare|build|validate|infra|migrate|start|deploy|status|stop|restart|down'; exit 2 ;;
 esac
