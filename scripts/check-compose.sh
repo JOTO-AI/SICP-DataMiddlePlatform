@@ -18,6 +18,17 @@ PY
 docker compose config --quiet
 docker compose up -d --build --wait --wait-timeout 300
 
+check_database_limits() {
+  for spec in db-m:256 db-s:128 db-log:100; do
+    service=${spec%%:*}
+    expected=${spec#*:}
+    actual=$(docker compose exec -T "$service" psql -U postgres -d postgres -Atc 'SHOW max_connections')
+    test "$actual" = "$expected"
+    printf '%s max_connections=%s verified\n' "$service" "$actual"
+  done
+}
+check_database_limits
+
 console="http://127.0.0.1:${SICP_CONSOLE_PORT:-18082}"
 mkdir -p artifacts/compose
 cookies="artifacts/compose/session.cookies"
@@ -46,6 +57,7 @@ python3 scripts/check-query-replicas.py
 docker compose up -d --wait --wait-timeout 300
 docker compose down
 docker compose up -d --wait --wait-timeout 300
+check_database_limits
 curl --fail --silent --show-error "$console/console/" > /dev/null
 login
 curl --fail --silent --show-error -b "$cookies" --retry 30 --retry-delay 2 "$console/console-api/query/readyz"

@@ -106,6 +106,26 @@ def check_modes(env_file):
         assert scaled["query-gateway"]["environment"]["QUERY_REPLICAS"] == str(count)
     env_file.write_text(fixture_text("production").replace("QUERY_REPLICAS=1\n", ""), encoding="utf-8")
     assert render(env_file)["services"]["query"]["deploy"]["replicas"] == 1
+    pg_limits = {
+        "db-m": ("POSTGRES_M_MAX_CONNECTIONS", "256", "320"),
+        "db-s": ("POSTGRES_S_MAX_CONNECTIONS", "128", "160"),
+        "db-log": ("POSTGRES_LOG_MAX_CONNECTIONS", "100", "120"),
+    }
+    for mode in ("production", "development"):
+        baseline = fixture_text(mode)
+        for variant in ("default", "custom", "omitted", "blank"):
+            text = baseline
+            for key, default, custom in pg_limits.values():
+                replacement = {"default": f"{key}={default}\n", "custom": f"{key}={custom}\n",
+                               "omitted": "", "blank": f"{key}=\n"}[variant]
+                text = text.replace(f"{key}={default}\n", replacement)
+            env_file.write_text(text, encoding="utf-8")
+            configured = render(env_file)["services"]
+            for service, (key, default, custom) in pg_limits.items():
+                expected = custom if variant == "custom" else "" if variant == "blank" else default
+                assert configured[service]["command"] == ["postgres", "-c", f"max_connections={expected}"]
+                for role in ("query", "worker", "migrate"):
+                    assert key not in configured[role]["environment"]
     capacity = {
         "QUERY_MAX_EXECUTIONS": ("8", "32"),
         "QUERY_MAX_QUEUE": ("64", "0"),

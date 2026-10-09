@@ -60,6 +60,7 @@ x-postgres: &postgres
 services:
   db-m:
     <<: *postgres
+    command: [postgres, -c, "max_connections=${POSTGRES_M_MAX_CONNECTIONS-256}"]
     environment:
       <<: *postgres-environment
       SICP_CLUSTER: M
@@ -68,6 +69,7 @@ services:
       - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
   db-s:
     <<: *postgres
+    command: [postgres, -c, "max_connections=${POSTGRES_S_MAX_CONNECTIONS-128}"]
     environment:
       <<: *postgres-environment
       SICP_CLUSTER: S
@@ -76,6 +78,7 @@ services:
       - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
   db-log:
     <<: *postgres
+    command: [postgres, -c, "max_connections=${POSTGRES_LOG_MAX_CONNECTIONS-100}"]
     environment:
       <<: *postgres-environment
       SICP_CLUSTER: log

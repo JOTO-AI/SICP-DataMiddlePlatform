@@ -168,3 +168,20 @@ GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 
 缩容不会删除日志；停用目录中尚未入库的缓冲仍会保留，后续再次分配该目录时继续处理。若日志库故障期间需要缩容，恢复日志库、确认缓冲入库后再缩容，避免历史日志延迟可见。LOG_MAX_BYTES / LOG_MAX_FILES 为每实例限额，需按副本数计算总磁盘预算。
 
 入口保留 API 密钥、快照头和响应内容，不自动重放已发送到后端的 POST。扩缩容期间地址刷新和在途请求仍可能出现短暂失败；这不是无损滚动升级承诺。GitHub Compose 验证覆盖多实例分流、跨实例快照查询、共享日志入库、实例重建、扩缩容及独立目录租约。
+
+
+### PostgreSQL 服务端连接上限
+
+内置 Compose 从 `.env` 读取 `POSTGRES_M_MAX_CONNECTIONS=256`、`POSTGRES_S_MAX_CONNECTIONS=128`、`POSTGRES_LOG_MAX_CONNECTIONS=100`，分别作为 db-m、db-s、db-log 的 `postgres -c max_connections=...` 启动参数。省略变量时也使用这些项目默认值；它们不同于 PostgreSQL 通常为 100 的原生默认值。值须为 PostgreSQL 接受的正整数，显式空值或非法值会导致数据库启动失败。外部数据库不受这些 Compose 参数控制。
+
+上限由整个数据库实例共享，包含 query、worker、迁移、运维和保留连接；db-m 的 slot0、slot1 与 control 共用 M 的额度。连接池按需建连，这些配置不代表预先建立同等数量的连接，也不保证 300 并发达标；调大上限会增加 PostgreSQL 的资源需求。应用池参数和 worker 设置不会因此自动改变。
+
+已有数据卷同样适用，无需重新初始化数据库。更新 Compose 后，旧 `.env` 即使未添加这些变量，也会在下次重建数据库容器时使用新的项目默认值。安排同步任务空闲的维护窗口，暂停应用后重建数据库，再恢复应用：
+
+```bash
+docker compose stop query worker
+docker compose up -d --no-deps --wait db-m db-s db-log
+docker compose up -d --no-deps --wait query query-gateway worker
+```
+
+修改 `.env` 后仅运行 `restart` 不会更新容器启动参数。用 `docker compose exec db-m psql -U postgres -d postgres -c "SHOW max_connections;"` 核实实际值，db-s、db-log 同理；自定义 POSTGRES_USER 时替换命令中的用户名。GitHub Compose 检查会验证首次启动及保留数据重建后的三个实际值。
