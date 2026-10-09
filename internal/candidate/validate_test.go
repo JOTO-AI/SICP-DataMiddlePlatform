@@ -13,6 +13,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/compute"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/grades"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/metadata"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/timetable"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
@@ -67,12 +68,12 @@ func (v *validations) Check(_ context.Context, _ read.Handle, op contract.Operat
 	return 1, strings.Repeat("a", 64), nil
 }
 func validator(v *validations) candidate.Validator {
-	return candidate.Validator{Store: v, Checks: v, Queries: v, Clock: testkit.FakeClock{Time: time.Date(2026, 9, 18, 2, 0, 0, 0, time.UTC)}}
+	return candidate.Validator{Store: v, Checks: v, Clock: testkit.FakeClock{Time: time.Date(2026, 9, 18, 2, 0, 0, 0, time.UTC)}}
 }
 
 func TestT12_04EveryValidationFailureKeepsCandidateUnready(t *testing.T) {
 	_, target, m, _, _, _ := buildFixture(t)
-	for _, failure := range []string{"source", "indexes", string(contract.StudentGrades), string(contract.BatchGrades), string(contract.StudentTimetable), string(contract.StaffTimetable), "commit"} {
+	for _, failure := range []string{"source", "indexes", "commit"} {
 		t.Run(failure, func(t *testing.T) {
 			state := &validations{fail: failure, ready: true}
 			got, err := validator(state).Validate(t.Context(), target, m)
@@ -88,7 +89,7 @@ func TestT12_04EveryValidationFailureKeepsCandidateUnready(t *testing.T) {
 		})
 	}
 }
-func TestT12_05DimensionVersionAndGenerationInvalidateQueryEvidence(t *testing.T) {
+func TestT12_05EveryRoundRechecksStorageAndBindsAllTableVersions(t *testing.T) {
 	_, target, m, _, _, _ := buildFixture(t)
 	state := &validations{}
 	v := validator(state)
@@ -111,7 +112,7 @@ func TestT12_05DimensionVersionAndGenerationInvalidateQueryEvidence(t *testing.T
 	if _, err := v.Validate(t.Context(), target, m); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Join(state.calls, ",") != "begin,source,indexes,students.grades.query,students.grades.batch-query,ready" {
+	if strings.Join(state.calls, ",") != "begin,source,indexes,ready" {
 		t.Fatal("dimension dependency not respected", state.calls)
 	}
 	for _, kind := range []string{"generation", "combination"} {
@@ -125,7 +126,7 @@ func TestT12_05DimensionVersionAndGenerationInvalidateQueryEvidence(t *testing.T
 		if _, err := v.Validate(t.Context(), target, m); err != nil {
 			t.Fatal(err)
 		}
-		if len(state.calls) != 8 {
+		if len(state.calls) != 4 {
 			t.Fatal("stale evidence reused", kind, state.calls)
 		}
 	}
@@ -329,38 +330,41 @@ func TestBusinessSamplesIgnoreUnselectedIdentities(t *testing.T) {
 	}
 }
 
-func TestBusinessPolicyRechecksLegacyEvidenceWithoutInvalidatingPublishedCopy(t *testing.T) {
+func TestStorageEvidenceRequiresEveryTableAndNoBusinessQueries(t *testing.T) {
 	_, target, m, _, _, _ := buildFixture(t)
-	state := &validations{}
-	v := validator(state)
-	if _, err := v.Validate(t.Context(), target, m); err != nil {
-		t.Fatal(err)
+	state := &validations{fail: string(contract.StaffTimetable)}
+	evidence, err := validator(state).Validate(t.Context(), target, m)
+	if err != nil || evidence.Policy != candidate.StorageCheckPolicy || len(evidence.Tables) != 14 || len(evidence.Queries) != 0 || strings.Join(state.calls, ",") != "begin,source,indexes,ready" {
+		t.Fatal("business queries affected readiness", err, state.calls)
 	}
-	for op, q := range state.previous.Queries {
-		q.Policy = ""
-		q.Cases = 100000
-		state.previous.Queries[op] = q
+	if evidence.Validate(target, m) != nil {
+		t.Fatal("new evidence invalid")
 	}
-	if err := state.previous.Validate(target, m); err != nil {
-		t.Fatal("published legacy copy rejected", err)
-	}
-	state.calls = nil
-	got, err := v.Validate(t.Context(), target, m)
-	if err != nil || len(state.calls) != 8 {
-		t.Fatal("legacy checks reused", err, state.calls)
-	}
-	for _, q := range got.Queries {
-		if q.Policy != candidate.BusinessCheckPolicy {
-			t.Fatal(q)
+	for _, name := range []string{"missing", "count", "scope", "digest", "policy", "query"} {
+		raw, _ := json.Marshal(evidence)
+		var changed candidate.Evidence
+		_ = json.Unmarshal(raw, &changed)
+		table := m.Tables[0]
+		switch name {
+		case "missing":
+			delete(changed.Tables, table.Table)
+		case "count":
+			table.Rows++
+			changed.Tables[table.Table] = table
+		case "scope":
+			table.Scope = "other"
+			changed.Tables[table.Table] = table
+		case "digest":
+			table.SHA256 = strings.Repeat("c", 64)
+			changed.Tables[table.Table] = table
+		case "policy":
+			changed.Policy = "unknown"
+		case "query":
+			changed.Queries = map[contract.Operation]candidate.QueryEvidence{contract.StudentGrades: {Cases: 1}}
 		}
-	}
-	for op, q := range got.Queries {
-		q.Cases = candidate.MaxBackgroundCases + 1
-		got.Queries[op] = q
-		break
-	}
-	if got.Validate(target, m) == nil {
-		t.Fatal("oversized smoke evidence accepted")
+		if changed.Validate(target, m) == nil {
+			t.Fatal("accepted corrupted proof", name)
+		}
 	}
 }
 
@@ -398,7 +402,6 @@ func TestFixedCasesQueryCurrentCandidateWithoutDiscovery(t *testing.T) {
 	s.rows[grades.GradesTable] = []source.SourceRow{{"ID": json.RawMessage(`"G1"`), "XH": json.RawMessage(`"OTHER"`), "XN": json.RawMessage(`"2025-2026"`), "XQM": json.RawMessage(`"1"`), "JD": json.RawMessage(`"malformed"`)}}
 	o, h, at := onlineFixture(t, s)
 	o.FixedCases = map[contract.Operation][]json.RawMessage{contract.StudentGrades: {json.RawMessage(`{"student_number":"FIXED","academic_year":"all"}`)}}
-	first := o.SuiteDigest()
 	count, _, err := o.Check(t.Context(), h, contract.StudentGrades, at)
 	if err != nil || count != 2 {
 		t.Fatal("fixed query did not use current candidate", count, err)
@@ -408,30 +411,34 @@ func TestFixedCasesQueryCurrentCandidateWithoutDiscovery(t *testing.T) {
 	if _, _, err = o.Check(t.Context(), h, contract.StudentGrades, at); err == nil {
 		t.Fatal("fixed query replaced with historical response")
 	}
-	o.FixedCases[contract.StudentGrades][0] = json.RawMessage(`{"student_number":"CHANGED"}`)
-	if first == o.SuiteDigest() {
-		t.Fatal("suite change not bound to evidence")
-	}
 }
 
-type suiteQueries struct {
-	candidate.Queries
-	suite string
-}
-
-func (q suiteQueries) SuiteDigest() string { return q.suite }
-func TestChangedFixedSuiteCannotReuseOldEvidence(t *testing.T) {
+func TestLegacyPublishedBusinessEvidenceRemainsReadable(t *testing.T) {
 	_, target, m, _, _, _ := buildFixture(t)
-	state := &validations{}
-	v := validator(state)
-	base := v.Queries
-	v.Queries = suiteQueries{base, strings.Repeat("a", 64)}
-	if _, err := v.Validate(t.Context(), target, m); err != nil {
-		t.Fatal(err)
-	}
-	state.calls = nil
-	v.Queries = suiteQueries{base, strings.Repeat("b", 64)}
-	if _, err := v.Validate(t.Context(), target, m); err != nil || len(state.calls) != 8 {
-		t.Fatal("stale fixed suite reused", err, state.calls)
+	for _, policy := range []string{"", "bounded-smoke-v1", "bounded-smoke-v2"} {
+		legacy := candidate.Evidence{Target: target, Combination: m.Combination, CheckedAt: time.Now(), Queries: map[contract.Operation]candidate.QueryEvidence{}}
+		for _, def := range contract.Definitions() {
+			names, err := metadata.Dependencies(def.Operation)
+			if err != nil {
+				t.Fatal(err)
+			}
+			deps := map[string]string{}
+			for _, name := range names {
+				for _, table := range m.Tables {
+					if table.Table == name {
+						deps[name] = table.Scope + ":" + table.SHA256
+					}
+				}
+			}
+			legacy.Queries[def.Operation] = candidate.QueryEvidence{Policy: policy, Dependencies: deps, Cases: 1, SHA256: strings.Repeat("a", 64)}
+		}
+		if err := legacy.Validate(target, m); err != nil {
+			t.Fatal("published legacy proof rejected", policy, err)
+		}
+		state := &validations{previous: legacy, fail: string(contract.StaffTimetable)}
+		got, err := validator(state).Validate(t.Context(), target, m)
+		if err != nil || got.Policy != candidate.StorageCheckPolicy || len(got.Queries) != 0 {
+			t.Fatal("upgrade did not create storage proof", err)
+		}
 	}
 }

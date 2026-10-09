@@ -23,16 +23,15 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
 
-// Readiness is a bounded smoke suite, not an exhaustive business regression.
-const MaxBackgroundCases = 9
-const sampleCases = transport.MaxSmokeRequests // reserve one empty-result probe
+// Test-only business harness. Production readiness never executes queries.
+const sampleCases = MaxBackgroundCases - 1 // reserve one empty-result probe
 const sampleRows = 256
 const sampleTotalRows = 1024
 
 var errSampleComplete = errors.New("business sample complete")
 var errSampleWindow = errors.New("business sample window complete")
 
-// Online invokes the production services against the exclusively held candidate.
+// Online invokes production query services against fixed in-memory test sources.
 // Cases are derived from candidate source rows, not fabricated success fixtures.
 // Caches are invocation-scoped; no derived-table writer or publisher is available.
 type Online struct {
@@ -41,7 +40,7 @@ type Online struct {
 	Timetable    timetable.Service
 	Clock        ports.Clock
 	Limits       read.Limits
-	FixedCases   transport.SmokeCases
+	FixedCases   map[contract.Operation][]json.RawMessage
 	GroupedStaff bool
 	memo         *caseMemo
 }
@@ -437,4 +436,8 @@ func (o Online) sample(ctx context.Context, h read.Handle, op contract.Operation
 	default:
 		return ErrBuild
 	}
+}
+
+type Queries interface {
+	Check(context.Context, read.Handle, contract.Operation, time.Time) (int, string, error)
 }

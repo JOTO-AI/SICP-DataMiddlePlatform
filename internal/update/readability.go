@@ -8,7 +8,6 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/candidate"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
-	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
@@ -42,7 +41,6 @@ type ReadabilityStore interface {
 type Readability struct {
 	Admission FixedAdmission
 	Checks    candidate.Checks
-	Queries   candidate.Queries
 	Store     ReadabilityStore
 	Clock     ports.Clock
 }
@@ -51,7 +49,7 @@ type Readability struct {
 // It uses ordinary read admission and the query principal, never the candidate
 // validation path that revokes readiness on unpublished replacement slots.
 func (v Readability) Check(ctx context.Context, p control.UpdatePlan, next, old Copy) (proof ReadabilityProof, err error) {
-	if v.Admission == nil || v.Checks == nil || v.Queries == nil || v.Store == nil || v.Clock == nil || p.Validate() != nil {
+	if v.Admission == nil || v.Checks == nil || v.Store == nil || v.Clock == nil || p.Validate() != nil {
 		return proof, ErrOldCopy
 	}
 	if next.Target.Position.Validate() != nil || next.Target.Generation < 1 || next.Target.CandidateID == "" || next.Target.Position.Instance != p.First || next.Manifest.Combination == p.Origin.Position.BundleID || next.Evidence.Validate(next.Target, next.Manifest) != nil {
@@ -76,7 +74,7 @@ func (v Readability) Check(ctx context.Context, p control.UpdatePlan, next, old 
 func (v Readability) VerifyPublished(ctx context.Context, p control.UpdatePlan, old Copy) (checked time.Time, err error) {
 	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "old_copy_check", Combination: old.Manifest.Combination, Candidate: old.Target.CandidateID, Slot: old.Target.Position.Slot, Generation: old.Target.Generation}, string(old.Target.Position.Instance))
 	defer func() { end(err) }()
-	if v.Admission == nil || v.Checks == nil || v.Queries == nil || v.Clock == nil || p.Validate() != nil || old.Target.Position.Validate() != nil || old.Target.Generation < 1 || old.Target.CandidateID == "" || old.Manifest.Combination != p.Origin.Position.BundleID || old.Evidence.Validate(old.Target, old.Manifest) != nil {
+	if v.Admission == nil || v.Checks == nil || v.Clock == nil || p.Validate() != nil || old.Target.Position.Validate() != nil || old.Target.Generation < 1 || old.Target.CandidateID == "" || old.Manifest.Combination != p.Origin.Position.BundleID || old.Evidence.Validate(old.Target, old.Manifest) != nil {
 		return checked, ErrOldCopy
 	}
 	h := read.Handle{Position: old.Target.Position, Generation: old.Target.Generation, Combination: old.Manifest.Combination}
@@ -116,33 +114,6 @@ func (v Readability) VerifyPublished(ctx context.Context, p control.UpdatePlan, 
 	at := v.Clock.Now()
 	if at.Before(p.StartedAt) {
 		return checked, control.ErrTime
-	}
-	queries, closeSession, err := candidate.QuerySession(ctx, v.Queries, h, old.Manifest)
-	if err != nil {
-		return checked, err
-	}
-	defer closeSession()
-	for _, def := range contract.Definitions() {
-		count, digest, e := queries.Check(ctx, h, def.Operation, at)
-		if e != nil {
-			return checked, e
-		}
-		// Reuse the evidence validator to check the exact digest format and
-		// table dependencies without trusting a bare success flag.
-		q := old.Evidence.Queries[def.Operation]
-		q.Cases = count
-		q.SHA256 = digest
-		q.Policy = candidate.BusinessCheckPolicy
-		q.Suite = candidate.SuiteDigest(queries)
-		evidence := old.Evidence
-		evidence.Queries = map[contract.Operation]candidate.QueryEvidence{}
-		for op, value := range old.Evidence.Queries {
-			evidence.Queries[op] = value
-		}
-		evidence.Queries[def.Operation] = q
-		if evidence.Validate(old.Target, old.Manifest) != nil {
-			return checked, ErrOldCopy
-		}
 	}
 	if err = ctx.Err(); err != nil {
 		return checked, err

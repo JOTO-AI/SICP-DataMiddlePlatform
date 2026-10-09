@@ -15,7 +15,6 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/admin"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/merge"
-	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/transport"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
@@ -48,7 +47,6 @@ type Runtime struct {
 	DependencyTimeout                                               time.Duration
 	BuildCheckTimeout                                               time.Duration
 	BuildImportMode                                                 string
-	BuildSmokeCases                                                 transport.SmokeCases
 }
 
 func (Runtime) String() string     { return "[runtime configuration redacted]" }
@@ -106,10 +104,6 @@ func LoadRuntime(role Role, lookup func(string) (string, bool)) (Runtime, error)
 		}
 	}
 	if role == Worker {
-		smoke, _ := lookup("BUILD_SMOKE_CASES")
-		if c.BuildSmokeCases, err = transport.ParseSmokeCases(smoke); err != nil {
-			return Runtime{}, fmt.Errorf("BUILD_SMOKE_CASES: invalid query cases")
-		}
 		c.BuildImportMode = "copy"
 		if value, ok := lookup("BUILD_IMPORT_MODE"); ok {
 			c.BuildImportMode = value

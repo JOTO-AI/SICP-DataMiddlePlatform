@@ -18,11 +18,8 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/notification"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/publication"
-	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/compute"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/coord"
-	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/grades"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
-	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/timetable"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/runtimecontrol"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/staging"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
@@ -186,26 +183,19 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 	writer := source.Repository{Registry: c.Databases, Database: r.Database, Gate: store, UseCopy: c.BuildImportMode == "copy"}
 	reader := source.Repository{Registry: c.Databases, Database: adapters.QueryDatabase{Database: r.Database}}
 	candidateReads := read.Repository{Storage: reader, Gate: store}
-	times, e := compute.NewTimes(c.Service.Timezone)
-	if e != nil {
-		return e
-	}
 	limits := read.BackgroundLimits(c.BuildCheckTimeout)
-	online := func(reader read.Matcher) candidate.Online {
-		return candidate.Online{FixedCases: c.BuildSmokeCases, Source: reader, Grades: grades.Service{Source: reader, Times: times, Clock: w.Clock, Limits: limits}, Timetable: timetable.Service{Source: reader, Times: times, Clock: w.Clock, Limits: limits}, Clock: w.Clock, Limits: limits}
-	}
 	checks := func(reads read.Matcher) candidate.StorageChecks {
 		return candidate.StorageChecks{Target: targets, Source: reads, Indexes: reader, Clock: w.Clock, Limits: limits, BackgroundTimeout: c.BuildCheckTimeout}
 	}
 	builder := candidate.Builder{Ledger: store, Source: targets, Writer: writer, BatchSize: 500}
-	validator := candidate.Validator{Store: store, Checks: checks(candidateReads), Queries: online(candidateReads), Clock: w.Clock}
+	validator := candidate.Validator{Store: store, Checks: checks(candidateReads), Clock: w.Clock}
 	proof, ok := r.Database.(coord.ExecutionProof)
 	if !ok {
 		return update.ErrInitialization
 	}
 	coordinator := &coord.Coordinator{Store: r.Control, Proof: proof, Clock: w.Clock, Random: rand.Reader, ProcessID: r.ProcessID}
 	publishedReads := read.Repository{Storage: reader, Gate: coordinator}
-	readability := update.Readability{Admission: coordinator, Checks: checks(publishedReads), Queries: online(publishedReads), Store: store, Clock: w.Clock}
+	readability := update.Readability{Admission: coordinator, Checks: checks(publishedReads), Store: store, Clock: w.Clock}
 	shifter := update.Shifter{Store: store, Outbox: repo, Delivery: delivery, Clock: w.Clock}
 	journal := update.Journal{Store: repo, Clock: w.Clock}
 	changed := update.Changed{Store: store, Builder: builder, Validator: validator, Readability: readability, Shifter: shifter, Outbox: repo, Delivery: delivery, Progress: repo, Clock: w.Clock, Journal: journal}
@@ -321,7 +311,7 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 	}
 	if e = store.ReopenPublished(ctx, plan, func(ctx context.Context, old update.Copy, gate read.Gate, admission update.FixedAdmission) error {
 		reads := read.Repository{Storage: reader, Gate: gate}
-		v := update.Readability{Admission: admission, Checks: checks(reads), Queries: online(reads), Clock: w.Clock}
+		v := update.Readability{Admission: admission, Checks: checks(reads), Clock: w.Clock}
 		_, e := v.VerifyPublished(ctx, plan, old)
 		return e
 	}); e != nil {

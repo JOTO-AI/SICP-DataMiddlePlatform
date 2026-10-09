@@ -79,16 +79,14 @@ func copyFixture(t *testing.T, bundle string, slot int) update.Copy {
 }
 func readabilityFixture(t *testing.T) (update.Readability, *readableWorld, update.Copy, update.Copy) {
 	w := &readableWorld{}
-	v := update.Readability{Admission: w, Checks: w, Queries: w, Store: w, Clock: testkit.FakeClock{Time: updatePlan().StartedAt.Add(time.Minute)}}
+	v := update.Readability{Admission: w, Checks: w, Store: w, Clock: testkit.FakeClock{Time: updatePlan().StartedAt.Add(time.Minute)}}
 	return v, w, copyFixture(t, "C101", 1), copyFixture(t, "C100", 0)
 }
-func TestT13_03OldCopyMustPassIndependentReadAdmissionStoragePermissionsAndQueries(t *testing.T) {
+func TestT13_03OldCopyMustPassReadAdmissionStorageAndPermissionsWithoutQueries(t *testing.T) {
 	v, w, next, old := readabilityFixture(t)
+	w.fail = string(contract.StaffTimetable) // Business errors cannot gate transfer.
 	p, err := v.Check(t.Context(), updatePlan(), next, old)
 	want := []string{"admit", "storage", "permissions"}
-	for _, d := range contract.Definitions() {
-		want = append(want, string(d.Operation))
-	}
 	want = append(want, "close", "record")
 	if err != nil || p.Destination.BundleID != "C100" || p.Combination != "C101" || p.Destination.Position.Slot != 0 || !reflect.DeepEqual(w.trace, want) || len(w.saved) != 1 {
 		t.Fatal(p, err, w.trace)
@@ -118,7 +116,7 @@ func TestT13_05OldCopyQueryPrincipalPermissionFailureStopsBeforeRouteShift(t *te
 	}
 }
 func TestT13_06WrongOldIdentityOrQueryEvidenceNeverAuthorizesShift(t *testing.T) {
-	for _, kind := range []string{"bundle", "generation", "unchecked-evidence", "dependencies", "same-slot", "new-not-ready", "query", "commit", "close"} {
+	for _, kind := range []string{"bundle", "generation", "unchecked-evidence", "dependencies", "same-slot", "new-not-ready", "commit", "close"} {
 		t.Run(kind, func(t *testing.T) {
 			v, w, next, old := readabilityFixture(t)
 			switch kind {
@@ -135,8 +133,6 @@ func TestT13_06WrongOldIdentityOrQueryEvidenceNeverAuthorizesShift(t *testing.T)
 				old.Evidence.Target = old.Target
 			case "new-not-ready":
 				next.Evidence = candidate.Evidence{}
-			case "query":
-				w.fail = string(contract.Definitions()[0].Operation)
 			case "commit":
 				w.fail = "record"
 			case "close":
@@ -147,5 +143,18 @@ func TestT13_06WrongOldIdentityOrQueryEvidenceNeverAuthorizesShift(t *testing.T)
 				t.Fatal(p, err)
 			}
 		})
+	}
+}
+
+func TestStorageOnlyPublishedEvidenceAlsoSupportsNoChangeChecks(t *testing.T) {
+	v, w, _, old := readabilityFixture(t)
+	old.Evidence = candidate.Evidence{Policy: candidate.StorageCheckPolicy, Target: old.Target, Combination: old.Manifest.Combination, CheckedAt: old.Evidence.CheckedAt, Tables: map[string]candidate.TableVersion{}}
+	for _, table := range old.Manifest.Tables {
+		old.Evidence.Tables[table.Table] = table
+	}
+	w.fail = string(contract.StudentGrades)
+	at, err := v.VerifyPublished(t.Context(), updatePlan(), old)
+	if err != nil || at.IsZero() || !reflect.DeepEqual(w.trace, []string{"admit", "storage", "permissions", "close"}) {
+		t.Fatal("business check blocked unchanged round", err, w.trace)
 	}
 }

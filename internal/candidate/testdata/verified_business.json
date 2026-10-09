@@ -1,0 +1,100 @@
+{
+  "rows": {
+    "dwd_bzkscjzlb": [
+      {
+        "ID": "G1",
+        "XH": "S1",
+        "XN": "2025-2026",
+        "XQM": "1",
+        "KCH": "C1",
+        "KCCJ": 83,
+        "JD": 3.3,
+        "XF": 0.5
+      }
+    ],
+    "dwd_bzkspksjzlb": [
+      {
+        "KKXND": "2023-2024",
+        "KKXQM": "1",
+        "SKRQ": "20230904",
+        "ZC": "1",
+        "XQJ": "星期一",
+        "SKJC": "1",
+        "PKH": "P1",
+        "JHKCH": "C1",
+        "JXBH": "J1",
+        "JSJGH": "T1",
+        "JSXM": null,
+        "SKJSH": null
+      }
+    ],
+    "dwd_bzkskbsjzlb": [
+      {
+        "ID": "R1",
+        "XH": "S1",
+        "JHKCH": "C1",
+        "JXBH": "J1"
+      }
+    ]
+  },
+  "year": "2023-2024",
+  "semester": "1",
+  "grade": {
+    "grade_id": "G1",
+    "student": {
+      "student_number": "S1",
+      "name": null,
+      "department_code": null,
+      "department_name": null,
+      "class_code": null,
+      "class_name": null
+    },
+    "academic_year": "2025-2026",
+    "semester": "1",
+    "course": {
+      "course_code": "C1",
+      "course_name": null,
+      "attribute_code": null,
+      "attribute_name": null,
+      "nature_code": null,
+      "nature_name": null,
+      "type_code": null,
+      "type_name": null,
+      "department": null,
+      "total_hours": null,
+      "retake_flag": null,
+      "retake_course_code": null,
+      "retake_course_name": null
+    },
+    "score": 83,
+    "grade_point": 3.3,
+    "credits": 0.5,
+    "source_updated_at": null
+  },
+  "timetable": {
+    "course_code": "C1",
+    "course_name": null,
+    "planned_course_code": "C1",
+    "teaching_class_number": "J1",
+    "teaching_class_name": null,
+    "enrolled_count": null,
+    "teacher_staff_numbers": [
+      "T1"
+    ],
+    "room_code": null,
+    "credits": null,
+    "teacher_names": [],
+    "location": null,
+    "weekday": 1,
+    "sections": [
+      1
+    ],
+    "weeks": [
+      1
+    ],
+    "dates": [
+      "2023-09-04"
+    ],
+    "source_updated_at": null
+  }
+}

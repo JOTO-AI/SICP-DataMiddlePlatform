@@ -68,8 +68,6 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
-      - name: Fixed smoke case selector tests
-        run: python3 -m unittest discover -s scripts -p "test_select_smoke_cases.py"
       - name: Unit tests, race checks, vet and Linux builds
         run: ./scripts/check.sh
       - name: Repeat lifecycle race regression
