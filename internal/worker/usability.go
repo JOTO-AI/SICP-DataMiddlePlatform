@@ -23,7 +23,7 @@ var ErrUsability = errors.New("authenticated new-combination probe incomplete")
 
 // Probe uses ordinary authentication and all four production HTTP operations.
 // Synthetic absent identities exercise empty business answers without logging
-// personnel data; exhaustive candidate validation has already checked all data.
+// personnel data; candidate validation already checked storage and business samples.
 func Probe(ctx context.Context, origin, key, bundle string) error {
 	return probe(ctx, origin, key, bundle, nil)
 }

@@ -192,7 +192,7 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 	}
 	limits := read.BackgroundLimits(c.BuildCheckTimeout)
 	online := func(reader read.Matcher) candidate.Online {
-		return candidate.Online{Source: reader, Grades: grades.Service{Source: reader, Times: times, Clock: w.Clock, Limits: limits}, Timetable: timetable.Service{Source: reader, Times: times, Clock: w.Clock, Limits: limits}, Clock: w.Clock, Limits: limits, MaxCases: candidate.MaxBackgroundCases}
+		return candidate.Online{Source: reader, Grades: grades.Service{Source: reader, Times: times, Clock: w.Clock, Limits: limits}, Timetable: timetable.Service{Source: reader, Times: times, Clock: w.Clock, Limits: limits}, Clock: w.Clock, Limits: limits}
 	}
 	checks := func(reads read.Matcher) candidate.StorageChecks {
 		return candidate.StorageChecks{Target: targets, Source: reads, Indexes: reader, Clock: w.Clock, Limits: limits, BackgroundTimeout: c.BuildCheckTimeout}

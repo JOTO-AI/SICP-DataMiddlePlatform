@@ -132,6 +132,7 @@ func (v Readability) VerifyPublished(ctx context.Context, p control.UpdatePlan, 
 		q := old.Evidence.Queries[def.Operation]
 		q.Cases = count
 		q.SHA256 = digest
+		q.Policy = candidate.BusinessCheckPolicy
 		evidence := old.Evidence
 		evidence.Queries = map[contract.Operation]candidate.QueryEvidence{}
 		for op, value := range old.Evidence.Queries {

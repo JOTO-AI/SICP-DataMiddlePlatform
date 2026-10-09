@@ -208,7 +208,7 @@ func onlineFixture(t *testing.T, s *candidateSource) (candidate.Online, read.Han
 	clock := testkit.FakeClock{Time: at}
 	times, _ := compute.NewTimes("Asia/Shanghai")
 	_, target, _, _, _, _ := buildFixture(t)
-	return candidate.Online{Source: s, Grades: grades.Service{Source: s, Times: times, Clock: clock, Limits: read.DefaultLimits()}, Timetable: timetable.Service{Source: s, Times: times, Clock: clock, Limits: read.DefaultLimits()}, Clock: clock, Limits: read.DefaultLimits(), MaxCases: 100}, read.Handle{Position: target.Position, Generation: target.Generation, Combination: "C101"}, at
+	return candidate.Online{Source: s, Grades: grades.Service{Source: s, Times: times, Clock: clock, Limits: read.DefaultLimits()}, Timetable: timetable.Service{Source: s, Times: times, Clock: clock, Limits: read.DefaultLimits()}, Clock: clock, Limits: read.DefaultLimits()}, read.Handle{Position: target.Position, Generation: target.Generation, Combination: "C101"}, at
 }
 func TestT12_06ReadyChecksExecuteFourProductionServicesWithoutCacheOrDerivedWrites(t *testing.T) {
 	s := &candidateSource{}
@@ -234,7 +234,11 @@ func TestT12_06RealCandidateDataDrivesOnlineConversionAndFailure(t *testing.T) {
 	online, h, at := onlineFixture(t, s)
 	for _, op := range []contract.Operation{contract.StudentGrades, contract.BatchGrades} {
 		count, _, err := online.Check(t.Context(), h, op, at)
-		if err != nil || count != 1 {
+		want := 2
+		if op == contract.StudentGrades {
+			want = 3
+		}
+		if err != nil || count != want {
 			t.Fatal(op, count, err)
 		}
 	}
@@ -244,7 +248,7 @@ func TestT12_06RealCandidateDataDrivesOnlineConversionAndFailure(t *testing.T) {
 	}
 }
 
-func TestBT07_QuerySessionPreservesExhaustiveEvidence(t *testing.T) {
+func TestBT07_QuerySessionPreservesSampleEvidence(t *testing.T) {
 	var row source.SourceRow
 	if err := json.Unmarshal([]byte(`{"ID":"G1","XH":"001","XN":"2025-2026","XQM":"1","KCH":"C1","KCCJ":"pass"}`), &row); err != nil {
 		t.Fatal(err)
@@ -269,7 +273,7 @@ func TestBT07_QuerySessionPreservesExhaustiveEvidence(t *testing.T) {
 	}
 }
 
-func TestBT07GroupedStaffPreservesAllCasesOrderAndEvidence(t *testing.T) {
+func TestBT07GroupedStaffPreservesSampleOrderAndEvidence(t *testing.T) {
 	ids := make([]string, 70)
 	for i := range ids {
 		ids[i] = fmt.Sprintf("T%03d", i)
@@ -284,7 +288,7 @@ func TestBT07GroupedStaffPreservesAllCasesOrderAndEvidence(t *testing.T) {
 	o.Limits = read.BackgroundLimits(time.Minute)
 	o.Timetable.Limits = o.Limits
 	n, digest, err := o.Check(t.Context(), h, contract.StaffTimetable, at)
-	if err != nil || n != 70 {
+	if err != nil || n != candidate.MaxBackgroundCases {
 		t.Fatal(n, err)
 	}
 	before := len(s.calls)
@@ -294,23 +298,69 @@ func TestBT07GroupedStaffPreservesAllCasesOrderAndEvidence(t *testing.T) {
 	if err != nil || got != n || summary != digest || len(s.calls) >= before {
 		t.Fatal("grouped evidence differs or scans unchanged", got, err, len(s.calls), before)
 	}
-	o.MaxCases = 69
-	if n, digest, err := o.Check(t.Context(), h, contract.StaffTimetable, at); !errors.Is(err, read.ErrBudget) || n != 0 || digest != "" {
-		t.Fatal("partial group became evidence", n, err)
-	}
 }
-func TestT12_06ValidationCaseBudgetNeverTruncatesSuccess(t *testing.T) {
+
+func TestBusinessSamplesIgnoreUnselectedIdentities(t *testing.T) {
 	s := &candidateSource{rows: map[string][]source.SourceRow{}}
-	for _, id := range []string{"G1", "G2"} {
-		raw, _ := json.Marshal(map[string]string{"ID": id, "XH": id, "XN": "2025-2026", "XQM": "1", "KCH": "C1"})
+	for i := 0; i < 50; i++ {
+		raw, _ := json.Marshal(map[string]string{"ID": fmt.Sprintf("G%03d", i), "XH": fmt.Sprintf("S%03d", i), "XN": "2025-2026", "XQM": "1", "KCH": "C1"})
 		var row source.SourceRow
 		_ = json.Unmarshal(raw, &row)
+		if i == 49 {
+			row["JD"] = json.RawMessage(`"invalid-number"`)
+		}
 		s.rows[grades.GradesTable] = append(s.rows[grades.GradesTable], row)
 	}
 	online, h, at := onlineFixture(t, s)
-	online.MaxCases = 1
-	if count, summary, err := online.Check(t.Context(), h, contract.StudentGrades, at); !errors.Is(err, read.ErrBudget) || count != 0 || summary != "" {
-		t.Fatal(count, summary, err)
+	for _, op := range []contract.Operation{contract.StudentGrades, contract.BatchGrades} {
+		count, summary, err := online.Check(t.Context(), h, op, at)
+		if err != nil || count < 2 || count > candidate.MaxBackgroundCases || len(summary) != 64 {
+			t.Fatal("sample expanded into exhaustive validation", op, count, summary, err)
+		}
+	}
+	// The same late malformed row must fail when it belongs to a selected
+	// student, even though the response asks for only its first result page.
+	s.rows[grades.GradesTable][49]["XH"] = json.RawMessage(`"S000"`)
+	for _, op := range []contract.Operation{contract.StudentGrades, contract.BatchGrades} {
+		count, summary, err := online.Check(t.Context(), h, op, at)
+		if err == nil || count != 0 || summary != "" {
+			t.Fatal("selected student's complete result was not validated", op, count, err)
+		}
+	}
+}
+
+func TestBusinessPolicyRechecksLegacyEvidenceWithoutInvalidatingPublishedCopy(t *testing.T) {
+	_, target, m, _, _, _ := buildFixture(t)
+	state := &validations{}
+	v := validator(state)
+	if _, err := v.Validate(t.Context(), target, m); err != nil {
+		t.Fatal(err)
+	}
+	for op, q := range state.previous.Queries {
+		q.Policy = ""
+		q.Cases = 100000
+		state.previous.Queries[op] = q
+	}
+	if err := state.previous.Validate(target, m); err != nil {
+		t.Fatal("published legacy copy rejected", err)
+	}
+	state.calls = nil
+	got, err := v.Validate(t.Context(), target, m)
+	if err != nil || len(state.calls) != 8 {
+		t.Fatal("legacy checks reused", err, state.calls)
+	}
+	for _, q := range got.Queries {
+		if q.Policy != candidate.BusinessCheckPolicy {
+			t.Fatal(q)
+		}
+	}
+	for op, q := range got.Queries {
+		q.Cases = candidate.MaxBackgroundCases + 1
+		got.Queries[op] = q
+		break
+	}
+	if got.Validate(target, m) == nil {
+		t.Fatal("oversized smoke evidence accepted")
 	}
 }
 
@@ -330,7 +380,7 @@ func TestT12_06StudentAndTeacherChecksExerciseActualTimetableParsing(t *testing.
 	online, h, at := onlineFixture(t, s)
 	for _, op := range []contract.Operation{contract.StudentTimetable, contract.StaffTimetable} {
 		count, _, err := online.Check(t.Context(), h, op, at)
-		if err != nil || count != 1 {
+		if err != nil || count != 2 {
 			t.Fatal(op, count, err)
 		}
 	}

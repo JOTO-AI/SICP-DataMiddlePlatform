@@ -23,7 +23,14 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
 
-const MaxBackgroundCases = 1000000
+// Readiness is a bounded smoke suite, not an exhaustive business regression.
+const MaxBackgroundCases = 9
+const sampleCases = MaxBackgroundCases - 1 // reserve one empty-result probe
+const sampleRows = 256
+const sampleTotalRows = 1024
+
+var errSampleComplete = errors.New("business sample complete")
+var errSampleWindow = errors.New("business sample window complete")
 
 // Online invokes the production services against the exclusively held candidate.
 // Cases are derived from candidate source rows, not fabricated success fixtures.
@@ -34,7 +41,6 @@ type Online struct {
 	Timetable    timetable.Service
 	Clock        ports.Clock
 	Limits       read.Limits
-	MaxCases     int
 	GroupedStaff bool
 	memo         *caseMemo
 }
@@ -42,10 +48,12 @@ type Online struct {
 func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation, at time.Time) (result int, summary string, err error) {
 	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "business_check", Combination: h.Combination, Slot: h.Position.Slot, Generation: h.Generation, Operation: op}, string(h.Position.Instance))
 	defer func() { end(err) }()
-	if o.Source == nil || o.Clock == nil || o.Grades.Source == nil || o.Grades.Clock == nil || o.Timetable.Source == nil || o.Timetable.Clock == nil || o.MaxCases < 1 || at.IsZero() {
+	if o.Source == nil || o.Clock == nil || o.Grades.Source == nil || o.Grades.Clock == nil || o.Timetable.Source == nil || o.Timetable.Clock == nil || at.IsZero() {
 		return 0, "", ErrBuild
 	}
-	budget, err := read.NewBudget(o.Limits, o.Clock)
+	selectionLimits := o.Limits
+	selectionLimits.BatchSize = min(selectionLimits.BatchSize, sampleRows)
+	budget, err := read.NewBudget(selectionLimits, o.Clock)
 	if err != nil {
 		return 0, "", err
 	}
@@ -55,7 +63,7 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 	advance := activity.Begin(ctx, "business_check", "", string(h.Position.Instance), "cases", string(op), -1)
 	hash := sha256.New()
 	consume := func(encoded []byte, response any) error {
-		if count >= o.MaxCases {
+		if count >= MaxBackgroundCases {
 			return read.ErrBudget
 		}
 		payload, err := metadata.Payload(response)
@@ -84,7 +92,7 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 		}
 		// cases deduplicates the exact student / teacher / term identities before
 		// constructing requests. A second serialized-request set duplicates memory.
-		if count >= o.MaxCases {
+		if count >= MaxBackgroundCases {
 			return read.ErrBudget
 		}
 		parsed, err := transport.Parse(op, bytes.NewReader(encoded))
@@ -142,7 +150,7 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 			if err := budget.Check(ctx); err != nil {
 				return err
 			}
-			if count+len(pending) >= o.MaxCases {
+			if count+len(pending) >= MaxBackgroundCases {
 				return read.ErrBudget
 			}
 			raw, err := json.Marshal(request)
@@ -180,8 +188,8 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 	if err = flush(); err != nil {
 		return 0, "", err
 	}
-	if count == 0 {
-		// Empty sources still exercise a real empty response in every operation.
+	{
+		// Every operation also exercises the empty-query path through the real service.
 		const absent = "__readiness_empty__"
 		switch op {
 		case contract.StudentGrades:
@@ -207,6 +215,29 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 }
 
 func (o Online) cases(ctx context.Context, h read.Handle, op contract.Operation, b *read.Budget, visit func(any) error) error {
+	count := 0
+	err := o.sample(ctx, h, op, b, func(request any) error {
+		if err := b.Check(ctx); err != nil {
+			return err
+		}
+		if err := visit(request); err != nil {
+			return err
+		}
+		count++
+		if count == sampleCases {
+			return errSampleComplete
+		}
+		return nil
+	})
+	if errors.Is(err, errSampleComplete) {
+		return b.Check(ctx)
+	}
+	return err
+}
+
+// Sampling limits apply only to case discovery. Each selected service request
+// still reads and computes its complete result under its normal query budget.
+func (o Online) sample(ctx context.Context, h read.Handle, op contract.Operation, b *read.Budget, visit func(any) error) error {
 	seenTerms := map[[3]string]bool{}
 	termBytes := 0
 	termVisit := func(id, year, semester string, request any) error {
@@ -215,15 +246,37 @@ func (o Online) cases(ctx context.Context, h read.Handle, op contract.Operation,
 			return nil
 		}
 		charge := len(id) + len(year) + len(semester) + 64
-		if len(seenTerms) >= o.MaxCases || charge > 32<<20-termBytes {
+		if charge > 32<<20-termBytes {
 			return read.ErrBudget
 		}
 		termBytes += charge
 		seenTerms[key] = true
 		return visit(request)
 	}
+	totalRows := 0
 	scan := func(table string, filters []source.Filter, fn func(source.SourceRow) error) error {
-		return read.Scan(ctx, o.Source, h, table, filters, b, fn)
+		if totalRows >= sampleTotalRows {
+			return errSampleComplete
+		}
+		rows := 0
+		err := read.Scan(ctx, o.Source, h, table, filters, b, func(row source.SourceRow) error {
+			rows++
+			totalRows++
+			if err := fn(row); err != nil {
+				return err
+			}
+			if totalRows >= sampleTotalRows {
+				return errSampleComplete
+			}
+			if rows >= sampleRows {
+				return errSampleWindow
+			}
+			return nil
+		})
+		if errors.Is(err, errSampleWindow) {
+			return b.Check(ctx)
+		}
+		return err
 	}
 	switch op {
 	case contract.StudentGrades, contract.BatchGrades:
@@ -239,12 +292,15 @@ func (o Online) cases(ctx context.Context, h read.Handle, op contract.Operation,
 					return err
 				}
 				if !seen[id] {
-					if len(ids) >= o.MaxCases || len(id)+64 > 8<<20-idBytes {
+					if len(id)+64 > 8<<20-idBytes {
 						return read.ErrBudget
 					}
 					idBytes += len(id) + 64
 					seen[id] = true
 					ids = append(ids, id)
+					if len(ids) == sampleCases/2 {
+						return errSampleWindow
+					}
 				}
 				return nil
 			}); err != nil {
@@ -262,11 +318,18 @@ func (o Online) cases(ctx context.Context, h read.Handle, op contract.Operation,
 				if err := visit(contract.StudentGradesRequest{StudentNumber: id, AcademicYear: &all, GradeFilters: contract.GradeFilters{Page: &page, PageSize: &size}}); err != nil {
 					return err
 				}
+				if err := visit(contract.StudentGradesRequest{StudentNumber: id, GradeFilters: contract.GradeFilters{Page: &page, PageSize: &size}}); err != nil {
+					return err
+				}
 			} else {
 				if err := visit(contract.BatchGradesRequest{AcademicYear: all, StudentNumbers: []string{id}, GradeFilters: contract.GradeFilters{Page: &page, PageSize: &size}}); err != nil {
 					return err
 				}
 			}
+		}
+		if op == contract.BatchGrades && len(ids) > 1 {
+			page, size := 1, 2
+			return visit(contract.BatchGradesRequest{AcademicYear: "all", StudentNumbers: ids, GradeFilters: contract.GradeFilters{Page: &page, PageSize: &size}})
 		}
 		return nil
 	case contract.StudentTimetable:

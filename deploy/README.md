@@ -122,3 +122,12 @@ SICP_PROJECT=sicp-${ENVIRONMENT}
 GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 语法和镜像构建，再串行执行 I01—I06。I06 从同一 job 的干净 checkout 构建镜像，每个编号独立创建项目与空卷，通过 Bash 脚本迁移、启动并等待自动初始化；定时同步测试在隔离数据库推进计划时间。历史验收记录见 verification/I06.md，本次行为变更需以新一轮 CI 结果为准。集成 JSON 结果及容器日志保存在 linux-integration-evidence artifact。
 
 构建专项新增 business_003 事务索引迁移、worker MAINTAIN 权限、BUILD_CHECK_TIMEOUT 与 BUILD_IMPORT_MODE；请按[专项升级与回退说明](../development_docs/BUILD_TO_READY_ROLLOUT.md)安排窗口。COPY 默认启用，额外数据库并发未启用，完整容量验收尚未完成。
+
+
+### 同步后的业务样例检查
+
+“核对业务案例”用于确认新副本能执行真实业务查询，不再遍历所有学生、教师。每个接口最多执行 8 个数据案例和 1 个固定空查询探针，每份副本合计最多 36 个案例；数据较少时案例数会更少。选例按主键顺序在有界窗口内完成，不为收集身份而全表扫描。成绩样例包含全部学年、默认最近学期及多学生批量请求；课表样例按身份和学期去重。
+
+数据库内容仍做全量核对，索引和导入完成状态仍需通过。样例查询失败仍阻止发布；未抽中的身份不执行业务回归。选中的查询仍按真实业务规则读取完整结果，因此单个查询耗时仍可能随该学生或学期的数据量增加。`SOURCE_PAGE_CONCURRENCY`、`BUILD_TABLE_CONCURRENCY` 不控制样例检查，`BUILD_CHECK_TIMEOUT` 仍为阶段超时。
+
+升级需要重新构建并部署 worker，新逻辑不会替换已经运行中的旧进程。新证据携带 `bounded-smoke-v1` 策略；已发布副本的旧证据仍可读取，候选重新校验时会执行新样例检查。
