@@ -37,7 +37,15 @@ func ParseCalendar(row source.SourceRow) (Calendar, error) {
 	if out.Weeks, err = positiveList(row, "ZC"); err != nil {
 		return Calendar{}, err
 	}
-	items, err := tokens(row, "SKRQ")
+	dateValue, err := compute.Optional(row, "SKRQ")
+	if err != nil {
+		return Calendar{}, err
+	}
+	items := []string{}
+	out.Dates = []string{}
+	if dateValue != "" {
+		items, err = tokens(row, "SKRQ")
+	}
 	if err != nil {
 		return Calendar{}, err
 	}

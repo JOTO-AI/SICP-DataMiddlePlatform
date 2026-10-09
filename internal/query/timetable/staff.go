@@ -49,16 +49,12 @@ func staffMatchesChecked(schedules []source.SourceRow, req contract.StaffTimetab
 // The sequential service and grouped validation share exact term/token rules,
 // including errors on malformed rows belonging to another requested teacher.
 func staffTeachers(r source.SourceRow, year, semester string) (Teachers, error) {
-	y, err := compute.Required(r, "KKXND")
+	y, s, present, err := ScheduleTerm(r)
 	if err != nil {
 		return Teachers{}, err
 	}
-	s, err := compute.Required(r, "KKXQM")
-	if err != nil {
-		return Teachers{}, err
-	}
-	if !validTerm(y, s) {
-		return Teachers{}, compute.ErrValue
+	if !present {
+		return Teachers{}, nil
 	}
 	if y != year || s != semester {
 		return Teachers{}, nil

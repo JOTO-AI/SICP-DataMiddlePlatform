@@ -55,7 +55,7 @@ func TestT09_07MissingCourseCountAndLeadingZerosRemain(t *testing.T) {
 
 func TestT09_08SparseRequiredFieldsAndConflictsFail(t *testing.T) {
 	a := assembler(t)
-	for _, field := range []string{"PKH", "JHKCH", "JXBH", "SKRQ", "XQJ", "SKJC", "ZC"} {
+	for _, field := range []string{"PKH", "XQJ", "SKJC", "ZC"} {
 		t.Run(field, func(t *testing.T) {
 			r := scheduleRow()
 			delete(r, field)

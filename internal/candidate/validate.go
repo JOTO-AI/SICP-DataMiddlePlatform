@@ -15,10 +15,11 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
 
-const BusinessCheckPolicy = "bounded-smoke-v1"
+const BusinessCheckPolicy = "bounded-smoke-v2"
 
 type QueryEvidence struct {
 	Policy       string `json:",omitempty"`
+	Suite        string `json:",omitempty"`
 	Dependencies map[string]string
 	Cases        int
 	SHA256       string
@@ -42,7 +43,10 @@ func (e Evidence) Validate(target source.Target, m Manifest) error {
 		query, ok := e.Queries[definition.Operation]
 		// Legacy published copies remain readable during upgrades. New checks
 		// must not reuse their exhaustive evidence as a smoke-suite result.
-		if query.Policy != "" && (query.Policy != BusinessCheckPolicy || query.Cases > MaxBackgroundCases) {
+		if query.Policy != "" && ((query.Policy != BusinessCheckPolicy && query.Policy != "bounded-smoke-v1") || query.Cases > MaxBackgroundCases) {
+			return ErrBuild
+		}
+		if query.Suite != "" && !digest(query.Suite) {
 			return ErrBuild
 		}
 		if !ok || query.Cases < 1 || !digest(query.SHA256) || !maps.Equal(deps, query.Dependencies) {
@@ -148,7 +152,7 @@ func (v Validator) Validate(ctx context.Context, target source.Target, m Manifes
 			return
 		}
 		old, ok := previous.Queries[op]
-		if ok && old.Policy == BusinessCheckPolicy && old.Cases <= MaxBackgroundCases && previous.Target == target && previous.Combination == m.Combination && !previous.CheckedAt.IsZero() && old.Cases > 0 && digest(old.SHA256) && maps.Equal(old.Dependencies, deps) {
+		if ok && old.Policy == BusinessCheckPolicy && old.Suite == SuiteDigest(queries) && old.Cases <= MaxBackgroundCases && previous.Target == target && previous.Combination == m.Combination && !previous.CheckedAt.IsZero() && old.Cases > 0 && digest(old.SHA256) && maps.Equal(old.Dependencies, deps) {
 			old.Dependencies = maps.Clone(old.Dependencies)
 			result.Queries[op] = old
 			continue
@@ -163,7 +167,7 @@ func (v Validator) Validate(ctx context.Context, target source.Target, m Manifes
 			err = ErrBuild
 			return
 		}
-		result.Queries[op] = QueryEvidence{Policy: BusinessCheckPolicy, Dependencies: deps, Cases: count, SHA256: summary}
+		result.Queries[op] = QueryEvidence{Policy: BusinessCheckPolicy, Suite: SuiteDigest(queries), Dependencies: deps, Cases: count, SHA256: summary}
 	}
 	if err = ctx.Err(); err != nil {
 		return

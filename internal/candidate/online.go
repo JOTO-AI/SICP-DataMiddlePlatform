@@ -25,7 +25,7 @@ import (
 
 // Readiness is a bounded smoke suite, not an exhaustive business regression.
 const MaxBackgroundCases = 9
-const sampleCases = MaxBackgroundCases - 1 // reserve one empty-result probe
+const sampleCases = transport.MaxSmokeRequests // reserve one empty-result probe
 const sampleRows = 256
 const sampleTotalRows = 1024
 
@@ -41,6 +41,7 @@ type Online struct {
 	Timetable    timetable.Service
 	Clock        ports.Clock
 	Limits       read.Limits
+	FixedCases   transport.SmokeCases
 	GroupedStaff bool
 	memo         *caseMemo
 }
@@ -215,6 +216,26 @@ func (o Online) Check(ctx context.Context, h read.Handle, op contract.Operation,
 }
 
 func (o Online) cases(ctx context.Context, h read.Handle, op contract.Operation, b *read.Budget, visit func(any) error) error {
+	if len(o.FixedCases) > 0 {
+		requests := o.FixedCases[op]
+		if len(requests) < 1 || len(requests) > sampleCases {
+			return ErrBuild
+		}
+		for _, raw := range requests {
+			if err := b.Check(ctx); err != nil {
+				return err
+			}
+			req, err := transport.Parse(op, bytes.NewReader(raw))
+			if err != nil {
+				return err
+			}
+			if err := visit(req); err != nil {
+				return err
+			}
+		}
+		return b.Check(ctx)
+	}
+
 	count := 0
 	err := o.sample(ctx, h, op, b, func(request any) error {
 		if err := b.Check(ctx); err != nil {
@@ -344,9 +365,12 @@ func (o Online) sample(ctx context.Context, h read.Handle, op contract.Operation
 			if err != nil {
 				return err
 			}
-			course, err := compute.Required(row, "JHKCH")
+			course, err := compute.Optional(row, "JHKCH")
 			if err != nil {
 				return err
+			}
+			if course == "" {
+				return nil
 			}
 			key := [2]string{class, course}
 			if terms, ok := associations[key]; ok {
@@ -362,13 +386,12 @@ func (o Online) sample(ctx context.Context, h read.Handle, op contract.Operation
 			charge := len(class) + len(course) + 64
 			cacheable := charge <= 8<<20-associationBytes
 			err = scan(timetable.SchedulesTable, []source.Filter{{Column: "JXBH", Value: class}, {Column: "JHKCH", Value: course}}, func(schedule source.SourceRow) error {
-				year, err := compute.Required(schedule, "KKXND")
+				year, semester, present, err := timetable.ScheduleTerm(schedule)
 				if err != nil {
 					return err
 				}
-				semester, err := compute.Required(schedule, "KKXQM")
-				if err != nil {
-					return err
+				if !present {
+					return nil
 				}
 				term := [2]string{year, semester}
 				if cacheable && !termSet[term] {
@@ -393,13 +416,12 @@ func (o Online) sample(ctx context.Context, h read.Handle, op contract.Operation
 		})
 	case contract.StaffTimetable:
 		return scan(timetable.SchedulesTable, nil, func(row source.SourceRow) error {
-			year, err := compute.Required(row, "KKXND")
+			year, semester, present, err := timetable.ScheduleTerm(row)
 			if err != nil {
 				return err
 			}
-			semester, err := compute.Required(row, "KKXQM")
-			if err != nil {
-				return err
+			if !present {
+				return nil
 			}
 			teachers, err := timetable.ParseTeachers(row)
 			if err != nil {

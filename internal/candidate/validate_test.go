@@ -391,3 +391,47 @@ func TestT12_06StudentAndTeacherChecksExerciseActualTimetableParsing(t *testing.
 		}
 	}
 }
+
+func TestFixedCasesQueryCurrentCandidateWithoutDiscovery(t *testing.T) {
+	s := &candidateSource{rows: map[string][]source.SourceRow{}}
+	// An unrelated record must never enter a fixed request's discovery path.
+	s.rows[grades.GradesTable] = []source.SourceRow{{"ID": json.RawMessage(`"G1"`), "XH": json.RawMessage(`"OTHER"`), "XN": json.RawMessage(`"2025-2026"`), "XQM": json.RawMessage(`"1"`), "JD": json.RawMessage(`"malformed"`)}}
+	o, h, at := onlineFixture(t, s)
+	o.FixedCases = map[contract.Operation][]json.RawMessage{contract.StudentGrades: {json.RawMessage(`{"student_number":"FIXED","academic_year":"all"}`)}}
+	first := o.SuiteDigest()
+	count, _, err := o.Check(t.Context(), h, contract.StudentGrades, at)
+	if err != nil || count != 2 {
+		t.Fatal("fixed query did not use current candidate", count, err)
+	}
+	// Once this row belongs to the fixed student, actual service validation fails.
+	s.rows[grades.GradesTable][0]["XH"] = json.RawMessage(`"FIXED"`)
+	if _, _, err = o.Check(t.Context(), h, contract.StudentGrades, at); err == nil {
+		t.Fatal("fixed query replaced with historical response")
+	}
+	o.FixedCases[contract.StudentGrades][0] = json.RawMessage(`{"student_number":"CHANGED"}`)
+	if first == o.SuiteDigest() {
+		t.Fatal("suite change not bound to evidence")
+	}
+}
+
+type suiteQueries struct {
+	candidate.Queries
+	suite string
+}
+
+func (q suiteQueries) SuiteDigest() string { return q.suite }
+func TestChangedFixedSuiteCannotReuseOldEvidence(t *testing.T) {
+	_, target, m, _, _, _ := buildFixture(t)
+	state := &validations{}
+	v := validator(state)
+	base := v.Queries
+	v.Queries = suiteQueries{base, strings.Repeat("a", 64)}
+	if _, err := v.Validate(t.Context(), target, m); err != nil {
+		t.Fatal(err)
+	}
+	state.calls = nil
+	v.Queries = suiteQueries{base, strings.Repeat("b", 64)}
+	if _, err := v.Validate(t.Context(), target, m); err != nil || len(state.calls) != 8 {
+		t.Fatal("stale fixed suite reused", err, state.calls)
+	}
+}

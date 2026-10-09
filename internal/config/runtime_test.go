@@ -267,3 +267,15 @@ func TestRuntimeOptionalMail(t *testing.T) {
 		})
 	}
 }
+
+func TestSmokeCasesAreWorkerOnlyAndErrorsAreRedacted(t *testing.T) {
+	values := testkit.RuntimeValues("/data")
+	values["BUILD_SMOKE_CASES"] = `{"private-student":[]}`
+	lookup := func(k string) (string, bool) { v, ok := values[k]; return v, ok }
+	if _, err := config.LoadRuntime(config.Worker, lookup); err == nil || strings.Contains(err.Error(), "private-student") {
+		t.Fatal("invalid suite or leaked identifier", err)
+	}
+	if _, err := config.LoadRuntime(config.Query, lookup); err != nil {
+		t.Fatal("worker suite affected query startup", err)
+	}
+}

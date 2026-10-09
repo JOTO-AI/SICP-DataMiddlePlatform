@@ -98,9 +98,12 @@ func (s Service) Student(ctx context.Context, h read.Handle, req contract.Studen
 		if e != nil {
 			return out, e
 		}
-		course, e := compute.Required(r, "JHKCH")
+		course, e := compute.Optional(r, "JHKCH")
 		if e != nil {
 			return out, e
+		}
+		if course == "" {
+			continue
 		}
 		keys[relationKey{class, course}] = true
 	}
@@ -150,11 +153,13 @@ func (s Service) assembler(ctx context.Context, h read.Handle, matches []Match, 
 		if err := b.Check(ctx); err != nil {
 			return Assembler{}, err
 		}
-		key, err := compute.Required(m.Schedule, "JHKCH")
+		key, err := compute.Optional(m.Schedule, "JHKCH")
 		if err != nil {
 			return Assembler{}, err
 		}
-		keys[key] = true
+		if key != "" {
+			keys[key] = true
+		}
 	}
 	ordered := make([]string, 0, len(keys))
 	for key := range keys {

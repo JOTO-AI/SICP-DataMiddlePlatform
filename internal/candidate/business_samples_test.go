@@ -124,3 +124,17 @@ func TestBusinessSelectionNeverHidesReadFailure(t *testing.T) {
 		}
 	}
 }
+
+func TestTeacherDiscoverySkipsDocumentedNullTerms(t *testing.T) {
+	m := sampleMatcherFunc(func(table, after string, n int, filters []source.Filter) ([]source.SourceRow, error) {
+		return []source.SourceRow{
+			sampleRow(map[string]string{"PKH": "1"}),
+			sampleRow(map[string]string{"PKH": "2", "KKXND": " ", "KKXQM": "", "JSJGH": ""}),
+			sampleRow(map[string]string{"PKH": "3", "KKXND": "2025-2026", "KKXQM": "1", "JSJGH": "T1"}),
+		}, nil
+	})
+	requests, err := selectTestCases(t, m, contract.StaffTimetable)
+	if err != nil || len(requests) != 1 {
+		t.Fatal(len(requests), err)
+	}
+}
