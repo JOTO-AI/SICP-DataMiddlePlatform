@@ -129,9 +129,9 @@ func newSource(t *testing.T) *mockSource {
 		}
 		startTime, endTime := r.URL.Query().Get("startTime"), r.URL.Query().Get("endTime")
 		if startTime != "" || endTime != "" {
-			start, e1 := time.Parse("2006-01-02 15:04:05.999999", startTime)
-			end, e2 := time.Parse("2006-01-02 15:04:05.999999", endTime)
-			if e1 != nil || e2 != nil || !start.Before(end) {
+			start, e1 := time.Parse("2006-01-02 15:04:05", startTime)
+			end, e2 := time.Parse("2006-01-02 15:04:05", endTime)
+			if e1 != nil || e2 != nil || len(startTime) != 19 || len(endTime) != 19 || !start.Before(end) {
 				http.Error(w, "invalid synthetic window", 400)
 				return
 			}

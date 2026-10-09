@@ -70,14 +70,18 @@ func TestI04_12(t *testing.T) {
 	requests := append([]sourceRequest(nil), f.source.audit...)
 	f.source.mu.Unlock()
 	count := 0
-	expectedStart := initial.StartedAt.Add(-control.IncrementalOverlap).In(zone).Format("2006-01-02 15:04:05.999999")
-	wrongStart := initial.PublishedAt.Add(-control.IncrementalOverlap).In(zone).Format("2006-01-02 15:04:05.999999")
+	expectedStart := initial.StartedAt.Add(-control.IncrementalOverlap).In(zone).Format("2006-01-02 15:04:05")
+	end := next.StartedAt.Truncate(time.Second)
+	if end.Before(*next.StartedAt) {
+		end = end.Add(time.Second)
+	}
+	expectedEnd := end.In(zone).Format("2006-01-02 15:04:05")
 	for _, request := range requests {
 		if request.Start == "" {
 			continue
 		}
 		count++
-		if request.Start != expectedStart || request.Start == wrongStart || request.End != next.StartedAt.In(zone).Format("2006-01-02 15:04:05.999999") {
+		if request.Start != expectedStart || request.End != expectedEnd {
 			t.Fatal("incremental request used publication time instead of full started_at")
 		}
 		if request.Table == "dwd_bzkscjzlb" && request.Rows != 1 {

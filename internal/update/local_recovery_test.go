@@ -106,13 +106,14 @@ func TestT14_07And10LocalRecoveryReopensActualFourteenSourceSeal(t *testing.T) {
 	for _, damage := range []string{"none", "seal", "target", "roles", "failed"} {
 		t.Run(damage, func(t *testing.T) {
 			a, requests := acquisition(t, "")
-			p := updatePlan()
+			p := fractionalUpdatePlan()
 			lease, err := a.Acquire(t.Context(), p, time.UTC)
 			if err != nil {
 				t.Fatal(err)
 			}
 			c, w := changedFixture(t)
 			w.prepared.Manifest.Input = lease.Reference()
+			w.prepared.Plan = p
 			raw, _ := json.Marshal(p)
 			roles := control.Document(raw)
 			task := control.Task{ID: p.TaskID, Mode: p.Mode, Status: "running", StartedAt: &p.StartedAt, Roles: &roles}

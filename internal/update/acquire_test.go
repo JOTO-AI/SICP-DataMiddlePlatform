@@ -218,23 +218,23 @@ func TestT13_12EachSourceFinalFailureBlocksComparisonAndAllLaterWork(t *testing.
 }
 func TestT13_01AcquisitionPagesAndRetriesKeepPerTableWindow(t *testing.T) {
 	a, requests := acquisition(t, "")
-	p := updatePlan()
+	p := fractionalUpdatePlan()
 	name := ingest.Catalog()[0].Name
 	w := p.Windows[name]
 	w.ConfirmedUntil = w.ConfirmedUntil.Add(-time.Hour)
 	w.Start = w.Start.Add(-time.Hour)
 	p.Windows[name] = w
-	l, err := a.Acquire(t.Context(), p, time.UTC)
+	l, err := a.Acquire(t.Context(), p, time.FixedZone("source", 8*60*60))
 	if err != nil || l == nil {
 		t.Fatal(err)
 	}
 	counts := map[string]int{}
 	for _, r := range *requests {
-		start := "2100-01-01 07:55:00"
+		start := "2100-01-01 15:55:00"
 		if r.name == name {
-			start = "2100-01-01 06:55:00"
+			start = "2100-01-01 14:55:00"
 		}
-		if r.query.Get("startTime") != start || r.query.Get("endTime") != "2100-01-01 10:00:00" {
+		if r.query.Get("startTime") != start || r.query.Get("endTime") != "2100-01-01 18:00:01" {
 			t.Fatal(r)
 		}
 		counts[r.name+":"+r.query.Get("page")]++
@@ -312,4 +312,17 @@ func TestT13_16FullUpdateWithoutTrustedOldBaselineCannotPrepareTarget(t *testing
 	if err == nil || spy.calls != 0 || out.Manifest.Combination != "" {
 		t.Fatal(out, err)
 	}
+}
+
+// Real task timestamps include subsecond precision even when fixture ETL dates do not.
+func fractionalUpdatePlan() control.UpdatePlan {
+	p := updatePlan()
+	p.StartedAt = p.StartedAt.Add(123456 * time.Microsecond)
+	for name, w := range p.Windows {
+		w.ConfirmedUntil = w.ConfirmedUntil.Add(654321 * time.Microsecond)
+		w.Start = w.ConfirmedUntil.Add(-p.Overlap)
+		w.End = p.StartedAt
+		p.Windows[name] = w
+	}
+	return p
 }

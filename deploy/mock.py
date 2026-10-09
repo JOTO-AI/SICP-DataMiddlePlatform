@@ -105,7 +105,10 @@ class HTTP(BaseHTTPRequestHandler):
             if ("startTime" in q) != ("endTime" in q):
                 raise ValueError()
             if "startTime" in q:
-                start, end = date(q["startTime"][0]), date(q["endTime"][0])
+                start_raw, end_raw = q["startTime"][0], q["endTime"][0]
+                if any(len(v) != 19 or v[10] != " " for v in (start_raw, end_raw)):
+                    raise ValueError()
+                start, end = date(start_raw), date(end_raw)
                 if start >= end:
                     raise ValueError()
                 rows = [r for r in rows if start <= date(r["ETL_TIME"]) < end]
