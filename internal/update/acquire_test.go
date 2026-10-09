@@ -178,7 +178,7 @@ func TestAcquisitionFailureKeepsLastCommittedPageAndTelemetryFailureIsNonFatal(t
 				t.Fatal("source failure lost")
 			}
 			for _, table := range last {
-				if table.Table == failed && (table.CompletedPages != 1 || table.TotalPages == nil || *table.TotalPages != 2 || table.Status != "acquiring") {
+				if table.Table == failed && (table.CompletedPages != 1 || table.TotalPages == nil || *table.TotalPages != 2 || table.Status != "failed") {
 					t.Fatal(table)
 				}
 			}

@@ -273,7 +273,13 @@ func TestT15_10WorkerValidationUsesQueryRoleAndRoutesHaveReadOnlyEvidence(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(business[len(business)-1].SQL, "GRANT sicp_query TO sicp_worker") {
+	membership := ""
+	for _, migration := range business {
+		if migration.Version == "business_002" {
+			membership = migration.SQL
+		}
+	}
+	if !strings.Contains(membership, "GRANT sicp_query TO sicp_worker") {
 		t.Fatal("missing validation role membership")
 	}
 	control, err := migrate.Catalog(migrate.Control)
