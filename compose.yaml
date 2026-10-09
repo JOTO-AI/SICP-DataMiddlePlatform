@@ -148,7 +148,7 @@ services:
       DATABASE_LOG_USER: "sicp_logger"
       DATABASE_LOG_PASSWORD: "${LOGGER_PASSWORD:?Set LOGGER_PASSWORD in .env (copy .env.example)}"
     volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-logs:/var/lib/sicp/logs"]
-    ports: ["127.0.0.1:${SICP_QUERY_PORT:-18080}:8080"]
+    ports: ["0.0.0.0:${SICP_QUERY_PORT:-18080}:8080"]
     healthcheck:
       test: [CMD, /usr/local/bin/service, --healthcheck]
       interval: 5s
