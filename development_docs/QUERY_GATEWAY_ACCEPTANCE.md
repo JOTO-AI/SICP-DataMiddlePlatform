@@ -23,3 +23,5 @@ GW-P01.01 原提交 `2ea9176` 的四个协议测试曾通过；该结果不代�
 生产变更不涉及数据库结构或数据布局。迁移、HTTPS URL/CA、文件权限、续期、失败恢复和整套回退见 [部署说明](../deploy/README.md)。本报告只覆盖网关专项，不勾选第二阶段业务接口。
 
 本次本地静态检查：Python AST、Compose/Actions YAML 解析、逐文件 Bash 语法、`vue-tsc --noEmit --project frontend/tsconfig.json` 和 `git diff --check` 通过。曾尝试通用 `tsc`，其无法解析仓库 Vue SFC；改用项目已有 `vue-tsc` 后通过。未在本地执行单元、容器或浏览器测试。
+
+首轮提交 `8f76304ae68ad871cb67399f2f38f1cf00c4de43` 已推送。[CI 38043316276](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38043316276) 的 Compose/gateway 构建暴露 deploy 独立构建上下文漏放行新模板与公共脚本；已修正 `deploy/.dockerignore`，不将该轮记为通过。其工件上传仍受配额阻塞，按用户要求不继续处理配额。
