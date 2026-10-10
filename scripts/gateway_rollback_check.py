@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import tarfile
 import tempfile
+import traceback
 import urllib.request
 
 from gateway_runtime import Compose
@@ -54,6 +55,8 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except Exception:
-        print('Legacy rollback: failed')
+    except Exception as error:
+        print('Legacy rollback: failed (' + type(error).__name__ + ')')
+        for frame in traceback.extract_tb(error.__traceback__):
+            print(Path(frame.filename).name + ':' + str(frame.lineno) + ' ' + frame.name)
         raise SystemExit(1)

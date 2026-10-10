@@ -5,7 +5,10 @@ const root = resolve(process.cwd(), '..')
 const origin = (tls: boolean) => `${tls ? 'https' : 'http'}://sicp-gateway.test:28080`
 function operation(action: string) {
   try { execFileSync('python3', ['scripts/gateway_deployment_checks.py', action], { cwd: root, timeout: 600_000, stdio: 'pipe' }) }
-  catch { throw new Error(`gateway operation failed: ${action}`) }
+  catch (error) {
+    const detail = (error as { stdout?: Buffer }).stdout?.toString() || "no fixture diagnostic"
+    throw new Error(`gateway operation failed: ${action}: ${detail}`)
+  }
 }
 async function login(page: Page, tls: boolean, base = origin(tls)) {
   await page.goto(`${base}/console/`)
@@ -42,6 +45,7 @@ test('GW-I03/GW-I05 real sessions, HTTP → HTTPS → HTTP, renewal and recovery
   const page = await kept.newPage()
   await login(page, false)
   operation('https')
+  operation('smoke-https')
   await login(page, true)
   const second = await browser.newContext()
   const logoutPage = await second.newPage()

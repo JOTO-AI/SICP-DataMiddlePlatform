@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import time
+import traceback
 
 from gateway_container_checks import certificates, create_ca
 from gateway_runtime import Compose, GatewayError, apply_gateway, tls_context
@@ -55,8 +56,8 @@ def smoke(tls=False):
     for path in ('/', '/console'):
         assert request(path, tls=tls)[1]['Location'] == '/console/', 'redirect must be relative'
         assert request(path, 'POST', tls=tls)[0] == 405, 'method redirected'
-    for path in ('/admin/v1/tasks/', '/admin/v1/tables/x/force-full', '/console-api/session'):
-        assert request(path, headers={'X-API-Key': 'synthetic-query-secret'}, tls=tls)[0] == 401, 'business key grants management access'
+    for path, method in (('/admin/v1/tasks/', 'GET'), ('/admin/v1/tables/x/force-full', 'POST'), ('/console-api/session', 'GET')):
+        assert request(path, method, headers={'X-API-Key': 'synthetic-query-secret'}, tls=tls)[0] == 401, 'business key grants management access'
     payload = json.dumps({'student_number': '00202600001', 'academic_year': '2025-2026', 'page': 1, 'page_size': 100})
     path = '/api/v1/sicp/students/grades/query'
     headers = {'Content-Type': 'application/json', 'X-API-Key': 'wrong-key'}
@@ -105,6 +106,13 @@ def switch(tls):
     after = ids()
     assert all(after[service] != before[service] for service in ('worker', 'query-gateway')), 'switch did not recreate paired services'
     assert all(after[service] == before[service] for service in ('query', 'console')), 'switch recreated unrelated services'
+
+
+def smoke_https():
+    smoke(True)
+    # Reuse the existing real table-update regression with a trusted TLS client.
+    os.environ['SICP_CA_FILE'] = str(CERTS / 'ca.pem')
+    run('python3', 'scripts/check-table-update.py', f'https://{HOST}:{PORT}')
 
 
 def renew():
@@ -170,11 +178,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
     assert os.environ.get('GITHUB_ACTIONS') == 'true' and os.environ.get('SICP_PROJECT') == 'sicp-gateway-http', 'isolated Linux CI required'
     actions = {'setup': setup, 'https': lambda: switch(True), 'http': lambda: switch(False), 'renew': renew,
-               'bad-preflight': bad_preflight, 'failed-switch': failed_switch, 'smoke-https': lambda: smoke(True)}
+               'bad-preflight': bad_preflight, 'failed-switch': failed_switch, 'smoke-https': smoke_https}
     try:
         actions[args.action]()
         print(args.action + ': passed')
-    except Exception:
+    except Exception as error:
         # No subprocess stdout, model, session or certificate/key contents in artifacts.
-        print(args.action + ': failed')
+        print(args.action + ': failed (' + type(error).__name__ + ')')
+        for frame in traceback.extract_tb(error.__traceback__):
+            print(Path(frame.filename).name + ':' + str(frame.lineno) + ' ' + frame.name)
+        if isinstance(error, GatewayError):
+            print(str(error))
         raise SystemExit(1)
