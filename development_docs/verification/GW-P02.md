@@ -1,6 +1,6 @@
 # GW-P02 网关模板与启动复核
 
-2026-10-10：GW-P02.01、GW-P02.02 实现、测试代码及静态复核完成，运行测试待本次提交的 Linux CI。
+2026-10-10：GW-P02.01、GW-P02.02 实现、测试代码及静态复核完成。真实 Nginx 容器测试和部署验收已通过，见 GW-T02、GW-I01—GW-I02 与专项验收报告。
 
 完整配置写入 `/tmp/sicp-nginx/nginx.conf`，共用 main/routes/headers/management 片段，外部选择 HTTP 或 HTTPS，内部 8080 仅保留 query/探针。Nginx 运行变量不做环境替换，证书始终引用固定容器路径。启动检查与正式启动使用同一完整配置，UID/GID 65532、只读根目录、16 MiB tmpfs。
 

@@ -1,37 +1,30 @@
 # query-gateway 专项验收记录
 
-2026-10-10。状态：**开发与静态复核完成，新增 Linux CI 验证待执行；专项尚未验收通过。** 按用户“先开发完，不管配额”要求合并完成剩余开发，不继续等待或处理存储额度。
+2026-10-10。**GW-P01—GW-P04 开发和复核完成，GW-T01—GW-T04 与 GW-I01—GW-I05 全部通过；适用的既有回归也已通过。** 最终运行代码提交为 `e9f51fe465e962a0ccbf05bd6cf4de994159b679`，[CI 38045537916](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38045537916)。仅工件归档尚未完成，原因与各项证据如下。
 
-GW-P01.01 原提交 `2ea9176` 的四个协议测试曾通过；该结果不代表本次完整变更通过。本次 SHA、Actions 链接、运行数量和退出码应在推送后的实际运行结束后记录，未执行、缺失和跳过均不勾选。
-
-| 项目 | 已实现的验证入口 | 当前运行状态 |
+| 验证范围 | 实际结果 | 证据 |
 | --- | --- | --- |
-| GW-T01 | `test_gateway_config.py`、`test_gateway_runtime.py` 的路径/端口/占位用例 | 新增部分待 CI |
-| GW-T02 | `gateway_container_checks.py` 真实 Nginx 容器契约 | 待 CI |
-| GW-T03 | Python worker/配置契约、既有 Go session/proxy 测试、Compose 配置检查 | 待本次 CI |
-| GW-T04 | `test_gateway_runtime.py` 的 Operations 与验收缺项检查 | 待 CI |
-| GW-I01 | 真实部署 setup/smoke，两类空配置、SPA、相对跳转、管理/业务鉴权、单端口；容器内外白名单 | 待 CI |
-| GW-I02 | 真实 Nginx 普通/异常证书、权限/设备/目录/缺失、错误 CA/域名/过期、无依赖预检 | 待 CI |
-| GW-I03 | 真实 HTTP/HTTPS Chromium 会话/CSRF/查询、Vite HTTP；合成上游逐 location 头检查 | 待 CI |
-| GW-I04 | 多副本 2→4→重建→1→2、共享快照/日志、worker/console DNS 恢复、POST 不重放、请求/缓冲/超时 | 待 CI |
-| GW-I05 | 同一浏览器双向切换、Cookie 清理、先退出分支、续期保留会话、无效预检保留旧入口、失败中断恢复、整套旧版回退 | 待 CI |
+| GW-T01 / T03 / T04 | 20 个 Python 方法通过，0 fail / 0 skip，0.375 秒；包括全部现有服务容器的配置漂移拒绝 | [unit job](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38045537916/job/114194192603) |
+| 既有 Go 单元回归 | 1,482 项通过（含子测试），0 fail / 0 skip；race、vet、Linux 构建及 30 次生命周期回归通过 | 同上 |
+| GW-T02、GW-I01—I02 | 6 个真实 Nginx 容器方法通过，0 fail / 0 skip，49.225 秒；真实 Compose setup/smoke 退出码 0 | [gateway job](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38045537916/job/114194192544) |
+| GW-I03 / I05 | 2 个真实 Chromium 方法通过，0 fail / 0 skip，1.9 分钟；双向切换、可信 TLS、续期会话、失败恢复及 Vite HTTP 开发链路可用 | 同上 |
+| GW-I04 | query 2→4→重建 4→1→2、副本/快照/日志及 worker/console DNS 恢复通过 | 同上 |
+| 整套旧版本回退 | 固定基线 `3443eaeafe30e5870dc5c5d84ddfa7e19df517e9` 的旧镜像与配置恢复，登录/查询/页面正常，业务数据保留 | 同上 |
+| 前端既有回归 | 构建、Playwright 测试、console 镜像构建通过 | [frontend job](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38045537916/job/114194192463) |
+| Compose 既有回归 | 干净检出部署、初始化及保留数据重建通过 | [compose job](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38045537916/job/114194192607) |
+| 既有 I01—I05 集成回归 | 103 项通过（含子测试），0 fail / 0 skip，所有分组退出码 0；提交 `570827a` | [integration job](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38044768384/job/114192879141) |
+| 既有 I06 部署回归 | 20 项通过（含子测试），0 fail / 0 skip，842.014 秒，退出码 0；提交 `570827a` | [deployment job](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38044768384/job/114192879115) |
 
-自动入口：`bash scripts/check.sh`、既有 Compose/integration/frontend 作业，以及新 `gateway` 作业的 `bash scripts/check-gateway.sh`。gateway 报告生成器要求所有必需组退出码为 0，真实容器及浏览器测试无跳过。工件仅包含测试结果与脱敏统计；测试证书私钥、Cookie、完整环境不上传。
+既有 I01—I06 的上述证据来自 `570827a6c753539612f71becdc73b6422e75dae7`；其后 `e9f51fe` 的运行代码变更仅为续期配置漂移检查，已由该提交的 Python 契约及真实网关续期场景验证。两组旧回归自身代码没有再变动；记录时 `e9f51fe` 的同组重复回归仍在运行，未提前将这些重复运行标为成功。
 
-夹具固定：域名 `sicp-gateway.test`；真实部署端口 28080，合成网关 28443；项目 `sicp-gateway-http`，合成网络 `sicp-gateway-contracts`；CA 有效 3 天、站点证书 2 天、过期证书 -1 天；慢读响应 16 MiB、每 64 KiB 等待 10 ms；POST 超时预算 35 秒、断言上限 42 秒；回退基线 `3443eaeafe30e5870dc5c5d84ddfa7e19df517e9`。这些规模用于功能边界，不能推导生产容量。
+网关的 contracts/deployment/replicas/browser/rollback 五组退出码均为 0，最终门禁输出 `Gateway required scenarios: passed`。门禁检查六项容器方法、两个浏览器方法和证书记录，缺失、失败、跳过不能通过；HTTPS 与续期叶证书 SHA256 来自可信连接并与独立文件预期匹配，记录检查要求两次指纹不同。不在报告中编造未取得的具体指纹值。
 
-生产变更不涉及数据库结构或数据布局。迁移、HTTPS URL/CA、文件权限、续期、失败恢复和整套回退见 [部署说明](../deploy/README.md)。本报告只覆盖网关专项，不勾选第二阶段业务接口。
+**CI 整体尚非成功：工件上传因 GitHub 存储配额失败。** 功能测试和工件上传分别记录；既有 integration/deployment 只依赖 unit 的实际验证输出，上传失败不会跳过测试，测试失败仍阻止后续依赖。按用户要求本轮不处理配额、不继续清理或备份；不能宣称脱敏工件已归档。上述 Actions 步骤和日志可查。
 
-本次本地静态检查：Python AST、Compose/Actions YAML 解析、逐文件 Bash 语法、`vue-tsc --noEmit --project frontend/tsconfig.json` 和 `git diff --check` 通过。曾尝试通用 `tsc`，其无法解析仓库 Vue SFC；改用项目已有 `vue-tsc` 后通过。未在本地执行单元、容器或浏览器测试。
+执行入口：`bash scripts/check.sh`、`bash scripts/check-gateway.sh`、既有 Compose/frontend 作业，以及独立的 I01—I05 integration、I06 deployment 作业。各场景映射见 [计划](QUERY_GATEWAY_HTTPS_DEPLOYMENT_PLAN.md) 和 `verification/GW-T*.md`、`verification/GW-I*.md`。
 
-首轮提交 `8f76304ae68ad871cb67399f2f38f1cf00c4de43` 已推送。[CI 38043316276](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38043316276) 的 Compose/gateway 构建暴露 deploy 独立构建上下文漏放行新模板与公共脚本；已修正 `deploy/.dockerignore`，不将该轮记为通过。其工件上传仍受配额阻塞，按用户要求不继续处理配额。
+夹具固定：域名 `sicp-gateway.test`；真实部署端口 28080，合成网关 28443；项目 `sicp-gateway-http`，合成网络 `sicp-gateway-contracts`；CA 有效 3 天、站点证书 2 天、过期证书 -1 天；慢读响应 16 MiB、每 64 KiB 等待 10 ms；POST 超时预算 35 秒、断言上限 42 秒。这些规模验证功能边界，不代表生产容量。临时 CA/私钥在工件目录之外生成，不上传 Cookie、完整环境、私钥或浏览器 storage state。
 
-修正提交 `6c94ecf` 的 [CI 38043446381](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38043446381) 已成功构建真实网关并执行六个容器方法，4 pass / 2 fail / 0 skip。定位并修复：Nginx 对以 `/` 结尾的代理 location 自动重定向无尾斜杠地址，现增加精确 404；合成上游未等待监听，现增加有界就绪检查。头部隔离、错误证书文件、无依赖预检/副本边界、POST 不重放/限制/慢读场景已在该轮通过；整组及新修正仍须重新验证。
+本地仅完成静态检查：Python AST、Compose/Actions YAML 解析、逐文件 Bash 语法、`vue-tsc --noEmit --project frontend/tsconfig.json` 及 `git diff --check`；未在本地执行单元、容器或浏览器测试。代码复核及 CI 已修正构建上下文遗漏、无尾斜杠路径意外重定向、测试夹具启动等待/管理请求方法、旧独立进程测试绑定地址和续期配置漂移覆盖。
 
-CI 调度调整：integration 依赖 unit 的实际验证输出，单测/配置检查失败仍阻止集成；仅工件上传失败不会跳过集成测试，且仍使总工作流失败。这不会绕过测试失败或伪造验收成功。
-
-???? `5c2e0d7` / [CI 38043820509](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38043820509) ? unit?frontend?compose ????/?????????????integration ???????????gateway ???????????????????/???????Vite ?????????????????? gateway ???? CI ?????????????????????
-
-`5c2e0d7` ? gateway job `114189207002` ?????????? Nginx ?????setup ???????????????????????????????????????? passed?? GW-I01?I05 ?????????????? SHA256 ???????????????????????????????? I06 ??????????????????? CI ?????
-
-???????????????????Redis ??????????????? hash??? `compose run` ???????????????????????????? Redis ?????????????? CI?
+生产变更不涉及数据库结构或数据布局。迁移、URL/CA、文件权限、续期、失败恢复及整套回退见 [部署说明](../deploy/README.md)。单网关切换/续期有停机窗口；HTTPS→HTTP 须处理旧 Secure Cookie/HSTS。本报告仅覆盖网关专项，不勾选第二阶段业务接口，也不代表已部署到生产。

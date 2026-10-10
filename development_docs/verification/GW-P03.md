@@ -1,6 +1,6 @@
 # GW-P03 统一部署接入复核
 
-2026-10-10：GW-P03.01—03 实现、测试代码及静态复核完成；新增测试待 Linux CI。
+2026-10-10：GW-P03.01—03 实现、测试代码及静态复核完成；Linux 配置、部署、浏览器及多实例验证通过，见 GW-T03、GW-I01—GW-I04 与专项验收报告。
 
 Compose 仅发布 `SICP_GATEWAY_PORT → 8443`，证书使用只读长格式绑定挂载、`create_host_path: false`，仅空值使用 `/dev/null`。worker 固定标记受网关管理，消费相同 TLS 路径并派生 Cookie Secure，不挂载私钥。未受管理时保留旧 Cookie 配置；未知标记拒绝。
 
