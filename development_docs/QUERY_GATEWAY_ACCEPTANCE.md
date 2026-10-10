@@ -25,3 +25,7 @@ GW-P01.01 原提交 `2ea9176` 的四个协议测试曾通过；该结果不代�
 本次本地静态检查：Python AST、Compose/Actions YAML 解析、逐文件 Bash 语法、`vue-tsc --noEmit --project frontend/tsconfig.json` 和 `git diff --check` 通过。曾尝试通用 `tsc`，其无法解析仓库 Vue SFC；改用项目已有 `vue-tsc` 后通过。未在本地执行单元、容器或浏览器测试。
 
 首轮提交 `8f76304ae68ad871cb67399f2f38f1cf00c4de43` 已推送。[CI 38043316276](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38043316276) 的 Compose/gateway 构建暴露 deploy 独立构建上下文漏放行新模板与公共脚本；已修正 `deploy/.dockerignore`，不将该轮记为通过。其工件上传仍受配额阻塞，按用户要求不继续处理配额。
+
+修正提交 `6c94ecf` 的 [CI 38043446381](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38043446381) 已成功构建真实网关并执行六个容器方法，4 pass / 2 fail / 0 skip。定位并修复：Nginx 对以 `/` 结尾的代理 location 自动重定向无尾斜杠地址，现增加精确 404；合成上游未等待监听，现增加有界就绪检查。头部隔离、错误证书文件、无依赖预检/副本边界、POST 不重放/限制/慢读场景已在该轮通过；整组及新修正仍须重新验证。
+
+CI 调度调整：integration 依赖 unit 的实际验证输出，单测/配置检查失败仍阻止集成；仅工件上传失败不会跳过集成测试，且仍使总工作流失败。这不会绕过测试失败或伪造验收成功。

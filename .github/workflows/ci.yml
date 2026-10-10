@@ -99,6 +99,8 @@ jobs:
             frontend/dist/
   unit:
     runs-on: ubuntu-24.04
+    outputs:
+      validated: ${{ steps.validate_deployment.outcome == 'success' }}
     defaults:
       run:
         shell: bash
@@ -119,6 +121,7 @@ jobs:
           docker build --platform linux/amd64 -f deploy/Dockerfile --build-arg SERVICE=query-service -t sicp-query:p01 .
           docker build --platform linux/amd64 -f deploy/Dockerfile --build-arg SERVICE=sync-worker -t sicp-worker:p01 .
       - name: Validate deployment template without starting integration services
+        id: validate_deployment
         run: |
           bash scripts/sicp.sh prepare
           python3 scripts/check-compose-config.py
@@ -135,6 +138,9 @@ jobs:
           if-no-files-found: error
   integration:
     needs: unit
+    # Unit validation must pass; an evidence-upload failure must not skip tests.
+    # Upload failures still fail the overall workflow and are never suppressed.
+    if: ${{ always() && needs.unit.outputs.validated == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:

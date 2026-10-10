@@ -60,6 +60,15 @@ class GatewayContainers(unittest.TestCase):
                     '-e', 'PORT=' + port, '--mount', 'type=bind,src=' + str(ROOT / 'scripts/fixtures/gateway_echo.py') + ',dst=/echo.py,readonly',
                     'python:3.12-alpine', 'python', '/echo.py')
             cls.upstreams.append(name)
+            # docker run -d confirms process creation, not the Python listener.
+            for _ in range(50):
+                ready = command('docker', 'exec', name, 'python', '-c',
+                                "import socket; socket.create_connection(('127.0.0.1', " + port + "), 1).close()", check=False)
+                if ready.returncode == 0:
+                    break
+                time.sleep(.1)
+            else:
+                raise AssertionError('synthetic upstream did not become ready')
 
     @classmethod
     def tearDownClass(cls):
@@ -115,7 +124,7 @@ class GatewayContainers(unittest.TestCase):
                 self.assertEqual(status, 200)
                 data = json.loads(payload)
                 self.assertEqual((data['path'], data['method'], data['body']), (path + '?a=1', 'POST', '{"literal":"value"}'))
-            for path in ('/livez', '/readyz', '/console-other/', '/console-api', '/admin/v1/tasksx/', '/admin/v1/tablesx/', '/api/v1/sicpx/', '/unknown'):
+            for path in ('/livez', '/readyz', '/console-other/', '/console-api', '/admin/v1/tasks', '/admin/v1/tables', '/api/v1/sicp', '/admin/v1/tasksx/', '/admin/v1/tablesx/', '/api/v1/sicpx/', '/unknown'):
                 self.assertEqual(self.request(path, tls=tls)[0], 404)
             for path in ('/', '/console'):
                 self.assertEqual(self.request(path, tls=tls)[1]['Location'], '/console/')
