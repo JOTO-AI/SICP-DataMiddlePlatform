@@ -55,8 +55,18 @@ jobs:
           cd frontend
           npm ci
           npx playwright install --with-deps chromium
-      - name: Gateway contracts and real deployment/browser scenarios
-        run: bash scripts/check-gateway.sh
+      - name: Gateway real Nginx contracts
+        run: bash scripts/check-gateway.sh contracts
+      - name: Gateway real Compose deployment
+        run: bash scripts/check-gateway.sh deployment
+      - name: Gateway replicas and DNS regression
+        run: bash scripts/check-gateway.sh replicas
+      - name: Gateway trusted browser, protocol switch and renewal
+        run: bash scripts/check-gateway.sh browser
+      - name: Gateway full previous-release rollback
+        run: bash scripts/check-gateway.sh rollback
+      - name: Require every gateway acceptance scenario
+        run: python3 scripts/gateway_acceptance.py
       - name: Summarize evidence and stop isolated deployment
         if: always()
         run: |

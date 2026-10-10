@@ -178,6 +178,17 @@ class Operations(unittest.TestCase):
         with self.assertRaises(GatewayError):
             self.apply(compose, 'gateway-renew')
         self.assertEqual(compose.mutations(), [])
+        compose = FakeCompose(True)
+        original = compose.containers
+        def legacy(service):
+            items = original(service)
+            if service == 'worker':
+                items[0]['Config']['Env'] = ['SICP_GATEWAY_MANAGED=true']
+            return items
+        compose.containers = legacy
+        with self.assertRaises(GatewayError):
+            self.apply(compose, 'gateway-renew', 'https://test:18080')
+        self.assertEqual(compose.mutations(), [])
 
     def test_gw_t04_03_preflight_and_url_fail_before_mutation(self):
         for url in ('http://u:p@test:18080', 'http://test:18080/console/', 'https://test:18080', 'http://test:80'):
@@ -204,6 +215,17 @@ class Operations(unittest.TestCase):
             self.apply(compose, url='https://test:18080', verify=reject)
         self.assertEqual(GatewayConfig.from_model(compose.value).mode, 'https')
         self.assertEqual(len(compose.mutations()), 3)
+        class TimeoutCompose(FakeCompose):
+            def run(self, *args, **kwargs):
+                result = super().run(*args, **kwargs)
+                if args[0] == 'up':
+                    raise GatewayError('command: unavailable_or_timeout')
+                return result
+        compose = TimeoutCompose(True)
+        with self.assertRaisesRegex(GatewayError, 'unavailable_or_timeout'):
+            self.apply(compose, url='https://test:18080', verify=lambda *_: self.fail('timeout must not verify'))
+        self.assertEqual(len(compose.mutations()), 2)
+        self.assertEqual(GatewayConfig.from_model(compose.value).mode, 'https')
 
 
 if __name__ == '__main__':

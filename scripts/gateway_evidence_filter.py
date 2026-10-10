@@ -21,5 +21,13 @@ if __name__ == '__main__':
             if path.is_file() and path.suffix in ('.json', '.txt', '.md'):
                 path.write_text(redact(path.read_text()), encoding='utf-8')
     else:
+        private_key = False
         for line in sys.stdin:
+            if re.search(r'-----BEGIN [^-]*PRIVATE KEY-----', line):
+                private_key = True
+                print('[redacted private key]', flush=True)
+            if private_key:
+                if re.search(r'-----END [^-]*PRIVATE KEY-----', line):
+                    private_key = False
+                continue
             print(redact(line), end='', flush=True)

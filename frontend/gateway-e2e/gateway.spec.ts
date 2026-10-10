@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
+import { loadConfigFromFile } from 'vite'
 const root = resolve(process.cwd(), '..')
 const origin = (tls: boolean) => `${tls ? 'https' : 'http'}://sicp-gateway.test:28080`
 function operation(action: string) {
@@ -70,5 +71,7 @@ test('GW-I03/GW-I05 real sessions, HTTP → HTTPS → HTTP, renewal and recovery
   await second.close()
 })
 test('GW-I03 Vite HTTP proxy reaches the real unified gateway', async ({ page }) => {
+  const config = await loadConfigFromFile({ command: 'serve', mode: 'test' }, 'vite.config.ts')
+  expect(config?.config.server?.proxy?.['/console-api']).toMatchObject({ target: 'http://127.0.0.1:18080' })
   await login(page, false, 'http://sicp-gateway.test:5173')
 })
