@@ -87,7 +87,11 @@ jobs:
         if: always()
         with:
           name: linux-unit-evidence
-          path: artifacts/
+          path: |
+            artifacts/
+            !artifacts/query-service
+            !artifacts/sync-worker
+            !artifacts/db-migrate
           if-no-files-found: error
   integration:
     needs: unit

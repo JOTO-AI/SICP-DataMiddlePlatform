@@ -1,6 +1,6 @@
 # GW-P01 协议与部署配置规则
 
-更新：2026-10-10。GW-P01.01 已编写实现和测试并完成静态代码复核，等待提交及对应 SHA 的完整 GitHub Actions Linux CI。GW-P01 阶段尚未完成；GW-P01.02 和后续步骤尚未开始。
+更新：2026-10-10。GW-P01.01 已实现、复核并推送 `2ea9176`；对应 Linux CI 的测试和构建步骤成功，但工件上传因存储配额耗尽而失败，完整 CI 未通过。GW-P01 阶段尚未完成；GW-P01.02 和后续步骤尚未开始。
 
 ## GW-P01.01 协议选择与错误分类
 
@@ -20,3 +20,17 @@
 - 回退仅涉及新增公共脚本、测试、CI 调用和记录，不改变运行中的入口，不涉及数据库或数据卷。
 
 本地已完成源码静态复核、改动文件尾随空白检查及 `git diff --check -- scripts/check.sh`（退出码 0）。尝试 Python AST 语法检查时，本机 `python` 不在 PATH，`py -3` 也报告未安装 Python 3；因此 AST 检查未执行成功，不计为通过。未执行单元测试、容器测试或部署。待本小步提交及完整 Linux CI 成功后，才能进入 GW-P01.02；CI 失败先修复当前小步。
+
+## 首次提交与 CI 结果
+
+- 分支 `feat/query-gateway-https`，提交 `2ea9176841a042492b11f508079391016db14da8`，已通过 Git 推送并核对远端分支指向。
+- [Linux CI 38040043167](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38040043167) 最终结果为 failure。unit 的单测/race/vet/Linux 构建、重复生命周期回归、服务镜像与部署配置检查，frontend 的构建/测试/镜像，以及 Compose 烟测步骤均 success；三者均在 upload-artifact 失败，integration 因依赖 unit 失败被 skipped。
+- GitHub 错误注释明确为 `Artifact storage quota has been hit`。不能忽略工件失败或把跳过的集成作业计为通过；需恢复工件存储可用性并重跑当前提交的 CI，完整成功后才能继续。
+- 按用户要求复用历史 `artifacts/ci_status.py`、`artifacts/github_ci.py`、`artifacts/ci_counts.py` 查询状态、错误和测试统计；已移除本次重复创建的查询脚本。授权凭据仅用于 API 认证，不写入文件或输出。尚未删除远端工件或修改存储额度。
+- 后续定位到 `C:/Users/41058/anaconda3/python.exe`，仅执行本地测试文件 AST 解析，结果成功；单测仍仅在 Linux CI 执行。测试计数见 GW-T01。
+
+## 工件容量修正与计划同步
+
+- 计划文档已勾选 GW-P01.01 和实际通过的 GW-T01-01—03 子项；GW-P01/GW-T01 整组及其后步骤保持未完成，完整 CI 仍未通过。
+- 复核发现 unit 工件上传整个 `artifacts/`，同时保存了三个每次可重建的 Linux 二进制。调整 CI 上传范围，仅排除 `query-service`、`sync-worker`、`db-migrate` 三个二进制；保留单测 JSON、覆盖率、网关测试输出、退出码及其他测试证据，仍执行全部 Linux 构建。
+- Review：三个二进制没有跨作业下载使用点；服务镜像在对应步骤单独构建。保持 upload-artifact 的失败门禁及 `if-no-files-found: error`，不使用 continue-on-error、不跳过测试或强行标记成功。此修正减少新增占用，但不会自动释放已耗尽的远端存储。

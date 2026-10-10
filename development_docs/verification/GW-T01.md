@@ -1,6 +1,6 @@
 # GW-T01 协议与配置规则测试记录
 
-更新：2026-10-10。状态：**测试代码已编写，未执行，未验收通过。** 当前无提交 SHA、Actions 运行链接、退出码或通过/失败/跳过统计，不能据此进入下一小步。
+更新：2026-10-10。状态：**GW-T01-01—03 的四个测试方法已在 Linux CI 通过；完整 CI 因工件配额失败，尚不能进入下一小步。** GW-T01-04—06 未开发，GW-T01 整组未验收通过。
 
 ## GW-P01.01 对应测试
 
@@ -24,4 +24,12 @@ python3 -m unittest discover -v -s scripts -p 'test_gateway_config.py'
 
 `sh -n` 属于语法检查，不计为单元测试。单测输出和实际退出码分别进入 `artifacts/gateway-config-tests.txt`、`artifacts/gateway-config-exit-code.txt`，随现有 `linux-unit-evidence` 工件保存。用例包含四个顶层测试方法及多个子用例，执行次数不能混算为 unittest 顶层通过数量。Linux 以外的跳过不能计为通过。
 
-待运行后补录：实际提交 SHA、Actions 链接、上述命令退出码、通过/失败/跳过数量及完整 CI 结果。GW-T01-04—06 尚待 GW-P01.02 开发；GW-T01 整组未完成。本记录不代替真实 Nginx、挂载、权限或最终 HTTP/HTTPS 集成验收。
+GW-T01-04—06 尚待 GW-P01.02 开发；GW-T01 整组未完成。本记录不代替真实 Nginx、挂载、权限或最终 HTTP/HTTPS 集成验收。
+
+## 实际运行：2ea9176
+
+- SHA：`2ea9176841a042492b11f508079391016db14da8`；[Actions 38040043167](https://github.com/JOTO-AI/SICP-DataMiddlePlatform/actions/runs/38040043167)，unit job `114178289373`。
+- CI 日志中上述四个 `GatewayProtocol` 测试方法均为 `ok`，汇总为 `Ran 4 tests in 0.065s` / `OK`：通过 4、失败 0、跳过 0。`scripts/check.sh` 单测及构建步骤 success，证明受非零退出门禁保护的命令成功；独立退出码工件因上传失败未能取得，不伪造工件记录。
+- 复用历史 `ci_counts.py` 统计 Go JSON 测试日志：含子用例通过记录 1482、失败 0、跳过 0；该数量不是顶层测试数量，也不包含本次四个 Python 测试方法。
+- 完整 workflow 为 failure：frontend、unit、compose 的工件上传均失败，GitHub 错误为存储配额耗尽；integration 为 skipped，不计通过。须恢复工件存储后重跑并取得完整成功及工件证据。
+- 查询结果与原始 Actions 日志由历史工具保存在本地忽略目录 `artifacts/ci-2ea9176841a042492b11f508079391016db14da8.json` 和 `artifacts/logs-2ea9176841a042492b11f508079391016db14da8.zip`；它们不替代未上传成功的 CI 工件，也不入 Git。
