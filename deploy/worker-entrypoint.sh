@@ -1,6 +1,8 @@
 #!/bin/sh
 # Keep development source/mail selection at the container boundary.
 set -eu
+. "$(dirname "$0")/gateway-config.sh"
+sicp_gateway_cookie
 mail_enabled() {
     [ -n "${MAIL_ADDRESS:-}${MAIL_TLS:-}${MAIL_FROM:-}${MAIL_TO:-}${MAIL_USERNAME:-}${MAIL_PASSWORD:-}" ]
 }

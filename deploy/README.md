@@ -24,11 +24,11 @@ Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执�
 
 | 服务 | 本机入口 |
 | --- | --- |
-| 控制台 | http://127.0.0.1:18082/console/ |
+| 控制台 | http://127.0.0.1:18080/console/ |
 | 查询 API | http://127.0.0.1:18080 |
-| 管理 API | http://127.0.0.1:18081 |
+| 管理 API | http://127.0.0.1:18080（会话及 CSRF 校验） |
 
-控制台使用 `.env` 中的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 登录，不提供默认密码。业务密钥保留在服务端；前端无需填写 API Key 或管理 Token。原有部署需删除 `MANAGEMENT_CREDENTIALS`、`MANAGEMENT_TOKEN` 并填写新的账号密码。会话有效 8 小时，worker 重启后需重新登录。HTTPS 入口设 `CONSOLE_COOKIE_SECURE=true`。全新环境由 worker 自动初始化，之后每两小时自动调度增量同步。在“更新任务”查看记录，仅强制全量和失败重跑需要人工操作。
+控制台使用 `.env` 中的 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 登录，不提供默认密码。业务密钥保留在服务端；前端无需填写 API Key 或管理 Token。原有部署需删除 `MANAGEMENT_CREDENTIALS`、`MANAGEMENT_TOKEN` 并填写新的账号密码。会话有效 8 小时，worker 重启后需重新登录。统一部署按证书配置自动派生 Cookie Secure，无需手动设置。全新环境由 worker 自动初始化，之后每两小时自动调度增量同步。在“更新任务”查看记录，仅强制全量和失败重跑需要人工操作。
 
 ```sh
 docker compose logs -f query worker
@@ -39,7 +39,7 @@ docker compose down
 
 初始化中途重启后，worker 先恢复已有任务。采集结果未封存或校验失败时，自动创建关联的新任务重新采集；已有 `acquisition_failed` 初始化也可在启动后自动重试。每次启动最多自动重新采集一次，与前次失败至少间隔 5 分钟（结束时间未知时按开始时间计算），并遵守上游冷却，避免持续故障触发重复全量采集。原记录保留，完整数据包可用时仍走本地恢复。容量、认证或源数据错误需先修正，自动恢复不修改这些配置。前端“更新任务”页首提供“强制全量更新”，首次初始化完成后可用；初始化失败由启动恢复或维护区的“失败重跑”处理。
 
-容器通过服务自身的 `--healthcheck` 检查 `/livez`，探测地址跟随服务进程的 `HTTP_ADDRESS`；通配监听地址会转换为对应的本机回环地址。初始化、更新或恢复期间 `/readyz` 暂时不就绪属于正常状态，不应将它用作容器存活检查。宿主机发布端口仍由 `SICP_QUERY_PORT`、`SICP_WORKER_PORT` 设置。
+容器通过服务自身的 `--healthcheck` 检查 `/livez`，探测地址跟随服务进程的 `HTTP_ADDRESS`；通配监听地址会转换为对应的本机回环地址。初始化、更新或恢复期间 `/readyz` 暂时不就绪属于正常状态，不应将它用作容器存活检查。仅网关发布宿主机端口，由 `SICP_GATEWAY_PORT` 设置；外部 `/livez`、`/readyz` 返回 404。
 
 统一配置模板为根目录 `.env.example`，实际部署只维护根目录 `.env`。六个 `DATABASE_*_URL` 只配置共享端点和库名，不含账号密码；`POSTGRES_PASSWORD`、`QUERY_PASSWORD`、`WORKER_PASSWORD`、`LOGGER_PASSWORD` 各填写一次。Compose 按服务分配账号与密码，进程自动编码特殊字符并构造完整连接串；query 不会获得 worker 或迁移账号密码。已有 PG 卷不会因修改环境变量而自动修改角色密码，轮换时仍需先在数据库内修改，再更新 `.env`。
 
@@ -47,7 +47,7 @@ docker compose down
 
 从旧命名卷切换前，先停止写入并备份数据，将各卷内容复制到对应宿主机目录，保留文件所有权和权限；仅修改配置不会自动迁移。已有宿主机目录更换路径时也需迁移数据，再执行 `docker compose up -d --force-recreate` 使挂载生效，单纯 `restart` 不会更新挂载。全新部署会创建缺失目录，应用目录权限仍由初始化服务设置。
 
-项目名和端口也统一在 `.env` 设置：`SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`、`SICP_CONSOLE_PORT`。终端同名环境变量优先。只需后端时可指定服务：`docker compose up -d --build --wait --wait-timeout 300 query-gateway worker`。
+项目名和端口也统一在 `.env` 设置：`SICP_PROJECT`、`SICP_GATEWAY_PORT`。终端同名环境变量优先。统一入口同时启动 query-gateway、worker 和 console，query 由依赖自动启动。
 
 旧版 `deploy/compose*.yaml`、`deploy/examples/*.env.example` 和 `configs/*.env.example` 已移除。原有 `deploy/runtime/*.env` 不再加载，请先将自定义值迁入根目录 `.env`；旧文件不会自动改写。上一版的 `QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 也不再读取：请将相同的端点与库名合并为六个不含凭据的 `DATABASE_*_URL`，账号密码填写到上方对应变量。旧项目 `sicp-phase1` 的卷不会自动迁移。仅在确认旧卷数据属于目标环境后，才将其迁入对应宿主机目录；不要将含合成数据的卷直接用于正式环境。
 
@@ -89,18 +89,18 @@ SICP_PROJECT=sicp-${ENVIRONMENT}
 
 ## Bash 分步运维
 
-脚本使用根目录统一配置，默认按正式环境部署。要求 Linux amd64、Bash、Docker Engine 与 Compose ≥ 2.30；各服务进程使用 UID/GID 65532，配置/日志时区按 `Asia/Shanghai` 解析源时间，数据库会话使用 UTC。M、S、日志分别为独立 PostgreSQL 容器，控制库固定在 M；服务不能通过活动路由选择控制或日志库。
+脚本使用根目录统一配置，默认按正式环境部署。要求 Linux amd64、Bash、Python 3.10+、Docker Engine 与 Compose ≥ 2.30；各服务进程使用 UID/GID 65532，配置/日志时区按 `Asia/Shanghai` 解析源时间，数据库会话使用 UTC。M、S、日志分别为独立 PostgreSQL 容器，控制库固定在 M；服务不能通过活动路由选择控制或日志库。
 
 ```bash
 ./scripts/sicp.sh deploy
 ./scripts/sicp.sh status
 ```
 
-`deploy` 依次 prepare → build → validate → infra → migrate → start。也可逐项执行；迁移在服务首次启动前运行，重复迁移校验原版本与 checksum，不修改已应用脚本。数据库角色与空数据库由 `init-postgres.sh` 在空 PG 卷第一次启动时创建，后续结构更新由 一次性 `db-migrate` 部署任务 完成。升级先停应用，备份全部卷，构建、校验、迁移，再启动应用；不删除旧迁移记录。
+`deploy` 依次 prepare → build → validate → infra → migrate → start → 外部入口校验。也可逐项执行；迁移在服务首次启动前运行，重复迁移校验原版本与 checksum，不修改已应用脚本。数据库角色与空数据库由 `init-postgres.sh` 在空 PG 卷第一次启动时创建，后续结构更新由 一次性 `db-migrate` 部署任务 完成。升级先停应用，备份全部卷，构建、校验、迁移，再启动应用；不删除旧迁移记录。
 
 `prepare` 只在根目录 `.env` 缺失时复制 `.env.example`，生成文件权限受 umask 077 约束；已有 `.env` 保持不变。`.env` 被 Git 和镜像构建上下文排除。文件使用 Compose dotenv 语法，不作为 Shell 脚本执行；包含字面量 `$` 或 `#` 的值使用单引号，JSON 保持单行。参数列表详见 [运行配置](../development_docs/P15_RUNTIME_CONFIGURATION.md)。
 
-部署凭据由操作者填写。query 使用 sicp_query，worker 使用 sicp_worker，日志使用 sicp_logger；配置文件统一管理凭据，但迁移账号只传给 migrate，管理员账号密码只传给 worker。query 通过 query-gateway 向宿主机的 0.0.0.0 发布 18080，管理服务仍仅向 127.0.0.1 发布 18081。数据库、Redis 和开发模式的 Mock 仅连接 internal 网络，不发布宿主端口，可通过 `docker compose exec` 在对应容器内排查。仅开发模式的 Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
+部署凭据由操作者填写。query 使用 sicp_query，worker 使用 sicp_worker，日志使用 sicp_logger；配置文件统一管理凭据，但迁移账号只传给 migrate，管理员账号密码只传给 worker。query 通过 query-gateway 向宿主机的 0.0.0.0 发布 18080，worker 和 console 不再独立发布端口，管理路由与页面共用网关入口。数据库、Redis 和开发模式的 Mock 仅连接 internal 网络，不发布宿主端口，可通过 `docker compose exec` 在对应容器内排查。仅开发模式的 Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
 
 ```bash
 ./scripts/sicp.sh stop
@@ -117,7 +117,7 @@ SICP_PROJECT=sicp-${ENVIRONMENT}
 
 生产部署须完成凭据、TLS、上游/邮箱、网络规则、持久存储和备份配置，并将 M/S/日志布置到满足故障隔离要求的实例。模板容量仅为起始预算，尚不代表生产容量/吞吐验收；部署前需测量源规模、十四表全量封存和双候选峰值、spool 外排空间、日志断网积压、查询并发及快照保留窗口。禁止通过降低质量门禁或删除恢复引用绕过空间不足。
 
-自定义本机项目/端口可显式设置 `SICP_PROJECT`、`SICP_QUERY_PORT`、`SICP_WORKER_PORT`。脚本不提供自动删卷命令；销毁仅限操作者已核对的独立测试项目。
+自定义本机项目/端口可显式设置 `SICP_PROJECT`、`SICP_GATEWAY_PORT`。脚本不提供自动删卷命令；销毁仅限操作者已核对的独立测试项目。
 
 GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 语法和镜像构建，再串行执行 I01—I06。I06 从同一 job 的干净 checkout 构建镜像，每个编号独立创建项目与空卷，通过 Bash 脚本迁移、启动并等待自动初始化；定时同步测试在隔离数据库推进计划时间。历史验收记录见 verification/I06.md，本次行为变更需以新一轮 CI 结果为准。集成 JSON 结果及容器日志保存在 linux-integration-evidence artifact。
 
@@ -157,7 +157,7 @@ GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 
 
 ### 多 query 实例与负载均衡
 
-`.env` 中设置 `QUERY_REPLICAS=4` 即配置四个 query 容器，默认 1，支持 1—32。外部仍访问 `SICP_QUERY_PORT`（默认 18080）；query-gateway 使用最少连接策略分配请求，通过 Docker DNS 每 2 秒更新后端地址。控制台的 worker 代理也经过该入口。Redis、业务库和日志库共享；worker 仍为一个实例，原有容量设置不变。
+`.env` 中设置 `QUERY_REPLICAS=4` 即配置四个 query 容器，默认 1，支持 1—32。外部访问 `SICP_GATEWAY_PORT`（默认 18080）；query-gateway 使用最少连接策略分配请求，通过 Docker DNS 每 2 秒更新后端地址。控制台的 worker 代理也经过该入口。Redis、业务库和日志库共享；worker 仍为一个实例，原有容量设置不变。
 
 首次从直接发布 query 端口的版本升级，需要短暂查询维护窗口：先 `docker compose build query query-gateway`，然后 `docker compose stop query` 并执行 `docker compose run --rm --no-deps volumes` 初始化新增日志目录权限，最后 `docker compose up -d --no-deps query query-gateway worker`。worker 需重建容器以更新控制台代理地址；请在同步任务空闲时执行。后续只调整副本数量或 query 参数时，执行 `docker compose up -d --no-deps query query-gateway`，无需重启 worker。`restart` 不会应用副本数量或新环境变量。控制台首次升级也应在随后完整 `docker compose up -d` 时同步依赖配置。
 
@@ -185,3 +185,48 @@ docker compose up -d --no-deps --wait query query-gateway worker
 ```
 
 修改 `.env` 后仅运行 `restart` 不会更新容器启动参数。用 `docker compose exec db-m psql -U postgres -d postgres -c "SHOW max_connections;"` 核实实际值，db-s、db-log 同理；自定义 POSTGRES_USER 时替换命令中的用户名。GitHub Compose 检查会验证首次启动及保留数据重建后的三个实际值。
+
+## 统一 HTTP / HTTPS 入口
+
+默认 `.env` 的 `SICP_TLS_CERT_FILE`、`SICP_TLS_KEY_FILE` 均为空，访问 `http://<服务器>:18080/console/`。`SICP_GATEWAY_PORT` 缺省或空值为 18080，范围 1—65535。旧 `SICP_QUERY_PORT`、`SICP_WORKER_PORT`、`SICP_CONSOLE_PORT` 不再读取；迁移时将唯一对外端口写入 `SICP_GATEWAY_PORT`，同步修改所有客户端地址。容器外部监听固定 8443，内部 HTTP 8080 仅用于 query 与探针，不发布给宿主机。
+
+HTTPS 配置示例（Linux 宿主机路径）：
+
+```dotenv
+SICP_GATEWAY_PORT=18443
+SICP_TLS_CERT_FILE='/etc/sicp/tls/fullchain.pem'
+SICP_TLS_KEY_FILE='/etc/sicp/tls/privkey.pem'
+```
+
+两项必须成对。路径可含空格，使用 Compose dotenv 引号保留字面字符；拒绝相对路径、控制字符和纯空白。文件直接只读挂载，必须为 UID/GID 65532 可读的普通文件；证书链和私钥需匹配，不接受需交互口令的加密私钥。无需把私钥复制进仓库或镜像。预检使用正式网关相同镜像、UID、挂载和 tmpfs；无效文件失败且不切换为 HTTP。未配置时 `/dev/null` 仅作为只读占位，HTTP 不读取其内容。
+
+首次部署：
+
+```sh
+bash scripts/sicp.sh deploy --url https://data.example.org:18443
+# 私有 CA 可追加 --ca-file /etc/sicp/ca.pem
+```
+
+`--url` 必须是与目标协议、端口一致的 origin，不含账号、路径、查询串或 fragment。HTTPS 必须显式给出访问域名；脚本验证 CA 信任、域名及服务端叶证书指纹，不从证书 SAN 猜域名。单独启动后可运行 `python3 scripts/gateway.py verify --url <入口> [--ca-file <CA>]`。查询工具使用 `--base-url`/`SICP_BASE_URL` 优先，HTTPS 同样要求显式域名；`--ca-file`/`SICP_CA_FILE` 指定测试或私有 CA。
+
+已有统一入口切换协议：修改 `.env` 后运行以下命令。完整预检成功前不触碰现有容器；随后先停止网关，再重建 worker 并等待健康，最后重建网关、等待健康并验证外部入口。健康等待每服务 90 秒，失败立即退出，可能留下入口中断，需要操作者恢复。
+
+```sh
+bash scripts/sicp.sh gateway-apply --url https://data.example.org:18443
+# 切回 HTTP：清空两项证书路径，并运行
+bash scripts/sicp.sh gateway-apply --url http://data.example.org:18443
+```
+
+worker 重建会使原会话失效。HTTPS → HTTP 前先退出；未退出者清理该站点 Cookie 后再在 HTTP 登录，改端口不会清除 Secure Cookie。已有 HSTS 策略可能阻止 HTTP，须处理原策略或使用独立 HTTP 域名。不要只重启网关切协议；这会使入口与 worker 的 Cookie 设置不一致。
+
+证书续期时原子替换宿主文件或更换软链接目标，再执行：
+
+```sh
+bash scripts/sicp.sh gateway-renew --url https://data.example.org:18443
+```
+
+仅续期要求当前网关和 worker 均为受管理 HTTPS，配置与运行容器一致；有其他配置变更应使用发布流程。预检新文件后只重建网关，重新绑定新 inode 并核验新指纹；worker 会话保留。仅 `reload` 或 `restart` 无法保证重新挂载原子替换文件。
+
+失败恢复：预检失败保留原入口；切换开始后失败不会自动开放 HTTP。修正配置后，先以 `validate` 确认有效，再按 worker → 网关顺序分别运行 `docker compose up -d --force-recreate --no-deps --wait --wait-timeout 90 <服务>`，最后运行 `gateway.py verify`。若恢复 HTTP，必须明确清空两项证书路径并处理浏览器 Cookie。
+
+旧版本回退须同时恢复上一版镜像、Compose、网关入口/模板、worker 入口、console 配置和对应 `.env`；先停当前应用，再按旧配置构建/启动、检查旧端口登录和查询。保持项目名与数据根目录不变，不删除数据卷。仅恢复一个 Nginx 文件不构成完整回退。CI 的整套回退夹具固定基线提交 `3443eaeafe30e5870dc5c5d84ddfa7e19df517e9`。

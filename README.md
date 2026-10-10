@@ -14,7 +14,7 @@ docker compose up -d --build --wait --wait-timeout 300
 
 Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执行，已有 `.env` 时直接修改。
 
-打开控制台 <http://127.0.0.1:18082/console/>。默认 `ENVIRONMENT=production`，Compose 启动 PostgreSQL、Redis、查询服务、同步服务和前端，完成卷权限初始化与数据库迁移后才启动应用。首次构建需要联网拉取基础镜像与依赖。
+打开控制台 <http://127.0.0.1:18080/console/>。默认 `ENVIRONMENT=production`，Compose 启动 PostgreSQL、Redis、查询服务、同步服务和前端，完成卷权限初始化与数据库迁移后才启动应用。首次构建需要联网拉取基础镜像与依赖。
 
 上游认证填写 `SOURCE_APP_ID` 和 `SOURCE_APP_SECRET`（上游开发者首页获取），无需填写临时 `SOURCE_TOKEN`。worker 自动获取 Token；响应带有效 `expires_in`（秒）时在到期前更新，否则每次分页前获取。HTTP 或业务码 401/403 时重新获取并重试当前页一次。已有 `.env` 请将 `SOURCE_TOKEN` 替换为这两个应用凭据。
 
@@ -45,7 +45,7 @@ Linux / Bash 脚本用于同一套 Compose 的分步运维，`deploy` 同样包�
 ./scripts/sicp.sh status
 ```
 
-`deploy` 准备配置、构建镜像、创建持久卷、迁移数据库并启动服务；数据初始化和同步由后台自动执行，前端提供运行记录与维护入口。默认 query、worker 分别向宿主机 `127.0.0.1:18080`、`127.0.0.1:18081` 提供 HTTP 服务。PG 和 Redis 仅连接内部网络；正式模式的 worker 使用配置的真实上游，邮件通知按需配置 SMTP；六个 `MAIL_*` 参数全部留空时关闭。Mock 仅在开发模式启用。
+`deploy` 准备配置、构建镜像、创建持久卷、迁移数据库并启动服务；数据初始化和同步由后台自动执行，前端提供运行记录与维护入口。网关默认在宿主机 `18080` 提供页面、管理和业务查询统一 HTTP 入口；配对设置证书路径后使用 HTTPS，详见部署说明。query、worker、console 不单独发布端口。PG 和 Redis 仅连接内部网络；正式模式的 worker 使用配置的真实上游，邮件通知按需配置 SMTP；六个 `MAIL_*` 参数全部留空时关闭。Mock 仅在开发模式启用。
 
 完整职责划分、失败处理及验收方案见[自动运行与 ctl 移除方案](development_docs/AUTOMATION_AND_CTL_REMOVAL.md)。
 

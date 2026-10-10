@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import sys
 import shutil
+from gateway_runtime import GatewayConfig
 from urllib.parse import urlsplit, urlunsplit
 
 
@@ -85,6 +86,19 @@ def render(env_file, success=True, all_profiles=False, project=None):
 
 
 def check_modes(env_file):
+    for mode in ('production', 'development'):
+        for tls in (False, True):
+            text = fixture_text(mode)
+            if tls:
+                text += "\nSICP_TLS_CERT_FILE='/synthetic/a space/$$literal.pem'\nSICP_TLS_KEY_FILE='/synthetic/key.pem'\n"
+            env_file.write_text(text, encoding='utf-8')
+            rendered = render(env_file)
+            # Decode Compose's serialization escaping exactly once.
+            config = GatewayConfig.from_model(json.loads(json.dumps(rendered).replace('$$', '$')))
+            assert config.mode == ('https' if tls else 'http')
+            assert entrypoint(rendered['services']['worker']['environment'])['CONSOLE_COOKIE_SECURE'] == ('true' if tls else 'false')
+            if tls:
+                assert config.cert == '/synthetic/a space/$$literal.pem'
     render(EXAMPLE, success=False)
     env_file.write_text(fixture_text("production"), encoding="utf-8")
     production = render(env_file)
@@ -326,7 +340,7 @@ def main(directory):
         env_file = Path(directory) / ".env"
         env_file.write_text(fixture_text("production") + "\n"
                             "SICP_PROJECT=compose-config-test\n"
-                            "SICP_CONSOLE_PORT=28082\n"
+                            "SICP_GATEWAY_PORT=28082\n"
                             "QUERY_API_KEY='literal-$value-#-secret'\n"
                             "SOURCE_APP_SECRET='app-@:/?#%$value'\n"
                             "POSTGRES_USER=custom_admin\n"
@@ -336,7 +350,7 @@ def main(directory):
                             "LOGGER_PASSWORD='logger-@:/?#%$value'\n", encoding="utf-8")
         custom = render(env_file)
         assert custom["name"] == "compose-config-test"
-        assert custom["services"]["console"]["ports"][0]["published"] == "28082"
+        assert custom["services"]["query-gateway"]["ports"][0]["published"] == "28082"
         assert entrypoint(custom["services"]["worker"]["environment"])["SOURCE_APP_SECRET"] == "app-@:/?#%$value"
         # Compose escapes dollars when rendering reusable configuration.
         for role in ("query", "worker"):

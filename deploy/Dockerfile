@@ -16,6 +16,7 @@ COPY --from=build /service /usr/local/bin/service
 COPY --from=build /db-migrate /usr/local/bin/db-migrate
 COPY deploy/query-entrypoint.sh /usr/local/bin/query-entrypoint.sh
 COPY deploy/worker-entrypoint.sh /usr/local/bin/worker-entrypoint.sh
+COPY deploy/gateway-config.sh /usr/local/bin/gateway-config.sh
 USER 65532:65532
 ENV HTTP_ADDRESS=0.0.0.0:8080
 EXPOSE 8080

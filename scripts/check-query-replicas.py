@@ -7,11 +7,12 @@ import re
 import subprocess
 import time
 import urllib.request
+from gateway_runtime import Compose, GatewayConfig, client_origin, tls_context
 
-assert os.environ.get("SICP_PROJECT") == "sicp-compose-smoke", "isolated CI project required"
-base = "http://127.0.0.1:" + os.environ.get("SICP_QUERY_PORT", "18080")
+assert os.environ.get("SICP_PROJECT") in {"sicp-compose-smoke", "sicp-gateway-http", "sicp-gateway-https"}, "isolated CI project required"
+base = client_origin(GatewayConfig.from_model(Compose().model()), os.environ.get('SICP_BASE_URL'))
 body = {"student_number": "00202600001", "academic_year": "2025-2026", "page": 1, "page_size": 100}
-client = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+client = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=tls_context(os.environ.get('SICP_CA_FILE'))))
 
 
 def compose(*args):

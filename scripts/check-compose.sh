@@ -29,9 +29,10 @@ check_database_limits() {
 }
 check_database_limits
 
-console="http://127.0.0.1:${SICP_CONSOLE_PORT:-18082}"
+console=$(python3 scripts/gateway.py origin)
 mkdir -p artifacts/compose
-cookies="artifacts/compose/session.cookies"
+cookies=$(mktemp)
+trap 'rm -f "$cookies"' EXIT
 login() {
   curl --fail --silent --show-error -c "$cookies" -H 'Content-Type: application/json' -H 'X-SICP-Request: console' \
     -d '{"username":"synthetic-admin","password":"synthetic-admin-password"}' "$console/console-api/login" > /dev/null

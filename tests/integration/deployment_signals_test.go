@@ -135,7 +135,9 @@ func (p *directService) signal(t *testing.T, signal syscall.Signal) {
 func (d *deployment) privateIP(t *testing.T, service string) string {
 	t.Helper()
 	id := strings.TrimSpace(d.compose(t, "ps", "-q", service))
-	raw := commandOutput(t, exec.CommandContext(d.ctx, "docker", "inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", id))
+	// Services may join both ingress and the private dependency network.
+	format := "{{(index .NetworkSettings.Networks " + fmt.Sprintf("%q", d.project+"_sicp") + ").IPAddress}}"
+	raw := commandOutput(t, exec.CommandContext(d.ctx, "docker", "inspect", "--format", format, id))
 	ip := net.ParseIP(strings.TrimSpace(raw))
 	if ip == nil || !ip.IsPrivate() {
 		t.Fatal("dependency not on isolated private bridge", service)

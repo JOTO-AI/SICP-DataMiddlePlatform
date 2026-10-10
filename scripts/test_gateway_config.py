@@ -17,6 +17,20 @@ KEY_PATH = "/synthetic/private-site/privkey.pem"
 
 @unittest.skipUnless(sys.platform == "linux", "POSIX entrypoint contracts run in Linux CI")
 class GatewayProtocol(unittest.TestCase):
+    def test_gw_t01_04_05_shell_paths_and_ports(self):
+        for path, accepted in (('/synthetic/a space/$(not-executed); "file"', True), ('relative', False), ('/bad\npath', False)):
+            result = subprocess.run(['/bin/sh', '-eu', '-c', '. "$1"; sicp_gateway_validate', 'test', str(LIBRARY)],
+                                    env={'PATH': os.defpath, 'LC_ALL': 'C', CERT: path, KEY: path}, capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode == 0, accepted)
+            if accepted:
+                self.assertEqual(result.stdout, 'https\n')
+        for port, expected in (('', '18080'), ('1', '1'), ('65535', '65535'), ('000443', '443'), ('0', None), ('65536', None), ('abc', None)):
+            result = subprocess.run(['/bin/sh', '-eu', '-c', '. "$1"; sicp_gateway_port', 'test', str(LIBRARY)],
+                                    env={'PATH': os.defpath, 'SICP_GATEWAY_PORT': port}, capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode == 0, expected is not None)
+            if expected:
+                self.assertEqual(result.stdout, expected + '\n')
+
     def select_protocol(self, config):
         # Inherit no deployment credentials or TLS settings from the runner.
         env = {"PATH": os.defpath, "LC_ALL": "C", **config}

@@ -174,7 +174,20 @@ services:
     networks: [ingress]
     environment:
       QUERY_REPLICAS: "${QUERY_REPLICAS-1}"
-    ports: ["0.0.0.0:${SICP_QUERY_PORT:-18080}:8080"]
+      SICP_TLS_CERT_FILE: "${SICP_TLS_CERT_FILE:-}"
+      SICP_TLS_KEY_FILE: "${SICP_TLS_KEY_FILE:-}"
+    ports: ["0.0.0.0:${SICP_GATEWAY_PORT:-18080}:8443"]
+    volumes:
+      - type: bind
+        source: "${SICP_TLS_CERT_FILE:-/dev/null}"
+        target: /etc/nginx/tls/fullchain.pem
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: "${SICP_TLS_KEY_FILE:-/dev/null}"
+        target: /etc/nginx/tls/privkey.pem
+        read_only: true
+        bind: {create_host_path: false}
     healthcheck:
       test: [CMD, wget, -q, --spider, "http://127.0.0.1:8080/livez"]
       interval: 5s
@@ -223,9 +236,10 @@ services:
       ADMIN_USERNAME: "${ADMIN_USERNAME:?Set ADMIN_USERNAME in .env (copy .env.example)}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env (copy .env.example)}"
       CONSOLE_QUERY_URL: "http://query-gateway:8080"
-      CONSOLE_COOKIE_SECURE: "${CONSOLE_COOKIE_SECURE:-false}"
+      SICP_GATEWAY_MANAGED: "true"
+      SICP_TLS_CERT_FILE: "${SICP_TLS_CERT_FILE:-}"
+      SICP_TLS_KEY_FILE: "${SICP_TLS_KEY_FILE:-}"
     volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/worker-logs:/var/lib/sicp/logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/staging:/var/lib/sicp/staging", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/targets:/var/lib/sicp/targets", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/spool:/var/lib/sicp/spool"]
-    ports: ["127.0.0.1:${SICP_WORKER_PORT:-18081}:8081"]
     healthcheck:
       test: [CMD, /usr/local/bin/service, --healthcheck]
       interval: 5s
@@ -258,7 +272,6 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     tmpfs: ["/tmp:size=32m,mode=1777"]
-    ports: ["0.0.0.0:${SICP_CONSOLE_PORT:-18082}:8080"]
     networks: [ingress]
     healthcheck:
       test: [CMD, wget, -q, --spider, "http://127.0.0.1:8080/console/"]

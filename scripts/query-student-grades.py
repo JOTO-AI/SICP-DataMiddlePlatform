@@ -4,11 +4,11 @@ from http.client import HTTPException
 import json
 import os
 from pathlib import Path
-import re
 import sys
 import time
 import urllib.error
 import urllib.request
+from gateway_runtime import Compose, GatewayConfig, client_origin, tls_context
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -16,27 +16,17 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def api_key(env_file):
-    """Read the key from the environment or a single-line dotenv assignment."""
+def api_key(model):
+    """Read the effective container value; only Compose parses dotenv."""
     if os.environ.get("QUERY_API_KEY"):
         return os.environ["QUERY_API_KEY"]
-    for line in env_file.read_text(encoding="utf-8-sig").splitlines():
-        name, separator, value = line.partition("=")
-        if separator and name.strip() == "QUERY_API_KEY":
-            value = value.strip()
-            if value.startswith(("'", '"')):
-                quote = value[0]
-                end = value.find(quote, 1)
-                if end < 0:
-                    raise ValueError("Unclosed QUERY_API_KEY quote")
-                return value[1:end]
-            return re.split(r"\s+#", value, maxsplit=1)[0].strip()
-    raise ValueError("QUERY_API_KEY is missing")
+    return model['services']['query']['environment']['QUERY_API_KEY']
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-url", default="http://127.0.0.1:18080")
+    parser.add_argument("--base-url", default=os.environ.get('SICP_BASE_URL'))
+    parser.add_argument("--ca-file", default=os.environ.get('SICP_CA_FILE'))
     parser.add_argument("--student-number", required=True)
     parser.add_argument("--year", default="2025-2026")
     parser.add_argument("--semester", choices=("1", "2"))
@@ -48,10 +38,13 @@ def main():
     if args.page < 1 or not 1 <= args.page_size <= 1000:
         parser.error("page must be positive; page-size must be between 1 and 1000")
     try:
-        key = api_key(args.env_file)
+        model = None if args.base_url and os.environ.get('QUERY_API_KEY') else Compose(env_file=args.env_file).model()
+        base = client_origin(GatewayConfig.from_model(model) if not args.base_url else None, args.base_url)
+        context = tls_context(args.ca_file)
+        key = api_key(model)
         if not key:
             raise ValueError("QUERY_API_KEY is empty")
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, KeyError, TypeError) as error:
         print(f"Cannot load QUERY_API_KEY ({type(error).__name__}). Check --env-file.",
               file=sys.stderr)
         return 1
@@ -64,13 +57,13 @@ def main():
     }
     if args.semester:
         payload["semester"] = args.semester
-    url = args.base_url.rstrip("/") + "/api/v1/sicp/students/grades/query"
+    url = base + "/api/v1/sicp/students/grades/query"
     request = urllib.request.Request(
         url, data=json.dumps(payload).encode("utf-8"), method="POST",
         headers={"Content-Type": "application/json", "X-API-Key": key},
     )
     # Direct connection; never forward the API key through redirects.
-    client = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+    client = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect(), urllib.request.HTTPSHandler(context=context))
     started = time.perf_counter()
     try:
         try:

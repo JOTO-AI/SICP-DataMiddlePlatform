@@ -32,6 +32,46 @@ jobs:
         with:
           name: compose-evidence
           path: artifacts/compose/
+  gateway:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      SICP_PROJECT: sicp-gateway-http
+      NO_PROXY: 127.0.0.1,localhost,sicp-gateway.test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install browser and test trust tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnss3-tools
+          printf '127.0.0.1 sicp-gateway.test\n' | sudo tee -a /etc/hosts
+          cd frontend
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Gateway contracts and real deployment/browser scenarios
+        run: bash scripts/check-gateway.sh
+      - name: Summarize evidence and stop isolated deployment
+        if: always()
+        run: |
+          python3 scripts/gateway_acceptance.py || true
+          python3 scripts/gateway_evidence_filter.py artifacts/gateway
+          if test -f .env; then docker compose down --volumes --remove-orphans; fi
+          docker ps -aq --filter name=sicp-gateway-contracts | xargs -r docker rm -f
+          docker network rm sicp-gateway-contracts 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gateway-evidence
+          path: artifacts/gateway/
+          retention-days: 7
+          if-no-files-found: error
   frontend:
     runs-on: ubuntu-24.04
     defaults:
