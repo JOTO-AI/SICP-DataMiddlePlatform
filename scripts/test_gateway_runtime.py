@@ -141,6 +141,10 @@ class Operations(unittest.TestCase):
             for name in REQUIRED:
                 (directory / (name + '-exit-code.txt')).write_text('0')
             (directory / 'contracts.json').write_text(json.dumps({'tests': 6, 'failed': 0, 'skipped': 0}))
+            (directory / 'certificates.json').write_text(json.dumps([
+                {'phase': 'https', 'origin': 'https://sicp-gateway.test:28080', 'verified_leaf_sha256': 'a' * 64},
+                {'phase': 'renew', 'origin': 'https://sicp-gateway.test:28080', 'verified_leaf_sha256': 'b' * 64},
+                {'phase': 'http', 'origin': 'http://sicp-gateway.test:28080', 'verified_leaf_sha256': None}]))
             for skipped, unexpected in ((1, 0), (0, 1), (0, 0)):
                 (directory / 'browser.json').write_text(json.dumps({'stats': {'expected': 2, 'unexpected': unexpected, 'skipped': skipped, 'flaky': 0}}))
                 self.assertEqual(all(evaluate(directory).values()), skipped == unexpected == 0)

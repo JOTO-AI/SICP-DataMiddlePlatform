@@ -9,12 +9,22 @@ import time
 import traceback
 
 from gateway_container_checks import certificates, create_ca
-from gateway_runtime import Compose, GatewayError, apply_gateway, tls_context
+from gateway_runtime import Compose, GatewayError, apply_gateway, tls_context, verify_entry
 
 ROOT = Path(__file__).resolve().parents[1]
 CERTS = Path(os.environ.get('RUNNER_TEMP', '/tmp')) / 'sicp-gateway-integration-certs'
 PORT = 28080
 HOST = 'sicp-gateway.test'
+
+
+def evidence_verifier(phase):
+    def verify(origin, context, fingerprint):
+        verify_entry(origin, context, fingerprint)
+        path = ROOT / 'artifacts/gateway/certificates.json'
+        records = json.loads(path.read_text()) if path.exists() else []
+        records.append({'phase': phase, 'origin': origin, 'verified_leaf_sha256': fingerprint})
+        path.write_text(json.dumps(records, indent=2) + '\n')
+    return verify
 
 
 def run(*args):
@@ -102,7 +112,7 @@ def switch(tls):
     before = ids()
     configure(tls)
     scheme = 'https' if tls else 'http'
-    apply_gateway(Compose(), 'gateway-apply', f'{scheme}://{HOST}:{PORT}', str(CERTS / 'ca.pem'))
+    apply_gateway(Compose(), 'gateway-apply', f'{scheme}://{HOST}:{PORT}', str(CERTS / 'ca.pem'), verify=evidence_verifier(scheme))
     after = ids()
     assert all(after[service] != before[service] for service in ('worker', 'query-gateway')), 'switch did not recreate paired services'
     assert all(after[service] == before[service] for service in ('query', 'console')), 'switch recreated unrelated services'
@@ -120,7 +130,7 @@ def renew():
     cert, key = certificates(CERTS, 'replacement')
     cert.replace(CERTS / 'site.pem')
     key.replace(CERTS / 'site.key')
-    apply_gateway(Compose(), 'gateway-renew', f'https://{HOST}:{PORT}', str(CERTS / 'ca.pem'))
+    apply_gateway(Compose(), 'gateway-renew', f'https://{HOST}:{PORT}', str(CERTS / 'ca.pem'), verify=evidence_verifier('renew'))
     after = ids()
     assert after['query-gateway'] != before['query-gateway'], 'renew did not remount certificate'
     assert all(after[service] == before[service] for service in ('worker', 'query', 'console')), 'renew recreated unrelated service'

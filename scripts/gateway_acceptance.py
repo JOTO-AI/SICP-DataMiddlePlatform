@@ -1,6 +1,7 @@
 """Fail closed when required gateway evidence is missing, skipped or failed."""
 import json
 import os
+import re
 from pathlib import Path
 import sys
 
@@ -23,6 +24,16 @@ def evaluate(directory):
         results['contracts'] &= report['tests'] >= 6 and report['failed'] == 0 and report['skipped'] == 0
     except (OSError, ValueError, KeyError, TypeError):
         results['contracts'] = False
+    try:
+        certificates = json.loads((directory / 'certificates.json').read_text())
+        phases = {item['phase']: item for item in certificates}
+        fingerprints = [phases[phase]['verified_leaf_sha256'] for phase in ('https', 'renew')]
+        results['certificate_identity'] = (all(isinstance(value, str) and re.fullmatch('[0-9a-f]{64}', value) for value in fingerprints)
+                                           and fingerprints[0] != fingerprints[1]
+                                           and all(phases[phase]['origin'] == 'https://sicp-gateway.test:28080' for phase in ('https', 'renew'))
+                                           and phases['http']['origin'] == 'http://sicp-gateway.test:28080')
+    except (OSError, ValueError, KeyError, TypeError):
+        results['certificate_identity'] = False
     return results
 
 
