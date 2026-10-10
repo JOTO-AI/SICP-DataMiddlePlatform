@@ -174,6 +174,16 @@ class Compose:
         except (ValueError, KeyError, TypeError):
             raise GatewayError(service + ': invalid_container_state') from None
 
+    def deployment_containers(self):
+        ids = self.run('ps', '-a', '-q').split()
+        if not ids:
+            raise GatewayError('renew: existing_deployment_required')
+        try:
+            result = json.loads(self.execute(['docker', 'inspect', *ids]))
+            return [item for item in result if item['Config']['Labels'].get('com.docker.compose.oneoff', '').lower() != 'true']
+        except (ValueError, KeyError, TypeError):
+            raise GatewayError('renew: invalid_deployment_state') from None
+
 
 def validate(compose):
     config = GatewayConfig.from_model(compose.model())
@@ -226,11 +236,13 @@ def renewal_guard(compose, config):
         hashes = dict(line.split() for line in compose.run('config', '--hash', '*').splitlines() if line.strip())
     except ValueError:
         raise GatewayError('renew: invalid_configuration_hash') from None
-    # A renewal must not silently accept pending changes to other services.
-    for service in ('query', 'console'):
-        for item in compose.containers(service):
-            if item['Config']['Labels'].get('com.docker.compose.config-hash') != hashes.get(service):
-                raise GatewayError('renew: service_configuration_changed_use_gateway_apply')
+    # Include databases, Redis and completed init/migration containers. Pending
+    # configuration edits elsewhere must not be mistaken for a certificate renewal.
+    for item in compose.deployment_containers():
+        labels = item['Config']['Labels']
+        desired = hashes.get(labels.get('com.docker.compose.service'))
+        if not desired or labels.get('com.docker.compose.config-hash') != desired:
+            raise GatewayError('renew: service_configuration_changed_use_gateway_apply')
     for service in ('worker', 'query-gateway'):
         items = compose.containers(service)
         if len(items) != 1:

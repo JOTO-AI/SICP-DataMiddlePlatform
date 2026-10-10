@@ -24,7 +24,7 @@ def model(tls=False):
                                        'read_only': True, 'bind': {'create_host_path': False}}
                                       for value, target in [(cert, '/etc/nginx/tls/fullchain.pem'), (key, '/etc/nginx/tls/privkey.pem')]]},
         'worker': {'environment': {**env, 'SICP_GATEWAY_MANAGED': 'true'}},
-        'query': {}, 'console': {}}}
+        'query': {}, 'console': {}, 'redis': {}}}
 
 
 class FakeCompose:
@@ -52,6 +52,14 @@ class FakeCompose:
 
     def mutations(self):
         return [call for call in self.calls if call[0] in ('stop', 'up', 'down', 'restart')]
+
+    def deployment_containers(self):
+        items = []
+        for service in self.value['services']:
+            for item in self.containers(service):
+                item['Config']['Labels']['com.docker.compose.service'] = service
+                items.append(item)
+        return items
 
 
 class Configuration(unittest.TestCase):
@@ -172,7 +180,7 @@ class Operations(unittest.TestCase):
         compose = FakeCompose(True)
         self.apply(compose, 'gateway-renew', 'https://test:18080')
         self.assertEqual([call[-1] for call in compose.mutations()], ['query-gateway'])
-        for service in ('worker', 'query-gateway', 'query', 'console'):
+        for service in ('worker', 'query-gateway', 'query', 'console', 'redis'):
             compose = FakeCompose(True)
             compose.drift = service
             with self.assertRaises(GatewayError):
