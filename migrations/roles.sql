@@ -11,4 +11,10 @@ DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='sicp_logger') THEN
         CREATE ROLE sicp_logger NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='sicp_upstream_logger') THEN
+        CREATE ROLE sicp_upstream_logger NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='sicp_upstream_reader') THEN
+        CREATE ROLE sicp_upstream_reader NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
+    END IF;
 END $$;

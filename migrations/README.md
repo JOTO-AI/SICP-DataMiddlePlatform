@@ -3,7 +3,8 @@
 Provision PostgreSQL 18.6 on M, S and a separate log instance. Create two business
 databases per M/S instance, a separate fixed control database on M and a log
 database on the log instance. Configure the six explicit URLs documented in
-`configs/database.env.example`. Use the same canonical host name for databases
+the root `.env.example`. Direct processes must explicitly set
+`LOG_STORAGE_MODE=single_legacy`. Use the same canonical host name for databases
 on one instance; DNS aliases must not disguise shared instances.
 
 Run `roles.sql` as the provisioning administrator on each instance. It creates
@@ -21,6 +22,12 @@ The canonical, embedded migration files live in `internal/storage/migrate/sql`:
 | business | M/0, M/1, S/0, S/1 | `source`: fourteen source tables, exact column types, TEXT primary keys and read/write group grants |
 | control | fixed M control database | `control`: tasks, steps, checkpoints, schedule, execution ownership, bundles, slots, candidates, progress, publication/notification outbox and readers |
 | logs | independent log database | `logs`: immutable deduplicated events and lookup indexes |
+| upstream_logs | separate upstream log database (P28.01 primitives only) | `logs`: call/attempt events, independent ledger and logger/reader grants |
+
+P28.01 adds the upstream catalog and actual cluster/database identity preflight.
+The service adapter and deployment job still reject dual mode until P28.03
+assembles independent resources. No new database is automatically provisioned
+by this step; see [configuration and migration boundaries](../development_docs/P28_LOG_STORAGE_CONFIGURATION.md).
 
 `migrate.Catalog` selects the domain plan. `migrate.Apply` receives the explicit
 target and database transaction adapter, locks migrations per database and

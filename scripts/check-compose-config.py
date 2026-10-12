@@ -304,10 +304,13 @@ def main(directory):
     assert "ADMIN_USERNAME" not in services["query"]["environment"]
     assert "ADMIN_PASSWORD" not in services["query"]["environment"]
     assert set(services["migrate"]["environment"]) == {
+        "LOG_STORAGE_MODE",
         "DATABASE_M0_URL", "DATABASE_M1_URL", "DATABASE_S0_URL",
         "DATABASE_S1_URL", "DATABASE_CONTROL_URL", "DATABASE_LOG_URL",
         "DATABASE_USER", "DATABASE_PASSWORD", "DATABASE_LOG_USER", "DATABASE_LOG_PASSWORD",
     }
+    for role in ("query", "worker", "migrate"):
+        assert services[role]["environment"]["LOG_STORAGE_MODE"] == "single_legacy"
     all_services = render(env_file, all_profiles=True)["services"]
     assert "ctl" not in all_services
     assert services["migrate"]["entrypoint"] == ["/usr/local/bin/db-migrate"]

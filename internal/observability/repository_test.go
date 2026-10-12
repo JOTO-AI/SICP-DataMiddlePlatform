@@ -67,6 +67,7 @@ func (t *logsTx) Rollback(context.Context) error { return nil }
 func logRegistry(t *testing.T) storage.Registry {
 	t.Helper()
 	values := map[string]string{"DATABASE_M0_URL": "postgres://x@m:5432/b0?sslmode=disable", "DATABASE_M1_URL": "postgres://x@m:5432/b1?sslmode=disable", "DATABASE_S0_URL": "postgres://x@s:5432/b0?sslmode=disable", "DATABASE_S1_URL": "postgres://x@s:5432/b1?sslmode=disable", "DATABASE_CONTROL_URL": "postgres://x@m:5432/control?sslmode=disable", "DATABASE_LOG_URL": "postgres://x@logs:5432/logs?sslmode=disable"}
+	values["LOG_STORAGE_MODE"] = "single_legacy"
 	r, err := storage.LoadRegistry(func(k string) (string, bool) { v, ok := values[k]; return v, ok })
 	if err != nil {
 		t.Fatal(err)

@@ -75,6 +75,7 @@ func (tx *transaction) Rollback(context.Context) error {
 func registry(t *testing.T) storage.Registry {
 	t.Helper()
 	values := map[string]string{
+		"LOG_STORAGE_MODE":     "single_legacy",
 		"DATABASE_M0_URL":      "postgres://m@db-m:5432/slot0?sslmode=disable",
 		"DATABASE_M1_URL":      "postgres://m@db-m:5432/slot1?sslmode=disable",
 		"DATABASE_S0_URL":      "postgres://s@db-s:5432/slot0?sslmode=disable",

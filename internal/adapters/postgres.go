@@ -42,6 +42,11 @@ func OpenPostgres(ctx context.Context, r storage.Registry, timeout time.Duration
 }
 
 func OpenPostgresWithLimits(ctx context.Context, r storage.Registry, timeout time.Duration, limits PostgresPoolLimits, process ...string) (*Postgres, error) {
+	// Do not silently ignore a configured upstream target before P28.03 adds
+	// separate pools, identity gates and failure-independent lifecycle handling.
+	if r.LogMode() != storage.SingleLegacy {
+		return nil, ErrPostgres
+	}
 	for _, limit := range []int{limits.Business, limits.Control, limits.Logs} {
 		if limit < 1 || limit > 1000 {
 			return nil, ErrPostgres

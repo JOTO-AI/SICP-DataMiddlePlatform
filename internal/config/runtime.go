@@ -175,6 +175,11 @@ func endpoint(raw string, schemes ...string) (*url.URL, bool) {
 }
 func (c Runtime) Validate() error {
 	bad := func(k string) error { return fmt.Errorf("%s: invalid or missing runtime configuration", k) }
+	// P28.01 introduces configuration and migration primitives only. Remove this
+	// gate when P28.02/P28.03 install independent, verified log pipelines.
+	if c.Databases.LogMode() != storage.SingleLegacy {
+		return fmt.Errorf("LOG_STORAGE_MODE: dual log runtime is not assembled yet")
+	}
 	if err := c.Service.Validate(); err != nil {
 		return err
 	}

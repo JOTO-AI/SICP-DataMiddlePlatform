@@ -14,6 +14,7 @@ Docker Compose 的统一配置模板位于根目录 `.env.example`，复制为 `
 | QUERY_API_KEY | 两角色均要求；用于查询鉴权及与管理秘密隔离校验 |
 | DATABASE_M0_URL、DATABASE_M1_URL、DATABASE_S0_URL、DATABASE_S1_URL | 显式 postgres URL，端口/数据库/sslmode 必填；同实例槽位同端点、不同数据库，M/S 独立端点 |
 | DATABASE_CONTROL_URL、DATABASE_LOG_URL | 控制库固定 M 端点且独立数据库；日志库独立端点 |
+| LOG_STORAGE_MODE | 当前运行入口必须为 single_legacy；Compose 对旧 .env 显式注入该值，直接进程须自行设置。dual Registry/迁移基础已提供，但服务装配尚未接通，启用会拒绝启动；见 [P28.01 配置边界](P28_LOG_STORAGE_CONFIGURATION.md) |
 | DATABASE_USER、DATABASE_PASSWORD | 分离配置时成对提供非空值，供四个业务槽位及 control 使用；URL 此时不得内嵌凭据，密码填写原文、自动编码 |
 | DATABASE_LOG_USER、DATABASE_LOG_PASSWORD | 分离配置时成对提供非空值，只供日志库使用；直接运行进程仍兼容完整 URL，但不能同时提供同组分离凭据 |
 | REDIS_URL | redis/rediss URL，显式端口，固定 `/0`，禁止查询参数覆盖客户端行为 |

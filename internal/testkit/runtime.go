@@ -19,6 +19,7 @@ func RuntimeValues(root string) map[string]string {
 	return map[string]string{
 		"SOURCE_SCOPE": "synthetic-sicp-source", "SOURCE_QUALITY": string(q),
 		"QUERY_API_KEY":        "synthetic-query-secret",
+		"LOG_STORAGE_MODE":     "single_legacy",
 		"DATABASE_M0_URL":      "postgres://worker:synthetic@db-m:5432/slot0?sslmode=disable",
 		"DATABASE_M1_URL":      "postgres://worker:synthetic@db-m:5432/slot1?sslmode=disable",
 		"DATABASE_S0_URL":      "postgres://worker:synthetic@db-s:5432/slot0?sslmode=disable",

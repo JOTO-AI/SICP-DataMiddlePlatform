@@ -26,6 +26,9 @@ func migration() error {
 	if e != nil {
 		return e
 	}
+	if r.LogMode() != storage.SingleLegacy {
+		return fmt.Errorf("LOG_STORAGE_MODE: dual log deployment is not assembled yet")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	db, e := adapters.OpenPostgres(ctx, r, 10*time.Second, "migration")

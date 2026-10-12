@@ -18,9 +18,10 @@ var scripts embed.FS
 type Domain string
 
 const (
-	Business Domain = "business"
-	Control  Domain = "control"
-	Logs     Domain = "logs"
+	Business     Domain = "business"
+	Control      Domain = "control"
+	Logs         Domain = "logs"
+	UpstreamLogs Domain = "upstream_logs"
 )
 
 type Target struct {
@@ -41,6 +42,8 @@ func (t Target) connection(r storage.Registry) (storage.Connection, error) {
 		c = r.Control()
 	case Logs:
 		c = r.Logs()
+	case UpstreamLogs:
+		return r.LogConnection(storage.UpstreamLog)
 	default:
 		return c, fmt.Errorf("unknown migration domain")
 	}
@@ -55,7 +58,7 @@ type Migration struct{ Version, SQL string }
 func (m Migration) Checksum() string { return fmt.Sprintf("%x", sha256.Sum256([]byte(m.SQL))) }
 
 func Catalog(domain Domain) ([]Migration, error) {
-	if domain != Business && domain != Control && domain != Logs {
+	if domain != Business && domain != Control && domain != Logs && domain != UpstreamLogs {
 		return nil, fmt.Errorf("unknown migration domain")
 	}
 	versions := []string{string(domain) + "_001"}
@@ -94,15 +97,28 @@ func Apply(ctx context.Context, db storage.Database, registry storage.Registry, 
 		}
 		last = m.Version
 	}
+	var isolation storage.LogIsolation
+	verify := registry.LogMode() == storage.DualLogs && (target.Domain == Logs || target.Domain == UpstreamLogs)
+	if verify {
+		isolation, err = storage.VerifyLogIsolation(ctx, db, registry)
+		if err != nil {
+			return 0, err
+		}
+	}
 	tx, err := db.Begin(ctx, connection)
 	if err != nil {
-		return 0, fmt.Errorf("begin migration: %w", err)
+		return 0, fmt.Errorf("begin migration failed")
 	}
 	defer func() {
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		_ = tx.Rollback(cleanup)
 	}()
+	if verify {
+		if err := isolation.Match(ctx, tx, connection); err != nil {
+			return 0, err
+		}
+	}
 	for _, statement := range []string{
 		"SELECT pg_advisory_xact_lock(734219001)",
 		"CREATE SCHEMA IF NOT EXISTS migration_meta",
@@ -110,13 +126,22 @@ func Apply(ctx context.Context, db storage.Database, registry storage.Registry, 
 		"CREATE TABLE IF NOT EXISTS migration_meta.versions (version TEXT PRIMARY KEY, checksum TEXT NOT NULL, applied_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp())",
 	} {
 		if _, err := tx.Exec(ctx, statement); err != nil {
-			return 0, fmt.Errorf("prepare migration ledger: %w", err)
+			return 0, fmt.Errorf("prepare migration ledger failed")
+		}
+	}
+	if verify {
+		var foreign bool
+		if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM migration_meta.versions WHERE left(version,length($1)) <> $1)", string(target.Domain)+"_").Scan(&foreign); err != nil {
+			return 0, fmt.Errorf("verify migration domain failed")
+		}
+		if foreign {
+			return 0, fmt.Errorf("migration database belongs to another domain")
 		}
 	}
 	for _, m := range plan {
 		var previous *string
 		if err := tx.QueryRow(ctx, "SELECT (SELECT checksum FROM migration_meta.versions WHERE version=$1)", m.Version).Scan(&previous); err != nil {
-			return 0, fmt.Errorf("read migration ledger: %w", err)
+			return 0, fmt.Errorf("read migration ledger failed")
 		}
 		if previous != nil {
 			if *previous != m.Checksum() {
@@ -125,15 +150,15 @@ func Apply(ctx context.Context, db storage.Database, registry storage.Registry, 
 			continue
 		}
 		if _, err := tx.Exec(ctx, m.SQL); err != nil {
-			return 0, fmt.Errorf("execute migration: %w", err)
+			return 0, fmt.Errorf("execute migration failed")
 		}
 		if _, err := tx.Exec(ctx, "INSERT INTO migration_meta.versions (version, checksum) VALUES ($1,$2)", m.Version, m.Checksum()); err != nil {
-			return 0, fmt.Errorf("record migration: %w", err)
+			return 0, fmt.Errorf("record migration failed")
 		}
 		applied++
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return 0, fmt.Errorf("commit migration: %w", err)
+		return 0, fmt.Errorf("commit migration failed")
 	}
 	return applied, nil
 }

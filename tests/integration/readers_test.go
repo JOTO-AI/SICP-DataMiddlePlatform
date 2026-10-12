@@ -216,7 +216,7 @@ func startQueryProcess(t *testing.T, f *runtimeFixture, h read.Handle) *queryPro
 		_ = output.Close()
 	})
 	go func() { p.done <- cmd.Wait() }()
-	urls := map[string]string{"DATABASE_CONTROL_URL": f.qc.Databases.Control().DSN(), "DATABASE_LOG_URL": f.qc.Databases.Logs().DSN()}
+	urls := map[string]string{"LOG_STORAGE_MODE": string(f.qc.Databases.LogMode()), "DATABASE_CONTROL_URL": f.qc.Databases.Control().DSN(), "DATABASE_LOG_URL": f.qc.Databases.Logs().DSN()}
 	for _, instance := range []storage.Instance{storage.Main, storage.Standby} {
 		for slot := 0; slot < 2; slot++ {
 			c, err := f.qc.Databases.Business(storage.Position{Instance: instance, Slot: slot})

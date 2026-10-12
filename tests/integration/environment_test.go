@@ -54,7 +54,7 @@ func newEnvironmentWithLocale(t *testing.T, budget time.Duration, locale string)
 		hosts[cluster] = host
 	}
 	clusters := []string{"M", "M", "S", "S", "M", "LOG"}
-	values := map[string]string{}
+	values := map[string]string{"LOG_STORAGE_MODE": "single_legacy"}
 	for i, key := range keys {
 		name := fmt.Sprintf("%s_%d", prefix, i)
 		endpoint := net.JoinHostPort(hosts[clusters[i]], "5432")

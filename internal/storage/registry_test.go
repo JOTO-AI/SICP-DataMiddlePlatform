@@ -11,6 +11,7 @@ import (
 
 func connectionValues() map[string]string {
 	return map[string]string{
+		"LOG_STORAGE_MODE":     "single_legacy",
 		"DATABASE_M0_URL":      "postgres://query:synthetic-secret@db-m:5432/sicp_0?sslmode=disable",
 		"DATABASE_M1_URL":      "postgres://query:synthetic-secret@db-m:5432/sicp_1?sslmode=disable",
 		"DATABASE_S0_URL":      "postgres://query:synthetic-secret@db-s:5432/sicp_0?sslmode=disable",
@@ -133,6 +134,9 @@ func TestT02_02RejectOverlappingOrMisplacedDatabases(t *testing.T) {
 func separateConnectionValues() map[string]string {
 	values := connectionValues()
 	for key, raw := range values {
+		if !strings.HasSuffix(key, "_URL") {
+			continue
+		}
 		u, _ := url.Parse(raw)
 		u.User = nil
 		values[key] = u.String()
@@ -206,6 +210,9 @@ func TestSeparateCredentialsRejectIncompleteOrMixedConfiguration(t *testing.T) {
 		}
 	}
 	for key, embedded := range connectionValues() {
+		if !strings.HasSuffix(key, "_URL") {
+			continue
+		}
 		values := separateConnectionValues()
 		values[key] = embedded
 		if _, err := load(values); err == nil || !strings.Contains(err.Error(), key) || strings.Contains(err.Error(), "synthetic-secret") {

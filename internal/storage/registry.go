@@ -39,9 +39,44 @@ func (c Connection) GoString() string { return c.String() }
 // Registry has no mutable active route. Callers supply their pinned position.
 // Fixed connections cannot be selected through the business lookup.
 type Registry struct {
-	slots   [2][2]Connection
-	control Connection
-	logs    Connection
+	slots        [2][2]Connection
+	control      Connection
+	logs         Connection
+	upstreamLogs Connection
+	logMode      LogStorageMode
+}
+
+type LogStorageMode string
+type LogSource string
+
+const (
+	SingleLegacy LogStorageMode = "single_legacy"
+	DualLogs     LogStorageMode = "dual"
+	PlatformLog  LogSource      = "platform"
+	UpstreamLog  LogSource      = "upstream"
+)
+
+func (r Registry) LogMode() LogStorageMode { return r.logMode }
+
+// LogConnection never falls back to the platform database for upstream reads
+// or writes. Legacy routing remains an explicit decision of the old pipeline.
+func (r Registry) LogConnection(source LogSource) (Connection, error) {
+	var c Connection
+	switch source {
+	case PlatformLog:
+		c = r.logs
+	case UpstreamLog:
+		if r.logMode != DualLogs {
+			return c, fmt.Errorf("upstream log database not enabled")
+		}
+		c = r.upstreamLogs
+	default:
+		return c, fmt.Errorf("invalid log source")
+	}
+	if c.dsn == "" {
+		return c, fmt.Errorf("log database not configured")
+	}
+	return c, nil
 }
 
 func (r Registry) Business(p Position) (Connection, error) {
@@ -66,9 +101,18 @@ func (r Registry) GoString() string    { return r.String() }
 
 // LoadRegistry validates all targets before any adapter is created. PostgreSQL
 // URLs are deliberately restricted: routing overrides and implicit defaults
-// would defeat the isolation checks. DNS aliases remain a deployment concern.
+// would defeat the isolation checks. VerifyLogIsolation checks physical database
+// identities at deployment; URL comparison alone cannot detect DNS aliases.
 func LoadRegistry(lookup func(string) (string, bool)) (Registry, error) {
 	var r Registry
+	if lookup == nil {
+		return r, fmt.Errorf("database lookup required")
+	}
+	mode, _ := lookup("LOG_STORAGE_MODE")
+	r.logMode = LogStorageMode(mode)
+	if r.logMode != SingleLegacy && r.logMode != DualLogs {
+		return Registry{}, fmt.Errorf("LOG_STORAGE_MODE: explicit single_legacy or dual required")
+	}
 	entries := []struct {
 		key    string
 		target *Connection
@@ -76,6 +120,18 @@ func LoadRegistry(lookup func(string) (string, bool)) (Registry, error) {
 		{"DATABASE_M0_URL", &r.slots[0][0]}, {"DATABASE_M1_URL", &r.slots[0][1]},
 		{"DATABASE_S0_URL", &r.slots[1][0]}, {"DATABASE_S1_URL", &r.slots[1][1]},
 		{"DATABASE_CONTROL_URL", &r.control}, {"DATABASE_LOG_URL", &r.logs},
+	}
+	if r.logMode == DualLogs {
+		entries = append(entries, struct {
+			key    string
+			target *Connection
+		}{"DATABASE_UPSTREAM_LOG_URL", &r.upstreamLogs})
+	} else {
+		for _, key := range []string{"DATABASE_UPSTREAM_LOG_URL", "DATABASE_UPSTREAM_LOG_USER", "DATABASE_UPSTREAM_LOG_PASSWORD"} {
+			if v, _ := lookup(key); v != "" {
+				return Registry{}, fmt.Errorf("LOG_STORAGE_MODE: upstream settings require dual mode")
+			}
+		}
 	}
 	seen := map[string]bool{}
 	for _, entry := range entries {
@@ -102,6 +158,9 @@ func LoadRegistry(lookup func(string) (string, bool)) (Registry, error) {
 	if r.logs.endpoint == r.slots[0][0].endpoint || r.logs.endpoint == r.slots[1][0].endpoint {
 		return Registry{}, fmt.Errorf("DATABASE_LOG_URL: logs require an independent endpoint")
 	}
+	if r.logMode == DualLogs && (r.upstreamLogs.endpoint == r.slots[0][0].endpoint || r.upstreamLogs.endpoint == r.slots[1][0].endpoint || r.upstreamLogs.endpoint == r.logs.endpoint) {
+		return Registry{}, fmt.Errorf("DATABASE_UPSTREAM_LOG_URL: upstream logs require an independent endpoint")
+	}
 	return r, nil
 }
 
@@ -113,6 +172,8 @@ func configuredConnection(lookup func(string) (string, bool), key string) (Conne
 	prefix := "DATABASE_"
 	if key == "DATABASE_LOG_URL" {
 		prefix = "DATABASE_LOG_"
+	} else if key == "DATABASE_UPSTREAM_LOG_URL" {
+		prefix = "DATABASE_UPSTREAM_LOG_"
 	}
 	user, hasUser := lookup(prefix + "USER")
 	password, hasPassword := lookup(prefix + "PASSWORD")

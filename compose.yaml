@@ -2,6 +2,8 @@
 name: ${SICP_PROJECT:-sicp-production}
 
 x-database-environment: &database-environment
+  # Explicit compatibility mode until the independent log pipelines are assembled.
+  LOG_STORAGE_MODE: "${LOG_STORAGE_MODE-single_legacy}"
   DATABASE_M0_URL: "${DATABASE_M0_URL:?Set DATABASE_M0_URL in .env (copy .env.example)}"
   DATABASE_M1_URL: "${DATABASE_M1_URL:?Set DATABASE_M1_URL in .env (copy .env.example)}"
   DATABASE_S0_URL: "${DATABASE_S0_URL:?Set DATABASE_S0_URL in .env (copy .env.example)}"
