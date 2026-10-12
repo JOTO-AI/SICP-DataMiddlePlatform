@@ -135,7 +135,13 @@ func (p *directService) signal(t *testing.T, signal syscall.Signal) {
 func (d *deployment) privateIP(t *testing.T, service string) string {
 	t.Helper()
 	id := strings.TrimSpace(d.compose(t, "ps", "-q", service))
-	raw := commandOutput(t, exec.CommandContext(d.ctx, "docker", "inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", id))
+	// Services may join both ingress and the private dependency network.
+	network := d.project + "_sicp"
+	if service == "query-gateway" {
+		network = d.project + "_ingress"
+	}
+	format := "{{(index .NetworkSettings.Networks " + fmt.Sprintf("%q", network) + ").IPAddress}}"
+	raw := commandOutput(t, exec.CommandContext(d.ctx, "docker", "inspect", "--format", format, id))
 	ip := net.ParseIP(strings.TrimSpace(raw))
 	if ip == nil || !ip.IsPrivate() {
 		t.Fatal("dependency not on isolated private bridge", service)
@@ -191,15 +197,26 @@ func (d *deployment) directConfig(t *testing.T, role string) (string, []string) 
 			values[key] = u.String()
 		}
 	}
-	endpoint := d.queryURL
+	// Direct processes own an independent loopback port. The unified gateway
+	// retains its published port, and container bridge IPs cannot bind on host.
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	address := listener.Addr().String()
+	if err := listener.Close(); err != nil {
+		t.Fatal(err)
+	}
 	if role == "worker" {
-		endpoint = d.workerURL
+		d.workerURL = "http://" + address
+		values["CONSOLE_QUERY_URL"] = "http://" + d.privateIP(t, "query-gateway") + ":8080"
 		values["SOURCE_ORIGIN"] = d.mockURL
 		mock, _ := url.Parse(d.mockURL)
 		values["MAIL_ADDRESS"] = net.JoinHostPort(mock.Hostname(), "1025")
+	} else {
+		d.queryURL = "http://" + address
 	}
-	u, _ := url.Parse(endpoint)
-	values["HTTP_ADDRESS"] = u.Host
+	values["HTTP_ADDRESS"] = address
 	var env []string
 	for key, value := range values {
 		env = append(env, key+"="+value)

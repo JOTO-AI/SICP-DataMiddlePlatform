@@ -281,6 +281,9 @@ func TestT11_04AllFourRealPipelinesColdHotFreshMetadataAndAuthenticatedHits(t *t
 			if cold.Code != 200 || !strings.Contains(cold.Body.String(), `"items":[]`) {
 				t.Fatal(cold.Code, cold.Body.String())
 			}
+			if cold.Header().Get("X-SICP-Combination") != pinned.Combination {
+				t.Fatal("cold response did not identify the queried combination")
+			}
 			w.mu.Lock()
 			sqlCount := len(w.sql)
 			traceCount := len(w.trace)
@@ -293,9 +296,15 @@ func TestT11_04AllFourRealPipelinesColdHotFreshMetadataAndAuthenticatedHits(t *t
 			if bad.Code != 401 || !unchanged {
 				t.Fatal("cache bypassed auth", bad.Code)
 			}
+			if bad.Header().Get("X-SICP-Combination") != "" {
+				t.Fatal("failed authentication exposed combination evidence")
+			}
 			hot := pipelineRequest(t.Context(), h, tc.op, tc.body, "synthetic-key", cold.Header().Get(snapshot.Header))
 			if hot.Code != 200 || !strings.Contains(hot.Body.String(), `"synced_at":"2026-09-18T10:00:00+08:00"`) || hot.Header().Get("X-Request-ID") == cold.Header().Get("X-Request-ID") {
 				t.Fatal(hot.Code, hot.Body.String())
+			}
+			if hot.Header().Get("X-SICP-Combination") != pinned.Combination {
+				t.Fatal("cached response lost combination binding")
 			}
 			w.mu.Lock()
 			defer w.mu.Unlock()

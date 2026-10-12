@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 )
 
@@ -92,6 +93,7 @@ func validateOwnership(owner Ownership) error {
 // lockOwnership keeps the fixed execution singleton locked until the caller's
 // transaction ends. Ownership expiry alone never grants a new executor access.
 func lockOwnership(ctx context.Context, tx storage.Transaction, owner Ownership) error {
+	defer buildmetric.LockAcquisition(ctx)()
 	if err := validateOwnership(owner); err != nil {
 		return err
 	}

@@ -4,6 +4,7 @@ package publication
 import (
 	"context"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
 )
 
@@ -16,7 +17,13 @@ type Delivery interface {
 
 // Submit preserves the commit-before-network boundary. Delivery success is not
 // complete sync success: application and progress confirmation are later steps.
-func Submit(ctx context.Context, outbox Outbox, delivery Delivery, intent control.PublicationIntent) (control.Publication, error) {
+func Submit(ctx context.Context, outbox Outbox, delivery Delivery, intent control.PublicationIntent) (result control.Publication, err error) {
+	stage := "publish"
+	if intent.Kind == "route_shift" {
+		stage = "route_shift"
+	}
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: stage, Combination: intent.Target.BundleID, Slot: intent.Target.Position.Slot, Generation: intent.Target.Generation}, string(intent.Target.Position.Instance))
+	defer func() { end(err) }()
 	if outbox == nil || delivery == nil {
 		return control.Publication{}, control.ErrEntity
 	}

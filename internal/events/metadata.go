@@ -11,6 +11,7 @@ import (
 
 // Metadata is a typed allowlist, never a map of caller-controlled attributes.
 type Metadata struct {
+	Build     *BuildStage        `json:"build,omitempty"`
 	Source    string             `json:"source,omitempty"`
 	Path      string             `json:"path,omitempty"`
 	Mode      string             `json:"mode,omitempty"`
@@ -25,6 +26,9 @@ type Metadata struct {
 func (Metadata) String() string     { return "[event metadata redacted]" }
 func (m Metadata) GoString() string { return m.String() }
 func (m Metadata) valid() bool {
+	if m.Build != nil && (!m.Build.valid() || m.Source != "" || m.Operation != "") {
+		return false
+	}
 	if m.Source != "" {
 		found := false
 		for _, table := range source.Catalog() {

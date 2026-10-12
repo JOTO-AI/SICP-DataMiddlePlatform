@@ -24,12 +24,64 @@ jobs:
           mkdir -p artifacts/compose
           docker compose ps -a > artifacts/compose/status.txt 2>&1 || true
           docker compose logs --no-color > artifacts/compose/compose.log 2>&1 || true
+          cat artifacts/compose/status.txt
+          docker compose logs --no-color --tail 50 query query-gateway
           docker compose down --volumes --remove-orphans
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: compose-evidence
           path: artifacts/compose/
+  gateway:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      SICP_PROJECT: sicp-gateway-http
+      NO_PROXY: 127.0.0.1,localhost,sicp-gateway.test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install browser and test trust tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnss3-tools
+          printf '127.0.0.1 sicp-gateway.test\n' | sudo tee -a /etc/hosts
+          cd frontend
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Gateway real Nginx contracts
+        run: bash scripts/check-gateway.sh contracts
+      - name: Gateway real Compose deployment
+        run: bash scripts/check-gateway.sh deployment
+      - name: Gateway replicas and DNS regression
+        run: bash scripts/check-gateway.sh replicas
+      - name: Gateway trusted browser, protocol switch and renewal
+        run: bash scripts/check-gateway.sh browser
+      - name: Gateway full previous-release rollback
+        run: bash scripts/check-gateway.sh rollback
+      - name: Require every gateway acceptance scenario
+        run: python3 scripts/gateway_acceptance.py
+      - name: Summarize evidence and stop isolated deployment
+        if: always()
+        run: |
+          python3 scripts/gateway_acceptance.py || true
+          python3 scripts/gateway_evidence_filter.py artifacts/gateway
+          if test -f .env; then docker compose down --volumes --remove-orphans; fi
+          docker ps -aq --filter name=sicp-gateway-contracts | xargs -r docker rm -f
+          docker network rm sicp-gateway-contracts 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gateway-evidence
+          path: artifacts/gateway/
+          retention-days: 7
+          if-no-files-found: error
   frontend:
     runs-on: ubuntu-24.04
     defaults:
@@ -57,6 +109,8 @@ jobs:
             frontend/dist/
   unit:
     runs-on: ubuntu-24.04
+    outputs:
+      validated: ${{ steps.validate_deployment.outcome == 'success' }}
     defaults:
       run:
         shell: bash
@@ -77,6 +131,7 @@ jobs:
           docker build --platform linux/amd64 -f deploy/Dockerfile --build-arg SERVICE=query-service -t sicp-query:p01 .
           docker build --platform linux/amd64 -f deploy/Dockerfile --build-arg SERVICE=sync-worker -t sicp-worker:p01 .
       - name: Validate deployment template without starting integration services
+        id: validate_deployment
         run: |
           bash scripts/sicp.sh prepare
           python3 scripts/check-compose-config.py
@@ -85,10 +140,17 @@ jobs:
         if: always()
         with:
           name: linux-unit-evidence
-          path: artifacts/
+          path: |
+            artifacts/
+            !artifacts/query-service
+            !artifacts/sync-worker
+            !artifacts/db-migrate
           if-no-files-found: error
   integration:
     needs: unit
+    # Unit validation must pass; an evidence-upload failure must not skip tests.
+    # Upload failures still fail the overall workflow and are never suppressed.
+    if: ${{ always() && needs.unit.outputs.validated == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
@@ -134,12 +196,38 @@ jobs:
           mkdir -p artifacts/integration
           docker compose -p "$SICP_PROJECT" logs --no-color > artifacts/integration/compose.log 2>&1 || true
           docker compose -p "$SICP_PROJECT" down --volumes --remove-orphans
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-integration-evidence
+          path: artifacts/integration/
+          if-no-files-found: error
+  deployment:
+    needs: unit
+    if: ${{ always() && needs.unit.outputs.validated == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      GOTOOLCHAIN: local
+      SICP_INTEGRATION: '1'
+      SICP_PROJECT: sicp-deployment-regression
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
       - name: Build deployment images from clean checkout
         run: |
           test -z "$(git status --porcelain --untracked-files=no)"
+          python3 scripts/check-compose-config.py --write-development-env .env
           bash scripts/sicp.sh build
       - name: Run deployment integration cases sequentially
         run: |
+          mkdir -p artifacts/integration
           set +e
           go test -tags=integration -race -count=1 -parallel=1 -timeout=15m -run '^TestI06_' -json ./tests/integration | tee artifacts/integration/I06.jsonl
           result=${PIPESTATUS[0]}
@@ -148,6 +236,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: linux-integration-evidence
-          path: artifacts/integration/
+          name: linux-deployment-evidence
+          path: |
+            artifacts/integration/
+            artifacts/build-performance/
           if-no-files-found: error

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
@@ -18,18 +20,38 @@ type IndexReader interface {
 	CheckPrimaryIndex(context.Context, storage.Position, string) error
 }
 type StorageChecks struct {
-	Target  CompleteSource
-	Source  read.Matcher
-	Indexes IndexReader
-	Clock   ports.Clock
-	Limits  read.Limits
+	Target            CompleteSource
+	Source            read.Matcher
+	Indexes           IndexReader
+	Clock             ports.Clock
+	Limits            read.Limits
+	BackgroundTimeout time.Duration
 }
 
-func (s StorageChecks) SourceStorage(ctx context.Context, h read.Handle, m Manifest) error {
+func (s StorageChecks) SourceStorage(ctx context.Context, h read.Handle, m Manifest) (err error) {
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "content_check", Combination: h.Combination, Slot: h.Position.Slot, Generation: h.Generation}, string(h.Position.Instance))
+	defer func() { end(err) }()
 	if s.Target == nil || s.Source == nil || s.Clock == nil || m.Validate() != nil || h.Combination != m.Combination {
 		return ErrBuild
 	}
-	if err := s.Target.Validate(ctx, m); err != nil {
+	if s.BackgroundTimeout != 0 {
+		if s.BackgroundTimeout <= 0 || s.BackgroundTimeout > time.Hour {
+			return read.ErrBudget
+		}
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.BackgroundTimeout)
+		defer cancel()
+	}
+	if files, native := s.Target.(TargetFiles); native {
+		// Initial full-file verification is performed by the mandatory database
+		// comparison below. The closing full scan remains a mutation guard.
+		session, closeSession, sessionErr := files.session(ctx, m)
+		if sessionErr != nil {
+			return sessionErr
+		}
+		defer closeSession()
+		s.Target = session
+	} else if err := s.Target.Validate(ctx, m); err != nil {
 		return err
 	}
 	b, err := read.NewBudget(s.Limits, s.Clock)
@@ -37,6 +59,16 @@ func (s StorageChecks) SourceStorage(ctx context.Context, h read.Handle, m Manif
 		return err
 	}
 	for _, version := range m.Tables {
+		if s.BackgroundTimeout != 0 {
+			limits, limitErr := read.TableLimits(version.Rows, s.BackgroundTimeout)
+			if limitErr != nil {
+				return limitErr
+			}
+			b, err = read.NewBudget(limits, s.Clock)
+			if err != nil {
+				return err
+			}
+		}
 		var table source.Table
 		for _, t := range source.Catalog() {
 			if t.Name == version.Table {
@@ -47,9 +79,12 @@ func (s StorageChecks) SourceStorage(ctx context.Context, h read.Handle, m Manif
 			return err
 		}
 	}
+	activity.Report(ctx, "validating_target", "", string(h.Position.Instance))
 	return s.Target.Validate(ctx, m)
 }
 func (s StorageChecks) table(ctx context.Context, h read.Handle, m Manifest, v TableVersion, table source.Table, b *read.Budget) (err error) {
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "content_table", Table: v.Table, Combination: h.Combination, Slot: h.Position.Slot, Generation: h.Generation}, string(h.Position.Instance))
+	defer func() { end(err) }()
 	rows, err := s.Target.Open(ctx, m, v)
 	if err != nil {
 		return err
@@ -63,6 +98,7 @@ func (s StorageChecks) table(ctx context.Context, h read.Handle, m Manifest, v T
 		err = errors.Join(err, rows.Close(cleanup))
 	}()
 	original := newChecked(v, rows)
+	advance := activity.Begin(ctx, "content_check", v.Table, string(h.Position.Instance), "rows", "", v.Rows)
 	err = read.Scan(ctx, s.Source, h, table.Name, nil, b, func(actual source.SourceRow) error {
 		expected, more, err := original.Next(ctx)
 		if err != nil {
@@ -102,6 +138,7 @@ func (s StorageChecks) table(ctx context.Context, h read.Handle, m Manifest, v T
 				return ErrBuild
 			}
 		}
+		advance(1, 0)
 		return nil
 	})
 	if err != nil {
@@ -116,7 +153,10 @@ func (s StorageChecks) table(ctx context.Context, h read.Handle, m Manifest, v T
 	}
 	return nil
 }
-func (s StorageChecks) SourceIndexes(ctx context.Context, h read.Handle, m Manifest) error {
+func (s StorageChecks) SourceIndexes(ctx context.Context, h read.Handle, m Manifest) (err error) {
+	activity.Report(ctx, "index_check", "", string(h.Position.Instance))
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "index_check", Combination: h.Combination, Slot: h.Position.Slot, Generation: h.Generation}, string(h.Position.Instance))
+	defer func() { end(err) }()
 	if s.Indexes == nil || m.Validate() != nil || h.Validate() != nil || h.Combination != m.Combination {
 		return ErrBuild
 	}

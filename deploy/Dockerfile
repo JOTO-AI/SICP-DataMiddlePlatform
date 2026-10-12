@@ -11,10 +11,12 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o /service ./cmd/$
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o /db-migrate ./cmd/db-migrate
 
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates util-linux && rm -rf /var/lib/apt/lists/*
 COPY --from=build /service /usr/local/bin/service
 COPY --from=build /db-migrate /usr/local/bin/db-migrate
+COPY deploy/query-entrypoint.sh /usr/local/bin/query-entrypoint.sh
 COPY deploy/worker-entrypoint.sh /usr/local/bin/worker-entrypoint.sh
+COPY deploy/gateway-config.sh /usr/local/bin/gateway-config.sh
 USER 65532:65532
 ENV HTTP_ADDRESS=0.0.0.0:8080
 EXPOSE 8080

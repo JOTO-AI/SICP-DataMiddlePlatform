@@ -76,7 +76,10 @@ func (tx *transaction) Exec(_ context.Context, sql string, args ...any) (int64, 
 	}
 	return 0, nil
 }
-func (tx *transaction) QueryRow(context.Context, string, ...any) storage.Row {
+func (tx *transaction) QueryRow(_ context.Context, sql string, _ ...any) storage.Row {
+	if strings.Contains(sql, "has_table_privilege") {
+		return indexResult(true)
+	}
 	panic("unexpected QueryRow")
 }
 func (tx *transaction) Query(_ context.Context, sql string, args ...any) (storage.Rows, error) {
@@ -132,6 +135,18 @@ func setup(t *testing.T) (source.Repository, *database, *gate, source.Target) {
 }
 func campus(id string) source.SourceRow {
 	return source.SourceRow{"XQH": json.RawMessage(`"` + id + `"`), "XQMC": json.RawMessage(`"campus"`)}
+}
+
+func TestBT03_StatisticsFailureCannotCompleteTable(t *testing.T) {
+	r, db, g, target := setup(t)
+	db.failBatch = 2 // First write commits; post-import ANALYZE transaction fails.
+	report, err := r.Rebuild(t.Context(), target, "dwd_xqjbsjzlb", &iterator{rows: []source.SourceRow{campus("001")}}, 2)
+	if err == nil || report.Complete || report.WrittenRows != 1 || g.released != 1 {
+		t.Fatal(report, err)
+	}
+	if !db.transactions[1].rolledBack {
+		t.Fatal("statistics failure not rolled back")
+	}
 }
 
 func TestT02_07SecondBatchFailureReportsOnlyCommittedBatches(t *testing.T) {

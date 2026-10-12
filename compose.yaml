@@ -17,7 +17,7 @@ x-runtime-environment: &runtime-environment
   DEPENDENCY_TIMEOUT: "${DEPENDENCY_TIMEOUT:?Set DEPENDENCY_TIMEOUT in .env (copy .env.example)}"
   QUERY_API_KEY: "${QUERY_API_KEY:?Set QUERY_API_KEY in .env (copy .env.example)}"
   REDIS_URL: "${REDIS_URL:?Set REDIS_URL in .env (copy .env.example)}"
-  LOG_DIRECTORY: "${LOG_DIRECTORY:?Set LOG_DIRECTORY in .env (copy .env.example)}"
+  LOG_DIRECTORY: "/var/lib/sicp/logs"
   LOG_MAX_BYTES: "${LOG_MAX_BYTES:?Set LOG_MAX_BYTES in .env (copy .env.example)}"
   LOG_MAX_FILES: "${LOG_MAX_FILES:?Set LOG_MAX_FILES in .env (copy .env.example)}"
   SNAPSHOT_KEY: "${SNAPSHOT_KEY:?Set SNAPSHOT_KEY in .env (copy .env.example)}"
@@ -60,34 +60,37 @@ x-postgres: &postgres
 services:
   db-m:
     <<: *postgres
+    command: [postgres, -c, "max_connections=${POSTGRES_M_MAX_CONNECTIONS-256}"]
     environment:
       <<: *postgres-environment
       SICP_CLUSTER: M
     volumes:
-      - pg-m:/var/lib/postgresql
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/pg-m:/var/lib/postgresql"
       - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
   db-s:
     <<: *postgres
+    command: [postgres, -c, "max_connections=${POSTGRES_S_MAX_CONNECTIONS-128}"]
     environment:
       <<: *postgres-environment
       SICP_CLUSTER: S
     volumes:
-      - pg-s:/var/lib/postgresql
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/pg-s:/var/lib/postgresql"
       - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
   db-log:
     <<: *postgres
+    command: [postgres, -c, "max_connections=${POSTGRES_LOG_MAX_CONNECTIONS-100}"]
     environment:
       <<: *postgres-environment
       SICP_CLUSTER: log
     volumes:
-      - pg-log:/var/lib/postgresql
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/pg-log:/var/lib/postgresql"
       - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
   redis:
     image: redis:7.4-bookworm
     platform: linux/amd64
     restart: unless-stopped
     command: [redis-server, --appendonly, "yes", --appendfsync, always]
-    volumes: ["redis:/data"]
+    volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/redis:/data"]
     healthcheck:
       test: [CMD, redis-cli, ping]
       interval: 2s
@@ -99,8 +102,8 @@ services:
     platform: linux/amd64
     restart: "no"
     network_mode: none
-    volumes: ["query-logs:/query-logs", "worker-logs:/worker-logs", "staging:/staging", "targets:/targets", "spool:/spool"]
-    command: [sh, -c, "chown 65532:65532 /query-logs /worker-logs /staging /targets /spool && chmod 700 /query-logs /worker-logs /staging /targets /spool"]
+    volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-logs:/query-logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-replicas:/query-replicas", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/worker-logs:/worker-logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/staging:/staging", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/targets:/targets", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/spool:/spool"]
+    command: [sh, -c, "chown 65532:65532 /query-logs /query-replicas /worker-logs /staging /targets /spool && chmod 700 /query-logs /query-replicas /worker-logs /staging /targets /spool"]
   mock-volumes:
     image: busybox:1.37
     platform: linux/amd64
@@ -133,6 +136,9 @@ services:
         aliases: [mock-source, mock-mail]
   query:
     <<: *service
+    deploy:
+      replicas: ${QUERY_REPLICAS-1}
+    entrypoint: [/bin/sh, /usr/local/bin/query-entrypoint.sh]
     depends_on:
       volumes: {condition: service_completed_successfully}
       migrate: {condition: service_completed_successfully}
@@ -143,14 +149,47 @@ services:
     environment:
       <<: *runtime-environment
       HTTP_ADDRESS: 0.0.0.0:8080
+      QUERY_MAX_EXECUTIONS: "${QUERY_MAX_EXECUTIONS-8}"
+      QUERY_MAX_QUEUE: "${QUERY_MAX_QUEUE-64}"
+      QUERY_EXECUTION_TIMEOUT: "${QUERY_EXECUTION_TIMEOUT-30s}"
+      QUERY_DB_BUSINESS_MAX_CONNS: "${QUERY_DB_BUSINESS_MAX_CONNS-16}"
+      QUERY_DB_CONTROL_MAX_CONNS: "${QUERY_DB_CONTROL_MAX_CONNS-16}"
+      QUERY_DB_LOG_MAX_CONNS: "${QUERY_DB_LOG_MAX_CONNS-16}"
       DATABASE_USER: "sicp_query"
       DATABASE_PASSWORD: "${QUERY_PASSWORD:?Set QUERY_PASSWORD in .env (copy .env.example)}"
       DATABASE_LOG_USER: "sicp_logger"
       DATABASE_LOG_PASSWORD: "${LOGGER_PASSWORD:?Set LOGGER_PASSWORD in .env (copy .env.example)}"
-    volumes: ["query-logs:/var/lib/sicp/logs"]
-    ports: ["127.0.0.1:${SICP_QUERY_PORT:-18080}:8080"]
+    volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-logs:/var/lib/sicp/logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-replicas:/var/lib/sicp/query-replicas"]
     healthcheck:
       test: [CMD, /usr/local/bin/service, --healthcheck]
+      interval: 5s
+      timeout: 6s
+      retries: 10
+  query-gateway:
+    <<: *service
+    build: {context: ./deploy, dockerfile: QueryGateway.Dockerfile}
+    image: sicp-query-gateway:phase1
+    depends_on:
+      query: {condition: service_healthy}
+    networks: [ingress]
+    environment:
+      QUERY_REPLICAS: "${QUERY_REPLICAS-1}"
+      SICP_TLS_CERT_FILE: "${SICP_TLS_CERT_FILE:-}"
+      SICP_TLS_KEY_FILE: "${SICP_TLS_KEY_FILE:-}"
+    ports: ["0.0.0.0:${SICP_GATEWAY_PORT:-18080}:8443"]
+    volumes:
+      - type: bind
+        source: "${SICP_TLS_CERT_FILE:-/dev/null}"
+        target: /etc/nginx/tls/fullchain.pem
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: "${SICP_TLS_KEY_FILE:-/dev/null}"
+        target: /etc/nginx/tls/privkey.pem
+        read_only: true
+        bind: {create_host_path: false}
+    healthcheck:
+      test: [CMD, wget, -q, --spider, "http://127.0.0.1:8080/livez"]
       interval: 5s
       timeout: 6s
       retries: 10
@@ -172,9 +211,9 @@ services:
       DATABASE_PASSWORD: "${WORKER_PASSWORD:?Set WORKER_PASSWORD in .env (copy .env.example)}"
       DATABASE_LOG_USER: "sicp_logger"
       DATABASE_LOG_PASSWORD: "${LOGGER_PASSWORD:?Set LOGGER_PASSWORD in .env (copy .env.example)}"
-      STAGING_DIRECTORY: "${STAGING_DIRECTORY:?Set STAGING_DIRECTORY in .env (copy .env.example)}"
-      TARGET_DIRECTORY: "${TARGET_DIRECTORY:?Set TARGET_DIRECTORY in .env (copy .env.example)}"
-      SPOOL_DIRECTORY: "${SPOOL_DIRECTORY:?Set SPOOL_DIRECTORY in .env (copy .env.example)}"
+      STAGING_DIRECTORY: "/var/lib/sicp/staging"
+      TARGET_DIRECTORY: "/var/lib/sicp/targets"
+      SPOOL_DIRECTORY: "/var/lib/sicp/spool"
       STAGING_MAX_BYTES: "${STAGING_MAX_BYTES:-0}"
       TARGET_MAX_BYTES: "${TARGET_MAX_BYTES:-0}"
       SPOOL_MAX_BYTES: "${SPOOL_MAX_BYTES:-0}"
@@ -185,6 +224,8 @@ services:
       SOURCE_PAGE_SIZE: "${SOURCE_PAGE_SIZE:-1000}"
       SOURCE_PAGE_CONCURRENCY: "${SOURCE_PAGE_CONCURRENCY:-4}"
       BUILD_TABLE_CONCURRENCY: "${BUILD_TABLE_CONCURRENCY:-2}"
+      BUILD_CHECK_TIMEOUT: "${BUILD_CHECK_TIMEOUT:-30m}"
+      BUILD_IMPORT_MODE: "${BUILD_IMPORT_MODE:-copy}"
       SOURCE_QUALITY: "${SOURCE_QUALITY:-}"
       MAIL_ADDRESS: "${MAIL_ADDRESS:-}"
       MAIL_TLS: "${MAIL_TLS:-}"
@@ -194,10 +235,11 @@ services:
       MAIL_PASSWORD: "${MAIL_PASSWORD:-}"
       ADMIN_USERNAME: "${ADMIN_USERNAME:?Set ADMIN_USERNAME in .env (copy .env.example)}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env (copy .env.example)}"
-      CONSOLE_QUERY_URL: "http://query:8080"
-      CONSOLE_COOKIE_SECURE: "${CONSOLE_COOKIE_SECURE:-false}"
-    volumes: ["worker-logs:/var/lib/sicp/logs", "staging:/var/lib/sicp/staging", "targets:/var/lib/sicp/targets", "spool:/var/lib/sicp/spool"]
-    ports: ["127.0.0.1:${SICP_WORKER_PORT:-18081}:8081"]
+      CONSOLE_QUERY_URL: "http://query-gateway:8080"
+      SICP_GATEWAY_MANAGED: "true"
+      SICP_TLS_CERT_FILE: "${SICP_TLS_CERT_FILE:-}"
+      SICP_TLS_KEY_FILE: "${SICP_TLS_KEY_FILE:-}"
+    volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/worker-logs:/var/lib/sicp/logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/staging:/var/lib/sicp/staging", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/targets:/var/lib/sicp/targets", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/spool:/var/lib/sicp/spool"]
     healthcheck:
       test: [CMD, /usr/local/bin/service, --healthcheck]
       interval: 5s
@@ -223,14 +265,13 @@ services:
     build: {context: ./frontend}
     image: sicp-console:phase1
     depends_on:
-      query: {condition: service_healthy}
+      query-gateway: {condition: service_healthy}
       worker: {condition: service_healthy}
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     tmpfs: ["/tmp:size=32m,mode=1777"]
-    ports: ["127.0.0.1:${SICP_CONSOLE_PORT:-18082}:8080"]
     networks: [ingress]
     healthcheck:
       test: [CMD, wget, -q, --spider, "http://127.0.0.1:8080/console/"]
@@ -244,14 +285,6 @@ networks:
   ingress:
   sicp:
     internal: true
+
 volumes:
-  pg-m:
-  pg-s:
-  pg-log:
-  redis:
-  query-logs:
-  worker-logs:
-  staging:
-  targets:
-  spool:
   mock-mail:

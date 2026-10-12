@@ -14,7 +14,7 @@ docker compose up -d --build --wait --wait-timeout 300
 
 Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执行，已有 `.env` 时直接修改。
 
-打开控制台 <http://127.0.0.1:18082/console/>。默认 `ENVIRONMENT=production`，Compose 启动 PostgreSQL、Redis、查询服务、同步服务和前端，完成卷权限初始化与数据库迁移后才启动应用。首次构建需要联网拉取基础镜像与依赖。
+打开控制台 <http://127.0.0.1:18080/console/>。默认 `ENVIRONMENT=production`，Compose 启动 PostgreSQL、Redis、查询服务、同步服务和前端，完成卷权限初始化与数据库迁移后才启动应用。首次构建需要联网拉取基础镜像与依赖。
 
 上游认证填写 `SOURCE_APP_ID` 和 `SOURCE_APP_SECRET`（上游开发者首页获取），无需填写临时 `SOURCE_TOKEN`。worker 自动获取 Token；响应带有效 `expires_in`（秒）时在到期前更新，否则每次分页前获取。HTTP 或业务码 401/403 时重新获取并重试当前页一次。已有 `.env` 请将 `SOURCE_TOKEN` 替换为这两个应用凭据。
 
@@ -45,7 +45,7 @@ Linux / Bash 脚本用于同一套 Compose 的分步运维，`deploy` 同样包�
 ./scripts/sicp.sh status
 ```
 
-`deploy` 准备配置、构建镜像、创建持久卷、迁移数据库并启动服务；数据初始化和同步由后台自动执行，前端提供运行记录与维护入口。默认 query、worker 分别向宿主机 `127.0.0.1:18080`、`127.0.0.1:18081` 提供 HTTP 服务。PG 和 Redis 仅连接内部网络；正式模式的 worker 使用配置的真实上游，邮件通知按需配置 SMTP；六个 `MAIL_*` 参数全部留空时关闭。Mock 仅在开发模式启用。
+`deploy` 准备配置、构建镜像、创建持久卷、迁移数据库并启动服务；数据初始化和同步由后台自动执行，前端提供运行记录与维护入口。网关默认在宿主机 `18080` 提供页面、管理和业务查询统一 HTTP 入口；配对设置证书路径后使用 HTTPS，详见部署说明。query、worker、console 不单独发布端口。PG 和 Redis 仅连接内部网络；正式模式的 worker 使用配置的真实上游，邮件通知按需配置 SMTP；六个 `MAIL_*` 参数全部留空时关闭。Mock 仅在开发模式启用。
 
 完整职责划分、失败处理及验收方案见[自动运行与 ctl 移除方案](development_docs/AUTOMATION_AND_CTL_REMOVAL.md)。
 
@@ -55,7 +55,17 @@ Linux / Bash 脚本用于同一套 Compose 的分步运维，`deploy` 同样包�
 
 采集完成后，控制台继续显示当前执行阶段，包括整批校验、逐表构建、写入数据库副本、业务校验、发布及同步进度确认，并显示阶段耗时与每 10 秒上报的执行器心跳。超过 45 秒未收到心跳时提示状态待确认；心跳仅表示执行器在线，不作为数据进度或发布成功的依据。
 
+写入阶段显示已提交行数/批数，内容校验显示已核对行数，业务校验显示实际案例数和最后进展时间。总量未知时不显示百分比；心跳正常但 45 秒没有工作量进展时单独提示。100% 行进度仍需等待完整校验与发布，任务终态后计时停止。
+
 本地表数据构建支持 `BUILD_TABLE_CONCURRENCY=2`（默认 2，允许 1—4），与 `SOURCE_PAGE_CONCURRENCY` 独立，修改后重新创建 worker 容器生效。不同表可同时排序、合并；构建组开始与结束各做一次完整输入校验，每页读取仍校验内容，避免每张表都重复扫描全部采集数据。所有表完成并通过复核后才生成完整构建清单，某表失败会取消并等待同组任务结束，数据库副本写入与发布继续遵循既有顺序。控制台会列出正在并行构建的表。每张表的缓冲、排序临时文件独立，资源需求随并发数增加；增量合并仍会读取完整旧数据，本次没有改为只写变化行。
+
+后台完整核对和业务校验使用 `BUILD_CHECK_TIMEOUT`（默认 `30m`，允许 `1s`—`1h`）作为每阶段保护期限，SQL 同步结束后才释放读取资格。完整核对按可信清单读取至结束，单表最多声明 1000 万行；流式批载荷上限 16 MiB，业务计算收集的累计源载荷上限 64 MiB。候选与旧副本检查均使用后台预算；前台仍为 10 万行／64 MiB／20 秒。阶段期限不是端到端 30 分钟达标证明，超过保留缓冲的业务案例会明确失败，不能截断后算成功。
+
+升级本专项版本前，须在受控部署窗口对四个业务槽位应用 `business_003`：增加 C 排序和关联索引，以及 worker 更新统计所需的 MAINTAIN 权限。迁移在事务内执行，可能等待／持有表锁；不要把 CONCURRENTLY 塞入现有迁移器。每次表导入结束后同步执行 ANALYZE，耗时计入构建。二进制回退可保留新增索引；具体校验和回退边界见 [B03 记录](development_docs/verification/B03.md)。
+
+worker 默认 `BUILD_IMPORT_MODE=copy` 使用事务内有界 COPY；需要对照或回退时显式设置 `insert` 并重新创建 worker。两条路径保留相同的类型绑定、主键约束、统计更新和完整核对，COPY 错误不自动回退。后台读取使用 1000 行批次，前台限制不变。
+
+后台业务校验每接口最多 100 万个独立案例，学期身份集合上限 32 MiB，会话关联缓存上限 32 MiB；仍完整执行案例，超限明确失败。缓存只在固定组合、槽位与所有权读取资格内有效，不跨进程复用校验成功结论。
 
 初始化完成后，单表更新沿用当前已发布版本中的其他表，只向上游请求所选表；全部数据仍共同构建、校验与发布。只有所选表推进同步时间，其余表保留原进度。接口为 `POST /admin/v1/tables/{table}/force-full`，使用与强制全量相同的登录会话、防跨站凭据及 `Idempotency-Key`，请求体为 `{}`；已有任务执行或恢复时返回 `busy`，需等待其结束。
 
@@ -76,6 +86,8 @@ Linux / Bash 脚本用于同一套 Compose 的分步运维，`deploy` 同样包�
 `frontend/` 提供 Phase 1 中文控制台，已包含在根目录 Compose 部署中。前端开发时可在 `frontend` 执行 `npm ci`、`npm run dev`，访问 `http://127.0.0.1:5173/console/` 并填写业务与管理凭据。Windows PowerShell 可使用 `npm.cmd`。详细使用说明见 [前端 README](frontend/README.md)。
 
 ## 验证与文档
+
+构建专项的实现范围、待补故障/容量矩阵与复核记录见 [B10 交付记录](development_docs/verification/B10.md)，升级迁移、失败恢复与二进制回退见 [专项升级说明](development_docs/BUILD_TO_READY_ROLLOUT.md)。GitHub 核心容量验收可手动启用 BP01—BP06、BP08 冷/暖近似各 3 次运行，缺失或超时样本不能通过；该汇总不代表全部 BP/BI 或 30 分钟目标已经完成。
 
 [Linux CI](.github/workflows/ci.yml) 先运行 `scripts/check.sh`（单元测试、race、vet、语法检查、Linux 构建）及生命周期重复回归，再构建镜像、串行执行 I01—I06。普通单测不启用 integration 标签；集成测试仅在 GitHub 的隔离 PG/Redis/Mock 环境中运行。以下为工作流中的检查和构建入口：
 

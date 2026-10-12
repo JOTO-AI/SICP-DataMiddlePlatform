@@ -1,5 +1,46 @@
 import { test, expect, type Page } from '@playwright/test'
 
+test('BT09 real work, unknown totals, stalls and final timers', async ({ page }) => {
+  const start = new Date('2026-10-08T08:00:00Z')
+  await page.clock.install({ time: start })
+  await setup(page)
+  let phase = 'writing_table', status = 'running', instance = 'M', known = true
+  let completed = 500, unit = 'rows', finished: string | undefined
+  const task = () => ({ task_id: 'actual-progress', mode: 'initialize', status, accepted_at: start.toISOString(), started_at: start.toISOString(), finished_at: finished })
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [task()] } } }))
+  await page.route('**/admin/v1/tasks/actual-progress', async route => {
+    const heartbeat = await page.evaluate(() => new Date().toISOString())
+    await route.fulfill({ json: { code: 'ok', data: { ...task(), work_progress: { phase, instance, unit, completed, total: 1000, total_known: known, attempt: 2, cumulative_completed: 1500, cumulative_elapsed_ms: 60000, started_at: start.toISOString(), heartbeat_at: heartbeat, last_progress_at: start.toISOString() } } } })
+  })
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await page.getByRole('button', { name: /actual-progress/ }).click()
+  const stage = page.getByRole('region', { name: '当前执行阶段' })
+  await expect(stage.getByRole('progressbar')).toHaveAttribute('value', '500')
+  await expect(stage).toContainText('第 2 次执行')
+  await page.clock.runFor(51000)
+  await expect(stage).toContainText('执行器在线，但超过 45 秒没有已确认的工作量进展')
+  completed = 1000
+  await page.clock.runFor(5100)
+  await expect(stage).toContainText('100%')
+  await expect(stage).toContainText('仍需等待完整校验与发布')
+  for (const next of ['content_check', 'business_check', 'draining', 'publishing']) {
+    phase = next; instance = 'S'; known = false; unit = next === 'business_check' ? 'cases' : ''
+    await page.clock.runFor(5100)
+    await expect(stage.getByRole('progressbar')).toHaveCount(0)
+    await expect(stage).toContainText('数据库副本：S')
+  }
+  phase = 'business_check'; unit = 'cases'; status = 'failed'; finished = await page.evaluate(() => new Date().toISOString())
+  await page.clock.runFor(5100)
+  await expect(stage).toContainText('失败前阶段：核对业务案例')
+  await expect(stage.getByRole('status')).toHaveCount(0)
+  const timer = stage.getByText(/任务总耗时/)
+  const frozen = await timer.textContent()
+  await page.clock.runFor(61000)
+  await expect(timer).toHaveText(frozen!)
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+})
+
 test('post-acquisition stages show heartbeat, stale execution and publication', async ({ page }, testInfo) => {
   const started = new Date('2026-09-30T08:00:00Z')
   await page.clock.install({ time: started })
@@ -9,17 +50,17 @@ test('post-acquisition stages show heartbeat, stale execution and publication', 
   let tables: string[] | undefined
   const task = () => ({ task_id: 'build-progress', mode: 'initialize', status, accepted_at: started.toISOString(), started_at: started.toISOString() })
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [task()] } } }))
-  await page.route('**/admin/v1/tasks/build-progress', route => route.fulfill({ json: { code: 'ok', data: { ...task(), work_progress: { phase, table, tables, instance, started_at: started.toISOString(), heartbeat_at: heartbeat }, acquisition: { updated_at: started.toISOString(), tables: [{ table: 'dwd_bzkscjzlb', status: 'collected', completed_pages: 1440, total_pages: 1440 }] } } } })))
+  await page.route('**/admin/v1/tasks/build-progress', route => route.fulfill({ json: { code: 'ok', data: { ...task(), work_progress: { phase, table, tables, instance, started_at: started.toISOString(), heartbeat_at: heartbeat }, acquisition: { updated_at: started.toISOString(), tables: [{ table: 'dwd_bzkscjzlb', status: 'collected', completed_pages: 1440, total_pages: 1440 }] } } } }))
   await page.getByRole('button', { name: '刷新状态', exact: true }).click()
   const stage = page.getByRole('region', { name: '当前执行阶段' })
-  await expect(stage.getByRole('heading', { name: '正在构建表数据' })).toBeVisible()
+  await expect(stage.getByRole('heading', { name: '当前阶段：构建表数据' })).toBeVisible()
   await expect(stage).toContainText('dwd_bzkscjzlb')
   await expect(stage).toContainText('执行器在线')
   await page.getByRole('link', { name: '更新任务', exact: true }).click()
-  await expect(stage.getByRole('heading', { name: '正在构建表数据' })).toBeVisible()
+  await expect(stage.getByRole('heading', { name: '当前阶段：构建表数据' })).toBeVisible()
   table = undefined; tables = ['dwd_bzkscjzlb', 'dwd_bzkskbsjzlb']
   await page.clock.runFor(5100)
-  await expect(stage).toContainText('正在构建的表：')
+  await expect(stage).toContainText('当前构建的表：')
   await expect(stage).toContainText('dwd_bzkskbsjzlb')
   await page.clock.runFor(46000)
   await expect(stage).toContainText('状态待确认')
@@ -27,7 +68,7 @@ test('post-acquisition stages show heartbeat, stale execution and publication', 
   heartbeat = await page.evaluate(() => new Date().toISOString())
   phase = 'writing_table'; instance = 'M'; table = 'dwd_bzkscjzlb'; tables = undefined
   await page.clock.runFor(5100)
-  await expect(stage.getByRole('heading', { name: '正在写入数据库' })).toBeVisible()
+  await expect(stage.getByRole('heading', { name: '当前阶段：写入数据库' })).toBeVisible()
   await expect(stage).toContainText('数据库副本：M')
   await expect(stage).toContainText('执行器在线')
   await page.screenshot({ path: testInfo.outputPath('build-progress-desktop.png'), fullPage: true })
@@ -36,10 +77,10 @@ test('post-acquisition stages show heartbeat, stale execution and publication', 
   await page.screenshot({ path: testInfo.outputPath('build-progress-mobile.png'), fullPage: true })
   phase = 'publishing'; table = undefined; instance = undefined
   await page.clock.runFor(5100)
-  await expect(stage.getByRole('heading', { name: '正在发布数据版本' })).toBeVisible()
+  await expect(stage.getByRole('heading', { name: '当前阶段：发布数据版本' })).toBeVisible()
   status = 'published_pending_progress'; phase = 'confirming_progress'
   await page.clock.runFor(5100)
-  await expect(stage.getByRole('heading', { name: '正在确认同步进度' })).toBeVisible()
+  await expect(stage.getByRole('heading', { name: '当前阶段：确认同步进度' })).toBeVisible()
   status = 'success_published'
   await page.clock.runFor(5100)
   await expect(stage).toContainText('已结束')
@@ -56,7 +97,7 @@ test('historical data verification and reuse stay visible as active work', async
     { table: 'dwd_bzksbjsjzlb', status: 'collected', completed_pages: 1, total_pages: 1, reused: true },
     { table: 'dwd_bzkscjzlb', status: phase, completed_pages: completed, total_pages: total },
     { table: 'dwd_bzksgrtxsjzlb', status: 'waiting', completed_pages: 0, total_pages: null },
-  ] } } } })))
+  ] } } } }))
   await page.getByRole('button', { name: '刷新状态', exact: true }).click()
   await expect(page.getByText('正在校验历史数据', { exact: true })).toBeVisible()
   await expect(page.getByText('正在检查已保存的分页数据，确认完整后复用。')).toBeVisible()
@@ -497,10 +538,12 @@ test('failed initialization exposes a retry entry without enabling duplicate boo
   await page.route('**/admin/v1/tasks/automatic-initial-task', route => route.fulfill({ json: { code: 'ok', data: { task_id: 'automatic-initial-task', mode: 'initialize', status: 'failed', operator: 'scheduler', accepted_at: '2026-09-28T10:00:00Z', failure: 'acquisition_failed' } } }))
   await page.getByRole('link', { name: '更新任务', exact: true }).click()
   await expect(page.getByRole('button', { name: '重新初始化', exact: true })).toBeEnabled()
-  await expect(page.getByText('初始化失败，可重新从上游完整采集并初始化，无需重启服务；上游冷却期间任务会等待。')).toBeVisible()
+  await expect(page.getByText('初始化未完成，可重新采集待补齐的表，或选择单表强制更新；已完成的表会保留复用，上游冷却期间任务会等待。')).toBeVisible()
   await expect(page.getByText(/重启后系统会恢复未完成的初始化/)).toBeVisible()
-  await expect(page.getByRole('radio')).toHaveCount(2)
-  await expect(page.getByRole('radio', { name: /首次初始化|增量同步/ })).toHaveCount(0)
+  await expect(page.getByRole('radio')).toHaveCount(4)
+  await expect(page.getByRole('radio', { name: /首次初始化/ })).toHaveCount(0)
+  await expect(page.getByRole('radio', { name: /单表强制更新/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: '立即增量同步', exact: true })).toBeDisabled()
   await page.getByRole('button', { name: /automatic-initial-task/ }).click()
   await expect(page.getByText('失败原因：acquisition_failed')).toBeVisible()
   await expect(page.getByText('系统调度', { exact: true })).toBeVisible()
@@ -561,7 +604,8 @@ test('update entry explains active work and blocks use of stale history', async 
   await expect(page.getByRole('button', { name: '重新初始化', exact: true })).toBeEnabled()
   unavailable = true
   await page.getByRole('button', { name: '刷新记录', exact: true }).click()
-  await expect(page.getByText('无法确认当前任务状态，请先刷新记录。')).toBeVisible()
+  await expect(page.locator('#force-full-help')).toHaveText('无法确认当前任务状态，请先刷新记录。')
+  await expect(page.locator('#incremental-help')).toHaveText('无法确认当前任务状态，请先刷新记录。')
   await expect(page.getByRole('button', { name: '重新初始化', exact: true })).toBeDisabled()
 })
 
@@ -603,3 +647,74 @@ for (const entry of [
     expect(payload).toEqual(entry.expected)
   })
 }
+
+for (const returnBeforeResponse of [false, true]) {
+  test(`overview ignores a late response after leaving (returned=${returnBeforeResponse})`, async ({ page }) => {
+    await setup(page)
+    await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+    let release!: () => void, entered!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    const seen = new Promise<void>(resolve => { entered = resolve })
+    let lists = 0, obsoleteDetails = 0
+    await page.route('**/admin/v1/tasks/', async route => {
+      const first = ++lists === 1
+      if (first) { entered(); await gate }
+      await route.fulfill({ json: { code: 'ok', data: { initialized: true, items: first ? [{ task_id: 'obsolete-overview', mode: 'initialize', status: 'running' }] : [] } } })
+    })
+    await page.route('**/admin/v1/tasks/obsolete-overview', route => {
+      obsoleteDetails++
+      return route.fulfill({ json: { code: 'ok', data: { task_id: 'obsolete-overview', mode: 'initialize', status: 'running' } } })
+    })
+    try {
+      await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+      await seen
+      await page.getByRole('link', { name: '业务查询', exact: true }).click()
+      await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
+      if (returnBeforeResponse) {
+        await page.getByRole('link', { name: '运行总览', exact: true }).click()
+        await expect.poll(() => lists).toBe(2)
+        await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+      }
+      const response = page.waitForResponse(r => r.url().endsWith('/admin/v1/tasks/'))
+      release()
+      await (await response).finished()
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+      expect(obsoleteDetails).toBe(0)
+      if (!returnBeforeResponse) await page.getByRole('link', { name: '运行总览', exact: true }).click()
+      await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+      await expect(page.getByRole('region', { name: '正在初始化' })).toHaveCount(0)
+    } finally { release() }
+  })
+}
+
+test('task page resumes while an old detail request is still pending', async ({ page }) => {
+  await setup(page)
+  await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+  const tasks = ['slow-old-task', 'selected-new-task'].map(task_id => ({ task_id, mode: 'incremental', status: 'success_published', accepted_at: '2026-10-08T00:00:00Z' }))
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, interval_seconds: 7200, items: tasks } } }))
+  let release!: () => void, entered!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const seen = new Promise<void>(resolve => { entered = resolve })
+  let oldCalls = 0
+  await page.route('**/admin/v1/tasks/slow-old-task', async route => {
+    if (++oldCalls === 1) { entered(); await gate }
+    await route.fulfill({ json: { code: 'ok', data: tasks[0] } })
+  })
+  await page.route('**/admin/v1/tasks/selected-new-task', route => route.fulfill({ json: { code: 'ok', data: tasks[1] } }))
+  try {
+    await page.getByRole('link', { name: '更新任务', exact: true }).click()
+    await page.getByRole('button', { name: /slow-old-task/ }).click()
+    await seen
+    await page.getByRole('link', { name: '业务查询', exact: true }).click()
+    await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
+    await page.getByRole('link', { name: '更新任务', exact: true }).click()
+    await page.getByRole('button', { name: /selected-new-task/ }).click()
+    await expect(page.locator('.task-detail .task-id')).toHaveText('selected-new-task')
+    const response = page.waitForResponse(r => r.url().endsWith('/admin/v1/tasks/slow-old-task'))
+    release()
+    await (await response).finished()
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+    await expect(page.locator('.task-detail .task-id')).toHaveText('selected-new-task')
+    await expect(page.getByLabel('查找任务')).toHaveValue('selected-new-task')
+  } finally { release() }
+})

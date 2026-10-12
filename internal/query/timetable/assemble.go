@@ -38,11 +38,11 @@ func (a Assembler) Schedule(row source.SourceRow, membership ...source.SourceRow
 		return
 	}
 	e := &out.Entry
-	if e.PlannedCourseCode, err = compute.Required(row, "JHKCH"); err != nil {
+	if e.PlannedCourseCode, err = compute.Optional(row, "JHKCH"); err != nil {
 		return
 	}
 	e.CourseCode = e.PlannedCourseCode
-	if e.TeachingClassNumber, err = compute.Required(row, "JXBH"); err != nil {
+	if e.TeachingClassNumber, err = compute.Optional(row, "JXBH"); err != nil {
 		return
 	}
 	calendar, err := ParseCalendar(row)

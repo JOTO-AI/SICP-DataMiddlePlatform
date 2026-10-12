@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import sys
 import shutil
+from gateway_runtime import GatewayConfig
 from urllib.parse import urlsplit, urlunsplit
 
 
@@ -67,13 +68,14 @@ def entrypoint(environment, success=True):
     return dict(line.split("=", 1) for line in result.stdout.splitlines() if "=" in line)
 
 
-def render(env_file, success=True, all_profiles=False):
+def render(env_file, success=True, all_profiles=False, project=None):
     # CI project/port overrides should not change the sample contract check.
-    environment = {k: v for k, v in os.environ.items() if k not in values(EXAMPLE)}
+    environment = {k: v for k, v in os.environ.items() if k not in values(EXAMPLE) and k != "COMPOSE_PROJECT_NAME"}
     result = subprocess.run(
         ["docker", "compose", "--project-directory", str(ROOT),
          "--file", str(ROOT / "compose.yaml"), "--env-file", str(env_file),
-         *(["--profile", "*"] if all_profiles else []), "config", "--format", "json"],
+         *(["--profile", "*"] if all_profiles else []),
+         *(["--project-name", project] if project else []), "config", "--format", "json"],
         env=environment, capture_output=True, text=True, check=False,
     )
     if not success:
@@ -84,13 +86,87 @@ def render(env_file, success=True, all_profiles=False):
 
 
 def check_modes(env_file):
+    for mode in ('production', 'development'):
+        for tls in (False, True):
+            text = fixture_text(mode)
+            if tls:
+                text += "\nSICP_TLS_CERT_FILE='/synthetic/a space/$$literal.pem'\nSICP_TLS_KEY_FILE='/synthetic/key.pem'\n"
+            env_file.write_text(text, encoding='utf-8')
+            rendered = render(env_file)
+            # Decode Compose's serialization escaping exactly once.
+            config = GatewayConfig.from_model(json.loads(json.dumps(rendered).replace('$$', '$')))
+            assert config.mode == ('https' if tls else 'http')
+            assert entrypoint(rendered['services']['worker']['environment'])['CONSOLE_COOKIE_SECURE'] == ('true' if tls else 'false')
+            if tls:
+                assert config.cert == '/synthetic/a space/$$literal.pem'
     render(EXAMPLE, success=False)
     env_file.write_text(fixture_text("production"), encoding="utf-8")
     production = render(env_file)
     assert production["name"] == "sicp-production"
     services = production["services"]
-    assert set(services) == {"db-m", "db-s", "db-log", "redis", "volumes", "migrate", "query", "worker", "console"}
+    assert set(services) == {"db-m", "db-s", "db-log", "redis", "volumes", "migrate", "query", "query-gateway", "worker", "console"}
     assert services["worker"].get("depends_on", {}).get("mock", {}).get("required") is False
+    assert services["query"]["deploy"]["replicas"] == 1
+    assert not services["query"].get("ports")
+    assert "container_name" not in services["query"]
+    assert services["query-gateway"]["ports"][0]["published"] == "18080"
+    assert services["query-gateway"]["depends_on"]["query"]["condition"] == "service_healthy"
+    assert services["worker"]["environment"]["CONSOLE_QUERY_URL"] == "http://query-gateway:8080"
+    assert "QUERY_REPLICAS" not in services["worker"]["environment"]
+    for count in (2, 4):
+        env_file.write_text(fixture_text("production").replace("QUERY_REPLICAS=1", f"QUERY_REPLICAS={count}"), encoding="utf-8")
+        scaled = render(env_file)["services"]
+        assert scaled["query"]["deploy"]["replicas"] == count
+        assert scaled["query-gateway"]["environment"]["QUERY_REPLICAS"] == str(count)
+    env_file.write_text(fixture_text("production").replace("QUERY_REPLICAS=1\n", ""), encoding="utf-8")
+    assert render(env_file)["services"]["query"]["deploy"]["replicas"] == 1
+    pg_limits = {
+        "db-m": ("POSTGRES_M_MAX_CONNECTIONS", "256", "320"),
+        "db-s": ("POSTGRES_S_MAX_CONNECTIONS", "128", "160"),
+        "db-log": ("POSTGRES_LOG_MAX_CONNECTIONS", "100", "120"),
+    }
+    for mode in ("production", "development"):
+        baseline = fixture_text(mode)
+        for variant in ("default", "custom", "omitted", "blank"):
+            text = baseline
+            for key, default, custom in pg_limits.values():
+                replacement = {"default": f"{key}={default}\n", "custom": f"{key}={custom}\n",
+                               "omitted": "", "blank": f"{key}=\n"}[variant]
+                text = text.replace(f"{key}={default}\n", replacement)
+            env_file.write_text(text, encoding="utf-8")
+            configured = render(env_file)["services"]
+            for service, (key, default, custom) in pg_limits.items():
+                expected = custom if variant == "custom" else "" if variant == "blank" else default
+                assert configured[service]["command"] == ["postgres", "-c", f"max_connections={expected}"]
+                for role in ("query", "worker", "migrate"):
+                    assert key not in configured[role]["environment"]
+    capacity = {
+        "QUERY_MAX_EXECUTIONS": ("8", "32"),
+        "QUERY_MAX_QUEUE": ("64", "0"),
+        "QUERY_EXECUTION_TIMEOUT": ("30s", "45s"),
+        "QUERY_DB_BUSINESS_MAX_CONNS": ("16", "40"),
+        "QUERY_DB_CONTROL_MAX_CONNS": ("16", "48"),
+        "QUERY_DB_LOG_MAX_CONNS": ("16", "12"),
+    }
+    custom = fixture_text("production")
+    omitted = custom
+    for key, (default, override) in capacity.items():
+        assert services["query"]["environment"][key] == default
+        assert key not in services["worker"]["environment"]
+        custom = custom.replace(f"{key}={default}\n", f"{key}={override}\n")
+        omitted = omitted.replace(f"{key}={default}\n", "")
+    for text, index in ((custom, 1), (omitted, 0)):
+        env_file.write_text(text, encoding="utf-8")
+        configured = render(env_file)["services"]
+        for key, pair in capacity.items():
+            assert configured["query"]["environment"][key] == pair[index]
+    blank = fixture_text("production")
+    for key, (default, _) in capacity.items():
+        blank = blank.replace(f"{key}={default}\n", f"{key}=\n")
+    env_file.write_text(blank, encoding="utf-8")
+    configured = render(env_file)["services"]
+    assert all(configured["query"]["environment"][key] == "" for key in capacity)
+    env_file.write_text(fixture_text("production"), encoding="utf-8")
     for service in services.values():
         assert not any("mock" in volume.get("source", "") for volume in service.get("volumes", []))
     runtime = entrypoint(services["worker"]["environment"])
@@ -149,6 +225,55 @@ def check_modes(env_file):
     return development
 
 
+def check_host_mounts(env_file):
+    # One root controls every business mount; application paths remain fixed.
+    bindings = {
+        "pg-m": [("db-m", "/var/lib/postgresql")],
+        "pg-s": [("db-s", "/var/lib/postgresql")],
+        "pg-log": [("db-log", "/var/lib/postgresql")],
+        "redis": [("redis", "/data")],
+        "query-logs": [("query", "/var/lib/sicp/logs"), ("volumes", "/query-logs")],
+        "query-replicas": [("query", "/var/lib/sicp/query-replicas"), ("volumes", "/query-replicas")],
+        "worker-logs": [("worker", "/var/lib/sicp/logs"), ("volumes", "/worker-logs")],
+        "staging": [("worker", "/var/lib/sicp/staging"), ("volumes", "/staging")],
+        "targets": [("worker", "/var/lib/sicp/targets"), ("volumes", "/targets")],
+        "spool": [("worker", "/var/lib/sicp/spool"), ("volumes", "/spool")],
+    }
+    custom = fixture_text("development").replace("SICP_DATA_ROOT=/home/ubuntu/sicp", "SICP_DATA_ROOT=/custom-storage")
+    env_file.write_text(custom, encoding="utf-8")
+    config = render(env_file)
+    assert set(config.get("volumes", {})) == {"mock-mail"}
+    for service, target in (("mock", "/mail"), ("mock-volumes", "/mock-mail")):
+        mount, = [v for v in config["services"][service]["volumes"] if v["target"] == target]
+        assert mount["type"] == "volume" and mount["source"] == "mock-mail"
+    for folder, consumers in bindings.items():
+        for service, target in consumers:
+            mount, = [v for v in config["services"][service]["volumes"] if v["target"] == target]
+            assert mount["type"] == "bind"
+            assert mount["source"].replace("\\", "/").endswith(f"/custom-storage/sicp-development/{folder}")
+            assert not mount.get("read_only", False)
+    for service in ("query", "worker"):
+        assert config["services"][service]["environment"]["LOG_DIRECTORY"] == "/var/lib/sicp/logs"
+    for key, directory in (("STAGING_DIRECTORY", "staging"), ("TARGET_DIRECTORY", "targets"), ("SPOOL_DIRECTORY", "spool")):
+        assert config["services"]["worker"]["environment"][key] == "/var/lib/sicp/" + directory
+    env_file.write_text(custom.replace("SICP_PROJECT=sicp-${ENVIRONMENT}", "SICP_PROJECT=isolated-project"), encoding="utf-8")
+    isolated = render(env_file)
+    for folder, consumers in bindings.items():
+        for service, target in consumers:
+            mount, = [v for v in isolated["services"][service]["volumes"] if v["target"] == target]
+            assert mount["source"].replace("\\", "/").endswith(f"/custom-storage/isolated-project/{folder}")
+    # CLI project overrides must isolate mounts even when SICP_PROJECT differs.
+    env_file.write_text(custom, encoding="utf-8")
+    cli_project = render(env_file, project="cli-isolated-project")
+    assert cli_project["name"] == "cli-isolated-project"
+    for folder, consumers in bindings.items():
+        for service, target in consumers:
+            mount, = [v for v in cli_project["services"][service]["volumes"] if v["target"] == target]
+            assert mount["source"].replace("\\", "/").endswith(f"/custom-storage/cli-isolated-project/{folder}")
+    env_file.write_text(custom.replace("SICP_DATA_ROOT=/custom-storage", "SICP_DATA_ROOT="), encoding="utf-8")
+    render(env_file, success=False)
+
+
 def main(directory):
     env_file = Path(directory) / ".env"
     config = check_modes(env_file)
@@ -156,7 +281,7 @@ def main(directory):
     assert config["name"] == "sicp-development"
     assert set(services) == {
         "db-m", "db-s", "db-log", "redis", "volumes", "mock",
-        "migrate", "query", "worker", "console", "mock-volumes",
+        "migrate", "query", "query-gateway", "worker", "console", "mock-volumes",
     }
     # These fixtures also reach actual Go assembly in the unit/integration tests.
     for role in ("query", "worker"):
@@ -197,15 +322,16 @@ def main(directory):
     for name, cluster in (("db-m", "M"), ("db-s", "S"), ("db-log", "log")):
         # Keep deployment aligned with the P01 database decision and PG 18 layout.
         assert services[name]["image"] == "postgres:18.6-trixie", f"{name} database version drift"
-        data_volumes = [v for v in services[name]["volumes"] if v["type"] == "volume"]
+        data_volumes = [v for v in services[name]["volumes"] if v["target"] == "/var/lib/postgresql"]
         assert len(data_volumes) == 1, f"{name} must have one persistent database volume"
-        assert data_volumes[0]["source"] == "pg-" + name.removeprefix("db-")
+        assert data_volumes[0]["type"] == "bind"
+        assert data_volumes[0]["source"].replace("\\", "/").endswith("/sicp-development/pg-" + name.removeprefix("db-"))
         assert data_volumes[0]["target"] == "/var/lib/postgresql"
         assert not data_volumes[0].get("read_only", False)
         assert services[name]["environment"]["SICP_CLUSTER"] == cluster
         assert services[name]["environment"]["POSTGRES_USER"] == "postgres"
         assert "127.0.0.1" in services[name]["healthcheck"]["test"][1]
-    for role in ("query", "worker"):
+    for role in ("query-gateway", "worker"):
         assert services["console"]["depends_on"][role]["condition"] == "service_healthy"
     assert Path(services["console"]["build"]["context"]) == ROOT / "frontend"
     assert Path(services["mock"]["build"]["context"]) == ROOT / "deploy"
@@ -214,7 +340,7 @@ def main(directory):
         env_file = Path(directory) / ".env"
         env_file.write_text(fixture_text("production") + "\n"
                             "SICP_PROJECT=compose-config-test\n"
-                            "SICP_CONSOLE_PORT=28082\n"
+                            "SICP_GATEWAY_PORT=28082\n"
                             "QUERY_API_KEY='literal-$value-#-secret'\n"
                             "SOURCE_APP_SECRET='app-@:/?#%$value'\n"
                             "POSTGRES_USER=custom_admin\n"
@@ -224,7 +350,7 @@ def main(directory):
                             "LOGGER_PASSWORD='logger-@:/?#%$value'\n", encoding="utf-8")
         custom = render(env_file)
         assert custom["name"] == "compose-config-test"
-        assert custom["services"]["console"]["ports"][0]["published"] == "28082"
+        assert custom["services"]["query-gateway"]["ports"][0]["published"] == "28082"
         assert entrypoint(custom["services"]["worker"]["environment"])["SOURCE_APP_SECRET"] == "app-@:/?#%$value"
         # Compose escapes dollars when rendering reusable configuration.
         for role in ("query", "worker"):
@@ -249,7 +375,9 @@ def main(directory):
                 assert bootstrap[key] == prefix + "-@:/?#%$$value"
         env_file.write_text("QUERY_API_KEY=\n", encoding="utf-8")
         render(env_file, success=False)
-    print("Production/development selection, source/mail isolation and password inheritance passed.")
+    with tempfile.TemporaryDirectory() as mount_directory:
+        check_host_mounts(Path(mount_directory) / "host-mounts.env")
+    print("Production/development selection, source/mail isolation, password inheritance and host mounts passed.")
 
 
 if __name__ == "__main__":

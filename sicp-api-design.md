@@ -1053,3 +1053,13 @@ POST /api/v1/sicp/teaching-classes/students/query
 - 时间字段返回带时区的字符串。
 - 单条记录的最大 `ETL_TIME` 不能证明其他数据也已同步到该时间。
 - 首期人员同步按全量分页查询，不增加 `startTime/endTime`；后续需要增量时，再约定更新范围及删除处理。
+
+### 2026-10-09：源字段空值兼容说明
+
+依据 `source_api_docs` 的可空标记，课表查询与构建冒烟校验统一采用以下规则：
+
+- `KKXND`、`KKXQM` 缺失、null 或空白时，不把记录归入任何学年学期。
+- 学生课表关联仍要求完整 `JXBH + JHKCH`；缺失可空的 `JHKCH` 时不推测课程，不影响其他有效关系。
+- 教师课表保留缺失 `JHKCH`、`JXBH` 的排课条目，`course_code`、`planned_course_code`、`teaching_class_number` 对应值为 `""`，无法关联的课程名称、学分为 null。
+- `SKRQ` 缺失、null 或空白时，`dates` 为 `[]`；不按周次推算日期。教师字段缺失时保持空数组。
+- 可空数值字段的空字符串作为 null，不填 0。已有非空值的格式错误仍报错；`PKH`、`XQJ`、`SKJC`、`ZC` 仍必要。

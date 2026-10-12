@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/staging"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
@@ -109,6 +111,8 @@ func validTarget(target source.Target, s source.BuildState) bool {
 }
 
 func (b Builder) Build(ctx context.Context, target source.Target, m Manifest, force bool) (out Report, err error) {
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "write_copy", Combination: m.Combination, Candidate: target.CandidateID, Slot: target.Position.Slot, Generation: target.Generation}, string(target.Position.Instance))
+	defer func() { end(err) }()
 	if b.Ledger == nil || b.Source == nil || b.Writer == nil || b.BatchSize < 1 || b.BatchSize > source.MaxBatchRows || m.Validate() != nil {
 		return out, ErrBuild
 	}
@@ -161,19 +165,21 @@ func (b Builder) Build(ctx context.Context, target source.Target, m Manifest, fo
 		}
 		iterator := newChecked(table, rows)
 		var report source.Report
-		report, err = b.Writer.Rebuild(ctx, target, table.Table, iterator, b.BatchSize)
+		writeCtx, writeEnd := events.TraceBuild(ctx, events.BuildScope{Stage: "write_table", Table: table.Table, Combination: m.Combination, Candidate: target.CandidateID, Slot: target.Position.Slot, Generation: target.Generation}, string(target.Position.Instance))
+		writeCtx = activity.Work(writeCtx, "writing_table", table.Table, string(target.Position.Instance), "rows", "", table.Rows)
+		report, err = b.Writer.Rebuild(writeCtx, target, table.Table, iterator, b.BatchSize)
 		out.WrittenRows += int64(report.WrittenRows)
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		err = errors.Join(err, rows.Close(cleanup))
 		cancel()
-		if err != nil {
-			return
-		}
-		if !report.Complete || !iterator.verified || int64(report.WrittenRows) != table.Rows {
+		if err == nil && (!report.Complete || !iterator.verified || int64(report.WrittenRows) != table.Rows) {
 			err = ErrBuild
-			return
 		}
-		if err = b.Ledger.Record(ctx, target, TableEvidence{Version: table, Complete: true}); err != nil {
+		if err == nil {
+			err = b.Ledger.Record(writeCtx, target, TableEvidence{Version: table, Complete: true})
+		}
+		writeEnd(err)
+		if err != nil {
 			return
 		}
 		out.Rebuilt = append(out.Rebuilt, table.Table)
@@ -230,7 +236,13 @@ func (c *checked) Next(ctx context.Context) (source.SourceRow, bool, error) {
 	if err != nil {
 		return nil, false, ErrBuild
 	}
-	validated, err := ingest.DecodeRecord(c.version.Table, raw)
+	validated := record
+	// Only our private file iterator guarantees DecodeRecord already checked
+	// this object. Arbitrary CompleteSource implementations retain validation.
+	if _, native := c.rows.(*fileRows); !native {
+		validated, err = ingest.DecodeRecord(c.version.Table, raw)
+		buildmetric.Add(ctx, buildmetric.Decodes, 1)
+	}
 	if err != nil || validated.Key != record.Key || record.Key <= c.previous || c.count >= c.version.Rows {
 		return nil, false, ErrBuild
 	}

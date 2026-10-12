@@ -177,6 +177,13 @@ func (s *Sanitizer) Sanitize(e events.Event, d Details) (SafeEvent, error) {
 	e.Identity.StepID = s.Correlation(e.Identity.StepID)
 	e.Identity.CallID = s.Correlation(e.Identity.CallID)
 	e.Identity.AttemptID = s.Correlation(e.Identity.AttemptID)
+	if e.Metadata.Build != nil {
+		copy := *e.Metadata.Build
+		copy.SessionID = s.Correlation(copy.SessionID)
+		copy.Combination = s.Correlation(copy.Combination)
+		copy.Candidate = s.Correlation(copy.Candidate)
+		e.Metadata.Build = &copy
+	}
 	if e.Response != nil {
 		copy := e.Response.Sanitize(s.secrets...)
 		e.Response = &copy
@@ -208,6 +215,9 @@ func (s *Sanitizer) restore(body []byte) (SafeEvent, error) {
 		return SafeEvent{}, ErrPayload
 	}
 	i := env.Event.Identity
+	if b := env.Event.Metadata.Build; b != nil && (!digestID(b.SessionID, false) || !digestID(b.Combination, true) || !digestID(b.Candidate, true)) {
+		return SafeEvent{}, ErrPayload
+	}
 	for _, id := range []string{i.RequestID, i.TaskID, i.StepID, i.CallID, i.AttemptID} {
 		if !digestID(id, true) {
 			return SafeEvent{}, ErrPayload

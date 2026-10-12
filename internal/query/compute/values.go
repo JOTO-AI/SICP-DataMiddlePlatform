@@ -46,6 +46,9 @@ func Number(row source.SourceRow, key string, textScore bool) (*float64, error) 
 			return nil, ErrValue
 		}
 		token = strings.TrimSpace(token)
+		if token == "" {
+			return nil, nil
+		}
 	} else if !json.Valid(raw) || !(raw[0] == '-' || (raw[0] >= '0' && raw[0] <= '9')) {
 		return nil, ErrValue
 	}
@@ -80,4 +83,17 @@ func IndexRows(rows []source.SourceRow, key string) (Index, error) {
 		i[id] = row
 	}
 	return i, nil
+}
+
+// Optional returns an empty value for absent/null/blank source text.
+// Present non-string values remain errors; identifiers are never trimmed.
+func Optional(row source.SourceRow, key string) (string, error) {
+	v, err := Text(row, key)
+	if err != nil {
+		return "", err
+	}
+	if v == nil || strings.TrimSpace(*v) == "" {
+		return "", nil
+	}
+	return *v, nil
 }

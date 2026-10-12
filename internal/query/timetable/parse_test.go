@@ -31,7 +31,7 @@ func TestT09_01OnlyExplicitSparseDatesAndWeeks(t *testing.T) {
 func TestT09_02InvalidCalendarFailsWithoutPartialResult(t *testing.T) {
 	cases := []struct{ field, raw string }{
 		{"SKRQ", `"20260230"`}, {"SKRQ", `"2026-2-01"`}, {"SKRQ", `"00000101"`}, {"SKRQ", `"20260907,"`},
-		{"SKRQ", `"20260907;20260921"`}, {"SKRQ", `null`}, {"XQJ", `"0"`}, {"XQJ", `"8"`}, {"XQJ", `1`},
+		{"SKRQ", `"20260907;20260921"`}, {"XQJ", `"0"`}, {"XQJ", `"8"`}, {"XQJ", `1`},
 		{"SKJC", `"1-2"`}, {"SKJC", `"1,,2"`}, {"SKJC", `"+1"`}, {"SKJC", `"0"`}, {"SKJC", `"1.5"`},
 		{"SKJC", `"2147483648"`}, {"ZC", `"1/3"`}, {"ZC", `null`}, {"ZC", `""`},
 	}
@@ -45,7 +45,7 @@ func TestT09_02InvalidCalendarFailsWithoutPartialResult(t *testing.T) {
 			}
 		})
 	}
-	for _, field := range []string{"SKRQ", "XQJ", "SKJC", "ZC"} {
+	for _, field := range []string{"XQJ", "SKJC", "ZC"} {
 		r := calendarRow()
 		delete(r, field)
 		if _, err := timetable.ParseCalendar(r); err == nil {

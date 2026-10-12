@@ -15,38 +15,45 @@ const elapsed = computed(() => {
   return minutes < 1 ? '不足 1 分钟' : `${minutes} 分钟`
 })
 let active = false
+let generation = 0
+function current(run: number) { return active && run === generation }
 let timer: ReturnType<typeof setTimeout> | undefined
 const services = ref([{ id: 'query' as const, title: '业务查询服务', subtitle: '成绩与课表查询', live: null as boolean | null, ready: null as boolean | null, details: {} as Record<string, boolean>, error: '' }, { id: 'worker' as const, title: '数据更新服务', subtitle: '采集、构建与发布', live: null as boolean | null, ready: null as boolean | null, details: {} as Record<string, boolean>, error: '' }])
 const workerExecuting = computed(() => !!currentTask.value && services.value[1]!.live === true && !services.value[1]!.error && services.value[1]!.details.dependencies_ready !== false)
-async function refreshTask() {
+async function refreshTask(run: number) {
   taskError.value = ''
   try {
     const overview = (await request<Envelope<{ items: Task[] }>>('worker', '/admin/v1/tasks/')).body.data
+    if (!current(run)) return
     const task = overview.items.find(item => ['accepted', 'running', 'published_pending_progress'].includes(item.status))
     if (!task) { currentTask.value = null; return }
     const detail = (await request<Envelope<Task>>('worker', `/admin/v1/tasks/${encodeURIComponent(task.task_id)}`)).body.data
+    if (!current(run)) return
     currentTask.value = ['accepted', 'running', 'published_pending_progress'].includes(detail.status) ? detail : null
-  } catch (e) { currentTask.value = null; taskError.value = `无法确认更新任务状态：${describe(e)}` }
+  } catch (e) { if (current(run)) { currentTask.value = null; taskError.value = `无法确认更新任务状态：${describe(e)}` } }
 }
 async function refresh() {
   if (!active || busy.value) return
   clearTimeout(timer)
   busy.value = true
-  await Promise.all([refreshTask(), ...services.value.map(async s => {
+  const run = ++generation
+  await Promise.all([refreshTask(run), ...services.value.map(async s => {
     s.error = ''
     const responses = await Promise.allSettled([request<Record<string, boolean>>(s.id, '/livez', { health: true }), request<Record<string, boolean>>(s.id, '/readyz', { health: true })])
+    if (!current(run)) return
     const [live, ready] = responses
     if (live.status === 'fulfilled') s.live = live.value.status === 200 && live.value.body.live === true
     else { s.live = null; s.error = describe(live.reason) }
     if (ready.status === 'fulfilled') { s.ready = ready.value.status === 200 && ready.value.body.ready === true; s.details = ready.value.body }
     else { s.ready = null; s.details = {}; s.error = describe(ready.reason) }
   })])
+  if (!current(run)) return
   now.value = Date.now()
   checked.value = new Date().toLocaleTimeString('zh-CN', { hour12: false }); busy.value = false
   if (active) timer = setTimeout(refresh, 10000)
 }
 onActivated(() => { active = true; void refresh() })
-function stop() { active = false; clearTimeout(timer) }
+function stop() { active = false; generation++; busy.value = false; clearTimeout(timer) }
 onDeactivated(stop)
 onUnmounted(stop)
 </script>
@@ -60,7 +67,7 @@ onUnmounted(stop)
       <p v-else-if="services[0]!.ready">当前已发布数据仍可查询。</p>
       <p v-if="!workerExecuting" class="hint">更新服务状态异常或尚未确认，请结合下方检查结果判断任务是否仍在推进。</p>
       <div class="result-meta"><span v-if="currentTask.started_at">开始时间：{{ time(currentTask.started_at) }} · 已运行 {{ elapsed }}</span><span v-else>受理时间：{{ time(currentTask.accepted_at) }}</span><span>任务号：<code>{{ currentTask.task_id }}</code></span></div>
-      <WorkProgress :progress="currentTask.work_progress" :status="currentTask.status" />
+      <WorkProgress :progress="currentTask.work_progress" :status="currentTask.status" :started-at="currentTask.started_at" />
       <AcquisitionProgress :progress="currentTask.acquisition" :status="currentTask.status" compact />
     </section>
     <p v-if="taskError" class="error" role="alert">{{ taskError }}</p>

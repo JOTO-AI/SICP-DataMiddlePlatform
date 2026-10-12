@@ -27,6 +27,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/snapshot"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/worker"
 )
 
 // Namespace changes transport keys only; Redis still executes production Lua
@@ -73,6 +74,7 @@ type mockSource struct {
 	failTable string
 	audit     []sourceRequest
 	afterPage func(string, int)
+	generated http.Handler
 }
 
 type sourceRequest struct {
@@ -109,6 +111,10 @@ func newSource(t *testing.T) *mockSource {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 		m.requests++
+		if m.generated != nil {
+			m.generated.ServeHTTP(w, r)
+			return
+		}
 		table := strings.TrimPrefix(r.URL.Path, "/apizt/openapi/invoke/sjzc/release/")
 		rows, ok := m.rows[table]
 		page, e1 := strconv.Atoi(r.URL.Query().Get("page"))
@@ -123,9 +129,9 @@ func newSource(t *testing.T) *mockSource {
 		}
 		startTime, endTime := r.URL.Query().Get("startTime"), r.URL.Query().Get("endTime")
 		if startTime != "" || endTime != "" {
-			start, e1 := time.Parse("2006-01-02 15:04:05.999999", startTime)
-			end, e2 := time.Parse("2006-01-02 15:04:05.999999", endTime)
-			if e1 != nil || e2 != nil || !start.Before(end) {
+			start, e1 := time.Parse("2006-01-02 15:04:05", startTime)
+			end, e2 := time.Parse("2006-01-02 15:04:05", endTime)
+			if e1 != nil || e2 != nil || len(startTime) != 19 || len(endTime) != 19 || !start.Before(end) {
 				http.Error(w, "invalid synthetic window", 400)
 				return
 			}
@@ -173,8 +179,11 @@ type runtimeFixture struct {
 }
 
 func newRuntime(t *testing.T, initialize bool) *runtimeFixture {
+	return newRuntimeOptions(t, initialize, 3*time.Minute, nil)
+}
+func newRuntimeOptions(t *testing.T, initialize bool, budget time.Duration, configure func(map[string]string)) *runtimeFixture {
 	t.Helper()
-	e := newEnvironment(t)
+	e := newEnvironmentWithTimeout(t, budget)
 	e.migrate(t)
 	f := &runtimeFixture{e: e, source: newSource(t)}
 	mail := newReceiver(t)
@@ -245,6 +254,9 @@ func newRuntime(t *testing.T, initialize bool) *runtimeFixture {
 		values["REDIS_URL"] = redisURL
 		values["SOURCE_ORIGIN"] = f.source.server.URL
 		values["MAIL_ADDRESS"] = mail.listener.Addr().String()
+		if configure != nil {
+			configure(values)
+		}
 		c, err := config.LoadRuntime(role, func(k string) (string, bool) { v, ok := values[k]; return v, ok })
 		if err != nil {
 			t.Fatal(err)
@@ -289,6 +301,9 @@ func newRuntime(t *testing.T, initialize bool) *runtimeFixture {
 	}
 	f.server = httptest.NewServer(mux)
 	t.Cleanup(f.server.Close)
+	executor := f.worker.Engine.Work.(worker.Executor)
+	executor.Config.ConsoleQueryURL = f.server.URL
+	f.worker.Engine.Work = executor
 	if initialize {
 		f.run(t, "initialize", "init")
 	}

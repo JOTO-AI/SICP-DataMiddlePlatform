@@ -18,11 +18,8 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/notification"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/publication"
-	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/compute"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/coord"
-	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/grades"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
-	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/timetable"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/runtimecontrol"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/staging"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
@@ -44,7 +41,9 @@ type retained struct {
 	task     string
 }
 
-func (r retained) Full(ctx context.Context) (*staging.Lease, error) {
+func (r retained) Full(ctx context.Context) (lease *staging.Lease, err error) {
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "sealing", Combination: r.manifest.Combination}, "")
+	defer func() { end(err) }()
 	l, e := r.store.Retain(ctx, r.manifest.Input, r.task)
 	if e != nil {
 		return nil, errors.Join(update.ErrReacquire, e)
@@ -78,10 +77,12 @@ func (w Executor) Run(ctx context.Context, task control.Task, owner control.Owne
 	if err = w.taskEvent(ctx, task, false); err != nil {
 		return err
 	}
+	ctx = events.WithRecorder(ctx, w.Recorder, events.Identity{TaskID: task.ID})
+	ctx = events.WithBuildTrace(ctx, owner.Generation, w.Observe)
+	ctx = events.WithBuildStart(ctx, w.Clock.Now, repo.StartBuildTiming, w.Observe)
 	if task.Status == "failed" || task.Status == "success_published" || task.Status == "success_unchanged" {
 		return w.finish(ctx, task, owner)
 	}
-	ctx = events.WithRecorder(ctx, w.Recorder, events.Identity{TaskID: task.ID})
 	ctx, stopActivity := activity.Track(ctx, w.Clock.Now, repo.SaveWorkProgress, w.Observe)
 	defer stopActivity()
 	finish := func(finishCtx context.Context) error { stopActivity(); return w.finish(finishCtx, task, owner) }
@@ -151,6 +152,11 @@ func (w Executor) finish(ctx context.Context, t control.Task, owner control.Owne
 	if e = w.taskEvent(ctx, view.Task, true); e != nil {
 		return e
 	}
+	if view.Task.Status == "success_published" {
+		if e := w.recordUsability(ctx, view.Task, owner); e != nil && w.Observe != nil {
+			w.Observe(e)
+		}
+	}
 	if view.Task.Status != "failed" {
 		if e := w.maintain(ctx, view.Task, owner); e != nil {
 			// Discovery failures also receive an independent bounded record.
@@ -174,29 +180,22 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 		return e
 	}
 	targets, options := targetPreparation(c, r.Files.Targets, "C"+task.ID)
-	writer := source.Repository{Registry: c.Databases, Database: r.Database, Gate: store}
+	writer := source.Repository{Registry: c.Databases, Database: r.Database, Gate: store, UseCopy: c.BuildImportMode == "copy"}
 	reader := source.Repository{Registry: c.Databases, Database: adapters.QueryDatabase{Database: r.Database}}
 	candidateReads := read.Repository{Storage: reader, Gate: store}
-	times, e := compute.NewTimes(c.Service.Timezone)
-	if e != nil {
-		return e
-	}
-	limits := read.DefaultLimits()
-	online := func(reader read.Matcher) candidate.Online {
-		return candidate.Online{Source: reader, Grades: grades.Service{Source: reader, Times: times, Clock: w.Clock, Limits: limits}, Timetable: timetable.Service{Source: reader, Times: times, Clock: w.Clock, Limits: limits}, Clock: w.Clock, Limits: limits, MaxCases: 100000}
-	}
+	limits := read.BackgroundLimits(c.BuildCheckTimeout)
 	checks := func(reads read.Matcher) candidate.StorageChecks {
-		return candidate.StorageChecks{Target: targets, Source: reads, Indexes: reader, Clock: w.Clock, Limits: limits}
+		return candidate.StorageChecks{Target: targets, Source: reads, Indexes: reader, Clock: w.Clock, Limits: limits, BackgroundTimeout: c.BuildCheckTimeout}
 	}
 	builder := candidate.Builder{Ledger: store, Source: targets, Writer: writer, BatchSize: 500}
-	validator := candidate.Validator{Store: store, Checks: checks(candidateReads), Queries: online(candidateReads), Clock: w.Clock}
+	validator := candidate.Validator{Store: store, Checks: checks(candidateReads), Clock: w.Clock}
 	proof, ok := r.Database.(coord.ExecutionProof)
 	if !ok {
 		return update.ErrInitialization
 	}
 	coordinator := &coord.Coordinator{Store: r.Control, Proof: proof, Clock: w.Clock, Random: rand.Reader, ProcessID: r.ProcessID}
 	publishedReads := read.Repository{Storage: reader, Gate: coordinator}
-	readability := update.Readability{Admission: coordinator, Checks: checks(publishedReads), Queries: online(publishedReads), Store: store, Clock: w.Clock}
+	readability := update.Readability{Admission: coordinator, Checks: checks(publishedReads), Store: store, Clock: w.Clock}
 	shifter := update.Shifter{Store: store, Outbox: repo, Delivery: delivery, Clock: w.Clock}
 	journal := update.Journal{Store: repo, Clock: w.Clock}
 	changed := update.Changed{Store: store, Builder: builder, Validator: validator, Readability: readability, Shifter: shifter, Outbox: repo, Delivery: delivery, Progress: repo, Clock: w.Clock, Journal: journal}
@@ -312,7 +311,7 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 	}
 	if e = store.ReopenPublished(ctx, plan, func(ctx context.Context, old update.Copy, gate read.Gate, admission update.FixedAdmission) error {
 		reads := read.Repository{Storage: reader, Gate: gate}
-		v := update.Readability{Admission: admission, Checks: checks(reads), Queries: online(reads), Clock: w.Clock}
+		v := update.Readability{Admission: admission, Checks: checks(reads), Clock: w.Clock}
 		_, e := v.VerifyPublished(ctx, plan, old)
 		return e
 	}); e != nil {

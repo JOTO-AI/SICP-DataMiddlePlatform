@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/testkit"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/update"
@@ -92,5 +93,34 @@ func TestT13_10ConfirmedShiftWaitsForActualSQLDrain(t *testing.T) {
 	out, err = s.Shift(t.Context(), p)
 	if err != nil || !out.Drained {
 		t.Fatal(out, err)
+	}
+}
+
+func TestBT01_02BusyDrainIsNotRecordedAsCompleted(t *testing.T) {
+	s, world, proof := shiftFixture(t)
+	world.busy = true
+	var saved []events.Event
+	r, err := events.New(s.Clock, testkit.FixedRandom(1), events.SinkFunc(func(_ context.Context, e events.Event) error {
+		saved = append(saved, e)
+		return nil
+	}), time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := events.WithBuildTrace(events.WithRecorder(t.Context(), r, events.Identity{TaskID: "task"}), 1, nil)
+	result, err := s.Shift(ctx, proof)
+	if err != nil || result.Drained {
+		t.Fatal("telemetry changed the existing busy-drain contract")
+	}
+	if len(saved) != 4 || saved[3].Metadata.Build.Stage != "drain" || saved[3].Outcome != events.Failed {
+		t.Fatal("unfinished drain recorded as complete")
+	}
+	world.fail = "apply"
+	saved = nil
+	if _, err := s.Shift(ctx, proof); err == nil {
+		t.Fatal("publication failure disappeared")
+	}
+	if len(saved) != 2 || saved[1].Outcome != events.Failed || saved[1].Metadata.Build.Stage != "route_shift" {
+		t.Fatal("unconfirmed publication advanced the trace")
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/metadata"
@@ -14,12 +15,22 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
 
+const StorageCheckPolicy = "source-storage-v1"
+
+// Legacy evidence remains readable after an upgrade.
+const BusinessCheckPolicy = "bounded-smoke-v2"
+const MaxBackgroundCases = 9
+
 type QueryEvidence struct {
+	Policy       string `json:",omitempty"`
+	Suite        string `json:",omitempty"`
 	Dependencies map[string]string
 	Cases        int
 	SHA256       string
 }
 type Evidence struct {
+	Policy      string                  `json:",omitempty"`
+	Tables      map[string]TableVersion `json:",omitempty"`
 	Target      source.Target
 	Combination string
 	CheckedAt   time.Time
@@ -27,7 +38,21 @@ type Evidence struct {
 }
 
 func (e Evidence) Validate(target source.Target, m Manifest) error {
-	if m.Validate() != nil || e.Target != target || e.Combination != m.Combination || e.CheckedAt.IsZero() || len(e.Queries) != len(contract.Definitions()) {
+	if m.Validate() != nil || e.Target != target || e.Combination != m.Combination || e.CheckedAt.IsZero() {
+		return ErrBuild
+	}
+	if e.Policy == StorageCheckPolicy {
+		if len(e.Queries) != 0 || len(e.Tables) != len(m.Tables) {
+			return ErrBuild
+		}
+		for _, table := range m.Tables {
+			if got, ok := e.Tables[table.Table]; !ok || got != table {
+				return ErrBuild
+			}
+		}
+		return nil
+	}
+	if e.Policy != "" || len(e.Tables) != 0 || len(e.Queries) != len(contract.Definitions()) {
 		return ErrBuild
 	}
 	for _, definition := range contract.Definitions() {
@@ -36,6 +61,14 @@ func (e Evidence) Validate(target source.Target, m Manifest) error {
 			return err
 		}
 		query, ok := e.Queries[definition.Operation]
+		// Legacy published copies remain readable during upgrades. New checks
+		// must not reuse their exhaustive evidence as a smoke-suite result.
+		if query.Policy != "" && ((query.Policy != BusinessCheckPolicy && query.Policy != "bounded-smoke-v1") || query.Cases > MaxBackgroundCases) {
+			return ErrBuild
+		}
+		if query.Suite != "" && !digest(query.Suite) {
+			return ErrBuild
+		}
 		if !ok || query.Cases < 1 || !digest(query.SHA256) || !maps.Equal(deps, query.Dependencies) {
 			return ErrBuild
 		}
@@ -46,7 +79,7 @@ func (e Evidence) Validate(target source.Target, m Manifest) error {
 // BeginValidation atomically makes prior readiness non-authoritative and
 // freezes candidate writes under the execution fence. Ready must verify the
 // same candidate, generation, manifest and owner again before committing.
-// Query validation is a worker operation on closed candidates; it never opens
+// Storage validation is a worker operation on closed candidates; it never opens
 // public read admission or uses the normal query Coordinator to bypass it.
 type ValidationStore interface {
 	BeginValidation(context.Context, source.Target, Manifest) (Evidence, error)
@@ -57,14 +90,10 @@ type Checks interface {
 	SourceStorage(context.Context, read.Handle, Manifest) error
 	SourceIndexes(context.Context, read.Handle, Manifest) error
 }
-type Queries interface {
-	Check(context.Context, read.Handle, contract.Operation, time.Time) (int, string, error)
-}
 type Validator struct {
-	Store   ValidationStore
-	Checks  Checks
-	Queries Queries
-	Clock   ports.Clock
+	Store  ValidationStore
+	Checks Checks
+	Clock  ports.Clock
 }
 
 func dependencies(m Manifest, op contract.Operation) (map[string]string, error) {
@@ -88,8 +117,10 @@ func dependencies(m Manifest, op contract.Operation) (map[string]string, error) 
 }
 
 func (v Validator) Validate(ctx context.Context, target source.Target, m Manifest) (result Evidence, err error) {
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "validate_copy", Combination: m.Combination, Candidate: target.CandidateID, Slot: target.Position.Slot, Generation: target.Generation}, string(target.Position.Instance))
+	defer func() { end(err) }()
 	activity.Report(ctx, "validating_copy", "", string(target.Position.Instance))
-	if v.Store == nil || v.Checks == nil || v.Queries == nil || v.Clock == nil || m.Validate() != nil {
+	if v.Store == nil || v.Checks == nil || v.Clock == nil || m.Validate() != nil {
 		return result, ErrBuild
 	}
 	h := read.Handle{Position: target.Position, Generation: target.Generation, Combination: m.Combination}
@@ -97,7 +128,7 @@ func (v Validator) Validate(ctx context.Context, target source.Target, m Manifes
 		return result, ErrBuild
 	}
 	m.Tables = append([]TableVersion(nil), m.Tables...)
-	previous, err := v.Store.BeginValidation(ctx, target, m)
+	_, err = v.Store.BeginValidation(ctx, target, m)
 	if err != nil {
 		return result, err
 	}
@@ -120,34 +151,9 @@ func (v Validator) Validate(ctx context.Context, target source.Target, m Manifes
 		err = ErrBuild
 		return
 	}
-	result = Evidence{Target: target, Combination: m.Combination, CheckedAt: at, Queries: map[contract.Operation]QueryEvidence{}}
-	for _, definition := range contract.Definitions() {
-		if err = ctx.Err(); err != nil {
-			return
-		}
-		op := definition.Operation
-		var deps map[string]string
-		deps, err = dependencies(m, op)
-		if err != nil {
-			return
-		}
-		old, ok := previous.Queries[op]
-		if ok && previous.Target == target && previous.Combination == m.Combination && !previous.CheckedAt.IsZero() && old.Cases > 0 && digest(old.SHA256) && maps.Equal(old.Dependencies, deps) {
-			old.Dependencies = maps.Clone(old.Dependencies)
-			result.Queries[op] = old
-			continue
-		}
-		var count int
-		var summary string
-		count, summary, err = v.Queries.Check(ctx, h, op, at)
-		if err != nil {
-			return
-		}
-		if count < 1 || !digest(summary) {
-			err = ErrBuild
-			return
-		}
-		result.Queries[op] = QueryEvidence{Dependencies: deps, Cases: count, SHA256: summary}
+	result = Evidence{Policy: StorageCheckPolicy, Target: target, Combination: m.Combination, CheckedAt: at, Tables: map[string]TableVersion{}}
+	for _, table := range m.Tables {
+		result.Tables[table.Table] = table
 	}
 	if err = ctx.Err(); err != nil {
 		return

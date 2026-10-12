@@ -1,0 +1,98 @@
+name: Build capacity and core acceptance
+on:
+  push:
+    branches: [perf/build-to-ready-30min]
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Capture CPU and heap profiles (diagnostic timing only)
+        type: boolean
+        default: false
+      acceptance:
+        description: Run BP01-BP06 and BP08 cold/warm, three attempts each, enforce T < 1800s (BP07 remains separate)
+        type: boolean
+        default: false
+      scenario:
+        description: Diagnostic scenario (ignored when acceptance=true)
+        type: choice
+        default: baseline
+        options: [baseline, BP01, BP02, BP03, BP04, BP05, BP06, BP07, BP08-cold, BP08-warm, BP09, BP10-double, BP10-wide, BP10-hot]
+permissions:
+  contents: read
+concurrency:
+  group: b01-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  baseline:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        scenario: ${{ fromJSON(inputs.acceptance && '["BP01","BP02","BP03","BP04","BP05","BP06","BP08-cold","BP08-warm"]' || format('["{0}"]', inputs.scenario || 'baseline')) }}
+        attempt: ${{ fromJSON(inputs.acceptance && '[1,2,3]' || '[1]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      GOTOOLCHAIN: local
+      SICP_INTEGRATION: '1'
+      SICP_BUILD_PERFORMANCE: '1'
+      SICP_BUILD_PROFILE: ${{ inputs.profile && '1' || '0' }}
+      SICP_BUILD_ACCEPTANCE: ${{ inputs.acceptance && '1' || '0' }}
+      SICP_BUILD_SCENARIO: ${{ matrix.scenario }}
+      SICP_BUILD_ATTEMPT: ${{ matrix.attempt }}
+      SICP_PROJECT: sicp-build-baseline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Prepare isolated synthetic dependencies
+        shell: bash
+        run: |
+          python3 scripts/check-compose-config.py --write-development-env .env
+          docker compose -p "$SICP_PROJECT" build mock
+          bash scripts/sicp.sh infra
+          for entry in M:db-m S:db-s LOG:db-log REDIS:redis; do
+            key=${entry%%:*}
+            service=${entry#*:}
+            container=$(docker compose -p "$SICP_PROJECT" ps -q "$service")
+            address=$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container")
+            printf 'SICP_TEST_%s_HOST=%s\n' "$key" "$address" >> "$GITHUB_ENV"
+          done
+      - name: Freeze runner specification and run real worker capacity baseline
+        shell: bash
+        run: bash scripts/check-build-performance.sh
+      - name: Collect logs and remove isolated volumes
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p artifacts/build-performance
+          docker compose -p "$SICP_PROJECT" logs --no-color > artifacts/build-performance/compose.log 2>&1 || true
+          docker compose -p "$SICP_PROJECT" down --volumes --remove-orphans
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-${{ matrix.scenario }}-${{ matrix.attempt }}-${{ github.sha }}
+          path: |
+            artifacts/build-performance/
+            !artifacts/build-performance/integration.test
+          if-no-files-found: error
+  report:
+    if: ${{ always() && inputs.acceptance }}
+    needs: baseline
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: build-*
+          path: artifacts/acceptance-input
+      - name: Reject incomplete samples and summarize all core measurements
+        run: python3 scripts/build_acceptance.py artifacts/acceptance-input --sha "$GITHUB_SHA" --output artifacts/core-acceptance.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: core-acceptance-${{ github.sha }}
+          path: artifacts/core-acceptance.json
+          if-no-files-found: error

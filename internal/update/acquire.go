@@ -12,7 +12,7 @@ import (
 
 // Acquire uses a fixed plan for all pages/retries, including distinct starts
 // for individual sources. Source timestamps have explicit configurable zone
-// and microsecond precision; full requests contain no time parameters.
+// and outward-rounded second precision; full requests contain no time parameters.
 func (a Acquirer) Acquire(ctx context.Context, plan control.UpdatePlan, zone *time.Location) (*staging.Lease, error) {
 	if err := plan.Validate(); err != nil {
 		return nil, err
@@ -24,8 +24,7 @@ func (a Acquirer) Acquire(ctx context.Context, plan control.UpdatePlan, zone *ti
 		r := ingest.PageRequest{Table: table, Mode: ingest.Mode(plan.Mode), Page: 1, PageSize: a.PageSize}
 		if r.Mode == ingest.Incremental {
 			w := plan.Windows[table]
-			r.StartTime = w.Start.In(zone).Format("2006-01-02 15:04:05.999999")
-			r.EndTime = w.End.In(zone).Format("2006-01-02 15:04:05.999999")
+			r.StartTime, r.EndTime = sourceWindowTimes(w, zone)
 		}
 		return r
 	})
@@ -89,7 +88,7 @@ func (f Fetcher) Prepare(ctx context.Context, active control.ActiveMetadata) (Pr
 		}
 		if r.Mode == ingest.Incremental {
 			w, ok := p.Windows[r.Table]
-			if !ok || r.StartTime != w.Start.In(f.Zone).Format("2006-01-02 15:04:05.999999") || r.EndTime != w.End.In(f.Zone).Format("2006-01-02 15:04:05.999999") {
+			if !ok || !matchesSourceWindow(r.StartTime, r.EndTime, w, f.Zone) {
 				return PreparedUpdate{}, ErrInitialization
 			}
 		}

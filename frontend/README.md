@@ -12,18 +12,18 @@ npm.cmd ci
 npm.cmd run dev
 ```
 
-打开 <http://127.0.0.1:5173/console/>。Linux/macOS 使用 `npm` 替代 `npm.cmd`。后端需另行按 [部署说明](../deploy/README.md) 启动；本地前端默认代理至 `http://127.0.0.1:18081`（worker），查询由 worker 转发至 `CONSOLE_QUERY_URL`。后端未启动时会显示连接错误，不会展示虚构健康状态。
+打开 <http://127.0.0.1:5173/console/>。Linux/macOS 使用 `npm` 替代 `npm.cmd`。后端需另行按 [部署说明](../deploy/README.md) 启动；本地前端默认代理至 `http://127.0.0.1:18080`（统一网关），查询由 worker 转发至 `CONSOLE_QUERY_URL`。后端未启动时会显示连接错误，不会展示虚构健康状态。
 
 后端运行在远程 Linux 时，可建立 SSH 端口转发：
 
 ```sh
-ssh -L 18081:127.0.0.1:18081 user@server
+ssh -L 18080:127.0.0.1:18080 user@server
 ```
 
 也可在 `frontend/.env.local` 指定服务器侧代理目标（修改后重启开发服务）：
 
 ```dotenv
-SICP_WORKER_TARGET=http://127.0.0.1:18081
+SICP_WORKER_TARGET=http://127.0.0.1:18080
 ```
 
 这些变量不使用 `VITE_` 前缀，不进入浏览器构建产物。目标应为你管理的服务。
@@ -37,7 +37,7 @@ SICP_WORKER_TARGET=http://127.0.0.1:18081
 5. 更新任务展示最近 50 条记录和下次计划时间，每 10 秒刷新。点击任务查看详情；仅强制全量和失败重跑需确认后提交。202 只表示已受理；用返回任务号查看详情，可开启 5 秒轮询。失败任务重跑会创建关联的新任务。
 6. 响应丢失或提交失败时页面保留原操作与幂等键，使用“重试原请求”。“结束本次请求”只释放前端表单，不取消后台任务；不要据此推断原任务未被受理。刷新前请自行记录任务号与幂等键，页面不会持久保存它们。
 
-会话 Cookie 为 HttpOnly、SameSite=Strict，有效期 8 小时；刷新页面会恢复登录，退出会撤销会话并销毁缓存页面，会话过期自动返回登录页。密码不写入浏览器存储。查询数据与任务详情仅在页面内存中，刷新即释放。当前为单管理员模式，未实现面向普通学生/教师的账号与数据范围授权。HTTPS 部署应设 `CONSOLE_COOKIE_SECURE=true`，生产入口由部署方配置 HTTPS 和访问范围。
+会话 Cookie 为 HttpOnly、SameSite=Strict，有效期 8 小时；刷新页面会恢复登录，退出会撤销会话并销毁缓存页面，会话过期自动返回登录页。密码不写入浏览器存储。查询数据与任务详情仅在页面内存中，刷新即释放。当前为单管理员模式，未实现面向普通学生/教师的账号与数据范围授权。统一部署根据证书配置自动派生 Cookie Secure。HTTP Vite 开发请连接 HTTP 网关；真实 HTTPS 验收直接访问网关并使用受信 CA。
 
 ## Docker Compose 部署
 
@@ -49,7 +49,7 @@ cp .env.example .env
 docker compose up -d --build --wait --wait-timeout 300
 ```
 
-Windows PowerShell 使用 `Copy-Item .env.example .env`；已有 `.env` 不要重复覆盖。打开 <http://127.0.0.1:18082/console/>。镜像内 Nginx 将 `/console-api/` 和 `/admin/v1/tasks/` 同源代理至 `worker:8081`，业务查询由 worker 在校验会话后转发至 query。端口由根目录 `.env` 的 `SICP_CONSOLE_PORT` 设置。
+Windows PowerShell 使用 `Copy-Item .env.example .env`；已有 `.env` 不要重复覆盖。打开 <http://127.0.0.1:18080/console/>。镜像内 Nginx 仅提供静态资源与 SPA，统一网关将管理请求转给 worker。业务查询由 worker 校验会话后经内部网关转发至 query。唯一端口由根目录 `.env` 的 `SICP_GATEWAY_PORT` 设置。
 
 仅重建控制台可执行 `docker compose up -d --build --no-deps console`；只停止控制台可执行 `docker compose stop console`。开发测试可将 `.env` 的 `ENVIRONMENT` 改为 `development` 以启用合成数据源。完整操作见[部署说明](../deploy/README.md)。
 

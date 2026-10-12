@@ -50,7 +50,7 @@ func newDeploymentBeforeStart(t *testing.T, initialize bool, beforeStart func(*d
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
 	t.Cleanup(transport.CloseIdleConnections)
-	d := &deployment{ctx: ctx, root: root, project: "sicp-i06-" + strings.ToLower(rand.Text()[:10]), queryURL: "http://127.0.0.1:18080", workerURL: "http://127.0.0.1:18081", client: &http.Client{Transport: transport, Timeout: 8 * time.Second}}
+	d := &deployment{ctx: ctx, root: root, project: "sicp-i06-" + strings.ToLower(rand.Text()[:10]), queryURL: "http://127.0.0.1:18080", client: &http.Client{Transport: transport, Timeout: 8 * time.Second}}
 	d.script(t, "prepare")
 	if len(workerValues) > 0 {
 		path := filepath.Join(root, ".env")
@@ -132,7 +132,15 @@ func commandOutput(t *testing.T, cmd *exec.Cmd) string {
 }
 func (d *deployment) compose(t *testing.T, args ...string) string {
 	t.Helper()
-	return commandOutput(t, d.composeCommand(d.ctx, args...))
+	out := commandOutput(t, d.composeCommand(d.ctx, args...))
+	if len(args) > 0 && (args[0] == "up" || args[0] == "restart") {
+		for _, service := range args[1:] {
+			if service == "worker" {
+				d.workerURL = "http://" + d.privateIP(t, "worker") + ":8081"
+			}
+		}
+	}
+	return out
 }
 func (d *deployment) script(t *testing.T, args ...string) string {
 	t.Helper()
@@ -144,7 +152,11 @@ func (d *deployment) script(t *testing.T, args ...string) string {
 		}
 	}
 	cmd.Env = append(cmd.Env, "SICP_PROJECT="+d.project)
-	return commandOutput(t, cmd)
+	out := commandOutput(t, cmd)
+	if len(args) > 0 && args[0] == "start" {
+		d.workerURL = "http://" + d.privateIP(t, "worker") + ":8081"
+	}
+	return out
 }
 func (d *deployment) sql(t *testing.T, query string) string {
 	t.Helper()

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
@@ -16,6 +17,9 @@ var ErrOrder = errors.New("invalid source cursor order")
 type Limits struct {
 	Batches, Rows, Bytes, BatchSize int
 	Duration                        time.Duration
+	// BatchBytes enables streaming accounting; Bytes then bounds retained
+	// Collect payloads instead of cumulative traffic across streaming scans.
+	BatchBytes int
 }
 
 func DefaultLimits() Limits {
@@ -30,10 +34,11 @@ type Budget struct {
 	clock                ports.Clock
 	started              time.Time
 	batches, rows, bytes int
+	retained             int
 }
 
 func NewBudget(l Limits, clock ports.Clock) (*Budget, error) {
-	if clock == nil || l.Batches < 1 || l.Rows < 1 || l.Bytes < 1 || l.BatchSize < 1 || l.BatchSize > source.MaxBatchRows || l.Duration <= 0 || l.Duration > time.Hour {
+	if clock == nil || l.Batches < 1 || l.Rows < 1 || l.Bytes < 1 || l.BatchSize < 1 || l.BatchSize > source.MaxBatchRows || l.Duration <= 0 || l.Duration > time.Hour || l.BatchBytes < 0 || l.BatchBytes > 64<<20 {
 		return nil, ErrBudget
 	}
 	return &Budget{limits: l, clock: clock, started: clock.Now()}, nil
@@ -81,7 +86,11 @@ func Scan(ctx context.Context, r Matcher, h Handle, table string, filters []sour
 	ctx, cancel := context.WithTimeout(ctx, remaining)
 	defer cancel()
 	after := ""
+	var buffered int64
+	defer func() { buildmetric.Memory(ctx, -buffered) }()
 	for {
+		buildmetric.Memory(ctx, -buffered)
+		buffered = 0
 		if err := b.Check(ctx); err != nil {
 			return err
 		}
@@ -98,26 +107,39 @@ func Scan(ctx context.Context, r Matcher, h Handle, table string, filters []sour
 		if err != nil {
 			return err
 		}
+		if buildmetric.Enabled(ctx) {
+			for _, row := range rows {
+				for _, raw := range row {
+					buffered += int64(len(raw))
+				}
+			}
+		}
+		buildmetric.Memory(ctx, buffered)
 		if err = b.Check(ctx); err != nil {
 			return err
 		}
 		if len(rows) > limit {
 			return ErrBudget
 		}
+		batchBytes := 0
 		for _, row := range rows {
 			if b.rows >= b.limits.Rows {
 				return ErrBudget
 			}
 			b.rows++
 			for name, raw := range row {
-				if len(name) > b.limits.Bytes-b.bytes {
+				used, maximum := &b.bytes, b.limits.Bytes
+				if b.limits.BatchBytes > 0 {
+					used, maximum = &batchBytes, b.limits.BatchBytes
+				}
+				if len(name) > maximum-*used {
 					return ErrBudget
 				}
-				b.bytes += len(name)
-				if len(raw) > b.limits.Bytes-b.bytes {
+				*used += len(name)
+				if len(raw) > maximum-*used {
 					return ErrBudget
 				}
-				b.bytes += len(raw)
+				*used += len(raw)
 			}
 			var key string
 			if json.Unmarshal(row[pk], &key) != nil || key == "" || key <= after {
@@ -139,9 +161,37 @@ func Scan(ctx context.Context, r Matcher, h Handle, table string, filters []sour
 
 func Collect(ctx context.Context, r Matcher, h Handle, table string, filters []source.Filter, b *Budget) ([]source.SourceRow, error) {
 	result := []source.SourceRow{}
-	err := Scan(ctx, r, h, table, filters, b, func(row source.SourceRow) error { result = append(result, row); return nil })
+	err := Scan(ctx, r, h, table, filters, b, func(row source.SourceRow) error {
+		if err := b.Retain(row); err != nil {
+			return err
+		}
+		result = append(result, row)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
+}
+
+// Retain accounts for filtered rows held after a streaming callback returns.
+// Foreground Scan already charges all traffic, so its stricter cap is unchanged.
+func (b *Budget) Retain(row source.SourceRow) error {
+	if b == nil {
+		return ErrBudget
+	}
+	if b.limits.BatchBytes == 0 {
+		return nil
+	}
+	for name, raw := range row {
+		if len(name) > b.limits.Bytes-b.retained {
+			return ErrBudget
+		}
+		b.retained += len(name)
+		if len(raw) > b.limits.Bytes-b.retained {
+			return ErrBudget
+		}
+		b.retained += len(raw)
+	}
+	return nil
 }

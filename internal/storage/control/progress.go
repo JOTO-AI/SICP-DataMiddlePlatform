@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
@@ -141,7 +142,9 @@ func (r Repository) StageProgress(ctx context.Context, p ProgressPlan) error {
 // ConfirmPublication commits publication and admission independently of source
 // progress. A prior acknowledged atomic application is mandatory; GET alone is
 // never application evidence. Replays preserve the original publication time.
-func (r Repository) ConfirmPublication(ctx context.Context, offered Publication, at time.Time) (Publication, error) {
+func (r Repository) ConfirmPublication(ctx context.Context, offered Publication, at time.Time) (result Publication, err error) {
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "publish_confirm"}, "")
+	defer func() { end(err) }()
 	if r.owner == nil {
 		return Publication{}, ErrOwnership
 	}
@@ -150,7 +153,7 @@ func (r Repository) ConfirmPublication(ctx context.Context, offered Publication,
 	}
 	at = at.UTC().Truncate(time.Microsecond)
 	var confirmed Publication
-	err := r.transaction(ctx, func(tx storage.Transaction) error {
+	err = r.transaction(ctx, func(tx storage.Transaction) error {
 		if err := r.fenceWriter(ctx, tx); err != nil {
 			return err
 		}
@@ -230,7 +233,9 @@ func (r Repository) ConfirmPublication(ctx context.Context, offered Publication,
 // CompletePublished advances all fourteen sources and task success in one
 // transaction. A failed/unknown commit can be retried using
 // only its persisted event/plan; no source acquisition or physical write occurs.
-func (r Repository) CompletePublished(ctx context.Context, offered Publication, at time.Time) error {
+func (r Repository) CompletePublished(ctx context.Context, offered Publication, at time.Time) (err error) {
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "confirm_progress"}, "")
+	defer func() { end(err) }()
 	if r.owner == nil {
 		return ErrOwnership
 	}

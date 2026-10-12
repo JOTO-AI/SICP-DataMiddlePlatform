@@ -33,7 +33,7 @@ func Latest(ctx context.Context, table string, rows []ingest.Record) ([]ingest.R
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		copy, raw, err := validated(table, r)
+		copy, raw, err := validated(ctx, table, r)
 		if err != nil {
 			return nil, err
 		}

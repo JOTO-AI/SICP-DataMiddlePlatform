@@ -35,21 +35,7 @@ func staffMatchesChecked(schedules []source.SourceRow, req contract.StaffTimetab
 				return nil, err
 			}
 		}
-		year, err := compute.Required(r, "KKXND")
-		if err != nil {
-			return nil, err
-		}
-		semester, err := compute.Required(r, "KKXQM")
-		if err != nil {
-			return nil, err
-		}
-		if !validTerm(year, semester) {
-			return nil, compute.ErrValue
-		}
-		if year != req.AcademicYear || semester != req.Semester {
-			continue
-		}
-		teachers, err := ParseTeachers(r)
+		teachers, err := staffTeachers(r, req.AcademicYear, req.Semester)
 		if err != nil {
 			return nil, err
 		}
@@ -58,4 +44,20 @@ func staffMatchesChecked(schedules []source.SourceRow, req contract.StaffTimetab
 		}
 	}
 	return out, nil
+}
+
+// The sequential service and grouped validation share exact term/token rules,
+// including errors on malformed rows belonging to another requested teacher.
+func staffTeachers(r source.SourceRow, year, semester string) (Teachers, error) {
+	y, s, present, err := ScheduleTerm(r)
+	if err != nil {
+		return Teachers{}, err
+	}
+	if !present {
+		return Teachers{}, nil
+	}
+	if y != year || s != semester {
+		return Teachers{}, nil
+	}
+	return ParseTeachers(r)
 }

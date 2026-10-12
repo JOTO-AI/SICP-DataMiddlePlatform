@@ -8,3 +8,5 @@
 !deploy/
 !deploy/Dockerfile
 !deploy/worker-entrypoint.sh
+!deploy/query-entrypoint.sh
+!deploy/gateway-config.sh

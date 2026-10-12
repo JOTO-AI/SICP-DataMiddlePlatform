@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 )
 
@@ -23,6 +24,7 @@ func (h SlotIdentity) valid() bool {
 // All read-admission and replacement mutations take the same transaction lock
 // in the fixed control database. Query roles need no UPDATE privilege on slots.
 func lockSlot(ctx context.Context, tx storage.Transaction, p storage.Position) error {
+	defer buildmetric.LockAcquisition(ctx)()
 	if p.Validate() != nil {
 		return ErrEntity
 	}

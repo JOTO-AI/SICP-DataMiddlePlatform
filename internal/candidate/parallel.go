@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/activity"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/merge"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/staging"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
@@ -92,7 +93,9 @@ func (f TargetFiles) prepareTables(ctx context.Context, o PrepareOptions, input 
 	return tables, out, nil
 }
 
-func (f TargetFiles) prepareTable(ctx context.Context, o PrepareOptions, input *staging.Lease, base map[string]TableVersion, name string, reserve func() bool) (targetTable, ChangeCounts, error) {
+func (f TargetFiles) prepareTable(ctx context.Context, o PrepareOptions, input *staging.Lease, base map[string]TableVersion, name string, reserve func() bool) (result targetTable, changes ChangeCounts, err error) {
+	ctx, end := events.TraceBuild(ctx, events.BuildScope{Stage: "merge_table", Table: name, Combination: o.Combination}, "")
+	defer func() { end(err) }()
 	var current merge.RowIterator = emptyRows{}
 	baseDigest, err := merge.SourceDigest(ctx, name, o.Scope, nil)
 	if err != nil {
@@ -111,7 +114,7 @@ func (f TargetFiles) prepareTable(ctx context.Context, o PrepareOptions, input *
 		baseDigest = old.SHA256
 	}
 	sink := &fileSink{files: f, combination: o.Combination, table: name, remaining: f.MaxChunks, reserve: reserve}
-	summary, err := merge.Stream(ctx, merge.StreamOptions{Table: name, Scope: o.Scope, BaselineSHA256: baseDigest, SpoolDirectory: o.SpoolDirectory, Limits: o.Limits, Quality: o.Quality[name]}, current, merge.SealedInput{Scope: o.Scope, Lease: input}, sink)
+	summary, err := merge.Stream(ctx, merge.StreamOptions{Table: name, Scope: o.Scope, BaselineSHA256: baseDigest, SpoolDirectory: o.SpoolDirectory, Limits: o.Limits, Quality: o.Quality[name], OrderedBaseline: true}, current, merge.SealedInput{Scope: o.Scope, Lease: input}, sink)
 	if opened != nil {
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		err = errors.Join(err, opened.Close(cleanup))

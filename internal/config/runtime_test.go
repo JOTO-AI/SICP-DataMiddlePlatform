@@ -4,10 +4,40 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/config"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/testkit"
 )
+
+func TestBT02_BackgroundTimeoutIsWorkerOnly(t *testing.T) {
+	for _, duration := range []string{"", "0s", "-1s", "61m", "30m"} {
+		v := testkit.RuntimeValues("/data")
+		v["BUILD_CHECK_TIMEOUT"] = duration
+		lookup := func(k string) (string, bool) { x, ok := v[k]; return x, ok }
+		c, err := config.LoadRuntime(config.Worker, lookup)
+		if (err == nil) != (duration == "30m") {
+			t.Fatal("invalid background timeout handling", duration, err)
+		}
+		if err == nil && c.BuildCheckTimeout != 30*time.Minute {
+			t.Fatal("wrong timeout")
+		}
+		if _, err = config.LoadRuntime(config.Query, lookup); err != nil {
+			t.Fatal("worker budget affected frontend", err)
+		}
+	}
+}
+
+func TestBT05_ExplicitImportMode(t *testing.T) {
+	for _, mode := range []string{"copy", "insert", "", "automatic"} {
+		v := testkit.RuntimeValues("/data")
+		v["BUILD_IMPORT_MODE"] = mode
+		_, err := config.LoadRuntime(config.Worker, func(k string) (string, bool) { s, ok := v[k]; return s, ok })
+		if (err == nil) != (mode == "copy" || mode == "insert") {
+			t.Fatal(mode, err)
+		}
+	}
+}
 
 func TestT15_09RuntimeRejectsIncompleteOrConflictingDeployment(t *testing.T) {
 	for _, tc := range []struct{ key, value string }{
@@ -235,5 +265,14 @@ func TestRuntimeOptionalMail(t *testing.T) {
 				t.Fatal("SMTP without authentication rejected", err)
 			}
 		})
+	}
+}
+
+// Removed deployment smoke settings cannot block worker startup during upgrades.
+func TestLegacySmokeConfigurationIsIgnored(t *testing.T) {
+	values := testkit.RuntimeValues("/data")
+	values["BUILD_SMOKE_CASES"] = "old-invalid-config"
+	if _, err := config.LoadRuntime(config.Worker, func(k string) (string, bool) { v, ok := values[k]; return v, ok }); err != nil {
+		t.Fatal(err)
 	}
 }

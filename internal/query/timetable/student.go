@@ -61,9 +61,12 @@ func studentMatchesChecked(relations, schedules []source.SourceRow, req contract
 		if err != nil {
 			return nil, err
 		}
-		course, err := compute.Required(r, "JHKCH")
+		course, err := compute.Optional(r, "JHKCH")
 		if err != nil {
 			return nil, err
+		}
+		if class == "" || course == "" {
+			continue
 		}
 		key := relationKey{class, course}
 		members[key] = append(members[key], r)
@@ -84,28 +87,27 @@ func studentMatchesChecked(relations, schedules []source.SourceRow, req contract
 				return nil, err
 			}
 		}
-		class, err := compute.Required(r, "JXBH")
+		class, err := compute.Optional(r, "JXBH")
 		if err != nil {
 			return nil, err
 		}
-		course, err := compute.Required(r, "JHKCH")
+		course, err := compute.Optional(r, "JHKCH")
 		if err != nil {
 			return nil, err
+		}
+		if class == "" || course == "" {
+			continue
 		}
 		key := relationKey{class, course}
 		if len(members[key]) == 0 {
 			continue
 		}
-		year, err := compute.Required(r, "KKXND")
+		year, semester, present, err := ScheduleTerm(r)
 		if err != nil {
 			return nil, err
 		}
-		semester, err := compute.Required(r, "KKXQM")
-		if err != nil {
-			return nil, err
-		}
-		if !validTerm(year, semester) {
-			return nil, compute.ErrValue
+		if !present {
+			continue
 		}
 		when := term{year, semester}
 		if terms[key] == nil {
@@ -131,4 +133,26 @@ func studentMatchesChecked(relations, schedules []source.SourceRow, req contract
 		out = append(out, Match{Schedule: c.row, Membership: members[c.key]})
 	}
 	return out, nil
+}
+
+// ScheduleTerm ignores records without a queryable term. Malformed present
+// terms are still rejected instead of being assigned a guessed semester.
+func ScheduleTerm(row source.SourceRow) (year, semester string, present bool, err error) {
+	year, err = compute.Optional(row, "KKXND")
+	if err != nil {
+		return
+	}
+	semester, err = compute.Optional(row, "KKXQM")
+	if err != nil {
+		return
+	}
+	if year == "" || semester == "" {
+		return
+	}
+	if !validTerm(year, semester) {
+		err = compute.ErrValue
+		return
+	}
+	present = true
+	return
 }

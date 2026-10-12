@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/buildmetric"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/coord"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 	"github.com/jackc/pgx/v5"
@@ -33,7 +34,19 @@ type execution struct {
 func (*Postgres) String() string     { return "[PostgreSQL adapter redacted]" }
 func (p *Postgres) GoString() string { return p.String() }
 
+// PostgresPoolLimits applies independently to each business-slot pool.
+type PostgresPoolLimits struct{ Business, Control, Logs int }
+
 func OpenPostgres(ctx context.Context, r storage.Registry, timeout time.Duration, process ...string) (*Postgres, error) {
+	return OpenPostgresWithLimits(ctx, r, timeout, PostgresPoolLimits{16, 16, 16}, process...)
+}
+
+func OpenPostgresWithLimits(ctx context.Context, r storage.Registry, timeout time.Duration, limits PostgresPoolLimits, process ...string) (*Postgres, error) {
+	for _, limit := range []int{limits.Business, limits.Control, limits.Logs} {
+		if limit < 1 || limit > 1000 {
+			return nil, ErrPostgres
+		}
+	}
 	p := &Postgres{pools: map[storage.Connection]*pgxpool.Pool{}, executions: map[string]execution{}}
 	connections := []storage.Connection{}
 	for _, i := range []storage.Instance{storage.Main, storage.Standby} {
@@ -47,21 +60,21 @@ func OpenPostgres(ctx context.Context, r storage.Registry, timeout time.Duration
 	}
 	connections = append(connections, r.Control(), r.Logs())
 	configs := make([]*pgxpool.Config, 0, len(connections))
-	for _, c := range connections {
-		cfg, e := pgxpool.ParseConfig(c.DSN())
-		if e != nil || c.DSN() == "" {
-			return p, ErrPostgres
+	for i, c := range connections {
+		limit := limits.Business
+		if i == 4 {
+			limit = limits.Control
 		}
-		cfg.ConnConfig.ConnectTimeout = timeout
-		cfg.MaxConns = 16
-		cfg.MinConns = 0
-		cfg.ConnConfig.RuntimeParams["timezone"] = "UTC"
-		cfg.AfterConnect = func(_ context.Context, conn *pgx.Conn) error {
-			configureTimeCodecs(conn.TypeMap())
-			return nil
+		if i == 5 {
+			limit = limits.Logs
 		}
+		name := ""
 		if len(process) == 1 {
-			cfg.ConnConfig.RuntimeParams["application_name"] = "sicp-" + process[0]
+			name = process[0]
+		}
+		cfg, e := postgresPoolConfig(c.DSN(), timeout, limit, name)
+		if e != nil {
+			return p, e
 		}
 		configs = append(configs, cfg)
 	}
@@ -144,13 +157,22 @@ type pgTransaction struct {
 }
 
 func (t pgTransaction) Exec(ctx context.Context, q string, args ...any) (int64, error) {
+	buildmetric.Add(ctx, buildmetric.SQL, 1)
 	tag, e := t.tx.Exec(ctx, q, args...)
 	return tag.RowsAffected(), pgError(ctx, e)
 }
+
+func (t pgTransaction) CopyFrom(ctx context.Context, table string, columns []string, rows [][]any) (int64, error) {
+	buildmetric.Add(ctx, buildmetric.SQL, 1)
+	n, err := t.tx.CopyFrom(ctx, pgx.Identifier{"source", table}, columns, pgx.CopyFromRows(rows))
+	return n, pgError(ctx, err)
+}
 func (t pgTransaction) QueryRow(ctx context.Context, q string, args ...any) storage.Row {
+	buildmetric.Add(ctx, buildmetric.SQL, 1)
 	return pgRow{ctx, t.tx.QueryRow(ctx, q, args...)}
 }
 func (t pgTransaction) Query(ctx context.Context, q string, args ...any) (storage.Rows, error) {
+	buildmetric.Add(ctx, buildmetric.SQL, 1)
 	r, e := t.tx.Query(ctx, q, args...)
 	if e != nil {
 		return nil, pgError(ctx, e)
@@ -260,3 +282,27 @@ func (r pgRows) Next() bool            { return r.rows.Next() }
 func (r pgRows) Scan(dst ...any) error { return pgError(r.ctx, r.rows.Scan(dst...)) }
 func (r pgRows) Err() error            { return pgError(r.ctx, r.rows.Err()) }
 func (r pgRows) Close()                { r.rows.Close() }
+
+// postgresPoolConfig is shared by all six pools; explicit deployment limits
+// override pool settings embedded in DSNs.
+func postgresPoolConfig(dsn string, timeout time.Duration, maxConns int, process string) (*pgxpool.Config, error) {
+	if dsn == "" || maxConns < 1 || maxConns > 1000 {
+		return nil, ErrPostgres
+	}
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, ErrPostgres
+	}
+	cfg.ConnConfig.ConnectTimeout = timeout
+	cfg.MaxConns = int32(maxConns)
+	cfg.MinConns = 0
+	cfg.ConnConfig.RuntimeParams["timezone"] = "UTC"
+	cfg.AfterConnect = func(_ context.Context, conn *pgx.Conn) error {
+		configureTimeCodecs(conn.TypeMap())
+		return nil
+	}
+	if process != "" {
+		cfg.ConnConfig.RuntimeParams["application_name"] = "sicp-" + process
+	}
+	return cfg, nil
+}

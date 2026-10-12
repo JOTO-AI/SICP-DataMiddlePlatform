@@ -60,6 +60,9 @@ func (p writeFaultTransaction) Exec(ctx context.Context, sql string, args ...any
 func (p writeFaultTransaction) Query(ctx context.Context, sql string, args ...any) (storage.Rows, error) {
 	return p.Transaction.(storage.QueryExecutor).Query(ctx, sql, args...)
 }
+func (p writeFaultTransaction) CopyFrom(ctx context.Context, table string, columns []string, rows [][]any) (int64, error) {
+	return p.Transaction.(storage.CopyExecutor).CopyFrom(ctx, table, columns, rows)
+}
 func installWriteFault(t *testing.T, f *runtimeFixture, position storage.Position, fault func(context.Context, storage.Transaction) error) *writeFaultDatabase {
 	t.Helper()
 	c, err := f.wc.Databases.Business(position)

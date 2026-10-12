@@ -1,13 +1,15 @@
 """Single-table smoke coverage for GitHub's isolated synthetic Compose project."""
 import http.cookiejar
 import json
+import os
 import sys
 import time
 import urllib.error
 import urllib.request
+from gateway_runtime import tls_context
 
 base = sys.argv[1]
-client = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+client = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=tls_context(os.environ.get('SICP_CA_FILE'))), urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 headers = {"Content-Type": "application/json", "X-SICP-Request": "console"}
 
 

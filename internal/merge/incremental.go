@@ -25,7 +25,7 @@ func unique(ctx context.Context, table string, rows []ingest.Record) (map[string
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		copy, _, err := validated(table, row)
+		copy, _, err := validated(ctx, table, row)
 		if err != nil {
 			return nil, err
 		}

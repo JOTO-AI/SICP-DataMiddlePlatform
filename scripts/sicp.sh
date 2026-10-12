@@ -11,9 +11,7 @@ case "$operation" in
     printf '%s\n' 'Prepared root .env; existing configuration was preserved.'
     ;;
   validate)
-    "${compose[@]}" config --quiet
-    "${compose[@]}" run --rm --no-deps --entrypoint /usr/local/bin/service query --check-config
-    "${compose[@]}" run --rm --no-deps worker /usr/local/bin/service --check-config
+    python3 "$root/scripts/gateway.py" validate
     ;;
   build)
     "${compose[@]}" build
@@ -26,7 +24,7 @@ case "$operation" in
     done
     ;;
   migrate) "${compose[@]}" run --rm --no-deps migrate ;;
-  start) "${compose[@]}" up -d --wait --wait-timeout 90 query worker console ;;
+  start) "${compose[@]}" up -d --wait --wait-timeout 90 query-gateway worker console ;;
   deploy)
     "$0" prepare
     "$0" build
@@ -34,12 +32,14 @@ case "$operation" in
     "$0" infra
     "$0" migrate
     "$0" start
+    python3 "$root/scripts/gateway.py" verify "$@"
     ;;
   status)
     "${compose[@]}" ps
     ;;
   stop) "${compose[@]}" stop ;;
-  restart) "${compose[@]}" restart query worker ;;
+  restart) "${compose[@]}" restart query query-gateway worker ;;
   down) "${compose[@]}" down ;; # Volumes deliberately retained.
-  *) printf '%s\n' 'Usage: scripts/sicp.sh prepare|build|validate|infra|migrate|start|deploy|status|stop|restart|down'; exit 2 ;;
+  gateway-apply|gateway-renew) python3 "$root/scripts/gateway.py" "$operation" "$@" ;;
+  *) printf '%s\n' 'Usage: scripts/sicp.sh prepare|build|validate|infra|migrate|start|deploy|status|stop|restart|down|gateway-apply --url ORIGIN [--ca-file FILE]|gateway-renew --url ORIGIN [--ca-file FILE]'; exit 2 ;;
 esac

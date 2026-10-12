@@ -100,5 +100,5 @@ func (p Pipeline) run(ctx context.Context, op contract.Operation, input any) (an
 	if err != nil {
 		return nil, err
 	}
-	return transport.Reply{Data: response, Snapshot: token}, nil
+	return transport.Reply{Data: response, Snapshot: token, Combination: h.Combination}, nil
 }

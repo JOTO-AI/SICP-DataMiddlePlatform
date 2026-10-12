@@ -70,7 +70,7 @@ func (r LocalRecovery) Run(ctx context.Context, task control.Task) (ChangeResult
 		}
 		if req.Mode == ingest.Incremental {
 			w, ok := p.Windows[req.Table]
-			if !ok || req.StartTime != w.Start.In(r.Zone).Format("2006-01-02 15:04:05.999999") || req.EndTime != w.End.In(r.Zone).Format("2006-01-02 15:04:05.999999") {
+			if !ok || !matchesSourceWindow(req.StartTime, req.EndTime, w, r.Zone) {
 				return ChangeResult{}, ErrReacquire
 			}
 		}

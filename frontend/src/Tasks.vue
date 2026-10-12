@@ -44,16 +44,20 @@ const failureDescriptions: Record<string, string> = {
   acquisition_failed: '部分表采集未完成。已完成的表可以保留复用，可强制更新失败表；全部补齐并通过校验后才完成初始化。',
 }
 let historyTimer: ReturnType<typeof setTimeout> | undefined
+let historyGeneration = 0, detailGeneration = 0
 async function refreshHistory() {
-  if (historyBusy.value) return
+  if (!active || historyBusy.value) return
   clearTimeout(historyTimer); historyBusy.value = true; historyError.value = ''
+  const run = ++historyGeneration
   try {
-    overview.value = (await request<Envelope<Overview>>('worker', '/admin/v1/tasks/')).body.data
+    const result = (await request<Envelope<Overview>>('worker', '/admin/v1/tasks/')).body.data
+    if (!active || run !== historyGeneration) return
+    overview.value = result
     const current = overview.value.items.find(item => ['accepted', 'running', 'published_pending_progress'].includes(item.status))
     if (active && !lookup.value && current) selectTask(current.task_id)
   }
-  catch (e) { historyError.value = describe(e) }
-  finally { historyBusy.value = false; if (active) historyTimer = setTimeout(refreshHistory, 10000) }
+  catch (e) { if (active && run === historyGeneration) historyError.value = describe(e) }
+  finally { if (run === historyGeneration) { historyBusy.value = false; if (active) historyTimer = setTimeout(refreshHistory, 10000) } }
 }
 function selectTask(id: string) { stop(); task.value = null; lookup.value = id; auto.value = true; void fetchTask() }
 const modeLabels: Record<string, string> = { initialize: '初始化', incremental: '增量同步', force_full: '强制全量' }
@@ -68,10 +72,11 @@ const terminal = computed(() => !!task.value?.finished_at || ['success_published
 const statusLabels: Record<string, string> = { accepted: '已受理', running: '执行中', published_pending_progress: '已发布，正在确认进度', success_published: '发布成功', success_unchanged: '检查完成，无变化', failed: '执行失败' }
 const detailStatus = computed(() => task.value && ['initialize', 'force_full'].includes(task.value.mode) && task.value.status === 'failed' && task.value.acquisition?.tables.some(table => table.status === 'collected') && task.value.acquisition.tables.some(table => table.status !== 'collected') ? '部分完成，待补齐' : statusLabels[task.value?.status || ''] || task.value?.status)
 const stages = computed(() => task.value ? [{ name: '已受理', at: task.value.accepted_at }, { name: '开始执行', at: task.value.started_at }, { name: '构建就绪', at: task.value.ready_at }, { name: '发布完成', at: task.value.published_at }, { name: '检查完成', at: task.value.checked_at }, { name: '任务结束', at: task.value.finished_at }] : [])
-function stop() { auto.value = false; clearTimeout(timer) }
-onActivated(() => { active = true; void refreshHistory(); if (task.value && !terminal.value) { auto.value = true; void fetchTask() } })
-onDeactivated(() => { active = false; stop(); clearTimeout(historyTimer) })
-onUnmounted(() => { active = false; stop(); clearTimeout(historyTimer) })
+function stop() { auto.value = false; detailGeneration++; loading.value = false; clearTimeout(timer) }
+onActivated(() => { active = true; void refreshHistory(); if (lookup.value.trim() && !terminal.value) { auto.value = true; void fetchTask() } })
+function deactivate() { active = false; stop(); historyGeneration++; historyBusy.value = false; clearTimeout(historyTimer) }
+onDeactivated(deactivate)
+onUnmounted(deactivate)
 function confirm() {
   stop()
   error.value = ''
@@ -110,14 +115,17 @@ async function submit() {
   finally { busy.value = false }
 }
 async function fetchTask() {
-  if (loading.value || !lookup.value.trim()) return
+  if (!active || loading.value || !lookup.value.trim()) return
   clearTimeout(timer); loading.value = true; taskError.value = ''
+  const run = ++detailGeneration, id = lookup.value.trim()
+  const current = () => active && run === detailGeneration && lookup.value.trim() === id
   try {
-    const response = await request<Envelope<Task>>('worker', `/admin/v1/tasks/${encodeURIComponent(lookup.value.trim())}`)
+    const response = await request<Envelope<Task>>('worker', `/admin/v1/tasks/${encodeURIComponent(id)}`)
+    if (!current()) return
     task.value = response.body.data
     if (terminal.value) stop()
-  } catch (e) { taskError.value = `${describe(e)} 自动刷新已停止。${task.value ? '显示的进度为上次成功读取的结果。' : ''}`; stop() }
-  finally { loading.value = false; if (active && auto.value) timer = setTimeout(fetchTask, 5000) }
+  } catch (e) { if (current()) { taskError.value = `${describe(e)} 自动刷新已停止。${task.value ? '显示的进度为上次成功读取的结果。' : ''}`; stop() } }
+  finally { if (run === detailGeneration) { loading.value = false; if (active && auto.value) timer = setTimeout(fetchTask, 5000) } }
 }
 function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else stop() }
 </script>
@@ -166,7 +174,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
           <p class="task-id">{{ task.task_id }}</p>
           <label class="check-row"><input type="checkbox" v-model="auto" :disabled="terminal || busy || loading" @change="toggleAuto">每 5 秒刷新，任务结束或查询失败后停止</label>
           <p v-if="task.selected_table" class="hint">本次强制更新表：{{ task.selected_table }}</p>
-          <WorkProgress :progress="task.work_progress" :status="task.status" />
+          <WorkProgress :progress="task.work_progress" :status="task.status" :started-at="task.started_at" :finished-at="task.finished_at" />
           <AcquisitionProgress :progress="task.acquisition" :status="task.status" :allow-update="tableUpdateAllowed" @update-table="forceTable" />
           <dl class="facts"><div><dt>更新模式</dt><dd>{{ modeLabels[task.mode] || task.mode }}</dd></div><div><dt>操作人</dt><dd>{{ task.operator === 'scheduler' ? '系统调度' : task.operator || '未提供' }}</dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed ? '已确认' : '未确认' }}</dd></div><div v-if="task.predecessor_id"><dt>前序任务</dt><dd>{{ task.predecessor_id }}</dd></div></dl>
           <p v-if="task.failure" class="error">失败原因：{{ task.failure }}</p>
