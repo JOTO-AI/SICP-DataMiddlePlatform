@@ -18,10 +18,11 @@ const (
 	ForceFull   Action = "force_full"
 	Rerun       Action = "rerun"
 	Status      Action = "status"
+	LogsRead    Action = "logs_read"
 )
 
 func validAction(a Action) bool {
-	return a == Incremental || a == ForceFull || a == Rerun || a == Status
+	return a == Incremental || a == ForceFull || a == Rerun || a == Status || a == LogsRead
 }
 
 type Credential struct {
