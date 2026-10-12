@@ -127,7 +127,7 @@ func TestT28_04IndependentLogLedgersReplayAndConflict(t *testing.T) {
 		}
 	}
 	upstream, _ := r.LogConnection(storage.UpstreamLog)
-	if len(db.items[r.Logs()].ledger) != 2 || len(db.items[upstream].ledger) != 1 {
+	if len(db.items[r.Logs()].ledger) != 3 || len(db.items[upstream].ledger) != 1 {
 		t.Fatal("logs share a ledger")
 	}
 	if _, ok := db.items[upstream].ledger["upstream_logs_001"]; !ok {

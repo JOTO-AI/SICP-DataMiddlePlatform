@@ -24,6 +24,7 @@ const (
 	Step        Kind    = "step"
 	Call        Kind    = "call"
 	Attempt     Kind    = "attempt"
+	Audit       Kind    = "audit"
 	Started     Phase   = "started"
 	Finished    Phase   = "finished"
 	Transport   Phase   = "transport"
@@ -37,13 +38,15 @@ var ErrRecord = errors.New("lifecycle event recording failed")
 
 // Identity contains service-generated opaque identifiers, never user identity.
 type Identity struct {
-	RequestID string `json:"request_id,omitempty"`
-	TaskID    string `json:"task_id,omitempty"`
-	StepID    string `json:"step_id,omitempty"`
-	CallID    string `json:"call_id,omitempty"`
-	AttemptID string `json:"attempt_id,omitempty"`
-	AttemptNo int    `json:"attempt_no,omitempty"`
-	Instance  string `json:"instance,omitempty"`
+	RequestID string  `json:"request_id,omitempty"`
+	TaskID    string  `json:"task_id,omitempty"`
+	StepID    string  `json:"step_id,omitempty"`
+	CallID    string  `json:"call_id,omitempty"`
+	AttemptID string  `json:"attempt_id,omitempty"`
+	AttemptNo int     `json:"attempt_no,omitempty"`
+	Instance  string  `json:"instance,omitempty"`
+	Purpose   Purpose `json:"purpose,omitempty"`
+	TestRunID string  `json:"test_run_id,omitempty"`
 }
 type Event struct {
 	ID           string               `json:"event_id"`
@@ -58,6 +61,7 @@ type Event struct {
 	DurationNS   *int64               `json:"duration_ns,omitempty"`
 	Metadata     Metadata             `json:"metadata"`
 	Response     *diagnostic.Response `json:"response,omitempty"`
+	Audit        *AuditIdentity       `json:"audit,omitempty"`
 }
 
 func (Event) String() string        { return "[lifecycle event redacted]" }
@@ -116,9 +120,12 @@ func validID(s string) bool {
 	return true
 }
 func (i Identity) valid() bool {
-	return validID(i.RequestID) && validID(i.TaskID) && validID(i.StepID) && validID(i.CallID) && validID(i.AttemptID) && (i.Instance == "" || i.Instance == "M" || i.Instance == "S") && i.AttemptNo >= 0
+	return validID(i.RequestID) && validID(i.TaskID) && validID(i.StepID) && validID(i.CallID) && validID(i.AttemptID) && (i.Instance == "" || i.Instance == "M" || i.Instance == "S") && i.AttemptNo >= 0 && i.validPurpose()
 }
 func (e Event) Validate() error {
+	if (e.Kind == Audit) != (e.Audit != nil) || e.Audit != nil && (!e.Audit.valid() || e.Phase != Finished) {
+		return ErrEvent
+	}
 	if e.Metadata.Build != nil && (e.Kind != Step || e.Identity.TaskID == "" || e.Identity.StepID != e.EntityID || e.Phase == Transport) {
 		return ErrEvent
 	}
@@ -129,7 +136,7 @@ func (e Event) Validate() error {
 		return ErrEvent
 	}
 	switch e.Kind {
-	case Request, Task, Step, Call, Attempt:
+	case Request, Task, Step, Call, Attempt, Audit:
 	default:
 		return ErrEvent
 	}
@@ -219,10 +226,16 @@ func (r *Recorder) Begin(ctx context.Context, k Kind, parent Identity, instance 
 		i.AttemptID = ""
 		i.AttemptNo = 0
 	case Call:
+		if i.Purpose == "" {
+			i.Purpose = SyncPurpose
+		}
 		i.CallID = id
 		i.AttemptID = ""
 		i.AttemptNo = 0
 	case Attempt:
+		if i.Purpose == "" {
+			i.Purpose = SyncPurpose
+		}
 		if i.CallID == "" || attempt < 1 {
 			return ctx, nil, ErrEvent
 		}

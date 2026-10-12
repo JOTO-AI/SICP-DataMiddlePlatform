@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"sync/atomic"
+
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 )
 
 var ErrDelivery = errors.New("log delivery not acknowledged")
@@ -36,6 +38,7 @@ type Buffer struct {
 	wake                   chan struct{}
 	appendGate             chan struct{}
 	closed                 atomic.Bool
+	source                 storage.LogSource
 }
 
 func NewBuffer(files *QuotaJournal, s *Sanitizer, batchCount, batchBytes int) (*Buffer, error) {
@@ -66,6 +69,9 @@ func (b *Buffer) Append(ctx context.Context, e SafeEvent) error {
 	safe, err := b.sanitizer.restore(e.Bytes())
 	if err != nil {
 		return err
+	}
+	if !acceptsSource(b.source, safe) {
+		return ErrPayload
 	}
 	if err := b.files.Put(ctx, safe.ID(), safe.Bytes()); err != nil {
 		if errors.Is(err, ErrCapacity) {
@@ -99,7 +105,7 @@ func (b *Buffer) Pending(ctx context.Context) ([]SafeEvent, error) {
 		}
 		total += len(item.Body)
 		safe, err := b.sanitizer.restore(item.Body)
-		if err != nil || safe.ID() != item.ID || seen[item.ID] {
+		if err != nil || safe.ID() != item.ID || seen[item.ID] || !acceptsSource(b.source, safe) {
 			return nil, ErrPayload
 		}
 		seen[item.ID] = true

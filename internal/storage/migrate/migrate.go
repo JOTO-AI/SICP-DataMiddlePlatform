@@ -63,7 +63,7 @@ func Catalog(domain Domain) ([]Migration, error) {
 	}
 	versions := []string{string(domain) + "_001"}
 	if domain == Logs {
-		versions = append(versions, "logs_002")
+		versions = append(versions, "logs_002", "logs_003")
 	}
 	if domain == Business {
 		versions = append(versions, "business_002", "business_003", "business_004")

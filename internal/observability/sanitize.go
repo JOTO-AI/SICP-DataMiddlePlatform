@@ -177,6 +177,13 @@ func (s *Sanitizer) Sanitize(e events.Event, d Details) (SafeEvent, error) {
 	e.Identity.StepID = s.Correlation(e.Identity.StepID)
 	e.Identity.CallID = s.Correlation(e.Identity.CallID)
 	e.Identity.AttemptID = s.Correlation(e.Identity.AttemptID)
+	e.Identity.TestRunID = s.Correlation(e.Identity.TestRunID)
+	if e.Audit != nil {
+		copy := *e.Audit
+		copy.ActorID = s.Correlation(copy.ActorID)
+		copy.ObjectID = s.Correlation(copy.ObjectID)
+		e.Audit = &copy
+	}
 	if e.Metadata.Build != nil {
 		copy := *e.Metadata.Build
 		copy.SessionID = s.Correlation(copy.SessionID)
@@ -218,7 +225,10 @@ func (s *Sanitizer) restore(body []byte) (SafeEvent, error) {
 	if b := env.Event.Metadata.Build; b != nil && (!digestID(b.SessionID, false) || !digestID(b.Combination, true) || !digestID(b.Candidate, true)) {
 		return SafeEvent{}, ErrPayload
 	}
-	for _, id := range []string{i.RequestID, i.TaskID, i.StepID, i.CallID, i.AttemptID} {
+	if a := env.Event.Audit; a != nil && (!digestID(a.ActorID, false) || !digestID(a.ObjectID, true)) {
+		return SafeEvent{}, ErrPayload
+	}
+	for _, id := range []string{i.RequestID, i.TaskID, i.StepID, i.CallID, i.AttemptID, i.TestRunID} {
 		if !digestID(id, true) {
 			return SafeEvent{}, ErrPayload
 		}

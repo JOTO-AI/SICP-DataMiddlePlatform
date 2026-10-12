@@ -9,6 +9,43 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 )
 
+func TestT28_05ManagementIdentitiesRestoreWithoutDoubleHash(t *testing.T) {
+	s, _ := NewSanitizer(4096, 256, []byte(strings.Repeat("k", 32)), nil)
+	for _, kind := range []events.Kind{events.Audit, events.Call} {
+		e := events.Event{ID: "event", EntityID: "entity", Kind: kind, Phase: events.Finished, Outcome: events.Succeeded, OccurredAt: time.Now()}
+		if kind == events.Audit {
+			e.Audit = &events.AuditIdentity{ActorID: "actor", Action: "source_test", ObjectID: "object"}
+		} else {
+			e.Identity = events.Identity{Purpose: events.TestPurpose, TestRunID: "run"}
+		}
+		safe, err := s.Sanitize(e, Details{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		restored, err := s.restore(safe.Bytes())
+		if err != nil || restored.body != safe.body {
+			t.Fatal("restore altered identity")
+		}
+		if e.Audit != nil && (e.Audit.ActorID != "actor" || restored.Event().Audit.ActorID != s.Correlation("actor")) {
+			t.Fatal("audit alias mutated or hashed twice")
+		}
+		if kind == events.Call && restored.Event().Identity.TestRunID != s.Correlation("run") {
+			t.Fatal("test identity hashed twice")
+		}
+		var env envelope
+		_ = json.Unmarshal(safe.Bytes(), &env)
+		if kind == events.Audit {
+			env.Event.Audit.ActorID = "raw_actor"
+		} else {
+			env.Event.Identity.TestRunID = "raw_run"
+		}
+		bad, _ := json.Marshal(env)
+		if _, err := s.restore(bad); err == nil {
+			t.Fatal("raw persisted identity accepted")
+		}
+	}
+}
+
 func TestRestoreRejectsRawIdentityAndDoesNotMapAgain(t *testing.T) {
 	s, _ := NewSanitizer(4096, 256, []byte(strings.Repeat("k", 32)), nil)
 	e := events.Event{ID: "event", EntityID: "entity", Kind: events.Request, Phase: events.Started, OccurredAt: time.Now()}

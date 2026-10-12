@@ -12,6 +12,7 @@ import (
 type Repository struct {
 	Registry storage.Registry
 	Database storage.Database
+	Source   storage.LogSource
 }
 
 // StoreBatch acknowledges only a committed independent logs transaction. The
@@ -20,12 +21,23 @@ func (r Repository) StoreBatch(ctx context.Context, batch []SafeEvent) error {
 	if r.Database == nil || r.Registry.Logs().DSN() == "" || len(batch) < 1 || len(batch) > 1000 {
 		return ErrDelivery
 	}
+	source := r.Source
+	if source == "" {
+		if r.Registry.LogMode() != storage.SingleLegacy {
+			return ErrDelivery
+		}
+		source = storage.PlatformLog
+	}
+	connection, err := r.Registry.LogConnection(source)
+	if err != nil {
+		return ErrDelivery
+	}
 	for _, e := range batch {
-		if !e.Valid() {
+		if !e.Valid() || (r.Registry.LogMode() == storage.DualLogs && !acceptsSource(source, e)) {
 			return ErrPayload
 		}
 	}
-	tx, err := r.Database.Begin(ctx, r.Registry.Logs())
+	tx, err := r.Database.Begin(ctx, connection)
 	if err != nil {
 		return ErrDelivery
 	}
