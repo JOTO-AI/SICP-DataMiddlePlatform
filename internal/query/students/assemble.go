@@ -138,10 +138,21 @@ func (a Assembler) Member(pair Pair) (result contract.Student, err error) {
 	}{
 		{"XSDQZTM", &result.StatusCode}, {"XJZTM", &result.EnrollmentStatusCode}, {"SFZX", &result.OnCampusFlag},
 		{"SSXQH", &result.CampusCode}, {"ZYH", &result.MajorCode}, {"SZNJ", &result.Grade}, {"SZBH", &result.ClassCode},
+		{"XSLBM", &result.StudentCategoryCode},
 	} {
 		if *field.dst, err = compute.NullableText(pair.Enrollment, field.key); err != nil {
 			return
 		}
+	}
+	result.StudentCategoryName = compute.StudentCategoryName(result.StudentCategoryCode)
+	if result.StudyYears, err = compute.Integer32(pair.Enrollment, "XZ"); err != nil {
+		return
+	}
+	if result.AdmissionMonth, err = compute.Month(pair.Enrollment, "RXNY"); err != nil {
+		return
+	}
+	if result.ExpectedGraduationDate, err = compute.Date(pair.Enrollment, "YJBYRQ"); err != nil {
+		return
 	}
 	departmentCode, e := compute.Optional(pair.Enrollment, "YXSH")
 	if e != nil {
