@@ -118,7 +118,7 @@ func TestBusinessSelectionBoundsUnmatchedRelationsAndNestedSchedules(t *testing.
 func TestBusinessSelectionNeverHidesReadFailure(t *testing.T) {
 	failure := errors.New("database read failed")
 	m := sampleMatcherFunc(func(string, string, int, []source.Filter) ([]source.SourceRow, error) { return nil, failure })
-	for _, definition := range contract.Definitions() {
+	for _, definition := range contract.LegacyBusinessDefinitions() {
 		if _, err := selectTestCases(t, m, definition.Operation); !errors.Is(err, failure) {
 			t.Fatal(definition.Operation, err)
 		}

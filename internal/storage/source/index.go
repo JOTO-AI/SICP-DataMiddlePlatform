@@ -24,6 +24,9 @@ func ReadIndexes(name string) []ReadIndex {
 	case "dwd_bzkspksjzlb":
 		out = append(out, ReadIndex{Name: name + "_class_course_c", Columns: []string{"JXBH", "JHKCH", "PKH"}}, ReadIndex{Name: name + "_term_c", Columns: []string{"KKXND", "KKXQM", "PKH"}})
 	}
+	if name == "dwd_bzkspksjzlb" || name == "dwd_bzkskbsjzlb" {
+		out = append(out, ReadIndex{Name: name + "_class_cursor_c", Columns: []string{"JXBH", table.PrimaryKey}})
+	}
 	return out
 }
 

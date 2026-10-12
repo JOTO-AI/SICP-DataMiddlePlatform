@@ -86,7 +86,7 @@ func (w *initialWorld) Validate(_ context.Context, target source.Target, m candi
 		return candidate.Evidence{}, err
 	}
 	e := candidate.Evidence{Target: target, Combination: m.Combination, CheckedAt: time.Date(2100, 1, 1, 0, 0, 0, 0, time.UTC), Queries: map[contract.Operation]candidate.QueryEvidence{}}
-	for _, definition := range contract.Definitions() {
+	for _, definition := range contract.LegacyBusinessDefinitions() {
 		tables, err := metadata.Dependencies(definition.Operation)
 		if err != nil {
 			w.t.Fatal(err)

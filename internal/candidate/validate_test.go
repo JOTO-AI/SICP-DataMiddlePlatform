@@ -214,7 +214,7 @@ func onlineFixture(t *testing.T, s *candidateSource) (candidate.Online, read.Han
 func TestT12_06ReadyChecksExecuteFourProductionServicesWithoutCacheOrDerivedWrites(t *testing.T) {
 	s := &candidateSource{}
 	online, h, at := onlineFixture(t, s)
-	for _, d := range contract.Definitions() {
+	for _, d := range contract.LegacyBusinessDefinitions() {
 		s.calls = nil
 		count, hash, err := online.Check(t.Context(), h, d.Operation, at)
 		if err != nil || count != 1 || len(hash) != 64 {
@@ -262,7 +262,7 @@ func TestBT07_QuerySessionPreservesSampleEvidence(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer closeSession()
-	for _, def := range contract.Definitions() {
+	for _, def := range contract.LegacyBusinessDefinitions() {
 		count, digest, err := o.Check(t.Context(), h, def.Operation, at)
 		if err != nil {
 			t.Fatal(err)
@@ -417,7 +417,7 @@ func TestLegacyPublishedBusinessEvidenceRemainsReadable(t *testing.T) {
 	_, target, m, _, _, _ := buildFixture(t)
 	for _, policy := range []string{"", "bounded-smoke-v1", "bounded-smoke-v2"} {
 		legacy := candidate.Evidence{Target: target, Combination: m.Combination, CheckedAt: time.Now(), Queries: map[contract.Operation]candidate.QueryEvidence{}}
-		for _, def := range contract.Definitions() {
+		for _, def := range contract.LegacyBusinessDefinitions() {
 			names, err := metadata.Dependencies(def.Operation)
 			if err != nil {
 				t.Fatal(err)

@@ -11,7 +11,7 @@ import (
 
 func TestBT03_ReadIndexMigrationMatchesCatalogAndRollsBack(t *testing.T) {
 	plan, err := migrate.Catalog(migrate.Business)
-	if err != nil || len(plan) != 3 || plan[2].Version != "business_003" {
+	if err != nil || len(plan) != 4 || plan[2].Version != "business_003" || plan[3].Version != "business_004" {
 		t.Fatal(plan, err)
 	}
 	for _, table := range source.Catalog() {
@@ -21,7 +21,7 @@ func TestBT03_ReadIndexMigrationMatchesCatalogAndRollsBack(t *testing.T) {
 				columns = append(columns, `"`+col+`" COLLATE "C"`)
 			}
 			want := "CREATE INDEX " + index.Name + " ON source." + table.Name + " (" + strings.Join(columns, ", ") + ");"
-			if !strings.Contains(plan[2].SQL, want) {
+			if !strings.Contains(plan[2].SQL+plan[3].SQL, want) {
 				t.Fatal("missing read index", index.Name)
 			}
 		}

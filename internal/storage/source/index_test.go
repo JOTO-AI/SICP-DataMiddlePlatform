@@ -6,12 +6,59 @@ import (
 	"testing"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
 
 type indexDatabase struct {
 	*database
 	valid bool
 }
+
+type missingClassIndexDB struct {
+	*database
+	missing string
+}
+type missingClassIndexTx struct {
+	*transaction
+	missing string
+}
+
+func (d missingClassIndexDB) Begin(ctx context.Context, c storage.Connection) (storage.Transaction, error) {
+	tx, err := d.database.Begin(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	return missingClassIndexTx{transaction: tx.(*transaction), missing: d.missing}, nil
+}
+func (tx missingClassIndexTx) QueryRow(_ context.Context, sql string, args ...any) storage.Row {
+	tx.db.calls = append(tx.db.calls, call{sql, args})
+	return indexResult(args[1] != tx.missing)
+}
+
+func TestT24_06ClassIndexesAreRequiredByCandidateStorageChecks(t *testing.T) {
+	for _, table := range []string{"dwd_bzkspksjzlb", "dwd_bzkskbsjzlb"} {
+		for _, missing := range []bool{false, true} {
+			r, d, _, target := setup(t)
+			name := ""
+			if missing {
+				name = "source." + table + "_class_cursor_c"
+			}
+			r.Database = missingClassIndexDB{database: d, missing: name}
+			err := r.CheckPrimaryIndex(t.Context(), target.Position, table)
+			if (err != nil) != missing {
+				t.Fatal(table, missing, err)
+			}
+			if len(d.calls) != 1+len(source.ReadIndexes(table)) {
+				t.Fatal(d.calls)
+			}
+			last := d.calls[len(d.calls)-1]
+			if last.args[1] != "source."+table+"_class_cursor_c" || !strings.Contains(last.sql, "indisvalid") || !strings.Contains(last.sql, "indisready") || !strings.Contains(last.sql, "indislive") {
+				t.Fatal(last)
+			}
+		}
+	}
+}
+
 type indexTransaction struct {
 	*transaction
 	valid bool

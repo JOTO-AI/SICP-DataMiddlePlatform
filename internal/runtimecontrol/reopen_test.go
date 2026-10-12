@@ -55,7 +55,7 @@ func TestT15_10ClosedPublishedStandbyRequiresSuccessfulFixedQueryChecks(t *testi
 			}
 			target := source.Target{Position: storage.Position{Instance: storage.Standby, Slot: 0}, Generation: 1, CandidateID: "old-copy"}
 			ev := candidate.Evidence{Target: target, Combination: "C100", CheckedAt: base.at, Queries: map[contract.Operation]candidate.QueryEvidence{}}
-			for _, def := range contract.Definitions() {
+			for _, def := range contract.LegacyBusinessDefinitions() {
 				names, _ := metadata.Dependencies(def.Operation)
 				deps := map[string]string{}
 				for _, name := range names {

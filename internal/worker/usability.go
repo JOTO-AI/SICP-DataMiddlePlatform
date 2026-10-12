@@ -21,9 +21,10 @@ import (
 
 var ErrUsability = errors.New("authenticated new-combination probe incomplete")
 
-// Probe uses ordinary authentication and all four production HTTP operations.
+// Probe uses ordinary authentication and the fixed four phase-one HTTP probes.
 // Synthetic absent identities exercise empty business answers without logging
-// personnel data; candidate validation already checked storage and business samples.
+// personnel data. This is not evidence that every public business rule passed;
+// candidate validation checks source storage, and new APIs have separate acceptance.
 func Probe(ctx context.Context, origin, key, bundle string) error {
 	return probe(ctx, origin, key, bundle, nil)
 }
@@ -35,7 +36,7 @@ func probe(ctx context.Context, origin, key, bundle string, release func(context
 	transportPool := &http.Transport{Proxy: http.ProxyFromEnvironment, DialContext: (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext, TLSHandshakeTimeout: 10 * time.Second, ResponseHeaderTimeout: 10 * time.Second, MaxIdleConns: 4, IdleConnTimeout: 30 * time.Second}
 	defer transportPool.CloseIdleConnections()
 	client := &http.Client{Transport: transportPool, Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	for _, def := range contract.Definitions() {
+	for _, def := range contract.LegacyBusinessDefinitions() {
 		body := `{"student_number":"__build_probe__","academic_year":"all","page":1,"page_size":1}`
 		switch def.Operation {
 		case contract.BatchGrades:

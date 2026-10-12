@@ -52,10 +52,10 @@ func (e Evidence) Validate(target source.Target, m Manifest) error {
 		}
 		return nil
 	}
-	if e.Policy != "" || len(e.Tables) != 0 || len(e.Queries) != len(contract.Definitions()) {
+	if e.Policy != "" || len(e.Tables) != 0 || len(e.Queries) != len(contract.LegacyBusinessDefinitions()) {
 		return ErrBuild
 	}
-	for _, definition := range contract.Definitions() {
+	for _, definition := range contract.LegacyBusinessDefinitions() {
 		deps, err := dependencies(m, definition.Operation)
 		if err != nil {
 			return err

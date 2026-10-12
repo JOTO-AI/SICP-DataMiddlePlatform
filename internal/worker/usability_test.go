@@ -54,7 +54,7 @@ func TestBT01_02UsabilityRequiresAllAuthenticatedNewCombinationResponses(t *test
 					t.Error("ordinary auth required")
 				}
 				matched := false
-				for _, d := range contract.Definitions() {
+				for _, d := range contract.LegacyBusinessDefinitions() {
 					if r.URL.Path == d.Path {
 						matched = true
 						if _, err := transport.Parse(d.Operation, r.Body); err != nil {

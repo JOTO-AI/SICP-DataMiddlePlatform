@@ -33,6 +33,12 @@ func SupportsSnapshot(op Operation) bool {
 
 // Definitions returns fresh values to keep callers from mutating the catalog.
 func Definitions() []Definition {
+	return LegacyBusinessDefinitions()
+}
+
+// LegacyBusinessDefinitions freezes the four-operation historical evidence and
+// build smoke-probe scope. It must never expand with the public route catalog.
+func LegacyBusinessDefinitions() []Definition {
 	return []Definition{
 		{StudentGrades, "/api/v1/sicp/students/grades/query", nil},
 		{BatchGrades, "/api/v1/sicp/students/grades/batch-query", nil},
