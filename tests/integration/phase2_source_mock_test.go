@@ -33,3 +33,7 @@ func TestI07_OriginalMockStaff(t *testing.T) {
 func TestI07_OriginalMockClasses(t *testing.T) {
 	querymock.Classes(t, originalMockQuery(t))
 }
+
+func TestI07_OriginalMockRosters(t *testing.T) {
+	querymock.Rosters(t, originalMockQuery(t))
+}

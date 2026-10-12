@@ -153,3 +153,9 @@ python -m mock_data.validate --root mock_runs/scale_01
 已实测字段的覆盖不是每份合法 mock 必须达到的样本覆盖门槛。必填字段则无论是否在样本中出现，都必须有非空值；允许文档内未观测字段及新的可选字段组合，继续拒绝文档外未知字段或类型错误。根组织的 `LSDWH="0"`、有效日期、主键及关联规则继续保留。
 
 当前验收流程及本次重生成结果见[生成方案第 8、9 节](../MOCK_DATA_GENERATION_PLAN.md#8-当前实现状态2026-09-20)，独立必填核对见[最新报告](../audit_reports/mock_required_fields_latest.json)。此前修改经过保留在[必填规则修正记录](../audit_reports/mock_required_fields_20260920.md)。测试通过仅表示所覆盖的生成规则和工具检查通过，不表示尚未开发的后端模块已通过验收。
+
+## 业务接口正常数据验收
+
+新增五接口正常路径必须直接加载 `snapshots/initial` 的十四表，使用原始记录、日期格式和关联。入口为 `internal/query/handlers/source_mock_test.go`（真实 Pipeline）和 `tests/integration/phase2_source_mock_test.go`（真实 PostgreSQL/Redis/HTTP），预期输出按接口文档固定在 `internal/testkit/querymock`。I07 显式执行全部五个 `TestI07_OriginalMock*`。
+
+不要通过改写正常 Mock、清空表或叠加另一份手写夹具来使正常路径通过。小型手写夹具用于边界/异常测试；`phase2EdgeRuntime` 是此类补充入口，不代表正常 Mock 验收。改变生成器或接口时，需复核这些正常路径的字段、分页和 8→9 人数对应，不能仅验证 HTTP 200。测试执行遵守当前开发计划的环境约定。
