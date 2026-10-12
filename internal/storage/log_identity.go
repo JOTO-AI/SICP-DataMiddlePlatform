@@ -70,6 +70,16 @@ func (r Registry) LogTopology() string {
 	return hex.EncodeToString(digest[:])
 }
 
+func (r Registry) LogTarget(source LogSource) string {
+	c, err := r.LogConnection(source)
+	if err != nil {
+		return ""
+	}
+	body, _ := json.Marshal([]string{c.endpoint, c.database})
+	digest := sha256.Sum256(body)
+	return hex.EncodeToString(digest[:])
+}
+
 // Attest is called by the provisioning migration transaction after DDL. Writers
 // cannot alter this record or execute pg_control_system themselves. Runtime
 // checks a narrowly granted SECURITY DEFINER function on each acquired backend.

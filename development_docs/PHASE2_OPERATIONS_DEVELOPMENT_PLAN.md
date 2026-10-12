@@ -8,7 +8,7 @@
 
 **执行顺序：P27 → P28 → … → P35；阶段内按有效 Pxx.yy 顺序开发及编写测试 → code review/修复 → 记录开发和 CI 验证状态。** 已明确延后的前端编号直接跳过，不记作完成。按当前安排可持续进行本地开发和静态复核；自动测试仅在 GitHub Actions Linux runner 执行，未运行不能标为通过。格式调整不改变现有提交、推送和部署授权。
 
-当前 P27.01/P27.02 及 P28.01—P28.03 的开发、单元测试源码和人工 review 已完成，见 [P27](verification/P27.md)、[P28](verification/P28.md)、[T27](verification/T27.md)、[T28](verification/T28.md)。用户明确因 GitHub Actions 额度不足暂停测试执行，允许逐步开发、补测试、review 后推送；提交使用 `[skip ci]`，不改既有工作流。格式、源码编译和配置语法单独检查，不执行测试，不算 T/OI 通过，全部 T/OI 保持未勾选。双日志资源已装配，尚未执行部署；下一步 P28.04 完成旧 writer 排空和双源诊断，然后继续 P29—P35 有效后端步骤。
+当前 P27 和 P28 的后端开发、单元测试源码和人工 review 已完成，见 [P27](verification/P27.md)、[P28](verification/P28.md)、[T27](verification/T27.md)、[T28](verification/T28.md)。用户明确因 GitHub Actions 额度不足暂停测试执行，允许逐步开发、补测试、review 后推送；提交使用 `[skip ci]`，不改既有工作流。格式、源码编译和配置语法单独检查，不执行测试，不算 T/OI 通过，全部 T/OI 保持未勾选。双日志资源、旧 writer 排空和双源诊断代码已接通，尚未实际部署；下一步 P29，随后继续到 P35 的有效后端步骤。
 
 依据：[开发总计划](../DEVELOPMENT_PLAN.md)、[项目架构](../PROJECT_ARCHITECTURE.md)、V5 前端需求输入（本地参考，后端范围已冻结于本文）、[自动运行与 ctl 移除](AUTOMATION_AND_CTL_REMOVAL.md)、[当前管理 API](P15_MANAGEMENT_API.md)、[业务接口设计](../sicp-api-design.md)、[十四源接口文档](../latest_api_docs/README.md)、[Mock 说明](../mock_data/README.md)。
 
@@ -125,14 +125,14 @@ P 总框均表示“该阶段后端开发完成”，不含第 1.4 节的前端�
 
 <a id="p28"></a>
 
-- [ ] **P28：双日志库与独立持久投递完成**
+- [x] **P28：双日志库与独立持久投递开发完成（测试/部署未执行）**
 
     依赖：P27，复用原 P05 的脱敏/缓冲/Repository。阶段产物：upstream 连接/迁移、分流/补投、部署与历史兼容。
 
     - [x] **P28.01：建立独立库和配置。** 开发：Registry、凭据、迁移目标、配置校验及显式兼容模式；缺配置不能假启用双库，诊断不回显 DSN。Unit tests：T28-01—T28-04 已编写，执行暂停。配置/迁移原语及 review 已完成，服务与新库部署装配仍属 P28.03；当前运行入口显式 single_legacy，dual 拒绝启动。见 [P28 记录](verification/P28.md)和 [配置边界](P28_LOG_STORAGE_CONFIGURATION.md)。
     - [x] **P28.02：接通分流与独立投递。** 已实现脱敏后按 kind 分流、源绑定缓冲及 Repository，独立配额/Dispatcher/统计，失败保留与关闭重建补投；目录和服务装配在 P28.03 接入。T28-05—T28-09 测试源码、人工 review 和 Linux 编译完成，测试执行暂停。见 [P28](verification/P28.md)。
     - [x] **P28.03：补齐装配和 Linux 部署。** 独立连接池、源绑定目录/配额、生命周期、Compose overlay/卷、角色初始化、迁移入口及模板已接入；事务内核验实际目标身份，日志暂不可达独立降级，致命初始化失败逆序释放。T28-10/11 源码与 review 完成，Linux 编译、Bash/Compose/Python 语法检查完成，运行/权限验收未执行。见 [P28](verification/P28.md)。
-    - [ ] **P28.04：保留旧日志与失败诊断。** 开发：旧平台 call/attempt 原地可读，按原目标排空旧缓冲后切换；诊断覆盖双源并标明来源/去重及不完整原因。Unit tests：T28-12、T28-13。
+    - [x] **P28.04：保留旧日志与失败诊断。** 旧平台 call/attempt 原地读取，原目标标记/独占锁/排空确认完成后才允许新分流；部署入口逐个处理旧副本目录。诊断按 source/event_id 区分、有界合并并报告不完整原因。T28-12/13 测试源码、review 与编译完成，未实际运行升级或测试。见 [P28](verification/P28.md)。
 
 <a id="p29"></a>
 

@@ -26,13 +26,23 @@ case "$operation" in
     done
     ;;
   migrate) "${compose[@]}" run --rm --no-deps migrate ;;
+  log-register|log-cutover)
+    if [[ "$operation" == log-register && "${SICP_DUAL_LOGS:-0}" == 1 ]] || [[ "$operation" == log-cutover && "${SICP_DUAL_LOGS:-0}" != 1 ]]; then
+      printf '%s\n' 'log-register requires legacy mode; log-cutover requires SICP_DUAL_LOGS=1' >&2; exit 1
+    fi
+    "${compose[@]}" stop query query-gateway worker console
+    "${compose[@]}" run --rm --no-deps query /usr/local/bin/service --prepare-log-cutover
+    "${compose[@]}" run --rm --no-deps worker /usr/local/bin/service --prepare-log-cutover
+    ;;
   start) "${compose[@]}" up -d --wait --wait-timeout 90 query-gateway worker console ;;
   deploy)
     "$0" prepare
     "$0" build
     "$0" validate
     "$0" infra
+    if [[ "${SICP_DUAL_LOGS:-0}" == 1 ]]; then "${compose[@]}" stop query query-gateway worker console; fi
     "$0" migrate
+    if [[ "${SICP_DUAL_LOGS:-0}" == 1 ]]; then "$0" log-cutover; fi
     "$0" start
     python3 "$root/scripts/gateway.py" verify "$@"
     ;;
@@ -43,5 +53,5 @@ case "$operation" in
   restart) "${compose[@]}" restart query query-gateway worker ;;
   down) "${compose[@]}" down ;; # Volumes deliberately retained.
   gateway-apply|gateway-renew) python3 "$root/scripts/gateway.py" "$operation" "$@" ;;
-  *) printf '%s\n' 'Usage: scripts/sicp.sh prepare|build|validate|infra|migrate|start|deploy|status|stop|restart|down|gateway-apply --url ORIGIN [--ca-file FILE]|gateway-renew --url ORIGIN [--ca-file FILE]'; exit 2 ;;
+  *) printf '%s\n' 'Usage: scripts/sicp.sh prepare|build|validate|infra|migrate|log-register|log-cutover|start|deploy|status|stop|restart|down|gateway-apply --url ORIGIN [--ca-file FILE]|gateway-renew --url ORIGIN [--ca-file FILE]'; exit 2 ;;
 esac

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/assembly"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/config"
 )
 
@@ -23,6 +25,20 @@ func Entrypoint(role config.Role, args []string) int {
 		return 1
 	}
 	switch args[0] {
+	case "--prepare-log-cutover":
+		c, err := config.LoadRuntime(role, os.LookupEnv)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), c.Service.StartupTimeout)
+		defer cancel()
+		if err = prepareLogCutover(ctx, c, assembly.RealFactories()); err != nil {
+			fmt.Fprintln(os.Stderr, "log cutover preparation incomplete")
+			return 1
+		}
+		fmt.Printf("log journal prepared: role=%s mode=%s\n", role, c.Databases.LogMode())
+		return 0
 	case "--check-config":
 		if _, err := config.LoadRuntime(role, os.LookupEnv); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -50,6 +66,18 @@ func Entrypoint(role config.Role, args []string) int {
 		fmt.Fprintln(os.Stderr, "unknown service option")
 		return 1
 	}
+}
+
+// This one-shot constructs resources and prepares journals only. It never
+// constructs Application, starts collectors, accepts HTTP or sends mail.
+func prepareLogCutover(ctx context.Context, c config.Runtime, f assembly.Factories) error {
+	r, _, err := assembly.Open(ctx, c, f)
+	if err != nil {
+		return err
+	}
+	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), c.Service.ShutdownTimeout)
+	defer cancel()
+	return r.Close(cleanup)
 }
 
 // Probe the configured listener without loading database/source credentials or

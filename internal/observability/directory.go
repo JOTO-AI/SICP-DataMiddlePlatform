@@ -23,6 +23,7 @@ type Directory struct {
 	root          *os.Root
 	random        ports.Random
 	maxEventBytes int
+	owner         *os.File
 }
 
 func OpenDirectory(path string, random ports.Random, maxEventBytes int) (*Directory, error) {
@@ -33,9 +34,14 @@ func OpenDirectory(path string, random ports.Random, maxEventBytes int) (*Direct
 	if err != nil {
 		return nil, ErrBuffer
 	}
-	return &Directory{gate: make(chan struct{}, 1), root: root, random: random, maxEventBytes: maxEventBytes}, nil
+	owner, err := lockJournal(root)
+	if err != nil {
+		_ = root.Close()
+		return nil, ErrBuffer
+	}
+	return &Directory{gate: make(chan struct{}, 1), root: root, random: random, maxEventBytes: maxEventBytes, owner: owner}, nil
 }
-func (d *Directory) Close() error    { return d.root.Close() }
+func (d *Directory) Close() error    { return errors.Join(d.root.Close(), d.owner.Close()) }
 func (d Directory) String() string   { return "[log directory redacted]" }
 func (d Directory) GoString() string { return d.String() }
 func (d *Directory) lock(ctx context.Context) error {
@@ -192,6 +198,18 @@ func (d *Directory) Usage(ctx context.Context) (Usage, error) {
 			info, err := entry.Info()
 			if err != nil || !info.Mode().IsRegular() || info.Size() < 0 || info.Size() > math.MaxInt64-total.Bytes {
 				return Usage{}, ErrBuffer
+			}
+			if entry.Name() == ".writer.lock" {
+				if info.Size() != 0 {
+					return Usage{}, ErrBuffer
+				}
+				continue
+			}
+			if entry.Name() == ".storage-mode" || entry.Name() == ".legacy-target" {
+				if info.Size() != 64 {
+					return Usage{}, ErrBuffer
+				}
+				continue
 			}
 			total.Bytes += info.Size()
 			total.Files++

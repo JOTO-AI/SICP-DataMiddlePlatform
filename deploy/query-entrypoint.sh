@@ -6,6 +6,31 @@ umask 077
 legacy=${LOG_DIRECTORY:?LOG_DIRECTORY is required}
 root=${QUERY_REPLICA_DIRECTORY:-/var/lib/sicp/query-replicas}
 mkdir -p "$root"
+if [ "${1:-}" = /usr/local/bin/service ] && [ "${2:-}" = --prepare-log-cutover ] && [ "$#" -eq 2 ]; then
+    original_upstream=${UPSTREAM_LOG_DIRECTORY:-}
+    slot=1
+    while [ "$slot" -le 32 ]; do
+        LOG_DIRECTORY=$legacy
+        if [ "$slot" -ne 1 ]; then LOG_DIRECTORY="$root/$slot"; fi
+        if [ -d "$LOG_DIRECTORY" ]; then
+            exec 9>"$root/$slot.lock"
+            if ! flock -n 9; then echo 'A query writer still owns a log slot' >&2; exit 1; fi
+            if [ "${LOG_STORAGE_MODE:-single_legacy}" = dual ]; then
+                UPSTREAM_LOG_DIRECTORY=$original_upstream
+                if [ "$slot" -ne 1 ]; then UPSTREAM_LOG_DIRECTORY="$root/upstream-$slot"; fi
+                : "${UPSTREAM_LOG_DIRECTORY:?}"
+                mkdir -p "$UPSTREAM_LOG_DIRECTORY"
+                export UPSTREAM_LOG_DIRECTORY
+            fi
+            export LOG_DIRECTORY
+            /usr/local/bin/service --prepare-log-cutover
+            printf 'Prepared query log slot %s\n' "$slot"
+            exec 9>&-
+        fi
+        slot=$((slot + 1))
+    done
+    exit 0
+fi
 slot=1
 while [ "$slot" -le 32 ]; do
     exec 9>"$root/$slot.lock"

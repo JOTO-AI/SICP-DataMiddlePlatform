@@ -10,9 +10,10 @@ import (
 )
 
 type Repository struct {
-	Registry storage.Registry
-	Database storage.Database
-	Source   storage.LogSource
+	Registry     storage.Registry
+	Database     storage.Database
+	Source       storage.LogSource
+	legacyReplay bool
 }
 
 // StoreBatch acknowledges only a committed independent logs transaction. The
@@ -33,7 +34,7 @@ func (r Repository) StoreBatch(ctx context.Context, batch []SafeEvent) error {
 		return ErrDelivery
 	}
 	for _, e := range batch {
-		if !e.Valid() || (r.Registry.LogMode() == storage.DualLogs && !acceptsSource(source, e)) {
+		if !e.Valid() || (r.Registry.LogMode() == storage.DualLogs && !r.legacyReplay && !acceptsSource(source, e)) {
 			return ErrPayload
 		}
 	}

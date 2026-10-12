@@ -188,6 +188,22 @@ func Open(ctx context.Context, c config.Runtime, f Factories) (*Runtime, []lifec
 	fail := func() (*Runtime, []lifecycle.Result, error) {
 		return nil, m.Close(c.Service.ShutdownTimeout), errors.New("runtime components initialization failed")
 	}
+	if modeJournal, ok := r.Files.Journal.(observability.ModeJournal); ok {
+		if c.Databases.LogMode() == storage.DualLogs {
+			cutover, cancel := context.WithTimeout(ctx, c.Service.StartupTimeout)
+			err := observability.PrepareDual(cutover, modeJournal, r.Sanitizer, observability.CapacityConfig{MaxBytes: c.LogBytes, MaxFiles: c.LogFiles, WarningPercent: 80, Policy: observability.RejectNew}, observability.Repository{Registry: c.Databases, Database: storage.VerifiedLogs{Registry: c.Databases, Database: r.Database}})
+			cancel()
+			if err != nil {
+				return fail()
+			}
+		} else {
+			if observability.RegisterLegacy(ctx, modeJournal, r.Sanitizer, c.Databases) != nil {
+				return fail()
+			}
+		}
+	} else if c.Databases.LogMode() == storage.DualLogs {
+		return fail()
+	}
 	q, e := observability.NewQuota(r.Files.Journal, observability.CapacityConfig{MaxBytes: c.LogBytes, MaxFiles: c.LogFiles, WarningPercent: 80, Policy: observability.RejectNew})
 	if e != nil {
 		return fail()

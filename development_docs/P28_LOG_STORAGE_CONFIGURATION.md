@@ -1,6 +1,6 @@
 # P28 日志存储配置与迁移边界
 
-**当前更新：P28.03 已接通资源与部署代码，尚未实际部署。下面的 P28.01 说明为历史记录；运行入口的临时 dual 拒绝已撤销，当前配置以文末 P28.03 为准。升级排空流程仍待 P28.04，不据此直接切换现有 writer。**
+**当前更新：P28.01—P28.04 后端代码已完成，尚未实际部署或运行验收。下面的 P28.01 说明为历史记录；当前装配及切换流程以文末 P28.03/P28.04 为准。**
 
 日期：2026-10-12。本步提供独立上游日志 Registry、凭据校验、物理身份检查和迁移基础。**双库投递/连接池/Compose 新服务尚未装配**，见 P28.02—P28.04；本步不表示双日志库已部署或可用。
 
@@ -57,3 +57,15 @@ Linux 双库配置位于 compose.dual-logs.yaml，显式选择 `SICP_DUAL_LOGS=1
 迁移是显式部署步骤：按 `infra → migrate → start` 执行（scripts/sicp.sh deploy 已按此顺序）。query/worker 不再依赖 migrate 或日志库健康，已迁移系统重启时单日志库离线不会间接卡住业务启动。首次未部署 schema 不表示就绪，日志保留在缓冲；禁止以 start 替代首次迁移。日志就绪状态与业务 query_ready/sync_ready 分离，single_legacy 明示兼容模式。
 
 关闭先停业务生产，再并行关闭两套 Dispatcher，单侧阻塞不会占用另一侧排空机会；失败/未知确认保留文件并报告未完成。该代码已做静态审查和源码编译，但尚未执行测试、DDL、容器启动、角色权限或故障演练。
+
+## P28.04 切换与回退边界
+
+1. 保持原平台目标、原 AUDIT_KEY 和 single_legacy 配置，构建当前代码。运行 `scripts/sicp.sh log-register`：停止 query/worker/gateway/console，逐个锁定并登记旧查询 slot 1—32 中存在的目录及 worker 目录。只启动准备资源的一次性入口，不启动 HTTP、采集任务或通知发送。目录内 .legacy-target 保存 HMAC 目标摘要，不保存 URL/凭据。没有原目标登记的非空目录不能直接切为双库。
+2. 配置独立上游库后，以 `SICP_DUAL_LOGS=1` 执行 infra、migrate、log-cutover、start，或 deploy。dual deploy 在迁移前停止旧生产者，并在启动新服务前运行 log-cutover。运行 log-cutover 同样先停止旧服务，逐个处理全部已存在查询 slot 和 worker；任何一步失败整体退出非零，不报告完成。
+3. 每个目录由 Linux flock 独占；新进程在安装 Recorder 前，将旧缓冲全部通过**原平台目标**提交，旧 call/attempt 不搬到上游。只有提交确认、文件回收、旧 Dispatcher 关闭和目录确认为空后才写 .storage-mode。丢失提交应答时保留文件，重试依靠原 ID/原 payload 去重，绝不重新哈希。
+4. 标记绑定完整拓扑和关联密钥；双库重启核对标记后各源独立降级。无旧数据的新目录可直接登记；旧非空缓冲遇原库不可达时必须拒绝完成升级，不能为了启动而丢弃文件。未知临时文件、损坏/半写标记也拒绝，保留现场供恢复核验。
+5. 一旦某目录标记 dual，当前二进制拒绝用 single_legacy 打开该目录。部分目录完成、另一目录失败时继续修复并重试，不混用旧 writer。不要手工删除标记、锁文件或缓冲，也不能用不识别标记的旧二进制直接回退；P29 的 writer 协议升级还有单独回退边界。
+
+平台历史日志原位保留。失败诊断并行读取平台历史和上游新记录，总返回最多 20 条，以 log_source + event_id 区分同 ID，按时间稳定合并；source 仍表示业务源表。响应新增 diagnostic_sources，列出各日志源 complete/reason。一个库失败时保留另一个库的证据并设置 diagnostics_unavailable；兼容旧调用的 FailedAttempts 在不完整时返回错误，不能伪装为空列表。
+
+以上是可执行流程和代码边界，不是实际升级成功记录。本轮没有启动上述部署命令、数据库或容器，查询 mock 数据保持原样。

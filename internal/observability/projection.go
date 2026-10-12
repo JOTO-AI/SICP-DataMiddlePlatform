@@ -89,7 +89,18 @@ func (r Repository) ReadProjection(ctx context.Context, s *Sanitizer, rawEntityI
 	if s == nil || rawEntityID == "" || len(rawEntityID) > 128 || r.Database == nil || r.Registry.Logs().DSN() == "" {
 		return Projection{}, ErrPayload
 	}
-	tx, err := r.Database.Begin(ctx, r.Registry.Logs())
+	source := r.Source
+	if source == "" {
+		if r.Registry.LogMode() != storage.SingleLegacy {
+			return Projection{}, ErrPayload
+		}
+		source = storage.PlatformLog
+	}
+	connection, err := r.Registry.LogConnection(source)
+	if err != nil {
+		return Projection{}, ErrPayload
+	}
+	tx, err := r.Database.Begin(ctx, connection)
 	if err != nil {
 		return Projection{}, ErrDelivery
 	}
