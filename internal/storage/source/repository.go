@@ -289,6 +289,9 @@ type Filter struct {
 	Column   string
 	Value    string
 	Contains bool
+	// Values selects exact membership when non-nil. It cannot be combined with
+	// Value or Contains; an empty set is rejected instead of removing a filter.
+	Values []string
 }
 
 func (r Repository) ReadMatching(ctx context.Context, position storage.Position, tableName, after string, limit int, filters []Filter) (result []SourceRow, err error) {
@@ -309,6 +312,19 @@ func (r Repository) ReadMatching(ctx context.Context, position storage.Position,
 		}
 		if !allowed || len(filter.Value) > 4096 || strings.ContainsRune(filter.Value, 0) {
 			return nil, ErrInput
+		}
+		if filter.Values != nil {
+			if len(filter.Values) == 0 || len(filter.Values) > MaxBatchRows || filter.Value != "" || filter.Contains {
+				return nil, ErrInput
+			}
+			for _, item := range filter.Values {
+				if len(item) > 4096 || strings.ContainsRune(item, 0) {
+					return nil, ErrInput
+				}
+			}
+			args = append(args, append([]string(nil), filter.Values...))
+			conditions = append(conditions, fmt.Sprintf(`"%s" COLLATE "C" = ANY($%d::text[])`, filter.Column, len(args)))
+			continue
 		}
 		args = append(args, filter.Value)
 		column := `"` + filter.Column + `"`

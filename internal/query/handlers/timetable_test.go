@@ -44,7 +44,7 @@ func TestT09_17StudentTimetableHTTPFullIndependentJSON(t *testing.T) {
 	if json.Unmarshal(w.Body.Bytes(), &gotJSON) != nil || json.Unmarshal([]byte(want), &wantJSON) != nil || w.Code != 200 || !reflect.DeepEqual(gotJSON, wantJSON) {
 		t.Fatal(w.Code, w.Body.String())
 	}
-	if a.calls != 1 || a.closed != 1 || len(r.calls) != 3 || len(r.calls[1].filters) != 2 || r.calls[0].filters[0] != (source.Filter{Column: "XH", Value: "001"}) {
+	if a.calls != 1 || a.closed != 1 || len(r.calls) != 3 || len(r.calls[1].filters) != 2 || !reflect.DeepEqual(r.calls[0].filters[0], source.Filter{Column: "XH", Value: "001"}) {
 		t.Fatal(a, r.calls)
 	}
 	for _, call := range r.calls {

@@ -195,3 +195,20 @@ func (b *Budget) Retain(row source.SourceRow) error {
 	}
 	return nil
 }
+
+// Reserve charges retained association keys and indexes in the same request
+// budget as source reads. Call before allocating the corresponding entry.
+func (b *Budget) Reserve(size int) error {
+	if b == nil || size < 0 {
+		return ErrBudget
+	}
+	used := &b.bytes
+	if b.limits.BatchBytes > 0 {
+		used = &b.retained
+	}
+	if size > b.limits.Bytes-*used {
+		return ErrBudget
+	}
+	*used += size
+	return nil
+}
