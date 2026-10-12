@@ -81,7 +81,9 @@ func (s Service) StaffClasses(ctx context.Context, h read.Handle, req contract.S
 	if _, err := ForTeacher(nil, req, nil); err != nil {
 		return nil, err
 	}
-	filters := []source.Filter{{Column: "KKXND", Value: req.AcademicYear}, {Column: "KKXQM", Value: req.Semester}}
+	// This is only a candidate prefilter. ForTeacher still checks whole tokens,
+	// and Membership reloads every lesson (including other teachers) below.
+	filters := []source.Filter{{Column: "KKXND", Value: req.AcademicYear}, {Column: "KKXQM", Value: req.Semester}, {Column: "JSJGH", Value: req.StaffNumber, Contains: true}}
 	if req.CourseCode != nil {
 		filters = append(filters, source.Filter{Column: "JHKCH", Value: *req.CourseCode})
 	}
@@ -126,11 +128,30 @@ func (s Service) StaffClasses(ctx context.Context, h read.Handle, req contract.S
 		}
 		keys = append(keys, group.Key)
 		courseKeys = append(courseKeys, group.Key.Course)
-		teacherKeys = append(teacherKeys, group.TeacherNumbers...)
 	}
 	rosters, err := (Membership{Source: s.Source}).Resolve(ctx, h, keys, b)
 	if err != nil {
 		return nil, err
+	}
+	for i, candidate := range groups {
+		roster, ok := rosters[candidate.Key]
+		if !ok {
+			return nil, compute.ErrRecords
+		}
+		complete, err := ForTeacher(roster.Schedules, req, func() error { return b.Check(ctx) })
+		if err != nil {
+			return nil, err
+		}
+		if len(complete) != 1 || complete[0].Key != candidate.Key {
+			return nil, compute.ErrRecords
+		}
+		groups[i] = complete[0]
+		for _, id := range complete[0].TeacherNumbers {
+			if err := b.Reserve(len(id) + 192); err != nil {
+				return nil, err
+			}
+			teacherKeys = append(teacherKeys, id)
+		}
 	}
 	courses, err := read.LookupMany(ctx, s.Source, h, timetable.CoursesTable, "KCH", courseKeys, b)
 	if err != nil {
