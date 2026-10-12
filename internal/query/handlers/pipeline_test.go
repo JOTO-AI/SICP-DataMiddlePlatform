@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -20,8 +21,12 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/grades"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/handlers"
 	querymeta "github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/metadata"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/organizations"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/snapshot"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/staff"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/students"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/teaching"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/timetable"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/service"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
@@ -66,6 +71,7 @@ type pipelineWorld struct {
 	started                chan struct{}
 	blockOnce              sync.Once
 	logs                   []events.Event
+	tables                 map[string][]source.SourceRow
 }
 
 func newWorld() *pipelineWorld {
@@ -188,7 +194,7 @@ func (w *pipelineWorld) Stopped(_ context.Context, id string) (bool, error) {
 func (w *pipelineWorld) ReadBatch(context.Context, storage.Position, string, string, int) ([]source.SourceRow, error) {
 	return nil, errors.New("unexpected unfiltered scan")
 }
-func (w *pipelineWorld) ReadMatching(ctx context.Context, p storage.Position, table, _ string, _ int, _ []source.Filter) ([]source.SourceRow, error) {
+func (w *pipelineWorld) ReadMatching(ctx context.Context, p storage.Position, table, after string, limit int, filters []source.Filter) ([]source.SourceRow, error) {
 	w.mu.Lock()
 	id := coord.ExecutionID(ctx)
 	reader, ok := w.executions[id]
@@ -206,10 +212,63 @@ func (w *pipelineWorld) ReadMatching(ctx context.Context, p storage.Position, ta
 	}
 	w.mu.Lock()
 	w.stopped[id] = true
+	rows := append([]source.SourceRow(nil), w.tables[table]...)
 	w.mu.Unlock()
-	return []source.SourceRow{}, err
+	if err != nil {
+		return nil, err
+	}
+	pk := ""
+	for _, definition := range source.Catalog() {
+		if definition.Name == table {
+			pk = definition.PrimaryKey
+			break
+		}
+	}
+	result := []source.SourceRow{}
+	for _, row := range rows {
+		id, _ := compute.Required(row, pk)
+		if id <= after {
+			continue
+		}
+		match := true
+		for _, filter := range filters {
+			value, _ := compute.Text(row, filter.Column)
+			ok := false
+			if value != nil {
+				switch {
+				case filter.Values != nil:
+					for _, candidate := range filter.Values {
+						if *value == candidate {
+							ok = true
+							break
+						}
+					}
+				case filter.Contains:
+					ok = strings.Contains(*value, filter.Value)
+				default:
+					ok = *value == filter.Value
+				}
+			}
+			if !ok {
+				match = false
+				break
+			}
+		}
+		if match {
+			result = append(result, row)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		a, _ := compute.Required(result[i], pk)
+		b, _ := compute.Required(result[j], pk)
+		return a < b
+	})
+	if len(result) > limit {
+		result = result[:limit]
+	}
+	return result, nil
 }
-func pipelineSetup(t *testing.T, w *pipelineWorld) (http.Handler, *cache.Coalescer) {
+func pipelineSetup(t *testing.T, w *pipelineWorld, inspect ...func(handlers.Pipeline)) (http.Handler, *cache.Coalescer) {
 	t.Helper()
 	clock := testkit.FakeClock{Time: time.Date(2026, 9, 18, 2, 0, 0, 0, time.UTC)}
 	random := &pipelineRandom{}
@@ -237,6 +296,13 @@ func pipelineSetup(t *testing.T, w *pipelineWorld) (http.Handler, *cache.Coalesc
 		}
 	})
 	p := handlers.Pipeline{Grades: grades.Service{Source: src, Times: times, Clock: clock, Limits: read.DefaultLimits()}, Timetable: timetable.Service{Source: src, Times: times, Clock: clock, Limits: read.DefaultLimits()}, Admission: c, Snapshots: snapshot.Manager{Store: w, Routes: w, Clock: clock, Random: random}, Cache: cache.Executor{Results: cache.Results{Store: w, Observe: func(error) { w.mu.Lock(); w.observed++; w.mu.Unlock() }}, Flights: flights, Validate: w.validate}, Metadata: querymeta.Provider{Store: w}, Times: times}
+	p.Organizations = organizations.Service{Source: src, Times: times, Clock: clock, Limits: read.DefaultLimits()}
+	p.Students = students.Service{Source: src, Times: times, Clock: clock, Limits: read.DefaultLimits()}
+	p.Staff = staff.Service{Source: src, Times: times, Clock: clock, Limits: read.DefaultLimits()}
+	p.Teaching = teaching.Service{Source: src, Times: times, Clock: clock, Limits: read.DefaultLimits()}
+	for _, inspect := range inspect {
+		inspect(p)
+	}
 	registered, err := p.Handlers("synthetic-key", recorder, func(*events.Span, error) { t.Error("log failure") })
 	if err != nil {
 		t.Fatal(err)

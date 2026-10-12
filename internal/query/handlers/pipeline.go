@@ -11,25 +11,36 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/grades"
 	querymeta "github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/metadata"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/organizations"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/snapshot"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/staff"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/students"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/teaching"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/timetable"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/transport"
 )
 
 type Pipeline struct {
-	Grades    grades.Service
-	Timetable timetable.Service
-	Admission read.FixedAdmission
-	Snapshots snapshot.Manager
-	Cache     cache.Executor
-	Metadata  Metadata
-	Times     compute.Times
+	Grades        grades.Service
+	Timetable     timetable.Service
+	Organizations organizations.Service
+	Students      students.Service
+	Staff         staff.Service
+	Teaching      teaching.Service
+	Admission     read.FixedAdmission
+	Snapshots     snapshot.Manager
+	Cache         cache.Executor
+	Metadata      Metadata
+	Times         compute.Times
 }
 
-// Handlers registers all four real operations. Callers retain the coalescer and
+// Handlers registers all nine real operations. Callers retain the coalescer and
 // close it during shutdown before closing database pools.
 func (p Pipeline) Handlers(key string, recorder *events.Recorder, observe transport.Observation) (map[contract.Operation]http.Handler, error) {
+	if p.Organizations.Source == nil || p.Organizations.Clock == nil || p.Students.Source == nil || p.Students.Clock == nil || p.Staff.Source == nil || p.Staff.Clock == nil || p.Teaching.Source == nil || p.Teaching.Clock == nil {
+		return nil, errors.New("complete phase-two query services required")
+	}
 	if p.Grades.Source == nil || p.Grades.Clock == nil || p.Timetable.Source == nil || p.Timetable.Clock == nil || p.Admission == nil || p.Metadata == nil || p.Snapshots.Routes == nil || p.Snapshots.Store == nil || p.Snapshots.Clock == nil || p.Snapshots.Random == nil || p.Cache.Results.Store == nil || p.Cache.Results.Observe == nil || p.Cache.Flights == nil || p.Cache.Validate == nil {
 		return nil, errors.New("complete query pipeline dependencies required")
 	}
@@ -76,6 +87,16 @@ func (p Pipeline) run(ctx context.Context, op contract.Operation, input any) (an
 				return p.Timetable.Student(sqlCtx, actual, req, synced)
 			case contract.StaffTimetableRequest:
 				return p.Timetable.Staff(sqlCtx, actual, req, synced)
+			case contract.OrganizationsRequest:
+				return p.Organizations.Query(sqlCtx, actual, req, synced)
+			case contract.StudentsRequest:
+				return p.Students.Query(sqlCtx, actual, req, synced)
+			case contract.StaffRequest:
+				return p.Staff.Query(sqlCtx, actual, req, synced)
+			case contract.StaffTeachingClassesRequest:
+				return p.Teaching.Staff(sqlCtx, actual, req, synced)
+			case contract.TeachingClassStudentsRequest:
+				return p.Teaching.Students(sqlCtx, actual, req, synced)
 			default:
 				return nil, errors.New("invalid parsed query operation")
 			}
@@ -88,6 +109,10 @@ func (p Pipeline) run(ctx context.Context, op contract.Operation, input any) (an
 	if err != nil {
 		if errors.Is(err, timetable.ErrAmbiguous) {
 			return nil, &transport.Failure{Category: contract.Conflict, Cause: err}
+		}
+		switch op {
+		case contract.Organizations, contract.Students, contract.Staff, contract.StaffTeachingClasses, contract.TeachingClassStudents:
+			return nil, phase2Failure(err)
 		}
 		return nil, err
 	}

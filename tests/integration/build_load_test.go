@@ -55,7 +55,7 @@ func onlineRequests() []loadRequest {
 		contract.StaffTimetable:   `{"staff_number":"000000000","academic_year":"2022-2023","semester":"1"}`,
 	}
 	var requests []loadRequest
-	for _, def := range contract.Definitions() {
+	for _, def := range contract.LegacyBusinessDefinitions() {
 		requests = append(requests, loadRequest{string(def.Operation), def.Path, bodies[def.Operation]})
 	}
 	return requests

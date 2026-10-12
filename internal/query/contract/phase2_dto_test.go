@@ -103,7 +103,7 @@ func TestT16_02NullEmptyFalseAndZero(t *testing.T) {
 	}
 }
 
-func TestT16_03OperationsUniqueAndNewRoutesUnregistered(t *testing.T) {
+func TestT16_03OperationsUniqueAndNineRoutesRegistered(t *testing.T) {
 	newOperations := map[contract.Operation]string{
 		contract.Organizations:         "organizations.query",
 		contract.Students:              "students.query",
@@ -124,13 +124,18 @@ func TestT16_03OperationsUniqueAndNewRoutesUnregistered(t *testing.T) {
 		{Operation: contract.BatchGrades, Path: "/api/v1/sicp/students/grades/batch-query"},
 		{Operation: contract.StudentTimetable, Path: "/api/v1/sicp/students/timetable/query"},
 		{Operation: contract.StaffTimetable, Path: "/api/v1/sicp/staff/timetable/query"},
+		{Operation: contract.Organizations, Path: "/api/v1/sicp/organizations/query"},
+		{Operation: contract.Students, Path: "/api/v1/sicp/students/query"},
+		{Operation: contract.Staff, Path: "/api/v1/sicp/staff/query"},
+		{Operation: contract.StaffTeachingClasses, Path: "/api/v1/sicp/staff/teaching-classes/query"},
+		{Operation: contract.TeachingClassStudents, Path: "/api/v1/sicp/teaching-classes/students/query"},
 	}
 	if !reflect.DeepEqual(contract.Definitions(), want) {
-		t.Fatal("production catalog must retain exactly the four implemented operations until P24")
+		t.Fatal("production catalog must contain exactly the nine implemented operations")
 	}
-	for _, definition := range contract.Definitions() {
+	for _, definition := range contract.LegacyBusinessDefinitions() {
 		if _, exists := newOperations[definition.Operation]; exists {
-			t.Fatal("new operation overlaps a registered operation")
+			t.Fatal("new operation overlaps a legacy operation")
 		}
 	}
 }

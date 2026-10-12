@@ -26,8 +26,12 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/grades"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/handlers"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/metadata"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/organizations"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/snapshot"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/staff"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/students"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/teaching"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/timetable"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/runtimecontrol"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
@@ -93,6 +97,10 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 			return nil, e
 		}
 		pipeline := handlers.Pipeline{Grades: grades.Service{Source: reader, Times: times, Clock: clock, Limits: limits}, Timetable: timetable.Service{Source: reader, Times: times, Clock: clock, Limits: limits}, Admission: coordinator, Snapshots: snapshot.Manager{Store: r.Control, Routes: a.routes, Clock: clock, Random: rand.Reader}, Cache: cache.Executor{Results: cache.Results{Store: r.Cache, Observe: observe}, Flights: a.Flights, Validate: a.routes.Validate}, Metadata: metadata.Provider{Store: r.Control}, Times: times}
+		pipeline.Organizations = organizations.Service{Source: reader, Times: times, Clock: clock, Limits: limits}
+		pipeline.Students = students.Service{Source: reader, Times: times, Clock: clock, Limits: limits}
+		pipeline.Staff = staff.Service{Source: reader, Times: times, Clock: clock, Limits: limits}
+		pipeline.Teaching = teaching.Service{Source: reader, Times: times, Clock: clock, Limits: limits}
 		a.Queries, e = pipeline.Handlers(c.Service.APIKey, recorder, func(_ *events.Span, e error) { observe(e) })
 		if e != nil {
 			return nil, e

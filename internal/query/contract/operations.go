@@ -33,7 +33,13 @@ func SupportsSnapshot(op Operation) bool {
 
 // Definitions returns fresh values to keep callers from mutating the catalog.
 func Definitions() []Definition {
-	return LegacyBusinessDefinitions()
+	return append(LegacyBusinessDefinitions(),
+		Definition{Organizations, "/api/v1/sicp/organizations/query", nil},
+		Definition{Students, "/api/v1/sicp/students/query", nil},
+		Definition{Staff, "/api/v1/sicp/staff/query", nil},
+		Definition{StaffTeachingClasses, "/api/v1/sicp/staff/teaching-classes/query", nil},
+		Definition{TeachingClassStudents, "/api/v1/sicp/teaching-classes/students/query", nil},
+	)
 }
 
 // LegacyBusinessDefinitions freezes the four-operation historical evidence and
