@@ -210,3 +210,48 @@ func TestT20_09StudentFailureIntegrityAndBoundedContactReads(t *testing.T) {
 		t.Fatal(w.Code, response.Data.Total, len(response.Data.Items))
 	}
 }
+
+// Regression for source RXNY supplied as a full date instead of a month.
+// All identity and related records use synthetic fixtures.
+func TestT25_07StudentAdmissionFullDate(t *testing.T) {
+	for _, admission := range []string{"2025-09-21", "20250921"} {
+		t.Run(admission, func(t *testing.T) {
+			repo := studentProfilesRepo()
+			raw, _ := json.Marshal(admission)
+			repo.tables[students.EnrollmentsTable][0]["RXNY"] = raw
+			h, _ := studentProfilesHandler(t, repo, read.DefaultLimits())
+			for _, body := range []string{
+				`{"student_number":"01","page":1,"page_size":20}`,
+				`{"student_number":"01","admission_year":"2025"}`,
+				`{"admission_year":"2025"}`,
+			} {
+				w := studentProfilesRequest(h, body, "synthetic-key")
+				var response struct{ Data contract.StudentsResponse }
+				if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+					t.Fatal(err)
+				}
+				if w.Code != 200 || response.Data.Total != 1 || len(response.Data.Items) != 1 {
+					t.Fatal(w.Code, w.Body.String())
+				}
+				item := response.Data.Items[0]
+				if item.StudentNumber != "01" || item.AdmissionMonth == nil || *item.AdmissionMonth != "2025-09" || item.ExpectedGraduationDate == nil || *item.ExpectedGraduationDate != "2029-06-30" {
+					t.Fatal(w.Body.String())
+				}
+			}
+			w := studentProfilesRequest(h, `{"student_number":"01","admission_year":"2024"}`, "synthetic-key")
+			if w.Code != 200 || !strings.Contains(w.Body.String(), `"total":0`) || !strings.Contains(w.Body.String(), `"items":[]`) {
+				t.Fatal(w.Code, w.Body.String())
+			}
+		})
+	}
+	for _, admission := range []string{"2025-02-29", "20250229", "2025-09-21T00:00:00"} {
+		repo := studentProfilesRepo()
+		raw, _ := json.Marshal(admission)
+		repo.tables[students.EnrollmentsTable][0]["RXNY"] = raw
+		h, _ := studentProfilesHandler(t, repo, read.DefaultLimits())
+		w := studentProfilesRequest(h, `{"student_number":"01"}`, "synthetic-key")
+		if w.Code != 500 || !strings.Contains(w.Body.String(), `"data":null`) {
+			t.Fatal(admission, w.Code, w.Body.String())
+		}
+	}
+}

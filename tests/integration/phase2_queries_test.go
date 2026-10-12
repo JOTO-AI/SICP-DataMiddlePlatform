@@ -20,7 +20,9 @@ import (
 const phase2Teacher = `{"staff_number":"T001","academic_year":"2026-2027","semester":"1","page_size":1,"page":1}`
 const phase2Roster = `{"teaching_class_number":"J001","planned_course_code":"C001","academic_year":"2026-2027","semester":"1","page_size":1,"page":1}`
 
-func phase2Runtime(t *testing.T, mutate func(*mockSource)) *runtimeFixture {
+// phase2EdgeRuntime adds focused synthetic edge scenarios. Normal acceptance
+// must also run phase2_source_mock_test.go against the unmodified source mock.
+func phase2EdgeRuntime(t *testing.T, mutate func(*mockSource)) *runtimeFixture {
 	t.Helper()
 	f := newRuntime(t, false)
 	f.source.mu.Lock()
@@ -83,7 +85,7 @@ func phase2Item(t *testing.T, data map[string]any, index int) map[string]any {
 }
 
 func TestI07_Phase2RealHTTPAssociations(t *testing.T) {
-	f := phase2Runtime(t, nil)
+	f := phase2EdgeRuntime(t, nil)
 	org, _ := f.queryOK(t, contract.Organizations, `{"is_active":false}`, "")
 	if org["total"] != float64(1) || phase2Item(t, org, 0)["organization_code"] != "10003" {
 		t.Fatal("inactive organization omitted")
@@ -125,7 +127,7 @@ func TestI07_Phase2RealHTTPAssociations(t *testing.T) {
 }
 
 func TestI08_Phase2PaginationAndAtomicClient(t *testing.T) {
-	f := phase2Runtime(t, nil)
+	f := phase2EdgeRuntime(t, nil)
 	for _, tc := range []struct {
 		op          contract.Operation
 		field, body string
@@ -185,7 +187,7 @@ func TestI08_Phase2PaginationAndAtomicClient(t *testing.T) {
 }
 
 func TestI09_Phase2CachePublicationAndOldSnapshots(t *testing.T) {
-	f := phase2Runtime(t, nil)
+	f := phase2EdgeRuntime(t, nil)
 	type entry struct {
 		op          contract.Operation
 		body, token string
@@ -245,7 +247,7 @@ func TestI09_Phase2CachePublicationAndOldSnapshots(t *testing.T) {
 }
 
 func TestI10_Phase2AuthenticationAndInvalidSources(t *testing.T) {
-	f := phase2Runtime(t, nil)
+	f := phase2EdgeRuntime(t, nil)
 	_, token := f.queryOK(t, contract.StaffTeachingClasses, phase2Teacher, "")
 	for _, tc := range []struct {
 		op   contract.Operation
@@ -284,7 +286,7 @@ func TestI10_Phase2AuthenticationAndInvalidSources(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			bad := phase2Runtime(t, tc.mutate)
+			bad := phase2EdgeRuntime(t, tc.mutate)
 			status, body, next := bad.queryJSON(t, tc.op, tc.request, "", bad.qc.Service.APIKey)
 			if status != tc.status || body["data"] != nil || next != "" {
 				t.Fatal("invalid source returned partial success", status)

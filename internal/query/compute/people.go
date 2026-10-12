@@ -85,14 +85,16 @@ func Integer32(row source.SourceRow, key string) (*int, error) {
 	return &result, nil
 }
 
+// Month accepts month-only values and full source admission dates. Validate
+// the entire calendar date before reducing precision; never truncate bad days.
 func Month(row source.SourceRow, key string) (*string, error) {
-	return calendarValue(row, key, "200601", "2006-01")
+	return calendarValue(row, key, "2006-01", "200601", "2006-01", "20060102", "2006-01-02")
 }
 func Date(row source.SourceRow, key string) (*string, error) {
-	return calendarValue(row, key, "20060102", "2006-01-02")
+	return calendarValue(row, key, "2006-01-02", "20060102", "2006-01-02")
 }
 
-func calendarValue(row source.SourceRow, key, compact, standard string) (*string, error) {
+func calendarValue(row source.SourceRow, key, output string, layouts ...string) (*string, error) {
 	v, err := Text(row, key)
 	if err != nil || v == nil {
 		return nil, err
@@ -100,18 +102,17 @@ func calendarValue(row source.SourceRow, key, compact, standard string) (*string
 	if strings.TrimSpace(*v) == "" {
 		return nil, nil
 	}
-	layout := standard
-	if len(*v) == len(compact) {
-		layout = compact
-	} else if len(*v) != len(standard) {
-		return nil, ErrValue
+	for _, layout := range layouts {
+		if len(*v) != len(layout) {
+			continue
+		}
+		date, err := time.Parse(layout, *v)
+		if err == nil && date.Year() >= 1 && date.Format(layout) == *v {
+			result := date.Format(output)
+			return &result, nil
+		}
 	}
-	date, err := time.Parse(layout, *v)
-	if err != nil || date.Year() < 1 || date.Format(layout) != *v {
-		return nil, ErrValue
-	}
-	result := date.Format(standard)
-	return &result, nil
+	return nil, ErrValue
 }
 
 func OrganizationCategoryName(code *string) *string {

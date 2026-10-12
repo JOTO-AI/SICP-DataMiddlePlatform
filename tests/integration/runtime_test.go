@@ -27,6 +27,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/snapshot"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/control"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/testkit/querymock"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/worker"
 )
 
@@ -82,31 +83,20 @@ type sourceRequest struct {
 	Rows              int
 }
 
-func newSource(t *testing.T) *mockSource {
+// originalMock bypasses the legacy query-specific overlay entirely.
+func newSource(t *testing.T, originalMock bool) *mockSource {
 	t.Helper()
-	m := &mockSource{rows: map[string][]json.RawMessage{}}
-	files, err := filepath.Glob("../../mock_data/snapshots/initial/dwd_*.json")
-	if err != nil || len(files) != 14 {
-		t.Fatal("fourteen synthetic source fixtures required")
-	}
-	for _, file := range files {
-		raw, err := os.ReadFile(file)
+	m := &mockSource{rows: querymock.Load(t, "../..")}
+	if !originalMock {
+		raw, err := os.ReadFile("../fixtures/phase1/query/input.json")
 		if err != nil {
 			t.Fatal(err)
 		}
-		var rows []json.RawMessage
-		if err := json.Unmarshal(raw, &rows); err != nil {
+		if err := json.Unmarshal(raw, &m.rows); err != nil {
 			t.Fatal(err)
 		}
-		m.rows[strings.TrimSuffix(filepath.Base(file), ".json")] = rows
 	}
-	raw, err := os.ReadFile("../fixtures/phase1/query/input.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(raw, &m.rows); err != nil {
-		t.Fatal(err)
-	}
+
 	m.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		m.mu.Lock()
 		defer m.mu.Unlock()
@@ -182,10 +172,14 @@ func newRuntime(t *testing.T, initialize bool) *runtimeFixture {
 	return newRuntimeOptions(t, initialize, 3*time.Minute, nil)
 }
 func newRuntimeOptions(t *testing.T, initialize bool, budget time.Duration, configure func(map[string]string)) *runtimeFixture {
+	return newRuntimeFromSource(t, initialize, budget, configure, false)
+}
+
+func newRuntimeFromSource(t *testing.T, initialize bool, budget time.Duration, configure func(map[string]string), originalMock bool) *runtimeFixture {
 	t.Helper()
 	e := newEnvironmentWithTimeout(t, budget)
 	e.migrate(t)
-	f := &runtimeFixture{e: e, source: newSource(t)}
+	f := &runtimeFixture{e: e, source: newSource(t, originalMock)}
 	mail := newReceiver(t)
 	host := os.Getenv("SICP_TEST_REDIS_HOST")
 	if ip := net.ParseIP(host); ip == nil || !ip.IsPrivate() {

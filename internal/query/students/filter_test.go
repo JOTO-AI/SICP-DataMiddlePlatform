@@ -26,7 +26,7 @@ func TestT20_04StudentConversionsUseEnrollment(t *testing.T) {
 		t.Fatal(got, err)
 	}
 	for _, tc := range []struct{ field, raw string }{
-		{"XZ", `3.5`}, {"XZ", `2147483648`}, {"XZ", `"no"`}, {"RXNY", `"202613"`}, {"RXNY", `"2026-09-01"`}, {"YJBYRQ", `"20290229"`}, {"YJBYRQ", `"2029-06-30T00:00:00"`},
+		{"XZ", `3.5`}, {"XZ", `2147483648`}, {"XZ", `"no"`}, {"RXNY", `"202613"`}, {"RXNY", `"2026-09-31"`}, {"YJBYRQ", `"20290229"`}, {"YJBYRQ", `"2029-06-30T00:00:00"`},
 	} {
 		p := fullPair()
 		p.Enrollment[tc.field] = json.RawMessage(tc.raw)
