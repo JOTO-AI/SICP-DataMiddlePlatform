@@ -16,7 +16,7 @@ type Teachers struct {
 // ParseTeachers preserves independently supplied arrays. It never pairs names
 // with IDs by index or splits an opaque ID on punctuation or whitespace.
 func ParseTeachers(row source.SourceRow) (Teachers, error) {
-	ids, err := teacherField(row, "JSJGH", false)
+	ids, err := ParseTeacherIDs(row)
 	if err != nil {
 		return Teachers{}, err
 	}
@@ -25,6 +25,12 @@ func ParseTeachers(row source.SourceRow) (Teachers, error) {
 		return Teachers{}, err
 	}
 	return Teachers{StaffNumbers: ids, Names: names}, nil
+}
+
+// ParseTeacherIDs shares the exact existing token rules without requiring
+// display names. Class aggregation resolves names from staff profiles instead.
+func ParseTeacherIDs(row source.SourceRow) ([]string, error) {
+	return teacherField(row, "JSJGH", false)
 }
 
 func teacherField(row source.SourceRow, field string, name bool) ([]string, error) {

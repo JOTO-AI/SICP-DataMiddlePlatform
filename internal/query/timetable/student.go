@@ -19,6 +19,9 @@ type Match struct {
 	Membership []source.SourceRow
 }
 
+// ValidTerm exposes the existing academic-year/semester rule for class queries.
+func ValidTerm(year, semester string) bool { return validTerm(year, semester) }
+
 func validTerm(year, semester string) bool {
 	if len(year) != 9 || year[4] != '-' || semester != "1" && semester != "2" {
 		return false
