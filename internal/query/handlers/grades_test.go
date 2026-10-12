@@ -88,7 +88,23 @@ func (r *repository) ReadMatching(_ context.Context, h read.Handle, table, after
 		matches := true
 		for _, f := range filters {
 			v, _ := compute.Text(row, f.Column)
-			if v == nil || *v != f.Value {
+			matched := false
+			if v != nil {
+				switch {
+				case f.Values != nil:
+					for _, value := range f.Values {
+						if *v == value {
+							matched = true
+							break
+						}
+					}
+				case f.Contains:
+					matched = strings.Contains(*v, f.Value)
+				default:
+					matched = *v == f.Value
+				}
+			}
+			if !matched {
 				matches = false
 			}
 		}
