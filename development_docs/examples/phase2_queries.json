@@ -1,0 +1,806 @@
+[
+  {
+    "operation": "organizations.query",
+    "scenario": "first",
+    "path": "/api/v1/sicp/organizations/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "page": 1,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "total": 2,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": [
+            {
+              "organization_code": "10001",
+              "organization_name": "Synthetic School",
+              "parent_organization_code": null,
+              "category_code": null,
+              "category_name": null,
+              "is_active": true,
+              "source_updated_at": null
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "operation": "organizations.query",
+    "scenario": "next",
+    "path": "/api/v1/sicp/organizations/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>",
+        "X-Query-Snapshot": "<TOKEN_FROM_SAME_QUERY_FIRST_PAGE>"
+      },
+      "body": {
+        "page": 2,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "total": 2,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": [
+            {
+              "organization_code": "10002",
+              "organization_name": "Synthetic School",
+              "parent_organization_code": "10001",
+              "category_code": null,
+              "category_name": null,
+              "is_active": true,
+              "source_updated_at": null
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "operation": "organizations.query",
+    "scenario": "empty",
+    "path": "/api/v1/sicp/organizations/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "organization_code": "NO_SUCH_ORG",
+        "page": 1,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "total": 0,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": []
+        }
+      }
+    }
+  },
+  {
+    "operation": "organizations.query",
+    "scenario": "error",
+    "path": "/api/v1/sicp/organizations/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "page": 0,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {},
+      "body": {
+        "code": "invalid_argument",
+        "message": "Invalid request",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": null
+      }
+    }
+  },
+  {
+    "operation": "students.query",
+    "scenario": "first",
+    "path": "/api/v1/sicp/students/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "page": 1,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "total": 2,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": [
+            {
+              "student_number": "S001",
+              "name": "Synthetic Student",
+              "status_code": null,
+              "enrollment_status_code": null,
+              "on_campus_flag": null,
+              "department": null,
+              "campus_code": null,
+              "campus_name": null,
+              "major_code": null,
+              "major_name": null,
+              "grade": null,
+              "class_code": null,
+              "class_name": null,
+              "student_category_code": null,
+              "student_category_name": null,
+              "study_years": null,
+              "admission_month": null,
+              "expected_graduation_date": null,
+              "counselor": null,
+              "email": null,
+              "mobile": null,
+              "source_updated_at": null
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "operation": "students.query",
+    "scenario": "next",
+    "path": "/api/v1/sicp/students/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>",
+        "X-Query-Snapshot": "<TOKEN_FROM_SAME_QUERY_FIRST_PAGE>"
+      },
+      "body": {
+        "page": 2,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "total": 2,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": [
+            {
+              "student_number": "S002",
+              "name": "Synthetic Student",
+              "status_code": null,
+              "enrollment_status_code": null,
+              "on_campus_flag": null,
+              "department": null,
+              "campus_code": null,
+              "campus_name": null,
+              "major_code": null,
+              "major_name": null,
+              "grade": null,
+              "class_code": null,
+              "class_name": null,
+              "student_category_code": null,
+              "student_category_name": null,
+              "study_years": null,
+              "admission_month": null,
+              "expected_graduation_date": null,
+              "counselor": null,
+              "email": null,
+              "mobile": null,
+              "source_updated_at": null
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "operation": "students.query",
+    "scenario": "empty",
+    "path": "/api/v1/sicp/students/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "student_number": "NO_SUCH_STUDENT",
+        "page": 1,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "total": 0,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": []
+        }
+      }
+    }
+  },
+  {
+    "operation": "students.query",
+    "scenario": "error",
+    "path": "/api/v1/sicp/students/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "page": 0,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {},
+      "body": {
+        "code": "invalid_argument",
+        "message": "Invalid request",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": null
+      }
+    }
+  },
+  {
+    "operation": "staff.query",
+    "scenario": "first",
+    "path": "/api/v1/sicp/staff/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "page": 1,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "total": 2,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": [
+            {
+              "staff_number": "T001",
+              "name": "Synthetic Teacher",
+              "status_code": null,
+              "department": null,
+              "email": null,
+              "mobile": null,
+              "source_updated_at": null
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "operation": "staff.query",
+    "scenario": "next",
+    "path": "/api/v1/sicp/staff/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>",
+        "X-Query-Snapshot": "<TOKEN_FROM_SAME_QUERY_FIRST_PAGE>"
+      },
+      "body": {
+        "page": 2,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "total": 2,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": [
+            {
+              "staff_number": "T002",
+              "name": "Synthetic Teacher",
+              "status_code": null,
+              "department": null,
+              "email": null,
+              "mobile": null,
+              "source_updated_at": null
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "operation": "staff.query",
+    "scenario": "empty",
+    "path": "/api/v1/sicp/staff/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "staff_number": "NO_SUCH_STAFF",
+        "page": 1,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "total": 0,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": []
+        }
+      }
+    }
+  },
+  {
+    "operation": "staff.query",
+    "scenario": "error",
+    "path": "/api/v1/sicp/staff/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "page": 0,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {},
+      "body": {
+        "code": "invalid_argument",
+        "message": "Invalid request",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": null
+      }
+    }
+  },
+  {
+    "operation": "staff.teaching-classes.query",
+    "scenario": "first",
+    "path": "/api/v1/sicp/staff/teaching-classes/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "staff_number": "T001",
+        "academic_year": "2026-2027",
+        "semester": "1",
+        "page": 1,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "staff_number": "T001",
+          "academic_year": "2026-2027",
+          "semester": "1",
+          "total": 2,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": [
+            {
+              "teaching_class_number": "J001",
+              "teaching_class_name": null,
+              "planned_course_code": "C001",
+              "course_code": "C001",
+              "course_name": null,
+              "teachers": [
+                {
+                  "staff_number": "T001",
+                  "name": null
+                }
+              ],
+              "student_count": 2,
+              "source_updated_at": null
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "operation": "staff.teaching-classes.query",
+    "scenario": "next",
+    "path": "/api/v1/sicp/staff/teaching-classes/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>",
+        "X-Query-Snapshot": "<TOKEN_FROM_SAME_QUERY_FIRST_PAGE>"
+      },
+      "body": {
+        "staff_number": "T001",
+        "academic_year": "2026-2027",
+        "semester": "1",
+        "page": 2,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "staff_number": "T001",
+          "academic_year": "2026-2027",
+          "semester": "1",
+          "total": 2,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": [
+            {
+              "teaching_class_number": "J002",
+              "teaching_class_name": null,
+              "planned_course_code": "C001",
+              "course_code": "C001",
+              "course_name": null,
+              "teachers": [
+                {
+                  "staff_number": "T001",
+                  "name": null
+                }
+              ],
+              "student_count": 2,
+              "source_updated_at": null
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "operation": "staff.teaching-classes.query",
+    "scenario": "empty",
+    "path": "/api/v1/sicp/staff/teaching-classes/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "staff_number": "NO_SUCH_TEACHER",
+        "academic_year": "2026-2027",
+        "semester": "1",
+        "page": 1,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "staff_number": "NO_SUCH_TEACHER",
+          "academic_year": "2026-2027",
+          "semester": "1",
+          "total": 0,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": []
+        }
+      }
+    }
+  },
+  {
+    "operation": "staff.teaching-classes.query",
+    "scenario": "error",
+    "path": "/api/v1/sicp/staff/teaching-classes/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "staff_number": "T001",
+        "academic_year": "2026-2027",
+        "semester": "1",
+        "page": 0,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {},
+      "body": {
+        "code": "invalid_argument",
+        "message": "Invalid request",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": null
+      }
+    }
+  },
+  {
+    "operation": "teaching-classes.students.query",
+    "scenario": "first",
+    "path": "/api/v1/sicp/teaching-classes/students/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "teaching_class_number": "J001",
+        "planned_course_code": "C001",
+        "academic_year": "2026-2027",
+        "semester": "1",
+        "page": 1,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "teaching_class_number": "J001",
+          "planned_course_code": "C001",
+          "academic_year": "2026-2027",
+          "semester": "1",
+          "total": 2,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": [
+            {
+              "student_number": "S001",
+              "name": null,
+              "department_code": null,
+              "department_name": null,
+              "class_code": null,
+              "class_name": null,
+              "source_updated_at": null
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "operation": "teaching-classes.students.query",
+    "scenario": "next",
+    "path": "/api/v1/sicp/teaching-classes/students/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>",
+        "X-Query-Snapshot": "<TOKEN_FROM_SAME_QUERY_FIRST_PAGE>"
+      },
+      "body": {
+        "teaching_class_number": "J001",
+        "planned_course_code": "C001",
+        "academic_year": "2026-2027",
+        "semester": "1",
+        "page": 2,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "teaching_class_number": "J001",
+          "planned_course_code": "C001",
+          "academic_year": "2026-2027",
+          "semester": "1",
+          "total": 2,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": [
+            {
+              "student_number": "S002",
+              "name": null,
+              "department_code": null,
+              "department_name": null,
+              "class_code": null,
+              "class_name": null,
+              "source_updated_at": null
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "operation": "teaching-classes.students.query",
+    "scenario": "empty",
+    "path": "/api/v1/sicp/teaching-classes/students/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "teaching_class_number": "EXISTING_EMPTY_CLASS",
+        "planned_course_code": "C001",
+        "academic_year": "2026-2027",
+        "semester": "1",
+        "page": 1,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "X-Query-Snapshot": "<OPAQUE_TOKEN>",
+        "X-SICP-Combination": "<COMBINATION_ID>"
+      },
+      "body": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": {
+          "teaching_class_number": "EXISTING_EMPTY_CLASS",
+          "planned_course_code": "C001",
+          "academic_year": "2026-2027",
+          "semester": "1",
+          "total": 0,
+          "synced_at": "2026-10-12T08:00:00+08:00",
+          "items": []
+        }
+      }
+    }
+  },
+  {
+    "operation": "teaching-classes.students.query",
+    "scenario": "error",
+    "path": "/api/v1/sicp/teaching-classes/students/query",
+    "request": {
+      "headers": {
+        "Content-Type": "application/json",
+        "X-API-Key": "<QUERY_API_KEY>"
+      },
+      "body": {
+        "teaching_class_number": "J001",
+        "planned_course_code": "C001",
+        "academic_year": "2026-2027",
+        "semester": "1",
+        "page": 0,
+        "page_size": 1
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {},
+      "body": {
+        "code": "invalid_argument",
+        "message": "Invalid request",
+        "request_id": "<SERVER_REQUEST_ID>",
+        "data": null
+      }
+    }
+  }
+]

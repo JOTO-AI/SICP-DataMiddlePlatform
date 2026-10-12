@@ -12,6 +12,7 @@ python3 -c 'import ast; from pathlib import Path; [ast.parse(Path(p).read_text()
 go vet ./...
 python3 -m unittest discover -s scripts -p 'test_build_acceptance.py'
 python3 -m unittest discover -s scripts -p 'test_query_replicas.py'
+python3 -m unittest discover -s scripts -p 'test_phase2_*.py'
 mkdir -p artifacts
 set +e
 python3 -m unittest discover -v -s scripts -p 'test_gateway_*.py' 2>&1 | tee artifacts/gateway-config-tests.txt
