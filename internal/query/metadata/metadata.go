@@ -24,6 +24,16 @@ type Provider struct{ Store Store }
 // The returned slice belongs to the caller.
 func Dependencies(op contract.Operation) ([]string, error) {
 	switch op {
+	case contract.Organizations:
+		return []string{grades.DepartmentsTable}, nil
+	case contract.Students:
+		return []string{grades.StudentsTable, grades.EnrollmentsTable, "dwd_bzksgrtxsjzlb", grades.DepartmentsTable, "dwd_xqjbsjzlb", "dwd_bzkszyxxsjzlb", grades.ClassesTable, "dwd_jzgjcsjzlb"}, nil
+	case contract.Staff:
+		return []string{"dwd_jzgjcsjzlb", "dwd_grtxfszlb", grades.DepartmentsTable}, nil
+	case contract.StaffTeachingClasses:
+		return []string{timetable.SchedulesTable, timetable.CoursesTable, "dwd_jzgjcsjzlb", timetable.RelationsTable}, nil
+	case contract.TeachingClassStudents:
+		return []string{timetable.SchedulesTable, timetable.RelationsTable, grades.StudentsTable, grades.EnrollmentsTable, grades.DepartmentsTable, grades.ClassesTable}, nil
 	case contract.StudentGrades, contract.BatchGrades:
 		return []string{grades.GradesTable, grades.StudentsTable, grades.EnrollmentsTable, grades.CoursesTable, grades.DepartmentsTable, grades.ClassesTable}, nil
 	case contract.StudentTimetable:

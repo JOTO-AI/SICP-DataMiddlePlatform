@@ -13,7 +13,9 @@ import (
 // deliberately absent from the cache; source_updated_at remains business data.
 func Payload(value any) ([]byte, error) {
 	switch value.(type) {
-	case contract.GradesResponse, contract.StudentTimetableResponse, contract.StaffTimetableResponse:
+	case contract.GradesResponse, contract.StudentTimetableResponse, contract.StaffTimetableResponse,
+		contract.OrganizationsResponse, contract.StudentsResponse, contract.StaffResponse,
+		contract.StaffTeachingClassesResponse, contract.TeachingClassStudentsResponse:
 	default:
 		return nil, ErrMetadata
 	}
@@ -43,6 +45,21 @@ func Compose(op contract.Operation, payload []byte, at time.Time, times compute.
 	var result any
 	var required []string
 	switch op {
+	case contract.Organizations:
+		result = &contract.OrganizationsResponse{SyncedAt: *formatted}
+		required = []string{"total", "items"}
+	case contract.Students:
+		result = &contract.StudentsResponse{SyncedAt: *formatted}
+		required = []string{"total", "items"}
+	case contract.Staff:
+		result = &contract.StaffResponse{SyncedAt: *formatted}
+		required = []string{"total", "items"}
+	case contract.StaffTeachingClasses:
+		result = &contract.StaffTeachingClassesResponse{SyncedAt: *formatted}
+		required = []string{"staff_number", "academic_year", "semester", "total", "items"}
+	case contract.TeachingClassStudents:
+		result = &contract.TeachingClassStudentsResponse{SyncedAt: *formatted}
+		required = []string{"teaching_class_number", "planned_course_code", "academic_year", "semester", "total", "items"}
 	case contract.StudentGrades, contract.BatchGrades:
 		result = &contract.GradesResponse{SyncedAt: *formatted}
 		required = []string{"total", "items"}

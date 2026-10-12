@@ -29,6 +29,16 @@ func Key(combination string, op contract.Operation, request any) (string, error)
 	}
 	valid := false
 	switch op {
+	case contract.Organizations:
+		_, valid = request.(contract.OrganizationsRequest)
+	case contract.Students:
+		_, valid = request.(contract.StudentsRequest)
+	case contract.Staff:
+		_, valid = request.(contract.StaffRequest)
+	case contract.StaffTeachingClasses:
+		_, valid = request.(contract.StaffTeachingClassesRequest)
+	case contract.TeachingClassStudents:
+		_, valid = request.(contract.TeachingClassStudentsRequest)
 	case contract.StudentGrades:
 		_, valid = request.(contract.StudentGradesRequest)
 	case contract.BatchGrades:
@@ -49,8 +59,15 @@ func Key(combination string, op contract.Operation, request any) (string, error)
 	if json.Unmarshal(data, &values) != nil {
 		return "", ErrKey
 	}
-	if op == contract.StudentGrades || op == contract.BatchGrades {
-		for key, value := range map[string]string{"page": "1", "page_size": "100"} {
+	defaultSize := ""
+	switch op {
+	case contract.Organizations, contract.Students, contract.Staff:
+		defaultSize = "1000"
+	case contract.StudentGrades, contract.BatchGrades, contract.StaffTeachingClasses, contract.TeachingClassStudents:
+		defaultSize = "100"
+	}
+	if defaultSize != "" {
+		for key, value := range map[string]string{"page": "1", "page_size": defaultSize} {
 			if bytes.Equal(values[key], []byte("null")) {
 				values[key] = json.RawMessage(value)
 			}
@@ -90,8 +107,8 @@ func Key(combination string, op contract.Operation, request any) (string, error)
 			}
 			value = string(encoded)
 		default:
-			// The DTO has only integers and finite float score bounds here.
-			if key == "page" || key == "page_size" {
+			// Booleans and integer fields retain their exact JSON representation.
+			if key == "page" || key == "page_size" || key == "study_years" || key == "is_active" {
 				value = string(raw)
 				break
 			}
