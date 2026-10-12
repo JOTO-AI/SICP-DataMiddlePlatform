@@ -10,11 +10,18 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/organizations"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/read"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/teaching"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/transport"
 )
 
 // phase2Failure keeps source consistency failures distinct from unavailable SQL.
 func phase2Failure(err error) error {
+	if errors.Is(err, teaching.ErrNotFound) {
+		return &transport.Failure{Category: contract.InvalidArgument, Cause: err}
+	}
+	if errors.Is(err, teaching.ErrTermConflict) {
+		return &transport.Failure{Category: contract.Conflict, Cause: err}
+	}
 	if errors.Is(err, compute.ErrValue) || errors.Is(err, compute.ErrRecords) || errors.Is(err, compute.ErrTime) || errors.Is(err, read.ErrOrder) || errors.Is(err, read.ErrAmbiguous) {
 		return &transport.Failure{Category: contract.Internal, Cause: err}
 	}
