@@ -3,6 +3,12 @@ package contract
 type Operation string
 
 const (
+	Organizations         Operation = "organizations.query"
+	Students              Operation = "students.query"
+	Staff                 Operation = "staff.query"
+	StaffTeachingClasses  Operation = "staff.teaching-classes.query"
+	TeachingClassStudents Operation = "teaching-classes.students.query"
+
 	StudentGrades    Operation = "students.grades.query"
 	BatchGrades      Operation = "students.grades.batch-query"
 	StudentTimetable Operation = "students.timetable.query"

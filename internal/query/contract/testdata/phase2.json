@@ -1,0 +1,26 @@
+{
+  "organizations_request": {"page":1,"page_size":1000,"organization_code":"001","organization_name":"示例","parent_organization_code":"10001","category_codes":["1","5"],"is_active":false},
+  "students_request": {"page":1,"page_size":1000,"student_number":"0001","name":"示例学生","department_code":"001","department_name":"示例学院","campus_code":"01","major_code":"002","grade":"2026","class_code":"003","status_codes":["01","08"],"enrollment_status_codes":["0"],"on_campus_flag":"1","student_category_codes":["41","432"],"study_years":3,"admission_year":"2026","expected_graduation_year":"2029","counselor_staff_number":"0002"},
+  "staff_request": {"page":1,"page_size":1000,"staff_number":"0002","name":"示例教师","department_code":"001","department_name":"示例学院","status_codes":["11","04"]},
+  "staff_teaching_classes_request": {"page":1,"page_size":100,"staff_number":"0002","academic_year":"2026-2027","semester":"1","course_code":"004"},
+  "teaching_class_students_request": {"page":1,"page_size":100,"teaching_class_number":"005","planned_course_code":"004","academic_year":"2026-2027","semester":"1"},
+  "organizations_response": {"total":2,"synced_at":"2026-10-12T09:00:00+08:00","items":[
+    {"organization_code":"10001","organization_name":"示例学校","parent_organization_code":null,"category_code":null,"category_name":null,"is_active":true,"source_updated_at":null},
+    {"organization_code":"001","organization_name":"示例学院","parent_organization_code":"10001","category_code":"1","category_name":"教学院系","is_active":false,"source_updated_at":"2026-10-12T08:00:00+08:00"}
+  ]},
+  "students_response": {"total":2,"synced_at":"2026-10-12T09:00:00+08:00","items":[
+    {"student_number":"0001","name":"示例学生","status_code":"08","enrollment_status_code":"0","on_campus_flag":"0","department":{"organization_code":"001","organization_name":"示例学院","parent_organization_code":"10001","category_code":"1","category_name":"教学院系","is_active":false},"campus_code":"01","campus_name":"示例校区","major_code":"002","major_name":"示例专业","grade":"2026","class_code":"003","class_name":"示例行政班","student_category_code":"41","student_category_name":"专科生","study_years":3,"admission_month":"2026-09","expected_graduation_date":"2029-06-30","counselor":{"staff_number":"0002","name":"示例教师"},"email":"student@example.invalid","mobile":"synthetic-unformatted-contact","source_updated_at":"2026-10-12T08:00:00+08:00"},
+    {"student_number":"0003","name":"示例缺附属档案学生","status_code":null,"enrollment_status_code":null,"on_campus_flag":null,"department":{"organization_code":"009","organization_name":null,"parent_organization_code":null,"category_code":null,"category_name":null,"is_active":null},"campus_code":null,"campus_name":null,"major_code":null,"major_name":null,"grade":null,"class_code":"009","class_name":null,"student_category_code":"unknown","student_category_name":null,"study_years":null,"admission_month":null,"expected_graduation_date":null,"counselor":{"staff_number":"0009","name":null},"email":null,"mobile":null,"source_updated_at":null}
+  ]},
+  "staff_response": {"total":2,"synced_at":"2026-10-12T09:00:00+08:00","items":[
+    {"staff_number":"0002","name":"示例教师","status_code":"07","department":{"organization_code":"001","organization_name":"示例学院","parent_organization_code":"10001","category_code":"1","category_name":"教学院系","is_active":true},"email":"teacher@example.invalid","mobile":"synthetic-unformatted-contact","source_updated_at":"2026-10-12T08:00:00+08:00"},
+    {"staff_number":"0009","name":"示例无单位教师","status_code":null,"department":null,"email":null,"mobile":null,"source_updated_at":null}
+  ]},
+  "staff_teaching_classes_response": {"staff_number":"0002","academic_year":"2026-2027","semester":"1","total":1,"synced_at":"2026-10-12T09:00:00+08:00","items":[
+    {"teaching_class_number":"005","teaching_class_name":"示例教学班","planned_course_code":"004","course_code":"004","course_name":"示例课程","teachers":[{"staff_number":"0002","name":"示例教师"},{"staff_number":"0009","name":null}],"student_count":2,"source_updated_at":"2026-10-12T08:00:00+08:00"}
+  ]},
+  "teaching_class_students_response": {"teaching_class_number":"005","planned_course_code":"004","academic_year":"2026-2027","semester":"1","total":2,"synced_at":"2026-10-12T09:00:00+08:00","items":[
+    {"student_number":"0001","name":"示例学生","department_code":"001","department_name":"示例学院","class_code":"003","class_name":"示例行政班","source_updated_at":"2026-10-12T08:00:00+08:00"},
+    {"student_number":"0003","name":null,"department_code":null,"department_name":null,"class_code":null,"class_name":null,"source_updated_at":null}
+  ]}
+}

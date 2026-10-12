@@ -1,5 +1,5 @@
-// Package contract mirrors sicp-api-design.md sections 4–7. Validation belongs
-// to P06; these transport types do not implement any pending business rule.
+// Package contract mirrors sicp-api-design.md. Transport types alone do not
+// register routes or implement validation and business rules.
 package contract
 
 import "encoding/json"
