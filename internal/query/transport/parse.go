@@ -18,9 +18,10 @@ const (
 	MaxArrayItems   = 1000
 	MaxPage         = 1000000
 	MaxPageSize     = 1000
+	MaxStudyYears   = 2147483647
 )
 
-// Parse returns one of the four request values. It preserves identifier bytes;
+// Parse returns a supported request value. It preserves identifier bytes;
 // null optional filters are absent, while empty strings/arrays are invalid.
 func Parse(op contract.Operation, body io.Reader) (any, error) {
 	bad := func() (any, error) { return nil, &Failure{Category: contract.InvalidArgument} }
@@ -76,6 +77,9 @@ func Parse(op contract.Operation, body io.Reader) (any, error) {
 			if key == "academic_year" && !validYear(value, op == contract.StudentGrades || op == contract.BatchGrades) {
 				return bad()
 			}
+			if (key == "admission_year" || key == "expected_graduation_year") && !validCalendarYear(value) {
+				return bad()
+			}
 		case 'a':
 			var value []*string
 			if json.Unmarshal(raw, &value) != nil || len(value) == 0 || len(value) > MaxArrayItems {
@@ -88,7 +92,12 @@ func Parse(op contract.Operation, body io.Reader) (any, error) {
 			}
 		case 'i':
 			var value int
-			if json.Unmarshal(raw, &value) != nil || value < 1 || (key == "page" && value > MaxPage) || (key == "page_size" && value > MaxPageSize) {
+			if json.Unmarshal(raw, &value) != nil || value < 1 || (key == "page" && value > MaxPage) || (key == "page_size" && value > MaxPageSize) || (key == "study_years" && value > MaxStudyYears) {
+				return bad()
+			}
+		case 'b':
+			var value bool
+			if json.Unmarshal(raw, &value) != nil {
 				return bad()
 			}
 		case 'n':
@@ -111,6 +120,41 @@ func Parse(op contract.Operation, body io.Reader) (any, error) {
 		}
 	}
 	switch op {
+	case contract.Organizations:
+		var v contract.OrganizationsRequest
+		if json.Unmarshal(data, &v) != nil {
+			return bad()
+		}
+		normalizePagination(&v.PaginationRequest, 1000)
+		return v, nil
+	case contract.Students:
+		var v contract.StudentsRequest
+		if json.Unmarshal(data, &v) != nil {
+			return bad()
+		}
+		normalizePagination(&v.PaginationRequest, 1000)
+		return v, nil
+	case contract.Staff:
+		var v contract.StaffRequest
+		if json.Unmarshal(data, &v) != nil {
+			return bad()
+		}
+		normalizePagination(&v.PaginationRequest, 1000)
+		return v, nil
+	case contract.StaffTeachingClasses:
+		var v contract.StaffTeachingClassesRequest
+		if json.Unmarshal(data, &v) != nil {
+			return bad()
+		}
+		normalizePagination(&v.PaginationRequest, 100)
+		return v, nil
+	case contract.TeachingClassStudents:
+		var v contract.TeachingClassStudentsRequest
+		if json.Unmarshal(data, &v) != nil {
+			return bad()
+		}
+		normalizePagination(&v.PaginationRequest, 100)
+		return v, nil
 	case contract.StudentGrades:
 		var v contract.StudentGradesRequest
 		if json.Unmarshal(data, &v) != nil || !normalizeGrades(&v.GradeFilters) {
@@ -148,6 +192,30 @@ func requestFields(op contract.Operation) (map[string]byte, map[string]bool) {
 		}
 	}
 	switch op {
+	case contract.Organizations:
+		add('s', "organization_code", "organization_name", "parent_organization_code")
+		add('a', "category_codes")
+		add('b', "is_active")
+		add('i', "page", "page_size")
+	case contract.Students:
+		add('s', "student_number", "name", "department_code", "department_name", "campus_code", "major_code", "grade", "class_code", "on_campus_flag", "admission_year", "expected_graduation_year", "counselor_staff_number")
+		add('a', "status_codes", "enrollment_status_codes", "student_category_codes")
+		add('i', "page", "page_size", "study_years")
+	case contract.Staff:
+		add('s', "staff_number", "name", "department_code", "department_name")
+		add('a', "status_codes")
+		add('i', "page", "page_size")
+	case contract.StaffTeachingClasses, contract.TeachingClassStudents:
+		add('s', "academic_year", "semester")
+		add('i', "page", "page_size")
+		required["academic_year"], required["semester"] = true, true
+		if op == contract.StaffTeachingClasses {
+			add('s', "staff_number", "course_code")
+			required["staff_number"] = true
+		} else {
+			add('s', "teaching_class_number", "planned_course_code")
+			required["teaching_class_number"], required["planned_course_code"] = true, true
+		}
 	case contract.StudentGrades, contract.BatchGrades:
 		add('s', "academic_year", "semester", "course_code", "course_name", "course_department_code", "course_department_name")
 		add('a', "course_attribute_codes", "course_nature_codes", "course_type_codes")
@@ -216,4 +284,26 @@ func normalizeGrades(f *contract.GradeFilters) bool {
 		f.PageSize = &v
 	}
 	return f.ScoreMin == nil || f.ScoreMax == nil || *f.ScoreMin <= *f.ScoreMax
+}
+
+func validCalendarYear(value string) bool {
+	if len(value) != 4 || value == "0000" {
+		return false
+	}
+	for _, c := range value {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func normalizePagination(p *contract.PaginationRequest, pageSize int) {
+	if p.Page == nil {
+		page := 1
+		p.Page = &page
+	}
+	if p.PageSize == nil {
+		p.PageSize = &pageSize
+	}
 }
