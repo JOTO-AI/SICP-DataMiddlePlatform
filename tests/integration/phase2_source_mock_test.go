@@ -21,3 +21,7 @@ func originalMockQuery(t *testing.T) querymock.Query {
 func TestI07_OriginalMockStudents(t *testing.T) {
 	querymock.Students(t, originalMockQuery(t))
 }
+
+func TestI07_OriginalMockOrganizations(t *testing.T) {
+	querymock.Organizations(t, originalMockQuery(t))
+}
