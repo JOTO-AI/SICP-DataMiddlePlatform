@@ -102,6 +102,88 @@ func TestT15_11OutstandingIndependentCacheExecutionUsesSameExitDeadline(t *testi
 
 type unacknowledgedLogs struct{}
 
+type shutdownStore func(context.Context, []observability.SafeEvent) error
+
+func (f shutdownStore) StoreBatch(ctx context.Context, b []observability.SafeEvent) error {
+	return f(ctx, b)
+}
+
+func TestT28_11BlockedLogRunDoesNotPreventOtherSourceDrain(t *testing.T) {
+	key := sha256.Sum256([]byte("synthetic-dual-shutdown"))
+	s, err := observability.NewSanitizer(16384, 2048, key[:], nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	makeBuffer := func(id string) (*observability.Buffer, *observability.Directory) {
+		j, err := observability.OpenDirectory(t.TempDir(), rand.Reader, 16384)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = j.Close() })
+		q, err := observability.NewQuota(j, observability.CapacityConfig{MaxBytes: 1 << 20, MaxFiles: 100, WarningPercent: 80, Policy: observability.RejectNew})
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := observability.NewBuffer(q, s, 10, 1<<20)
+		if err != nil {
+			t.Fatal(err)
+		}
+		safe, err := s.Sanitize(events.Event{ID: id, EntityID: id, Kind: events.Request, Phase: events.Started, OccurredAt: time.Now()}, observability.Details{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if b.Append(t.Context(), safe) != nil {
+			t.Fatal("append")
+		}
+		return b, j
+	}
+	bad, badFiles := makeBuffer("bad")
+	good, goodFiles := makeBuffer("good")
+	entered, release, returned := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	badStore := shutdownStore(func(context.Context, []observability.SafeEvent) error {
+		close(entered)
+		defer close(returned)
+		<-release
+		return errors.New("unknown commit")
+	})
+	fast := observability.DispatchConfig{MaxWait: time.Millisecond, RetryWait: time.Second, Timeout: time.Second, BatchBytes: 1 << 20}
+	badDispatch, err := observability.NewDispatcher(bad, badStore, observability.SystemTimer{}, fast)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fast.MaxWait = time.Minute
+	goodDispatch, err := observability.NewDispatcher(good, shutdownStore(func(context.Context, []observability.SafeEvent) error { return nil }), observability.SystemTimer{}, fast)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := &Application{done: make(chan struct{}), Logs: badDispatch, UpstreamLogs: goodDispatch}
+	a.Start(context.Background())
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("blocked source did not start")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	if a.Close(ctx) == nil {
+		t.Fatal("blocked source reported clean")
+	}
+	close(release)
+	select {
+	case <-returned:
+	case <-time.After(time.Second):
+		t.Fatal("blocked source leaked")
+	}
+	left, err := badFiles.Batch(t.Context(), 10, 1<<20)
+	if err != nil || len(left) != 1 {
+		t.Fatal("unconfirmed source lost")
+	}
+	left, err = goodFiles.Batch(t.Context(), 10, 1<<20)
+	if err != nil || len(left) != 0 {
+		t.Fatal("healthy source did not drain")
+	}
+}
+
 func (unacknowledgedLogs) StoreBatch(context.Context, []observability.SafeEvent) error {
 	return errors.New("commit outcome unknown")
 }

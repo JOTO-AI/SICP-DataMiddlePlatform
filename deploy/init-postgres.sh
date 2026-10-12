@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ "${SICP_CLUSTER:-}" == upstream-log ]]; then
+  : "${UPSTREAM_LOGGER_PASSWORD:?}"
+  psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres \
+    --set=upstream_password="$UPSTREAM_LOGGER_PASSWORD" <<'SQL'
+CREATE ROLE sicp_upstream_logger LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD :'upstream_password';
+CREATE ROLE sicp_upstream_reader NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
+SQL
+  createdb --username "$POSTGRES_USER" upstream_logs
+  exit 0
+fi
 : "${QUERY_PASSWORD:?}" "${WORKER_PASSWORD:?}" "${LOGGER_PASSWORD:?}" "${SICP_CLUSTER:?}"
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres \
   --set=query_password="$QUERY_PASSWORD" --set=worker_password="$WORKER_PASSWORD" --set=logger_password="$LOGGER_PASSWORD" <<'SQL'

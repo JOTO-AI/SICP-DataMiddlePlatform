@@ -1,4 +1,6 @@
-# P28.01 日志存储配置与迁移边界
+# P28 日志存储配置与迁移边界
+
+**当前更新：P28.03 已接通资源与部署代码，尚未实际部署。下面的 P28.01 说明为历史记录；运行入口的临时 dual 拒绝已撤销，当前配置以文末 P28.03 为准。升级排空流程仍待 P28.04，不据此直接切换现有 writer。**
 
 日期：2026-10-12。本步提供独立上游日志 Registry、凭据校验、物理身份检查和迁移基础。**双库投递/连接池/Compose 新服务尚未装配**，见 P28.02—P28.04；本步不表示双日志库已部署或可用。
 
@@ -43,3 +45,15 @@ dual 模式的日志迁移必须通过物理隔离预检，在写事务内重新
 本次只提交代码、迁移文件和配置说明，没有执行 DDL、创建数据库或操作真实服务。回退本步代码不涉及业务数据；以后应用新迁移后，代码回退不自动删除新库、撤销角色或还原数据，应按届时升级记录处置。
 
 测试源码、review 和静态检查见 [P28](verification/P28.md)、[T28](verification/T28.md)。用户暂停测试运行，T28-01—04 仅有测试代码与编译检查，不标记实测通过。
+
+## P28.03 当前装配
+
+双库进程新增 UPSTREAM_LOG_DIRECTORY、UPSTREAM_LOG_MAX_BYTES、UPSTREAM_LOG_MAX_FILES，规则与平台目录/配额相同且不能重叠。两套 Journal、Quota、Buffer、Dispatcher 和 PostgreSQL pool 独立；日志 pool 不参与业务启动 Ping，所有日志连接按需建立。满配额只拒绝对应源新增事件，已存在文件保留，不阻止业务启动。
+
+追加 logs_004/upstream_logs_002，建立仅部署账号可写的 deployment_identity。双库迁移在 DDL 后再次核验目标身份并记录源、集群、库 OID 和全目标拓扑摘要。运行账号只可执行固定 search_path、无动态 SQL 的 verify_deployment 函数，每笔日志事务核验当前实际后端与部署记录；不授予 writer pg_control_system 或身份表写权限。拓扑摘要不含凭据，轮换密码不要求重新迁移；更换数据库目标需要重新隔离预检。缺失 schema、身份不符和未核验都表现为对应能力未就绪，恢复后逐源重试。
+
+Linux 双库配置位于 compose.dual-logs.yaml，显式选择 `SICP_DUAL_LOGS=1 scripts/sicp.sh ...`；overlay 设置 dual，并启用 db-upstream-log、独立 pg-upstream-log 数据目录和 query/worker 上游缓冲。需要在部署配置填 DATABASE_UPSTREAM_LOG_URL、独立 UPSTREAM_LOGGER_PASSWORD；进程收到独立 DATABASE_UPSTREAM_LOG_USER/PASSWORD。查询副本沿用固定 slot 锁，两个日志源各有该副本的目录。初始化脚本在上游实例只创建 upstream logger/reader 角色，不复用平台 logger 登录。
+
+迁移是显式部署步骤：按 `infra → migrate → start` 执行（scripts/sicp.sh deploy 已按此顺序）。query/worker 不再依赖 migrate 或日志库健康，已迁移系统重启时单日志库离线不会间接卡住业务启动。首次未部署 schema 不表示就绪，日志保留在缓冲；禁止以 start 替代首次迁移。日志就绪状态与业务 query_ready/sync_ready 分离，single_legacy 明示兼容模式。
+
+关闭先停业务生产，再并行关闭两套 Dispatcher，单侧阻塞不会占用另一侧排空机会；失败/未知确认保留文件并报告未完成。该代码已做静态审查和源码编译，但尚未执行测试、DDL、容器启动、角色权限或故障演练。

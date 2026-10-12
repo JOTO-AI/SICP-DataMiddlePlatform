@@ -26,9 +26,6 @@ func migration() error {
 	if e != nil {
 		return e
 	}
-	if r.LogMode() != storage.SingleLegacy {
-		return fmt.Errorf("LOG_STORAGE_MODE: dual log deployment is not assembled yet")
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	db, e := adapters.OpenPostgres(ctx, r, 10*time.Second, "migration")
@@ -49,6 +46,9 @@ func migration() error {
 		}
 	}
 	targets = append(targets, migrate.Target{Domain: migrate.Control}, migrate.Target{Domain: migrate.Logs})
+	if r.LogMode() == storage.DualLogs {
+		targets = append(targets, migrate.Target{Domain: migrate.UpstreamLogs})
+	}
 	for _, target := range targets {
 		plan, e := migrate.Catalog(target.Domain)
 		if e != nil {

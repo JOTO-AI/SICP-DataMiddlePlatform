@@ -2,6 +2,7 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 compose=(docker compose --project-directory "$root" --env-file "$root/.env" --file "$root/compose.yaml")
+if [[ "${SICP_DUAL_LOGS:-0}" == 1 ]]; then compose+=(--file "$root/compose.dual-logs.yaml"); fi
 operation="${1:-help}"
 if (($#)); then shift; fi
 case "$operation" in
@@ -19,6 +20,7 @@ case "$operation" in
   infra)
     "${compose[@]}" run --rm --no-deps volumes
     "${compose[@]}" up -d --wait --wait-timeout 120 db-m db-s db-log redis
+    if [[ "${SICP_DUAL_LOGS:-0}" == 1 ]]; then "${compose[@]}" up -d --wait --wait-timeout 120 db-upstream-log; fi
     for service in $("${compose[@]}" config --services); do
       if [[ "$service" == mock ]]; then "${compose[@]}" up -d --wait --wait-timeout 120 mock; fi
     done

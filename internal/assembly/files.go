@@ -11,6 +11,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/config"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/observability"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/staging"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 )
 
 func openFiles(ctx context.Context, c config.Runtime) (*FileSet, error) {
@@ -26,6 +27,9 @@ func openFiles(ctx context.Context, c config.Runtime) (*FileSet, error) {
 		return f, ctx.Err()
 	}
 	paths := []string{c.LogDirectory}
+	if c.Databases.LogMode() == storage.DualLogs {
+		paths = append(paths, c.UpstreamLogDirectory)
+	}
 	if c.Service.Role == config.Worker {
 		paths = append(paths, c.StagingDirectory, c.TargetDirectory, c.SpoolDirectory)
 	}
@@ -68,12 +72,25 @@ func openFiles(ctx context.Context, c config.Runtime) (*FileSet, error) {
 	}
 	closers = append(closers, j.Close)
 	f.Journal = j
-	u, e := j.Usage(ctx)
-	if e != nil || u.Bytes > c.LogBytes || u.Files > c.LogFiles {
-		return f, observability.ErrCapacity
+	if _, e = j.Usage(ctx); e != nil {
+		return f, observability.ErrBuffer
 	}
 	if e = j.Flush(ctx); e != nil {
 		return f, e
+	}
+	if c.Databases.LogMode() == storage.DualLogs {
+		upstream, err := observability.OpenDirectory(c.UpstreamLogDirectory, rand.Reader, 16384)
+		if err != nil {
+			return f, err
+		}
+		closers = append(closers, upstream.Close)
+		f.UpstreamJournal = upstream
+		if _, err = upstream.Usage(ctx); err != nil {
+			return f, observability.ErrBuffer
+		}
+		if err = upstream.Flush(ctx); err != nil {
+			return f, err
+		}
 	}
 	if c.Service.Role == config.Worker {
 		for _, entry := range []struct {

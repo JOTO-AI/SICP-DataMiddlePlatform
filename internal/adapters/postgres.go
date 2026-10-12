@@ -42,9 +42,11 @@ func OpenPostgres(ctx context.Context, r storage.Registry, timeout time.Duration
 }
 
 func OpenPostgresWithLimits(ctx context.Context, r storage.Registry, timeout time.Duration, limits PostgresPoolLimits, process ...string) (*Postgres, error) {
-	// Do not silently ignore a configured upstream target before P28.03 adds
-	// separate pools, identity gates and failure-independent lifecycle handling.
-	if r.LogMode() != storage.SingleLegacy {
+	return openPostgresWithLimits(ctx, r, timeout, limits, func(ctx context.Context, p *pgxpool.Pool) error { return p.Ping(ctx) }, process...)
+}
+
+func openPostgresWithLimits(ctx context.Context, r storage.Registry, timeout time.Duration, limits PostgresPoolLimits, ping func(context.Context, *pgxpool.Pool) error, process ...string) (*Postgres, error) {
+	if r.LogMode() != storage.SingleLegacy && r.LogMode() != storage.DualLogs {
 		return nil, ErrPostgres
 	}
 	for _, limit := range []int{limits.Business, limits.Control, limits.Logs} {
@@ -64,13 +66,20 @@ func OpenPostgresWithLimits(ctx context.Context, r storage.Registry, timeout tim
 		}
 	}
 	connections = append(connections, r.Control(), r.Logs())
+	if r.LogMode() == storage.DualLogs {
+		upstream, e := r.LogConnection(storage.UpstreamLog)
+		if e != nil {
+			return p, ErrPostgres
+		}
+		connections = append(connections, upstream)
+	}
 	configs := make([]*pgxpool.Config, 0, len(connections))
 	for i, c := range connections {
 		limit := limits.Business
 		if i == 4 {
 			limit = limits.Control
 		}
-		if i == 5 {
+		if i >= 5 {
 			limit = limits.Logs
 		}
 		name := ""
@@ -91,8 +100,12 @@ func OpenPostgresWithLimits(ctx context.Context, r storage.Registry, timeout tim
 		}
 		p.pools[c] = pool
 		p.order = append(p.order, pool)
-		if e = pool.Ping(ctx); e != nil {
-			return p, ErrPostgres
+		// Log pools connect lazily. Each source retries through its dispatcher;
+		// VerifiedLogs gates dual transactions before any read or write.
+		if i < 5 {
+			if e = ping(ctx, pool); e != nil {
+				return p, ErrPostgres
+			}
 		}
 	}
 	return p, nil
@@ -301,6 +314,7 @@ func postgresPoolConfig(dsn string, timeout time.Duration, maxConns int, process
 	cfg.ConnConfig.ConnectTimeout = timeout
 	cfg.MaxConns = int32(maxConns)
 	cfg.MinConns = 0
+	cfg.MinIdleConns = 0
 	cfg.ConnConfig.RuntimeParams["timezone"] = "UTC"
 	cfg.AfterConnect = func(_ context.Context, conn *pgx.Conn) error {
 		configureTimeCodecs(conn.TypeMap())

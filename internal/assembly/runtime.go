@@ -44,6 +44,7 @@ type Mail interface {
 type FileSet struct {
 	WorkerExclusive  bool
 	Journal          observability.Journal
+	UpstreamJournal  observability.Journal
 	Staging, Targets *staging.QuotaFiles
 	close            func(context.Context) error
 }
@@ -63,20 +64,23 @@ type Factories struct {
 	Mail     func(context.Context, config.Runtime) (Mail, error)
 }
 type Runtime struct {
-	ProcessID string
-	Database  Database
-	Redis     Redis
-	Files     *FileSet
-	Source    Source
-	Mail      Mail
-	Control   control.Repository
-	Active    publication.Atomic
-	Cache     cache.Redis
-	Sanitizer *observability.Sanitizer
-	Logs      *observability.Buffer
-	manager   *lifecycle.Manager
-	once      sync.Once
-	closed    error
+	ProcessID    string
+	Database     Database
+	Redis        Redis
+	Files        *FileSet
+	Source       Source
+	Mail         Mail
+	Control      control.Repository
+	Active       publication.Atomic
+	Cache        cache.Redis
+	Sanitizer    *observability.Sanitizer
+	Logs         *observability.Buffer
+	UpstreamLogs *observability.Buffer
+	LogSink      observability.SafeSink
+	LogDatabase  storage.Database
+	manager      *lifecycle.Manager
+	once         sync.Once
+	closed       error
 }
 
 func RealFactories() Factories {
@@ -158,7 +162,7 @@ func Open(ctx context.Context, c config.Runtime, f Factories) (*Runtime, []lifec
 			if v == nil {
 				return nil, e
 			}
-			if e == nil && (v.close == nil || v.Journal == nil || c.Service.Role == config.Worker && (v.Staging == nil || v.Targets == nil)) {
+			if e == nil && (v.close == nil || v.Journal == nil || c.Databases.LogMode() == storage.DualLogs && v.UpstreamJournal == nil || c.Service.Role == config.Worker && (v.Staging == nil || v.Targets == nil)) {
 				e = errors.New("persistent file components missing")
 			}
 			return v, e
@@ -189,6 +193,25 @@ func Open(ctx context.Context, c config.Runtime, f Factories) (*Runtime, []lifec
 		return fail()
 	}
 	r.Logs, e = observability.NewBuffer(q, r.Sanitizer, 100, 1<<20)
+	r.LogDatabase = r.Database
+	if c.Databases.LogMode() == storage.DualLogs {
+		r.Logs, e = observability.NewSourceBuffer(storage.PlatformLog, q, r.Sanitizer, 100, 1<<20)
+		if e != nil {
+			return fail()
+		}
+		upstreamQuota, err := observability.NewQuota(r.Files.UpstreamJournal, observability.CapacityConfig{MaxBytes: c.UpstreamLogBytes, MaxFiles: c.UpstreamLogFiles, WarningPercent: 80, Policy: observability.RejectNew})
+		if err != nil {
+			return fail()
+		}
+		r.UpstreamLogs, e = observability.NewSourceBuffer(storage.UpstreamLog, upstreamQuota, r.Sanitizer, 100, 1<<20)
+		if e != nil {
+			return fail()
+		}
+		r.LogSink, e = observability.NewRouter(r.Logs, r.UpstreamLogs)
+		r.LogDatabase = storage.VerifiedLogs{Registry: c.Databases, Database: r.Database}
+	} else {
+		r.LogSink = r.Logs
+	}
 	if e != nil {
 		return fail()
 	}

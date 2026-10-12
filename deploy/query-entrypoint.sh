@@ -17,6 +17,12 @@ while [ "$slot" -le 32 ]; do
         fi
         mkdir -p "$LOG_DIRECTORY"
         export LOG_DIRECTORY
+		if [ "${LOG_STORAGE_MODE:-single_legacy}" = dual ]; then
+			: "${UPSTREAM_LOG_DIRECTORY:?UPSTREAM_LOG_DIRECTORY is required}"
+			if [ "$slot" -ne 1 ]; then UPSTREAM_LOG_DIRECTORY="$root/upstream-$slot"; fi
+			mkdir -p "$UPSTREAM_LOG_DIRECTORY"
+			export UPSTREAM_LOG_DIRECTORY
+		fi
         # exec preserves FD 9: the kernel releases the lock only on process exit.
         # Never delete the lock file; a replacement inode would permit two owners.
         if [ "$#" -eq 0 ]; then set -- /usr/local/bin/service; fi

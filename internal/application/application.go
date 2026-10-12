@@ -50,6 +50,7 @@ type Application struct {
 	Engine       *worker.Engine
 	Flights      *cache.Coalescer
 	Logs         *observability.Dispatcher
+	UpstreamLogs *observability.Dispatcher
 	Sender       *notification.Sender
 	runtime      *assembly.Runtime
 	config       config.Runtime
@@ -64,10 +65,22 @@ type Application struct {
 }
 
 func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
+	if r == nil {
+		return nil, errors.New("runtime missing")
+	}
+	if c.Databases.LogMode() == storage.DualLogs {
+		if _, ok := r.LogDatabase.(storage.VerifiedLogs); !ok || r.LogSink == nil || r.UpstreamLogs == nil {
+			return nil, errors.New("dual log runtime incomplete")
+		}
+	}
 	a = &Application{runtime: r, config: c, done: make(chan struct{})}
 	a.routes = runtimecontrol.Routes{Registry: c.Databases, Database: r.Database, ActiveReader: r.Active}
 	clock := utcClock{}
-	guard, e := observability.NewGuard(r.Sanitizer, r.Logs)
+	sink := r.LogSink
+	if sink == nil {
+		sink = r.Logs
+	}
+	guard, e := observability.NewGuard(r.Sanitizer, sink)
 	if e != nil {
 		return nil, e
 	}
@@ -75,9 +88,24 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 	if e != nil {
 		return nil, e
 	}
-	a.Logs, e = observability.NewDispatcher(r.Logs, observability.Repository{Registry: c.Databases, Database: r.Database}, observability.SystemTimer{}, observability.DispatchConfig{MaxWait: time.Second, RetryWait: time.Second, Timeout: c.DependencyTimeout, BatchBytes: 1 << 20})
+	logDB := r.LogDatabase
+	if logDB == nil {
+		logDB = r.Database
+	}
+	platformSource := storage.LogSource("")
+	if c.Databases.LogMode() == storage.DualLogs {
+		platformSource = storage.PlatformLog
+	}
+	dispatchConfig := observability.DispatchConfig{MaxWait: time.Second, RetryWait: time.Second, Timeout: c.DependencyTimeout, BatchBytes: 1 << 20}
+	a.Logs, e = observability.NewDispatcher(r.Logs, observability.Repository{Registry: c.Databases, Database: logDB, Source: platformSource}, observability.SystemTimer{}, dispatchConfig)
 	if e != nil {
 		return nil, e
+	}
+	if c.Databases.LogMode() == storage.DualLogs {
+		a.UpstreamLogs, e = observability.NewDispatcher(r.UpstreamLogs, observability.Repository{Registry: c.Databases, Database: logDB, Source: storage.UpstreamLog}, observability.SystemTimer{}, dispatchConfig)
+		if e != nil {
+			return nil, e
+		}
 	}
 	observe := func(error) { a.observations.Add(1) }
 	if c.Service.Role == config.Query {
@@ -161,7 +189,10 @@ func (a *Application) Start(ctx context.Context) {
 		go func() {
 			var group sync.WaitGroup
 			if a.Logs != nil {
-				group.Go(func() { _ = a.Logs.Run(ctx) })
+				go func() { _ = a.Logs.Run(ctx) }()
+			}
+			if a.UpstreamLogs != nil {
+				go func() { _ = a.UpstreamLogs.Run(ctx) }()
 			}
 			if a.Engine != nil {
 				group.Go(func() { a.Engine.Run(ctx, func(error) { a.observations.Add(1) }) })
@@ -216,14 +247,35 @@ func (a *Application) drain(ctx context.Context) error {
 	if a.Flights != nil {
 		err = errors.Join(err, a.Flights.Close(ctx))
 	}
-	if a.Logs != nil {
-		err = errors.Join(err, a.Logs.Close(ctx))
+	// Drain both sources concurrently under the same shutdown budget. A stalled
+	// target must not consume the healthy target's chance to acknowledge files.
+	results := make(chan error, 2)
+	count := 0
+	for _, d := range []*observability.Dispatcher{a.Logs, a.UpstreamLogs} {
+		if d != nil {
+			count++
+			go func() { results <- d.Close(ctx) }()
+		}
+	}
+	for i := 0; i < count; i++ {
+		err = errors.Join(err, <-results)
 	}
 	return err
 }
 func (a *Application) Status(ctx context.Context) map[string]bool {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
+	type logHealth struct {
+		source storage.LogSource
+		ready  bool
+	}
+	logResults := make(chan logHealth, 2)
+	_, dual := a.runtime.LogDatabase.(storage.VerifiedLogs)
+	if gate, ok := a.runtime.LogDatabase.(storage.VerifiedLogs); ok {
+		for _, source := range []storage.LogSource{storage.PlatformLog, storage.UpstreamLog} {
+			go func() { logResults <- logHealth{source, gate.Ready(ctx, source)} }()
+		}
+	}
 	dependencies := false
 	if pong, e := a.runtime.Redis.Do(ctx, "PING"); e == nil && pong == "PONG" {
 		tx, e := a.runtime.Database.Begin(ctx, a.config.Databases.Control())
@@ -241,7 +293,19 @@ func (a *Application) Status(ctx context.Context) map[string]bool {
 	}
 	query := a.queryReady(ctx)
 	sync := dependencies && a.Engine != nil && a.Engine.Ready(ctx)
-	return map[string]bool{"dependencies_ready": dependencies, "query_ready": query, "sync_ready": sync}
+	status := map[string]bool{"dependencies_ready": dependencies, "query_ready": query, "sync_ready": sync, "log_single_legacy": a.config.Databases.LogMode() == storage.SingleLegacy}
+	if dual {
+		status["platform_log_ready"], status["upstream_log_ready"] = false, false
+		for i := 0; i < 2; i++ {
+			select {
+			case h := <-logResults:
+				status[string(h.source)+"_log_ready"] = h.ready
+			case <-ctx.Done():
+				return status
+			}
+		}
+	}
+	return status
 }
 func (a *Application) queryReady(ctx context.Context) bool {
 	h, err := a.routes.Active(ctx)

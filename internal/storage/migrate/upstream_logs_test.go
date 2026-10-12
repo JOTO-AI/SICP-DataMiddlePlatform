@@ -127,7 +127,7 @@ func TestT28_04IndependentLogLedgersReplayAndConflict(t *testing.T) {
 		}
 	}
 	upstream, _ := r.LogConnection(storage.UpstreamLog)
-	if len(db.items[r.Logs()].ledger) != 3 || len(db.items[upstream].ledger) != 1 {
+	if len(db.items[r.Logs()].ledger) != 4 || len(db.items[upstream].ledger) != 2 {
 		t.Fatal("logs share a ledger")
 	}
 	if _, ok := db.items[upstream].ledger["upstream_logs_001"]; !ok {
@@ -177,7 +177,7 @@ func TestT28_04WrongTargetAliasAndChangedBackendRefuseDDL(t *testing.T) {
 
 func TestT28_04MigrationSchemaPermissionsAndErrorsAreBounded(t *testing.T) {
 	plan, err := migrate.Catalog(migrate.UpstreamLogs)
-	if err != nil || len(plan) != 1 || plan[0].Version != "upstream_logs_001" {
+	if err != nil || len(plan) != 2 || plan[0].Version != "upstream_logs_001" {
 		t.Fatal("wrong upstream catalog", err)
 	}
 	for _, required := range []string{"CREATE SCHEMA logs;", "kind IN ('call','attempt')", "GRANT SELECT ON logs.events TO sicp_upstream_reader;", "GRANT SELECT, INSERT ON logs.events TO sicp_upstream_logger;"} {

@@ -2,6 +2,9 @@ package storage
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"strconv"
 	"time"
@@ -40,10 +43,51 @@ func readDatabaseIdentity(ctx context.Context, executor Executor, c Connection) 
 }
 
 // LogIsolation is a short-lived deployment proof, not a service readiness flag.
-// It must not be persisted or reused after reconnect/reconfiguration. Runtime
-// per-source verification and degraded startup are assembled in P28.03.
+// It must not be reused after reconnect/reconfiguration. Attest rechecks the
+// current transaction before creating a separate deployment identity record.
 type LogIsolation struct {
 	identities map[Connection]databaseIdentity
+}
+
+// LogTopology excludes credentials, so credential rotation cannot invalidate
+// deployment identity. Changing any configured target requires new preflight.
+func (r Registry) LogTopology() string {
+	var targets []string
+	for _, instance := range []Instance{Main, Standby} {
+		for slot := 0; slot < 2; slot++ {
+			c, e := r.Business(Position{Instance: instance, Slot: slot})
+			if e != nil {
+				return ""
+			}
+			targets = append(targets, c.endpoint, c.database)
+		}
+	}
+	for _, c := range []Connection{r.control, r.logs, r.upstreamLogs} {
+		targets = append(targets, c.endpoint, c.database)
+	}
+	body, _ := json.Marshal(targets)
+	digest := sha256.Sum256(body)
+	return hex.EncodeToString(digest[:])
+}
+
+// Attest is called by the provisioning migration transaction after DDL. Writers
+// cannot alter this record or execute pg_control_system themselves. Runtime
+// checks a narrowly granted SECURITY DEFINER function on each acquired backend.
+func (v LogIsolation) Attest(ctx context.Context, tx Executor, r Registry, source LogSource) error {
+	c, err := r.LogConnection(source)
+	if err != nil {
+		return ErrLogIdentity
+	}
+	if err = v.Match(ctx, tx, c); err != nil {
+		return err
+	}
+	id := v.identities[c]
+	_, err = tx.Exec(ctx, `INSERT INTO logs.deployment_identity (singleton,source,cluster_id,database_oid,topology) VALUES (true,$1,$2,$3,$4)
+ON CONFLICT (singleton) DO UPDATE SET source=EXCLUDED.source,cluster_id=EXCLUDED.cluster_id,database_oid=EXCLUDED.database_oid,topology=EXCLUDED.topology`, string(source), id.cluster, id.oid, r.LogTopology())
+	if err != nil {
+		return ErrLogIdentity
+	}
+	return nil
 }
 
 func (LogIsolation) String() string     { return "[log database identities redacted]" }

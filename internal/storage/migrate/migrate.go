@@ -63,7 +63,10 @@ func Catalog(domain Domain) ([]Migration, error) {
 	}
 	versions := []string{string(domain) + "_001"}
 	if domain == Logs {
-		versions = append(versions, "logs_002", "logs_003")
+		versions = append(versions, "logs_002", "logs_003", "logs_004")
+	}
+	if domain == UpstreamLogs {
+		versions = append(versions, "upstream_logs_002")
 	}
 	if domain == Business {
 		versions = append(versions, "business_002", "business_003", "business_004")
@@ -156,6 +159,15 @@ func Apply(ctx context.Context, db storage.Database, registry storage.Registry, 
 			return 0, fmt.Errorf("record migration failed")
 		}
 		applied++
+	}
+	if verify {
+		source := storage.PlatformLog
+		if target.Domain == UpstreamLogs {
+			source = storage.UpstreamLog
+		}
+		if err := isolation.Attest(ctx, tx, registry, source); err != nil {
+			return 0, err
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return 0, fmt.Errorf("commit migration failed")

@@ -2,7 +2,7 @@
 name: ${SICP_PROJECT:-sicp-production}
 
 x-database-environment: &database-environment
-  # Explicit compatibility mode until the independent log pipelines are assembled.
+  # Dual deployments add compose.dual-logs.yaml after draining legacy writers.
   LOG_STORAGE_MODE: "${LOG_STORAGE_MODE-single_legacy}"
   DATABASE_M0_URL: "${DATABASE_M0_URL:?Set DATABASE_M0_URL in .env (copy .env.example)}"
   DATABASE_M1_URL: "${DATABASE_M1_URL:?Set DATABASE_M1_URL in .env (copy .env.example)}"
@@ -143,7 +143,6 @@ services:
     entrypoint: [/bin/sh, /usr/local/bin/query-entrypoint.sh]
     depends_on:
       volumes: {condition: service_completed_successfully}
-      migrate: {condition: service_completed_successfully}
       redis: {condition: service_healthy}
     networks: [sicp, ingress]
     build: {context: ., dockerfile: deploy/Dockerfile, args: {SERVICE: query-service}}
@@ -199,7 +198,6 @@ services:
     <<: *service
     depends_on:
       volumes: {condition: service_completed_successfully}
-      migrate: {condition: service_completed_successfully}
       redis: {condition: service_healthy}
       mock: {condition: service_healthy, required: false}
     networks: [sicp, ingress]

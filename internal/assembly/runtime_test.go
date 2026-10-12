@@ -217,7 +217,7 @@ func TestT15_09MissingPersistentDirectoryFailsAndReleasesEarlierResources(t *tes
 	}
 }
 
-func TestT15_09FileAliasAndExistingOverQuotaFailWithoutDeletingData(t *testing.T) {
+func TestT15_09FileAliasRejectedAndOverQuotaRetainedWithoutStartupFailure(t *testing.T) {
 	for _, scenario := range []string{"alias", "quota"} {
 		t.Run(scenario, func(t *testing.T) {
 			c, _ := fixture(t)
@@ -236,8 +236,18 @@ func TestT15_09FileAliasAndExistingOverQuotaFailWithoutDeletingData(t *testing.T
 			}
 			var trace []string
 			r, _, e := Open(t.Context(), c, trackedFactories(&trace, ""))
-			if e == nil || r != nil {
+			if scenario == "alias" && (e == nil || r != nil) {
 				t.Fatal("unsafe file setup accepted")
+			}
+			if scenario == "quota" {
+				if e != nil || r == nil {
+					t.Fatal("full log quota blocked business startup")
+				}
+				ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+				defer cancel()
+				if r.Close(ctx) != nil {
+					t.Fatal("cleanup")
+				}
 			}
 			if b, e := os.ReadFile(marker); e != nil || len(b) != 2048 {
 				t.Fatal("existing data removed", e)
