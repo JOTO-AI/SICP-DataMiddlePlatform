@@ -45,10 +45,34 @@ func items(t *testing.T, data map[string]any, total int) []any {
 	values, ok := data["items"].([]any)
 	stamp, isString := data["synced_at"].(string)
 	_, err := time.Parse(time.RFC3339Nano, stamp)
-	if len(data) != 3 || data["total"] != float64(total) || !ok || !isString || err != nil {
+	if data["total"] != float64(total) || !ok || !isString || err != nil {
 		t.Fatalf("invalid data envelope: %#v", data)
 	}
 	return values
+}
+
+// Assert the operation-specific echoed identity and the complete data shape.
+func echo(t *testing.T, data map[string]any, op contract.Operation, body string) {
+	t.Helper()
+	fields := []string{}
+	switch op {
+	case contract.StaffTeachingClasses:
+		fields = []string{"staff_number", "academic_year", "semester"}
+	case contract.TeachingClassStudents:
+		fields = []string{"teaching_class_number", "planned_course_code", "academic_year", "semester"}
+	}
+	var request map[string]any
+	if err := json.Unmarshal([]byte(body), &request); err != nil {
+		t.Fatal(err)
+	}
+	if len(data) != 3+len(fields) {
+		t.Fatal("unexpected response fields", data)
+	}
+	for _, field := range fields {
+		if request[field] == nil || data[field] != request[field] {
+			t.Fatal("wrong identity echo", field, data)
+		}
+	}
 }
 
 func exact(t *testing.T, q Query, op contract.Operation, body, expected string) {
@@ -58,11 +82,13 @@ func exact(t *testing.T, q Query, op contract.Operation, body, expected string) 
 		t.Fatal(err)
 	}
 	data, token := q(op, body, "")
+	echo(t, data, op, body)
 	if token == "" || !reflect.DeepEqual(items(t, data, len(want)), want) {
 		t.Fatalf("%s %s: got %#v, want %#v", op, body, data, want)
 	}
 	// Read the same published snapshot through the hot-cache path as well.
 	hot, next := q(op, body, token)
+	echo(t, hot, op, body)
 	if next != token || !reflect.DeepEqual(items(t, hot, len(want)), want) {
 		t.Fatal("cached snapshot differs", hot)
 	}
@@ -85,6 +111,7 @@ func pages(t *testing.T, q Query, op contract.Operation, body, field string, exp
 			t.Fatal(err)
 		}
 		data, next := q(op, string(raw), token)
+		echo(t, data, op, string(raw))
 		if next == "" || token != "" && next != token {
 			t.Fatal("snapshot changed")
 		}

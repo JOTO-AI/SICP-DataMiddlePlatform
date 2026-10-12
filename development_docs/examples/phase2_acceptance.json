@@ -1,7 +1,7 @@
 {
   "schema": "phase2-acceptance-v1",
   "groups": {
-    "I07": ["TestI07_OriginalMockStaff", "TestI07_OriginalMockOrganizations", "TestI07_OriginalMockStudents", "TestI07_Phase2RealHTTPAssociations", "TestI03_01", "TestI03_02", "TestI03_12"],
+    "I07": ["TestI07_OriginalMockClasses", "TestI07_OriginalMockStaff", "TestI07_OriginalMockOrganizations", "TestI07_OriginalMockStudents", "TestI07_Phase2RealHTTPAssociations", "TestI03_01", "TestI03_02", "TestI03_12"],
     "I08": ["TestI08_Phase2PaginationAndAtomicClient"],
     "I09": ["TestI09_Phase2CachePublicationAndOldSnapshots", "TestI03_08", "TestI03_09", "TestI04_09", "TestI04_10"],
     "I10": ["TestI10_Phase2AuthenticationAndInvalidSources", "TestI03_03", "TestI03_06", "TestI03_07", "TestI03_10", "TestI03_11"],

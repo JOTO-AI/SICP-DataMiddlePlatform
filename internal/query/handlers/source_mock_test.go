@@ -45,3 +45,7 @@ func TestT26_02OriginalMockOrganizations(t *testing.T) {
 func TestT26_03OriginalMockStaff(t *testing.T) {
 	querymock.Staff(t, originalMockQuery(t))
 }
+
+func TestT26_04OriginalMockClasses(t *testing.T) {
+	querymock.Classes(t, originalMockQuery(t))
+}

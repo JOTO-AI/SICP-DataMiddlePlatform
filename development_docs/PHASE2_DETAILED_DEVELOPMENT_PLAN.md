@@ -261,7 +261,7 @@ P 复选框表示实现、测试代码及复核完成；T 仅表示对应测试�
     - [x] **P26.01：学生信息。** 原始 Mock 的真实 Pipeline 和 PostgreSQL/Redis/HTTP 验收入口；完整字段、年月转换、联系方式空白、精确筛选、全量/行政班分页、冷热缓存与快照。T25-08 / I07_OriginalMockStudents，执行待验。
     - [x] **P26.02：组织机构。** 原始 Mock 的树关系、根父值、停用状态、筛选和分页；T26-02 / I07_OriginalMockOrganizations 已编写，code review 完成，执行待验。
     - [x] **P26.03：教职工。** 原始 Mock 的完整字段、重复手机号、原始邮箱、状态及分页；T26-03 / I07_OriginalMockStaff 已编写，code review 完成，执行待验。
-    - [ ] **P26.04：教师教学班。** 原始 Mock 的工号完整匹配、合班教师、课程与人数和分页。
+    - [x] **P26.04：教师教学班。** 原始 Mock 的工号完整匹配、合班教师、课程与人数和分页；T26-04 / I07_OriginalMockClasses 已编写，code review 完成，执行待验。
     - [ ] **P26.05：教学班成员。** 原始 Mock 的实际成员、行政归属、分页及与教师教学班人数对照。
 
 ## 3. 单元测试
