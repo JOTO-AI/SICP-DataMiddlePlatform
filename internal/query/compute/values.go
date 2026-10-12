@@ -97,3 +97,13 @@ func Optional(row source.SourceRow, key string) (string, error) {
 	}
 	return *v, nil
 }
+
+// NullableText maps absent/null/blank optional fields to null, while preserving
+// every character of a present nonblank value (including contact formatting).
+func NullableText(row source.SourceRow, key string) (*string, error) {
+	value, err := Optional(row, key)
+	if err != nil || value == "" {
+		return nil, err
+	}
+	return &value, nil
+}
