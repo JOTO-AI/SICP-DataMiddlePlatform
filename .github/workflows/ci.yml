@@ -152,7 +152,7 @@ jobs:
     # Upload failures still fail the overall workflow and are never suppressed.
     if: ${{ always() && needs.unit.outputs.validated == 'true' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
@@ -189,6 +189,11 @@ jobs:
             result=${PIPESTATUS[0]}
             printf '%s\n' "$result" > "artifacts/integration/$group-exit-code.txt"
             if ((result != 0)); then exit "$result"; fi
+          done
+      - name: Run phase two acceptance with explicit evidence checks
+        run: |
+          for group in I07 I08 I09 I10 I11; do
+            python3 scripts/phase2_acceptance.py "$group"
           done
       - name: Collect dependency logs and remove isolated volumes
         if: always()

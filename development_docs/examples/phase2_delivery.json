@@ -1,0 +1,136 @@
+{
+  "schema": "phase2-delivery-v1",
+  "operations": [
+    {
+      "operation": "organizations.query",
+      "path": "/api/v1/sicp/organizations/query",
+      "default_page_size": 1000,
+      "snapshot": true,
+      "dependencies": [
+        "dwd_yxsdwjbsjzlb"
+      ]
+    },
+    {
+      "operation": "students.query",
+      "path": "/api/v1/sicp/students/query",
+      "default_page_size": 1000,
+      "snapshot": true,
+      "dependencies": [
+        "dwd_bzksjbsjzlb",
+        "dwd_bzksxjjbsjzlb",
+        "dwd_bzksgrtxsjzlb",
+        "dwd_yxsdwjbsjzlb",
+        "dwd_xqjbsjzlb",
+        "dwd_bzkszyxxsjzlb",
+        "dwd_bzksbjsjzlb",
+        "dwd_jzgjcsjzlb"
+      ]
+    },
+    {
+      "operation": "staff.query",
+      "path": "/api/v1/sicp/staff/query",
+      "default_page_size": 1000,
+      "snapshot": true,
+      "dependencies": [
+        "dwd_jzgjcsjzlb",
+        "dwd_grtxfszlb",
+        "dwd_yxsdwjbsjzlb"
+      ]
+    },
+    {
+      "operation": "students.grades.query",
+      "path": "/api/v1/sicp/students/grades/query",
+      "default_page_size": 100,
+      "snapshot": true,
+      "dependencies": [
+        "dwd_bzkscjzlb",
+        "dwd_bzksjbsjzlb",
+        "dwd_bzksxjjbsjzlb",
+        "dwd_bzkskcsjzlb",
+        "dwd_yxsdwjbsjzlb",
+        "dwd_bzksbjsjzlb"
+      ]
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "path": "/api/v1/sicp/students/grades/batch-query",
+      "default_page_size": 100,
+      "snapshot": true,
+      "dependencies": [
+        "dwd_bzkscjzlb",
+        "dwd_bzksjbsjzlb",
+        "dwd_bzksxjjbsjzlb",
+        "dwd_bzkskcsjzlb",
+        "dwd_yxsdwjbsjzlb",
+        "dwd_bzksbjsjzlb"
+      ]
+    },
+    {
+      "operation": "students.timetable.query",
+      "path": "/api/v1/sicp/students/timetable/query",
+      "default_page_size": null,
+      "snapshot": false,
+      "dependencies": [
+        "dwd_bzkspksjzlb",
+        "dwd_bzkskbsjzlb",
+        "dwd_bzkskcsjzlb"
+      ]
+    },
+    {
+      "operation": "staff.timetable.query",
+      "path": "/api/v1/sicp/staff/timetable/query",
+      "default_page_size": null,
+      "snapshot": false,
+      "dependencies": [
+        "dwd_bzkspksjzlb",
+        "dwd_bzkskcsjzlb"
+      ]
+    },
+    {
+      "operation": "staff.teaching-classes.query",
+      "path": "/api/v1/sicp/staff/teaching-classes/query",
+      "default_page_size": 100,
+      "snapshot": true,
+      "dependencies": [
+        "dwd_bzkspksjzlb",
+        "dwd_bzkskcsjzlb",
+        "dwd_jzgjcsjzlb",
+        "dwd_bzkskbsjzlb"
+      ]
+    },
+    {
+      "operation": "teaching-classes.students.query",
+      "path": "/api/v1/sicp/teaching-classes/students/query",
+      "default_page_size": 100,
+      "snapshot": true,
+      "dependencies": [
+        "dwd_bzkspksjzlb",
+        "dwd_bzkskbsjzlb",
+        "dwd_bzksjbsjzlb",
+        "dwd_bzksxjjbsjzlb",
+        "dwd_yxsdwjbsjzlb",
+        "dwd_bzksbjsjzlb"
+      ]
+    }
+  ],
+  "business_migrations": [
+    "business_001",
+    "business_002",
+    "business_003",
+    "business_004"
+  ],
+  "capacity": {
+    "QUERY_MAX_EXECUTIONS": 8,
+    "QUERY_MAX_QUEUE": 64,
+    "QUERY_EXECUTION_TIMEOUT": "30s",
+    "QUERY_DB_BUSINESS_MAX_CONNS": 16,
+    "QUERY_DB_CONTROL_MAX_CONNS": 16,
+    "QUERY_DB_LOG_MAX_CONNS": 16
+  },
+  "rollback": {
+    "keep_additive_indexes": true,
+    "keep_migration_ledger": true,
+    "previous_image_required": true,
+    "old_image_serves_new_operations": false
+  }
+}

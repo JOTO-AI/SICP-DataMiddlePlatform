@@ -2,6 +2,8 @@
 
 第一阶段 P01—P15 已实现：四个业务查询接口、十四类源采集、双份构建与发布、增量/强制全量、未决恢复、日志通知、独立管理认证及 Linux 部署。单元测试和 I01—I06 集成测试在 GitHub Actions Linux runner 上串行验收，结果见[第一阶段验收报告](development_docs/PHASE1_ACCEPTANCE.md)。
 
+第二阶段 P16—P25 已补齐组织、学生、教职工、教师教学班与班级成员，正式装配九接口。调用示例与 8→9 同版本同步见[联调指南](development_docs/PHASE2_CALLING_GUIDE.md)；升级须先完成四槽位 business_004，见[升级与验收说明](development_docs/PHASE2_ROLLOUT.md)。当前已完成开发与静态复核，用户暂时豁免 CI 等待，新测试及 I07—I11 实际结果仍待核验，不代表已部署或容量达标。
+
 ## Docker Compose 一键部署
 
 要求 Docker Engine 或 Docker Desktop（Linux 容器模式），Compose ≥ 2.30；镜像使用 linux/amd64。无需本机安装 Go、Node.js 或 Bash，Windows PowerShell 也可运行。在仓库根目录执行：

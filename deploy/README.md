@@ -123,6 +123,8 @@ GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 
 
 构建专项新增 business_003 事务索引迁移、worker MAINTAIN 权限、BUILD_CHECK_TIMEOUT 与 BUILD_IMPORT_MODE；请按[专项升级与回退说明](../development_docs/BUILD_TO_READY_ROLLOUT.md)安排窗口。COPY 默认启用，额外数据库并发未启用，完整容量验收尚未完成。
 
+第二阶段九接口另追加 business_004，必须在 M0/M1/S0/S1 全部迁移完成后启用新版 query/worker；沿用源表、只读权限和旧证据目录。回退保留新增索引与 ledger，旧镜像不提供五新接口。完整步骤、冻结容量、测试入口及尚缺的实际证据见[第二阶段升级与回退](../development_docs/PHASE2_ROLLOUT.md)。
+
 
 ### 构建后的逐表检查
 

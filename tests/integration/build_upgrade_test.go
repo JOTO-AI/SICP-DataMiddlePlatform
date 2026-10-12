@@ -14,7 +14,7 @@ import (
 func TestI01_B10ExistingDataUpgradeRollbackAndRetry(t *testing.T) {
 	e := newEnvironment(t)
 	plan, err := migrate.Catalog(migrate.Business)
-	if err != nil || len(plan) != 3 {
+	if err != nil || len(plan) != 4 {
 		t.Fatal("unexpected migration catalog", err)
 	}
 	repo := source.Repository{Registry: e.registry, Database: adapters.QueryDatabase{Database: e.db}}
@@ -42,7 +42,7 @@ func TestI01_B10ExistingDataUpgradeRollbackAndRetry(t *testing.T) {
 		if _, err := conn.Exec(e.ctx, `DROP INDEX source.dwd_bzkscjzlb_cursor_c`); err != nil {
 			t.Fatal(err)
 		}
-		if n, err := migrate.Apply(e.ctx, e.db, e.registry, target, plan); err != nil || n != 1 {
+		if n, err := migrate.Apply(e.ctx, e.db, e.registry, target, plan); err != nil || n != 2 {
 			t.Fatal("retry failed", n, err)
 		}
 		if n, err := migrate.Apply(e.ctx, e.db, e.registry, target, plan); err != nil || n != 0 {
