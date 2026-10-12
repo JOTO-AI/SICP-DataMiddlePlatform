@@ -37,7 +37,7 @@ func requestSnapshot(header http.Header, op contract.Operation, enabled bool) (s
 	if !present {
 		return "", nil
 	}
-	if !enabled || op != contract.StudentGrades && op != contract.BatchGrades {
+	if !enabled || !contract.SupportsSnapshot(op) {
 		return "", &Failure{Category: contract.InvalidArgument}
 	}
 	if len(values) != 1 || !validSnapshot(values[0]) {

@@ -21,6 +21,16 @@ type Definition struct {
 	PendingRules []string
 }
 
+// SupportsSnapshot is a capability catalog, not a list of registered routes.
+func SupportsSnapshot(op Operation) bool {
+	switch op {
+	case StudentGrades, BatchGrades, Organizations, Students, Staff, StaffTeachingClasses, TeachingClassStudents:
+		return true
+	default:
+		return false
+	}
+}
+
 // Definitions returns fresh values to keep callers from mutating the catalog.
 func Definitions() []Definition {
 	return []Definition{

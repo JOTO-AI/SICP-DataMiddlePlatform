@@ -35,12 +35,9 @@ func business(op contract.Operation, key string, recorder *events.Recorder, obse
 	if recorder == nil || observe == nil || run == nil {
 		return nil, errors.New("query dependencies required")
 	}
-	known := false
-	for _, d := range contract.Definitions() {
-		if d.Operation == op {
-			known = true
-		}
-	}
+	// Capability permits injection for isolated tests and staged implementation;
+	// production registration remains controlled by Definitions and assembly.
+	known := contract.SupportsSnapshot(op) || op == contract.StudentTimetable || op == contract.StaffTimetable
 	if !known {
 		return nil, errors.New("unknown query operation")
 	}
@@ -85,7 +82,7 @@ func business(op contract.Operation, key string, recorder *events.Recorder, obse
 				w.Header().Set(CombinationHeader, reply.Combination)
 			}
 			if reply.Snapshot != "" {
-				if !snapshots || op != contract.StudentGrades && op != contract.BatchGrades || !validSnapshot(reply.Snapshot) {
+				if !snapshots || !contract.SupportsSnapshot(op) || !validSnapshot(reply.Snapshot) {
 					WriteFailure(w, r, &Failure{Category: contract.Internal})
 					return
 				}

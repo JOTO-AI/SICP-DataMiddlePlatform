@@ -49,7 +49,7 @@ func (p Pipeline) run(ctx context.Context, op contract.Operation, input any) (an
 	var h read.Handle
 	var token string
 	var err error
-	if op == contract.StudentGrades || op == contract.BatchGrades {
+	if contract.SupportsSnapshot(op) {
 		selection, selectErr := p.Snapshots.Select(ctx, op, input, transport.SnapshotToken(ctx))
 		if selectErr != nil {
 			return nil, selectErr

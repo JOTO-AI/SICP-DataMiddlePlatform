@@ -45,6 +45,36 @@ type Selection struct {
 func binding(bundle string, op contract.Operation, input any) (string, error) {
 	page := 1
 	switch req := input.(type) {
+	case contract.OrganizationsRequest:
+		if op != contract.Organizations {
+			return "", ErrSnapshot
+		}
+		req.Page = &page
+		return cache.Key(bundle, op, req)
+	case contract.StudentsRequest:
+		if op != contract.Students {
+			return "", ErrSnapshot
+		}
+		req.Page = &page
+		return cache.Key(bundle, op, req)
+	case contract.StaffRequest:
+		if op != contract.Staff {
+			return "", ErrSnapshot
+		}
+		req.Page = &page
+		return cache.Key(bundle, op, req)
+	case contract.StaffTeachingClassesRequest:
+		if op != contract.StaffTeachingClasses {
+			return "", ErrSnapshot
+		}
+		req.Page = &page
+		return cache.Key(bundle, op, req)
+	case contract.TeachingClassStudentsRequest:
+		if op != contract.TeachingClassStudents {
+			return "", ErrSnapshot
+		}
+		req.Page = &page
+		return cache.Key(bundle, op, req)
 	case contract.StudentGradesRequest:
 		if op != contract.StudentGrades {
 			return "", ErrSnapshot
