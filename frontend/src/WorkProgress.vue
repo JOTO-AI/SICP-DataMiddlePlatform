@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { time } from './api'
+import { operationTitles as operations } from './queryOperations'
 import type { WorkProgress } from './workProgress'
 const props = defineProps<{ progress?: WorkProgress; status: string; startedAt?: string; finishedAt?: string }>()
 const now = ref(Date.now())
@@ -17,7 +18,6 @@ const labels: Record<string, string> = {
   publishing: '发布数据版本', confirming_progress: '确认同步进度',
   content_check: '核对数据库内容', business_check: '核对业务案例', index_check: '核对索引', draining: '等待旧读者退出',
 }
-const operations: Record<string, string> = { 'students.grades.query': '学生成绩', 'students.grades.batch-query': '批量成绩', 'students.timetable.query': '学生课表', 'staff.timetable.query': '教师课表' }
 const phase = computed(() => labels[props.progress?.phase || ''] || '处理数据')
 const title = computed(() => ended.value ? `${props.status === 'failed' ? '失败' : '结束'}前阶段：${phase.value}` : stale.value ? `最近阶段：${phase.value}` : `当前阶段：${phase.value}`)
 const endTime = computed(() => ended.value ? Date.parse(props.finishedAt || props.progress?.heartbeat_at || '') : now.value)

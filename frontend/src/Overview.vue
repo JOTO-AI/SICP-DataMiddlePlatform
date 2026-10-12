@@ -18,7 +18,7 @@ let active = false
 let generation = 0
 function current(run: number) { return active && run === generation }
 let timer: ReturnType<typeof setTimeout> | undefined
-const services = ref([{ id: 'query' as const, title: '业务查询服务', subtitle: '成绩与课表查询', live: null as boolean | null, ready: null as boolean | null, details: {} as Record<string, boolean>, error: '' }, { id: 'worker' as const, title: '数据更新服务', subtitle: '采集、构建与发布', live: null as boolean | null, ready: null as boolean | null, details: {} as Record<string, boolean>, error: '' }])
+const services = ref([{ id: 'query' as const, title: '业务查询服务', subtitle: '九类业务查询', live: null as boolean | null, ready: null as boolean | null, details: {} as Record<string, boolean>, error: '' }, { id: 'worker' as const, title: '数据更新服务', subtitle: '采集、构建与发布', live: null as boolean | null, ready: null as boolean | null, details: {} as Record<string, boolean>, error: '' }])
 const workerExecuting = computed(() => !!currentTask.value && services.value[1]!.live === true && !services.value[1]!.error && services.value[1]!.details.dependencies_ready !== false)
 async function refreshTask(run: number) {
   taskError.value = ''
@@ -63,7 +63,7 @@ onUnmounted(stop)
     <section v-if="currentTask" class="update-progress" aria-labelledby="update-progress-title">
       <div class="section-bar"><h2 id="update-progress-title" aria-live="polite">{{ activityTitle }}</h2><a href="#tasks">查看更新任务 →</a></div>
       <p>{{ currentTask.status === 'accepted' ? '任务已受理，等待后台开始执行。' : '任务正在后台执行，包括上游采集、构建与发布。完成后将自动刷新状态。' }}</p>
-      <p v-if="currentTask.mode === 'initialize' && !services[0]!.ready">首次初始化完成前，成绩与课表暂不可查询。</p>
+      <p v-if="currentTask.mode === 'initialize' && !services[0]!.ready">首次初始化完成前，业务数据暂不可查询。</p>
       <p v-else-if="services[0]!.ready">当前已发布数据仍可查询。</p>
       <p v-if="!workerExecuting" class="hint">更新服务状态异常或尚未确认，请结合下方检查结果判断任务是否仍在推进。</p>
       <div class="result-meta"><span v-if="currentTask.started_at">开始时间：{{ time(currentTask.started_at) }} · 已运行 {{ elapsed }}</span><span v-else>受理时间：{{ time(currentTask.accepted_at) }}</span><span>任务号：<code>{{ currentTask.task_id }}</code></span></div>
@@ -82,7 +82,7 @@ onUnmounted(stop)
       </article>
     </div>
     <div class="section-bar next-heading"><h2>常用操作</h2><span class="muted">从数据核验到更新追踪</span></div>
-    <div class="link-list"><a href="#queries"><span class="link-icon" aria-hidden="true">⌕</span><div><h3>查询成绩与课表</h3><p>学生成绩、批量成绩、学生课表与教师课表</p></div><span aria-hidden="true">→</span></a><a href="#tasks"><span class="link-icon" aria-hidden="true">↻</span><div><h3>管理数据更新</h3><p>自动更新记录、强制全量与失败任务重跑</p></div><span aria-hidden="true">→</span></a></div>
+    <div class="link-list"><a href="#queries"><span class="link-icon" aria-hidden="true">⌕</span><div><h3>查询业务数据</h3><p>组织、人员、成绩、课表与教学班</p></div><span aria-hidden="true">→</span></a><a href="#tasks"><span class="link-icon" aria-hidden="true">↻</span><div><h3>管理数据更新</h3><p>自动更新记录、强制全量与失败任务重跑</p></div><span aria-hidden="true">→</span></a></div>
     <div class="section-note"><h2>首次使用</h2><p>系统会自动初始化全新环境，并持续进行增量同步。可在更新任务中查看进度；数据就绪后即可查询。</p></div>
   </section>
 </template>

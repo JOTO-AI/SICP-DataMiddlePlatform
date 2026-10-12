@@ -1,4 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { operations, queryBody, cell } from '../src/queryOperations'
 
 test('BT09 real work, unknown totals, stalls and final timers', async ({ page }) => {
   const start = new Date('2026-10-08T08:00:00Z')
@@ -436,7 +438,7 @@ test('overview shows initialization and automatically becomes ready when it fini
   const progress = page.getByRole('region', { name: '正在初始化' })
   await expect(progress).toBeVisible()
   await expect(progress).toContainText('已运行')
-  await expect(progress).toContainText('首次初始化完成前，成绩与课表暂不可查询。')
+  await expect(progress).toContainText('首次初始化完成前，业务数据暂不可查询。')
   await expect(page.getByRole('article').filter({ hasText: '数据更新服务' }).locator('.tag')).toHaveText('正在初始化')
   await page.screenshot({ path: testInfo.outputPath('initializing-overview-desktop.png'), fullPage: true })
   await page.setViewportSize({ width: 390, height: 844 })
@@ -717,4 +719,99 @@ test('task page resumes while an old detail request is still pending', async ({ 
     await expect(page.locator('.task-detail .task-id')).toHaveText('selected-new-task')
     await expect(page.getByLabel('查找任务')).toHaveValue('selected-new-task')
   } finally { release() }
+})
+
+const phase2Queries = [
+  { title: '组织查询', path: '/organizations/query', fields: {}, advanced: { is_active: false }, expected: { is_active: false },
+    row: { organization_code: '10003', organization_name: '停用单位', parent_organization_code: null, category_name: null, is_active: false }, cell: '停用或未知' },
+  { title: '学生信息', path: '/students/query', fields: { '学号（可选）': '001' }, advanced: { study_years: 3, status_codes: ['unknown'] }, expected: { student_number: '001', study_years: 3, status_codes: ['unknown'] },
+    row: { student_number: '001', name: '<script>synthetic</script>', department: null, class_name: null, major_name: null, email: null, mobile: 'raw;value' }, cell: '<script>synthetic</script>' },
+  { title: '教职工信息', path: '/staff/query', fields: { '工号（可选）': 'T001' }, advanced: { status_codes: ['unknown'] }, expected: { staff_number: 'T001', status_codes: ['unknown'] },
+    row: { staff_number: 'T001', name: '合成教师', department: { organization_code: 'D001', organization_name: null }, status_code: 'unknown', email: null, mobile: 'raw;value' }, cell: 'D001' },
+  { title: '教师教学班', path: '/staff/teaching-classes/query', fields: { '工号 *': 'T001', '学年 *': '2026-2027' }, semester: true,
+    expected: { staff_number: 'T001', academic_year: '2026-2027', semester: '1' },
+    row: { teaching_class_number: 'J001', teaching_class_name: null, planned_course_code: 'C001', course_name: null, teachers: [{ staff_number: 'T001', name: null }], student_count: 0 }, cell: '0' },
+  { title: '教学班学生', path: '/teaching-classes/students/query', fields: { '教学班编号 *': 'J001', '计划课程编号 *': 'C001', '学年 *': '2026-2027' }, semester: true,
+    expected: { teaching_class_number: 'J001', planned_course_code: 'C001', academic_year: '2026-2027', semester: '1' },
+    row: { student_number: 'MISSING', name: null, department_code: null, department_name: null, class_code: null, class_name: null }, cell: 'MISSING' },
+]
+
+for (const entry of phase2Queries) {
+  test(`T25-UI ${entry.title} contract, null fields, pagination and mobile`, async ({ page }, testInfo) => {
+    await setup(page)
+    const requests: { body: any; headers: Record<string, string> }[] = []
+    let fail = false
+    await page.route(`**/console-api/query/api/v1/sicp${entry.path}`, async route => {
+      requests.push({ body: route.request().postDataJSON(), headers: route.request().headers() })
+      if (fail) return route.fulfill({ status: 409, json: { code: 'conflict', request_id: 'phase2-conflict', data: null } })
+      return route.fulfill({ headers: { 'X-Query-Snapshot': 'b'.repeat(64) }, json: { code: 'ok', data: { total: 21, synced_at: '2026-10-12T08:00:00Z', items: [entry.row] } } })
+    })
+    await page.getByRole('link', { name: '业务查询', exact: true }).click()
+    await expect(page.locator('[aria-label="查询接口"] button')).toHaveCount(9)
+    await page.getByRole('button', { name: entry.title, exact: true }).click()
+    for (const [label, value] of Object.entries(entry.fields)) await page.getByLabel(label, { exact: true }).fill(value!)
+    if (entry.semester) await page.getByLabel('学期 *', { exact: true }).selectOption('1')
+    else await expect(page.getByLabel(/^学年/)).toHaveCount(0)
+    if (entry.advanced) {
+      await page.getByText('高级筛选', { exact: true }).click()
+      await page.getByLabel('高级筛选 JSON').fill(JSON.stringify(entry.advanced))
+    }
+    await page.getByRole('button', { name: '查询数据', exact: true }).click()
+    await expect(page.getByRole('cell', { name: entry.cell, exact: true })).toBeVisible()
+    expect(requests[0]!.body).toEqual({ ...entry.expected, page: 1, page_size: 20 })
+    expect(requests[0]!.headers['x-api-key']).toBeUndefined()
+    expect(requests[0]!.headers['x-sicp-csrf']).toBe('synthetic-csrf')
+    await page.getByRole('button', { name: '下一页', exact: true }).click()
+    await expect(page.getByText('2 / 2', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '上一页', exact: true }).click()
+    await expect(page.getByText('1 / 2', { exact: true })).toBeVisible()
+    expect(requests.map(request => request.body.page)).toEqual([1, 2, 1])
+    expect(requests.map(request => request.headers['x-query-snapshot'])).toEqual([undefined, 'b'.repeat(64), 'b'.repeat(64)])
+    await page.setViewportSize({ width: 390, height: 844 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+    await page.screenshot({ path: testInfo.outputPath(`${entry.path.replaceAll('/', '-')}-mobile.png`), fullPage: true })
+    fail = true
+    await page.getByRole('button', { name: '下一页', exact: true }).click()
+    await expect(page.getByRole('alert')).toContainText('phase2-conflict')
+    await expect(page.getByRole('table')).toHaveCount(0)
+    fail = false
+    await page.getByRole('button', { name: '查询数据', exact: true }).click()
+    await expect(page.getByText('1 / 2', { exact: true })).toBeVisible()
+    expect(requests.at(-1)!.headers['x-query-snapshot']).toBeUndefined()
+  })
+}
+
+test('T25-UI directory matches backend and filters retain false, zero and identifiers', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../../development_docs/examples/phase2_delivery.json', import.meta.url), 'utf8'))
+  const actual = operations.map(op => `${op.operation} ${op.path}`).sort()
+  expect(actual).toEqual(manifest.operations.map((op: { operation: string; path: string }) => `${op.operation} ${op.path}`).sort())
+  for (const op of operations) expect(op.paginated).toBe(manifest.operations.find((item: { operation: string }) => item.operation === op.operation).snapshot)
+  const org = operations.find(op => op.kind === 'organizations')!
+  expect(queryBody(org, {}, '{"is_active":false}', 1000)).toEqual({ is_active: false, page: 1, page_size: 1000 })
+  expect(() => queryBody(org, {}, '{"staff_number":"not-allowed"}', 20)).toThrow()
+  expect(() => queryBody(operations.find(op => op.kind === 'members')!, {}, '{}', 20)).toThrow()
+  expect(cell({ student_count: 0 }, 'student_count')).toBe(0)
+  expect(cell({ department: null }, 'department.organization_code')).toBe('未提供')
+})
+
+test('T25-UI switching query clears incompatible fields, results and snapshot', async ({ page }) => {
+  await setup(page)
+  const requests: { path: string; body: any; snapshot?: string }[] = []
+  await page.route('**/console-api/query/api/v1/sicp/**', route => {
+    requests.push({ path: new URL(route.request().url()).pathname, body: route.request().postDataJSON(), snapshot: route.request().headers()['x-query-snapshot'] })
+    return route.fulfill({ headers: { 'X-Query-Snapshot': 'c'.repeat(64) }, json: { code: 'ok', data: { total: 0, synced_at: '2026-10-12T08:00:00Z', items: [] } } })
+  })
+  await page.getByRole('link', { name: '业务查询', exact: true }).click()
+  await page.getByRole('button', { name: '教师教学班', exact: true }).click()
+  await page.getByLabel('工号 *', { exact: true }).fill('T001')
+  await page.getByLabel('学年 *', { exact: true }).fill('2026-2027')
+  await page.getByLabel('学期 *', { exact: true }).selectOption('1')
+  await page.getByRole('button', { name: '查询数据', exact: true }).click()
+  await expect(page.getByText('没有符合条件的数据，请调整筛选条件后重新查询。')).toBeVisible()
+  await page.getByRole('button', { name: '教职工信息', exact: true }).click()
+  await expect(page.getByLabel('工号（可选）', { exact: true })).toHaveValue('')
+  await page.getByRole('button', { name: '查询数据', exact: true }).click()
+  await expect(page.getByText('没有符合条件的数据，请调整筛选条件后重新查询。')).toBeVisible()
+  expect(requests[1]!.body).toEqual({ page: 1, page_size: 20 })
+  expect(requests[1]!.snapshot).toBeUndefined()
 })

@@ -10,7 +10,7 @@ product
 
 ## Product Purpose
 
-为已完成的 Phase 1 提供简易中文操作入口，以真实 HTTP 接口返回作为状态依据。
+为已实现的九接口业务查询与更新管理提供中文操作入口，以真实 HTTP 接口返回作为状态依据。
 
 ## Brand Personality
 
