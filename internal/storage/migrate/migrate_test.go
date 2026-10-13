@@ -287,7 +287,7 @@ func TestT15_10WorkerValidationUsesQueryRoleAndRoutesHaveReadOnlyEvidence(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	grant := control[len(control)-1].SQL
+	grant := control[5].SQL
 	if !strings.Contains(grant, "ON control.candidates TO sicp_query") || !strings.Contains(grant, "evidence") {
 		t.Fatal("missing query route evidence grant")
 	}

@@ -45,6 +45,7 @@ func TestT34_06And12AmbiguousCleanupRecoversReceiptBeforePolicy(t *testing.T) {
 						*d[0].(*string), *d[1].(*string), *d[2].(*storage.LogSource) = "preview", "actor", storage.PlatformLog
 						*d[3].(*int64), *d[4].(*string), *d[5].(*int64), *d[6].(*int64), *d[7].(*int64) = 1, "epoch", 0, 7, 7
 						*d[8].(*time.Time), *d[9].(*time.Time) = now.Add(-30*24*time.Hour), now.Add(-time.Minute)
+						*d[10].(*string) = "[]"
 						return nil
 					})
 				case strings.Contains(q, "control.retention_settings"):

@@ -29,7 +29,8 @@ func MountMaintenance(mux *http.ServeMux, auth *Sessions, m operations.Maintenan
 				out["retention"], out["retention_state"] = s, "available"
 			}
 			out["log_storage_mode"] = m.Repository.Registry.LogMode()
-			out["cleanup_protection"] = "control_linked_events_permanently_protected"
+			out["cleanup_protection"] = "durable_reference_retirement"
+			out["cleanup_objects"] = []string{"request", "task", "step", "call", "attempt", "audit"}
 			out["runtime_fields"] = []string{"retention", "notification_settings"}
 			out["deployment_fields"] = []string{"credentials", "log_capacity", "connection_limits", "snapshot_key"}
 			respond(w, 200, "ok", "", out)

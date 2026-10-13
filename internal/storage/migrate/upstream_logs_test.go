@@ -141,7 +141,7 @@ func checkLogLedgers(t *testing.T, r storage.Registry) {
 		}
 	}
 	upstream, _ := r.LogConnection(storage.UpstreamLog)
-	if len(db.items[r.Logs()].ledger) != 7 || len(db.items[upstream].ledger) != 6 {
+	if len(db.items[r.Logs()].ledger) != 9 || len(db.items[upstream].ledger) != 8 {
 		t.Fatal("logs share a ledger")
 	}
 	if _, ok := db.items[upstream].ledger["upstream_logs_001"]; !ok {
@@ -191,7 +191,7 @@ func TestT28_04WrongTargetAliasAndChangedBackendRefuseDDL(t *testing.T) {
 
 func TestT28_04MigrationSchemaPermissionsAndErrorsAreBounded(t *testing.T) {
 	plan, err := migrate.Catalog(migrate.UpstreamLogs)
-	if err != nil || len(plan) != 7 || plan[0].Version != "upstream_logs_001" {
+	if err != nil || len(plan) != 8 || plan[0].Version != "upstream_logs_001" {
 		t.Fatal("wrong upstream catalog", err)
 	}
 	for _, required := range []string{

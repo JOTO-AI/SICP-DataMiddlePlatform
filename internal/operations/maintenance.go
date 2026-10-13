@@ -80,6 +80,7 @@ type CleanupPreview struct {
 	Cutoff     time.Time         `json:"cutoff"`
 	ExpiresAt  time.Time         `json:"expires_at"`
 	Protection string            `json:"protection"`
+	References []string          `json:"-"`
 }
 type Maintenance struct {
 	Repository  Repository
@@ -145,12 +146,13 @@ func (m Maintenance) Preview(ctx context.Context, source storage.LogSource, subj
 	if source == storage.UpstreamLog {
 		days = s.UpstreamDays
 	}
-	p := CleanupPreview{ID: NewID(), Subject: subject, Source: source, Revision: s.Revision, Cutoff: now.Add(-time.Duration(days) * 24 * time.Hour), ExpiresAt: now.Add(10 * time.Minute), Protection: "control_linked_events_permanently_protected"}
+	p := CleanupPreview{ID: NewID(), Subject: subject, Source: source, Revision: s.Revision, Cutoff: now.Add(-time.Duration(days) * 24 * time.Hour), ExpiresAt: now.Add(10 * time.Minute), Protection: "durable_reference_retirement"}
 	if p.ID == "" {
 		return p, ErrUnavailable
 	}
+	var candidates string
 	e = m.logTx(ctx, source, func(ctx context.Context, tx storage.Transaction) error {
-		if tx.QueryRow(ctx, "SELECT epoch,floor,through,count FROM logs.cleanup_preview($1)", p.Cutoff).Scan(&p.Epoch, &p.Floor, &p.Through, &p.Count) != nil {
+		if tx.QueryRow(ctx, "SELECT logs.cleanup_references()::text").Scan(&candidates) != nil {
 			return ErrUnavailable
 		}
 		return nil
@@ -158,8 +160,46 @@ func (m Maintenance) Preview(ctx context.Context, source storage.LogSource, subj
 	if e != nil {
 		return CleanupPreview{}, e
 	}
+	refs, e := decodeReferences(candidates)
+	if e != nil {
+		return CleanupPreview{}, e
+	}
+	e = m.Repository.transaction(ctx, true, func(ctx context.Context, tx storage.Transaction) error {
+		var err error
+		p.References, err = eligibleReferences(ctx, tx, refs)
+		return err
+	})
+	if e != nil {
+		return CleanupPreview{}, e
+	}
+	rawRefs, _ := json.Marshal(p.References)
+	e = m.logTx(ctx, source, func(ctx context.Context, tx storage.Transaction) error {
+		if tx.QueryRow(ctx, "SELECT epoch,floor,through,count FROM logs.cleanup_preview($1,$2::jsonb)", p.Cutoff, string(rawRefs)).Scan(&p.Epoch, &p.Floor, &p.Through, &p.Count) != nil {
+			return ErrUnavailable
+		}
+		return nil
+	})
+	if e != nil {
+		return CleanupPreview{}, e
+	}
+	// Freeze only identities inside the actual deletable prefix, never later
+	// records blocked by a live reference or by the retention cutoff.
+	e = m.logTx(ctx, source, func(ctx context.Context, tx storage.Transaction) error {
+		if tx.QueryRow(ctx, "SELECT logs.cleanup_references($1,$2)::text", p.Floor, p.Through).Scan(&candidates) != nil {
+			return ErrUnavailable
+		}
+		return nil
+	})
+	if e != nil {
+		return CleanupPreview{}, e
+	}
+	p.References, e = decodeReferences(candidates)
+	if e != nil {
+		return CleanupPreview{}, e
+	}
+	rawRefs, _ = json.Marshal(p.References)
 	e = m.Repository.transaction(ctx, false, func(ctx context.Context, tx storage.Transaction) error {
-		_, e := tx.Exec(ctx, "INSERT INTO control.cleanup_previews(id,subject,source,revision,epoch,floor,through,count,cutoff,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", p.ID, p.Subject, string(p.Source), p.Revision, p.Epoch, p.Floor, p.Through, p.Count, p.Cutoff, p.ExpiresAt)
+		_, e := tx.Exec(ctx, "INSERT INTO control.cleanup_previews(id,subject,source,revision,epoch,floor,through,count,cutoff,expires_at,refs) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb)", p.ID, p.Subject, string(p.Source), p.Revision, p.Epoch, p.Floor, p.Through, p.Count, p.Cutoff, p.ExpiresAt, string(rawRefs))
 		if e != nil {
 			return ErrUnavailable
 		}
@@ -176,9 +216,15 @@ func loadPreview(ctx context.Context, tx storage.Transaction, id, subject string
 	if !exists {
 		return p, ErrMissing
 	}
-	if tx.QueryRow(ctx, "SELECT id,subject,source,revision,epoch,floor,through,count,cutoff,expires_at FROM control.cleanup_previews WHERE id=$1", id).Scan(&p.ID, &p.Subject, &p.Source, &p.Revision, &p.Epoch, &p.Floor, &p.Through, &p.Count, &p.Cutoff, &p.ExpiresAt) != nil {
+	var raw string
+	if tx.QueryRow(ctx, "SELECT id,subject,source,revision,epoch,floor,through,count,cutoff,expires_at,refs::text FROM control.cleanup_previews WHERE id=$1", id).Scan(&p.ID, &p.Subject, &p.Source, &p.Revision, &p.Epoch, &p.Floor, &p.Through, &p.Count, &p.Cutoff, &p.ExpiresAt, &raw) != nil {
 		return p, ErrUnavailable
 	}
+	refs, err := decodeReferences(raw)
+	if err != nil {
+		return CleanupPreview{}, err
+	}
+	p.References = refs
 	return p, nil
 }
 
@@ -229,6 +275,29 @@ func (m Maintenance) Pump(ctx context.Context) error {
 	}
 	var p CleanupPreview
 	var removed *int64
+	// Resolve an earlier uncertain delete before policy or retirement checks.
+	e = m.Repository.transaction(ctx, true, func(ctx context.Context, tx storage.Transaction) error {
+		var err error
+		p, err = loadPreview(ctx, tx, req.PreviewID, j.Subject)
+		return err
+	})
+	if e != nil {
+		return e
+	}
+	e = m.logTx(ctx, p.Source, func(ctx context.Context, tx storage.Transaction) error {
+		if tx.QueryRow(ctx, "SELECT logs.cleanup_result($1,$2,$3)", j.ID, p.Epoch, p.Through).Scan(&removed) != nil {
+			return ErrUnavailable
+		}
+		return nil
+	})
+	if e != nil {
+		return e
+	}
+	var retirementErr error
+	if removed == nil {
+		retirementErr = m.retireReferences(ctx, *j, req)
+	}
+
 	e = m.Repository.transaction(ctx, false, func(ctx context.Context, tx storage.Transaction) error {
 		if _, e := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(734219100)"); e != nil {
 			return ErrUnavailable
@@ -260,6 +329,9 @@ func (m Maintenance) Pump(ctx context.Context) error {
 		if removed != nil {
 			return nil
 		}
+		if retirementErr != nil {
+			return retirementErr
+		}
 		s, e := retention(ctx, tx, true)
 		if e != nil {
 			return e
@@ -268,6 +340,10 @@ func (m Maintenance) Pump(ctx context.Context) error {
 			return ErrConflict
 		}
 		return m.logTx(ctx, p.Source, func(ctx context.Context, tx storage.Transaction) error {
+			refs, _ := json.Marshal(p.References)
+			if _, e := tx.Exec(ctx, "SELECT logs.confirm_retirements($1::jsonb)", string(refs)); e != nil {
+				return ErrUnavailable
+			}
 			var count int64
 			if tx.QueryRow(ctx, "SELECT logs.cleanup_try_prefix($1,$2,$3,$4,$5)", j.ID, p.Epoch, p.Floor, p.Through, p.Cutoff).Scan(&count) != nil {
 				return ErrUnavailable
