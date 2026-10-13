@@ -69,7 +69,7 @@ func MountNotifications(mux *http.ServeMux, auth *Sessions, n *operations.Notifi
 			if n.Channel != nil {
 				state = "configured"
 			}
-			respond(w, 200, "ok", "", map[string]any{"settings": s, "channel_state": state})
+			respond(w, 200, "ok", "", map[string]any{"settings": s, "channel_state": state, "channel_diagnostics": n.ChannelDiagnostics()})
 		}},
 		{"PUT /admin/v1/settings/notifications", NotificationsWrite, func(w http.ResponseWriter, r *http.Request) {
 			var s operations.NotificationSettings

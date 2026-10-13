@@ -8,6 +8,7 @@ import (
 	"net/mail"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
@@ -121,7 +122,7 @@ func (r Repository) EnsureNotifications(ctx context.Context, legacy string, chan
  SELECT 'legacy:'||id,'schema:'||id,'source_schema',1,$1,CASE WHEN status IN ('accepted','delivered') THEN 'accepted' WHEN payload #>> '{delivery,attempts,-1,result}'='rejected' THEN 'rejected' WHEN attempts>=3 THEN 'exhausted' ELSE 'unknown' END,attempts,created_at,created_at+interval '24 hours',NULL,sent_at FROM control.notification_outbox WHERE attempts>0 OR status<>'pending' ON CONFLICT(id) DO NOTHING`, legacyRecipient); e != nil {
 				return ErrUnavailable
 			}
-			if _, e = tx.Exec(ctx, `INSERT INTO control.notification_attempts(delivery_id,number,started_at,finished_at,outcome) SELECT 'legacy:'||n.id,(a->>'number')::integer,(a->>'started_at')::timestamptz,(a->>'finished_at')::timestamptz,CASE WHEN a->>'result'='delivered' THEN 'accepted' ELSE a->>'result' END FROM control.notification_outbox n CROSS JOIN LATERAL jsonb_array_elements(coalesce(n.payload #> '{delivery,attempts}','[]'::jsonb)) a WHERE n.attempts>0 ON CONFLICT DO NOTHING`); e != nil {
+			if _, e = tx.Exec(ctx, `INSERT INTO control.notification_attempts(delivery_id,number,started_at,finished_at,outcome) SELECT 'legacy:'||n.id,(a->>'number')::integer,(a->>'started_at')::timestamptz,(a->>'finished_at')::timestamptz,CASE WHEN a->>'result'='delivered' THEN 'accepted' ELSE a->>'result' END FROM control.notification_outbox n CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(n.payload #> '{delivery,attempts}')='array' THEN n.payload #> '{delivery,attempts}' ELSE '[]'::jsonb END) a WHERE n.attempts>0 ON CONFLICT DO NOTHING`); e != nil {
 				return ErrUnavailable
 			}
 		}
@@ -380,6 +381,44 @@ type Notifier struct {
 	Channel               notification.Channel
 	Audit                 events.Sink
 	From, LegacyTo, Owner string
+	channelMu             sync.Mutex
+	lastChannelResult     string
+	lastChannelAt         time.Time
+}
+
+type ChannelDiagnostics struct {
+	Configured bool       `json:"configured"`
+	LastResult string     `json:"last_result"`
+	ObservedAt *time.Time `json:"observed_at"`
+}
+
+// This is a local observation of an actual send, not a connectivity probe or
+// an assertion that SMTP acceptance delivered the message to an inbox.
+func (n *Notifier) ChannelDiagnostics() ChannelDiagnostics {
+	n.channelMu.Lock()
+	defer n.channelMu.Unlock()
+	out := ChannelDiagnostics{Configured: n.Channel != nil, LastResult: "not_observed"}
+	if !n.lastChannelAt.IsZero() {
+		at := n.lastChannelAt
+		out.ObservedAt = &at
+		out.LastResult = n.lastChannelResult
+	}
+	return out
+}
+func (n *Notifier) observeChannel(r notification.Receipt, at time.Time) {
+	result := "unknown"
+	switch {
+	case r.Accepted:
+		result = "accepted"
+	case r.Rejected:
+		result = "rejected"
+	case r.Temporary:
+		result = "temporary_failure"
+	}
+	n.channelMu.Lock()
+	n.lastChannelResult = result
+	n.lastChannelAt = at
+	n.channelMu.Unlock()
 }
 
 func (n *Notifier) Ensure(ctx context.Context) error {
@@ -418,6 +457,7 @@ func (n *Notifier) Pump(ctx context.Context) error {
 	send, cancel := context.WithTimeout(ctx, 30*time.Second)
 	receipt, sendErr := n.Channel.Send(send, notification.Mail{ID: d.ID, From: n.From, To: d.Recipient, Subject: "SICP " + d.Rule, Body: "Event reference: " + d.FactID + "\nRule: " + d.Rule})
 	cancel()
+	n.observeChannel(receipt, time.Now().UTC())
 	finish, stop := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer stop()
 	return n.Repository.FinishDelivery(finish, *d, receipt, sendErr, time.Now().UTC())
