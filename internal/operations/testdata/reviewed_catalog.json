@@ -1,0 +1,541 @@
+{
+  "objects": {
+    "Organization": {
+      "organization_code": "String",
+      "organization_name": "String",
+      "parent_organization_code": "String/null",
+      "category_code": "String/null",
+      "category_name": "String/null",
+      "is_active": "Boolean",
+      "source_updated_at": "String/null"
+    },
+    "Student": {
+      "student_number": "String",
+      "name": "String",
+      "status_code": "String/null",
+      "enrollment_status_code": "String/null",
+      "on_campus_flag": "String/null",
+      "department": "Department/null",
+      "campus_code": "String/null",
+      "campus_name": "String/null",
+      "major_code": "String/null",
+      "major_name": "String/null",
+      "grade": "String/null",
+      "class_code": "String/null",
+      "class_name": "String/null",
+      "student_category_code": "String/null",
+      "student_category_name": "String/null",
+      "study_years": "Integer/null",
+      "admission_month": "String/null",
+      "expected_graduation_date": "String/null",
+      "counselor": "Counselor/null",
+      "email": "String/null",
+      "mobile": "String/null",
+      "source_updated_at": "String/null"
+    },
+    "Department": {
+      "organization_code": "String",
+      "organization_name": "String/null",
+      "parent_organization_code": "String/null",
+      "category_code": "String/null",
+      "category_name": "String/null",
+      "is_active": "Boolean/null"
+    },
+    "Counselor": {
+      "staff_number": "String",
+      "name": "String/null"
+    },
+    "Staff": {
+      "staff_number": "String",
+      "name": "String",
+      "status_code": "String/null",
+      "department": "Department/null",
+      "email": "String/null",
+      "mobile": "String/null",
+      "source_updated_at": "String/null"
+    },
+    "Grade": {
+      "grade_id": "String",
+      "student": "GradeStudent",
+      "academic_year": "String",
+      "semester": "String",
+      "course": "Course",
+      "score": "Number/null",
+      "grade_point": "Number/null",
+      "credits": "Number/null",
+      "source_updated_at": "String/null"
+    },
+    "GradeStudent": {
+      "student_number": "String",
+      "name": "String/null",
+      "department_code": "String/null",
+      "department_name": "String/null",
+      "class_code": "String/null",
+      "class_name": "String/null"
+    },
+    "Course": {
+      "course_code": "String",
+      "course_name": "String/null",
+      "attribute_code": "String/null",
+      "attribute_name": "String/null",
+      "nature_code": "String/null",
+      "nature_name": "String/null",
+      "type_code": "String/null",
+      "type_name": "String/null",
+      "department": "CourseDepartment/null",
+      "total_hours": "Number/null",
+      "retake_flag": "String/null",
+      "retake_course_code": "String/null",
+      "retake_course_name": "String/null"
+    },
+    "CourseDepartment": {
+      "organization_code": "String",
+      "organization_name": "String/null"
+    },
+    "TimetableEntry": {
+      "course_code": "String",
+      "course_name": "String/null",
+      "planned_course_code": "String",
+      "teaching_class_number": "String",
+      "teaching_class_name": "String/null",
+      "enrolled_count": "Integer/null",
+      "teacher_staff_numbers": "String[]",
+      "room_code": "String/null",
+      "credits": "Number/null",
+      "teacher_names": "String[]",
+      "location": "String/null",
+      "weekday": "Integer",
+      "sections": "Integer[]",
+      "weeks": "Integer[]",
+      "dates": "String[]",
+      "source_updated_at": "String/null"
+    },
+    "TeachingClass": {
+      "teaching_class_number": "String",
+      "teaching_class_name": "String/null",
+      "planned_course_code": "String",
+      "course_code": "String",
+      "course_name": "String/null",
+      "teachers": "TeachingClassTeacher[]",
+      "student_count": "Integer",
+      "source_updated_at": "String/null"
+    },
+    "TeachingClassTeacher": {
+      "staff_number": "String",
+      "name": "String/null"
+    },
+    "TeachingClassStudent": {
+      "student_number": "String",
+      "name": "String/null",
+      "department_code": "String/null",
+      "department_name": "String/null",
+      "class_code": "String/null",
+      "class_name": "String/null",
+      "source_updated_at": "String/null"
+    }
+  },
+  "responses": {
+    "1": {
+      "total": "Integer",
+      "synced_at": "String",
+      "items": "Organization[]"
+    },
+    "2": {
+      "total": "Integer",
+      "synced_at": "String",
+      "items": "Student[]"
+    },
+    "3": {
+      "total": "Integer",
+      "synced_at": "String",
+      "items": "Staff[]"
+    },
+    "4": {
+      "total": "Integer",
+      "synced_at": "String",
+      "items": "Grade[]"
+    },
+    "5": {
+      "total": "Integer",
+      "synced_at": "String",
+      "items": "Grade[]"
+    },
+    "6": {
+      "student_number": "String",
+      "academic_year": "String",
+      "semester": "String",
+      "synced_at": "String",
+      "items": "TimetableEntry[]"
+    },
+    "7": {
+      "staff_number": "String",
+      "academic_year": "String",
+      "semester": "String",
+      "synced_at": "String",
+      "items": "TimetableEntry[]"
+    },
+    "8": {
+      "staff_number": "String",
+      "academic_year": "String",
+      "semester": "String",
+      "total": "Integer",
+      "synced_at": "String",
+      "items": "TeachingClass[]"
+    },
+    "9": {
+      "teaching_class_number": "String",
+      "planned_course_code": "String",
+      "academic_year": "String",
+      "semester": "String",
+      "total": "Integer",
+      "synced_at": "String",
+      "items": "TeachingClassStudent[]"
+    }
+  },
+  "sources": {
+    "dwd_xqjbsjzlb": {
+      "fields": {
+        "XQH": "string",
+        "XQMC": "string",
+        "XQCX": "string",
+        "ETL_TIME": "timestamp"
+      },
+      "primary_key": "XQH"
+    },
+    "dwd_yxsdwjbsjzlb": {
+      "fields": {
+        "DWH": "string",
+        "DWMC": "string",
+        "DWYWMC": "string",
+        "DWJC": "string",
+        "DWYWJC": "string",
+        "DWJP": "string",
+        "DWDZ": "string",
+        "LSDWH": "string",
+        "DWLBM": "string",
+        "DWBBM": "string",
+        "DWYXBSM": "string",
+        "SXRQ": "string",
+        "SFST": "string",
+        "JLNY": "string",
+        "DWFZRJGH": "string",
+        "SFGK": "string",
+        "LSDZZBH": "string",
+        "DZZFZRJGH": "string",
+        "LSXQH": "string",
+        "SFSC": "string",
+        "FGXLD": "string",
+        "JLRQ": "string",
+        "CJR": "string",
+        "ZJXGRJGH": "string",
+        "ZHXGSJ": "string",
+        "ETL_TIME": "string"
+      },
+      "primary_key": "DWH"
+    },
+    "dwd_jzgjcsjzlb": {
+      "fields": {
+        "JGH": "string",
+        "DWH": "string",
+        "XM": "string",
+        "YWXM": "string",
+        "XMPY": "string",
+        "CYM": "string",
+        "XBM": "string",
+        "CSRQ": "string",
+        "CSDM": "string",
+        "MZM": "string",
+        "GJDQM": "string",
+        "SFZJLXM": "string",
+        "SFZJH": "string",
+        "HYZKM": "string",
+        "GATQWM": "string",
+        "ZZMMM": "string",
+        "JKZKM": "string",
+        "XYZJM": "string",
+        "XXM": "string",
+        "SFZJYXQ": "string",
+        "XQH": "string",
+        "ZGXLM": "string",
+        "WHCDM": "string",
+        "CJGZNY": "string",
+        "LXRQ": "string",
+        "QXRQ": "string",
+        "CJNY": "string",
+        "BZLBM": "string",
+        "JZGLBM": "string",
+        "RKZKM": "string",
+        "DABH": "string",
+        "DAWB": "string",
+        "DQZTM": "string",
+        "TC": "string",
+        "XKLBM": "string",
+        "YJXKM": "string",
+        "EJXKM": "string",
+        "YJFX": "string",
+        "ZGZCM": "string",
+        "ZGXWM": "string",
+        "GWMCM": "string",
+        "GWDJM": "string",
+        "GCCRCLXM": "string",
+        "HTQDQKM": "string",
+        "ZGZYZG": "string",
+        "SFSJT": "string",
+        "SFSSX": "string",
+        "XYJGM": "string",
+        "XZSSZYH": "string",
+        "JGM": "string",
+        "YRFSM": "string",
+        "YHKH": "string",
+        "SFZB": "string",
+        "SFSFS": "string",
+        "WPJS": "string",
+        "JZBM": "string",
+        "ETL_TIME": "timestamp"
+      },
+      "primary_key": "JGH"
+    },
+    "dwd_grtxfszlb": {
+      "fields": {
+        "JGH": "string",
+        "YDDH": "string",
+        "DZXX": "string",
+        "ETL_TIME": "string"
+      },
+      "primary_key": "JGH"
+    },
+    "dwd_bzksjbsjzlb": {
+      "fields": {
+        "XH": "string",
+        "XM": "string",
+        "YWXM": "string",
+        "XMPY": "string",
+        "HYZKM": "string",
+        "CYM": "string",
+        "XBM": "string",
+        "SFDSZN": "string",
+        "GJDQM": "string",
+        "JGM": "string",
+        "CCQJ": "string",
+        "SFZJYXQ": "string",
+        "TC": "string",
+        "AH": "string",
+        "YHKH": "string",
+        "CSRQ": "string",
+        "CSDM": "string",
+        "SFZJH": "string",
+        "SFZJLXM": "string",
+        "GATQWM": "string",
+        "JKZKM": "string",
+        "ZZMMM": "string",
+        "XXM": "string",
+        "MZM": "string",
+        "XYZJM": "string",
+        "RLSPL": "string",
+        "SYDM": "string",
+        "ETL_TIME": "string"
+      },
+      "primary_key": "XH"
+    },
+    "dwd_bzksgrtxsjzlb": {
+      "fields": {
+        "XH": "string",
+        "YDDH": "string",
+        "DZXX": "string",
+        "ETL_TIME": "string"
+      },
+      "primary_key": "XH"
+    },
+    "dwd_bzksxjjbsjzlb": {
+      "fields": {
+        "XH": "string",
+        "SZNJ": "string",
+        "SZBH": "string",
+        "HDXLFSM": "string",
+        "XKMLM": "string",
+        "RXNY": "string",
+        "SSXQH": "string",
+        "XZ": "json",
+        "SFXFZ": "string",
+        "ZCXDNX": "string",
+        "YXSH": "string",
+        "PYFSM": "string",
+        "YJBYRQ": "string",
+        "KSH": "string",
+        "PYCCM": "string",
+        "XSLBM": "string",
+        "XSDQZTM": "string",
+        "XJZTM": "string",
+        "LDFS": "string",
+        "ZYH": "string",
+        "SFQRZ": "string",
+        "SFZX": "string",
+        "XXXSM": "string",
+        "ETL_TIME": "string"
+      },
+      "primary_key": "XH"
+    },
+    "dwd_bzkszyxxsjzlb": {
+      "fields": {
+        "ZYH": "string",
+        "ZYJC": "string",
+        "ZYMC": "string",
+        "BZKZYM": "string",
+        "XKMLM": "string",
+        "SSZYHDL": "string",
+        "ZYFLM": "string",
+        "DWH": "string",
+        "ZYCCM": "string",
+        "QSXQM": "string",
+        "ZYYWMC": "string",
+        "XZ": "json",
+        "JLNY": "string",
+        "PZSZNY": "string",
+        "SCZSNY": "string",
+        "SYXWLBM": "string",
+        "SSZYQH": "string",
+        "PYFSM": "string",
+        "SFSFLZY": "string",
+        "SFZZZY": "string",
+        "FZRJGH": "string",
+        "ZSZTM": "string",
+        "YXZTM": "string",
+        "XSLBM": "string",
+        "PYCCM": "string",
+        "ETL_TIME": "string"
+      },
+      "primary_key": "ZYH"
+    },
+    "dwd_bzksnjzysjzlb": {
+      "fields": {
+        "NJZYDM": "string",
+        "NJZYMC": "string",
+        "NJ": "string",
+        "DWH": "string",
+        "XQH": "string",
+        "ZYH": "string",
+        "ZYMC": "string",
+        "XSLBM": "string",
+        "PYCCM": "string",
+        "XZ": "json",
+        "ETL_TIME": "timestamp"
+      },
+      "primary_key": "NJZYDM"
+    },
+    "dwd_bzksbjsjzlb": {
+      "fields": {
+        "BH": "string",
+        "BJMC": "string",
+        "BJJC": "string",
+        "BJLBM": "string",
+        "SSXQH": "string",
+        "SSDWH": "string",
+        "SSNJ": "string",
+        "JBNY": "string",
+        "BJRS": "string",
+        "YXZTM": "string",
+        "BZRJGH": "string",
+        "FDYJGH": "string",
+        "BZXH": "string",
+        "SSZYH": "string",
+        "SFDDB": "string",
+        "NJZYDM": "string",
+        "XQH": "string",
+        "XZ": "json",
+        "NJZYMC": "string",
+        "ETL_TIME": "string"
+      },
+      "primary_key": "BH"
+    },
+    "dwd_bzkskcsjzlb": {
+      "fields": {
+        "KCH": "string",
+        "KCMC": "string",
+        "KCYWMC": "string",
+        "KCJJ": "string",
+        "XF": "json",
+        "ZHXS": "json",
+        "ZXS": "json",
+        "KCLBM": "string",
+        "KCSXM": "string",
+        "KCXZM": "string",
+        "SFXQHZKFKC": "string",
+        "SFKZRTKC": "string",
+        "KCLXM": "string",
+        "KKXY": "string",
+        "SFYX": "string",
+        "SFWLK": "string",
+        "KCBQ": "string",
+        "SFCXKC": "string",
+        "CXKCH": "string",
+        "CXKCMC": "string",
+        "ETL_TIME": "string"
+      },
+      "primary_key": "KCH"
+    },
+    "dwd_bzkscjzlb": {
+      "fields": {
+        "ID": "string",
+        "XH": "string",
+        "XN": "string",
+        "XQM": "string",
+        "KCH": "string",
+        "XF": "json",
+        "JD": "json",
+        "KCCJ": "json",
+        "ETL_TIME": "string"
+      },
+      "primary_key": "ID"
+    },
+    "dwd_bzkspksjzlb": {
+      "fields": {
+        "JHKCH": "string",
+        "PKH": "string",
+        "KCXZM": "string",
+        "SKRQ": "string",
+        "SKSJ": "string",
+        "JXZY": "string",
+        "KRL": "json",
+        "ZC": "string",
+        "XQJ": "string",
+        "SKJC": "string",
+        "JXTZ": "string",
+        "XKNJ": "string",
+        "SKBJH": "string",
+        "SKJSH": "string",
+        "KKXND": "string",
+        "KKXQM": "string",
+        "JSJGH": "string",
+        "JSXM": "string",
+        "RKJSM": "string",
+        "XKRSXD": "json",
+        "XDRS": "json",
+        "JXBH": "string",
+        "JXBMC": "string",
+        "QSZ": "json",
+        "ZZZ": "json",
+        "KKSM": "string",
+        "PKYQ": "string",
+        "JSSZXQH": "string",
+        "XKXQH": "string",
+        "KCKSDWH": "string",
+        "JXDD": "string",
+        "JSLXM": "string",
+        "SKDDLBM": "string",
+        "XYJCCBH": "string",
+        "ETL_TIME": "string"
+      },
+      "primary_key": "PKH"
+    },
+    "dwd_bzkskbsjzlb": {
+      "fields": {
+        "ID": "string",
+        "XH": "string",
+        "JHKCH": "string",
+        "JXBH": "string",
+        "ETL_TIME": "string"
+      },
+      "primary_key": "ID"
+    }
+  }
+}

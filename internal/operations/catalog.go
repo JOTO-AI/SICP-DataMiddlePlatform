@@ -11,7 +11,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/value"
 )
 
-const CatalogVersion = "2026-10-13.v1"
+const CatalogVersion = "2026-10-13.v2"
 
 type Field struct {
 	Type       string           `json:"type"`
@@ -41,7 +41,7 @@ type API struct {
 }
 
 func schema(t reflect.Type, request bool) Field {
-	f := Field{Nullable: t.Kind() == reflect.Pointer || t.Kind() == reflect.Slice, Required: request && t.Kind() != reflect.Pointer && t.Kind() != reflect.Slice, Limit: ""}
+	f := Field{Nullable: t.Kind() == reflect.Pointer || t.Kind() == reflect.Slice, Required: !request || t.Kind() != reflect.Pointer && t.Kind() != reflect.Slice, Limit: ""}
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
