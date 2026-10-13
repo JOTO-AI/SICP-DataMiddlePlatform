@@ -146,3 +146,8 @@ operations_status_test.go 使用实际 OperationsStatus 聚合器和依赖替身
 跨库故障可能留下尚未删除的退休栅栏，不能撤销栅栏后复活旧依赖；历史控制记录仍可读，新的主动重跑使用新 task_id。删除回执始终先于策略检查，恢复不重复计数；晚补投依 received_at 重新保留，原 ID 重放由永久 receipts 确认且不复活已删载荷。并不声称跨库原子提交。代码回退必须保留新增触发器/退休标记；回退数据只能恢复协调备份，不能手工清空栅栏。
 
 cleanup_retirement_test.go 覆盖全部保护类别、通知占用前缀、预览无退休、主体/期限、幂等受理、执行前新增引用、旧事务等待与旧快照拒绝、received_at 晚到及已删重放。retirement_test.go 补固定身份/上限；修正旧 migration 测试的硬编码目录数量与末尾迁移假设。Linux integration/operations/migrate 源码编译、go vet 和人工 review 完成；未运行任何测试或迁移。P34.03 已勾选，下一项 P34.04。
+
+
+### P34.04 / P34 后端开发收尾
+
+maintenance_test.go 补所有维护路由的业务凭据拒绝、CSRF、客户端 operator/path/SQL 与 query 注入拒绝、未知保留配置 null 和生效字段分离。cleanup_recovery_test.go 用真实控制/日志库，仅在指定 SQL 边界注入故障：受理审计失败全回滚、客户端取消不撤销受理、删除已提交后控制写回失败、原作业重启查回、预览过期/策略改变仍按回执恢复真实计数、日志审计故障后补投。复核修复管理 Claim 提交失败暴露临时结果、恢复重置首次 started_at 两处。Linux integration/admin 源码编译及 go vet 完成，未运行。P34 有效后端子步骤全部勾选，下一项 P35.01；T34/OI07 实际验收仍暂停。

@@ -178,17 +178,22 @@ func (r Repository) Claim(ctx context.Context, action, owner string, now time.Ti
 		if action == "cleanup" {
 			lease = now.Add(30 * time.Second)
 		}
-		if n, e := tx.Exec(ctx, "UPDATE control.management_jobs SET status='running',owner=$2,lease_until=$3,started_at=$4 WHERE id=$1 AND status='queued'", j.ID, owner, lease, now); e != nil || n != 1 {
+		if n, e := tx.Exec(ctx, "UPDATE control.management_jobs SET status='running',owner=$2,lease_until=$3,started_at=coalesce(started_at,$4) WHERE id=$1 AND status='queued'", j.ID, owner, lease, now); e != nil || n != 1 {
 			return ErrConflict
 		}
 		j.Status = "running"
 		j.Owner = &owner
 		j.LeaseUntil = &lease
-		j.StartedAt = &now
+		if j.StartedAt == nil {
+			j.StartedAt = &now
+		}
 		out = &j
 		return nil
 	})
-	return out, err
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 func (r Repository) Finish(ctx context.Context, j Job, status string, summary any, now time.Time) error {
 	if status != "succeeded" && status != "failed" && status != "partial_failed" {
