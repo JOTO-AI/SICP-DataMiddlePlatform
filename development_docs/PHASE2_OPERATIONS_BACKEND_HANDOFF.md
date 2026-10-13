@@ -130,3 +130,8 @@ P33.02 已完成，发送/租约不超过原 24 小时期限，模糊回执保�
 ### P33.05 / P33 后端开发收尾
 
 真实控制库与实际 Notifier 的 notification_runtime_test.go 覆盖进程对象重建读当前设置、增加地址不扩散旧事实、并发 worker 无重复发送、关闭再开启不补发旧事实、删除地址、显式测试使用保存地址、日志写入失败保留审计且不阻塞通知、恢复后补投且不重复发信。故障日志 sink 和邮件 channel 均为测试替身，不连接 SMTP；既有 application/mail_test.go 覆盖可选邮件装配，notification_upgrade_test.go 覆盖历史组合。已人工 review、Linux integration 编译及 application/operations/config go vet，未运行测试或迁移。P33 后端全部有效子步骤已勾选，下一项 P34.01；T33/OI06 实测待恢复执行。无新增生产配置或 schema。
+
+
+### P34.01 状态与配置开发收尾
+
+operations_status_test.go 使用实际 OperationsStatus 聚合器和依赖替身，覆盖双库配置、缓冲可用/故障/超时/缺失、未知容量 null、凭据配置与连通分离、敏感值不出现在 JSON。retention_test.go 覆盖旧 revision、更新失败、审计失败和保存成功，复核修复未提交的新 revision 从失败方法返回的问题。既有保留期边界测试及管理路由 runtime_fields/deployment_fields 分离已复核。Linux application/operations 测试源码编译及 go vet 通过，未运行；无新增 schema。P34.01 已勾选，下一项 P34.03，T/OI 实测框保留。

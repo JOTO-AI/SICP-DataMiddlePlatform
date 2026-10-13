@@ -36,7 +36,10 @@ func (r Repository) Retention(ctx context.Context) (Retention, error) {
 		s, e = retention(ctx, tx, false)
 		return e
 	})
-	return s, e
+	if e != nil {
+		return Retention{}, e
+	}
+	return s, nil
 }
 func (r Repository) SaveRetention(ctx context.Context, s Retention, actor string, now time.Time) (Retention, error) {
 	if !s.Valid() {
@@ -59,7 +62,10 @@ func (r Repository) SaveRetention(ctx context.Context, s Retention, actor string
 		}
 		return nil
 	})
-	return s, e
+	if e != nil {
+		return Retention{}, e
+	}
+	return s, nil
 }
 
 type CleanupPreview struct {
