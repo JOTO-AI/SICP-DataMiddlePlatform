@@ -21,7 +21,7 @@ docker compose config --quiet
 docker compose up -d --build --wait --wait-timeout 300
 
 check_database_limits() {
-  for spec in db-m:256 db-s:128 db-log:100; do
+  for spec in db-m:256 db-s:128 db-log:160; do
     service=${spec%%:*}
     expected=${spec#*:}
     actual=$(docker compose exec -T "$service" psql -U postgres -d postgres -Atc 'SHOW max_connections')

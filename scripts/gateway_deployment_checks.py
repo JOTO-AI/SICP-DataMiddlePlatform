@@ -96,12 +96,17 @@ def setup():
     run('python3', 'scripts/check-compose-config.py', '--write-development-env', '.env')
     path = ROOT / '.env'
     value = path.read_text().replace('QUERY_REPLICAS=1', 'QUERY_REPLICAS=2')
-    value = '\n'.join(line for line in value.splitlines() if not line.startswith(('SICP_GATEWAY_PORT=', 'SICP_TLS_CERT_FILE=', 'SICP_TLS_KEY_FILE=', 'SICP_DATA_ROOT=')))
-    path.write_text(value + '\nSICP_GATEWAY_PORT=28080\nSICP_DATA_ROOT=' + str(Path(os.environ['RUNNER_TEMP']) / 'sicp-gateway-data') + '\n')
+    value = '\n'.join(line for line in value.splitlines() if not line.startswith(('SICP_GATEWAY_PORT=', 'SICP_TLS_CERT_FILE=', 'SICP_TLS_KEY_FILE=', 'SICP_DATA_ROOT=', 'DATABASE_CONTROL_URL=')))
+    # This suite includes a pre-relocation binary rollback and intentionally
+    # retains the legacy M control layout. check-compose.sh covers the new
+    # db-log default; relocation is a separate, non-code rollback boundary.
+    path.write_text(value + '\nDATABASE_CONTROL_URL=postgres://db-m:5432/control?sslmode=disable\nSICP_GATEWAY_PORT=28080\nSICP_DATA_ROOT=' + str(Path(os.environ['RUNNER_TEMP']) / 'sicp-gateway-data') + '\n')
     CERTS.mkdir(mode=0o755)
     create_ca(CERTS)
     for operation in ('build', 'infra', 'migrate', 'log-cutover', 'start'):
         run('bash', 'scripts/sicp.sh', operation)
+        if operation == 'infra':
+            run('docker', 'compose', 'exec', '-T', 'db-m', 'createdb', '-U', 'postgres', 'control')
     smoke()
     # Unset and explicitly empty TLS variables both use real /dev/null binds.
     configure(False)

@@ -151,19 +151,23 @@ func VerifyLogIsolation(ctx context.Context, db Database, r Registry) (LogIsolat
 		}
 		proof.identities[c] = id
 	}
-	// Logs remain on an instance separate from M/S. The two log sources may
-	// share a cluster, but never the same physical database (including aliases).
+	// Logs remain separate from the four business databases' instances.
+	// Control may share the log cluster, but control and the log targets may
+	// never alias one physical database through different hostnames.
 	for _, logTarget := range targets[5:] {
-		for _, other := range targets[:5] {
+		for _, other := range targets[:4] {
 			if proof.identities[other].cluster == proof.identities[logTarget].cluster {
 				return LogIsolation{}, ErrLogIsolation
 			}
 		}
 	}
-	if r.logMode == DualLogs {
-		platform, upstream := proof.identities[r.logs], proof.identities[r.upstreamLogs]
-		if platform.cluster == upstream.cluster && (platform.oid == upstream.oid || platform.name == upstream.name) {
-			return LogIsolation{}, ErrLogIsolation
+	fixed := targets[4:]
+	for i, target := range fixed {
+		for _, other := range fixed[:i] {
+			a, b := proof.identities[target], proof.identities[other]
+			if a.cluster == b.cluster && (a.oid == b.oid || a.name == b.name) {
+				return LogIsolation{}, ErrLogIsolation
+			}
 		}
 	}
 	return proof, nil

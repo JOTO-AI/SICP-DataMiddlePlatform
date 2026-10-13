@@ -4,7 +4,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 expected="go$(awk '$1 == "go" { print $2 }' go.mod)"
 test "$(go env GOVERSION)" = "$expected"
 test -z "$(gofmt -l cmd internal tests/integration)"
-for script in scripts/sicp.sh scripts/check-compose.sh scripts/check-gateway.sh scripts/check-build-performance.sh deploy/init-postgres.sh deploy/worker-entrypoint.sh deploy/query-entrypoint.sh deploy/query-gateway-entrypoint.sh; do
+for script in scripts/sicp.sh scripts/migrate-control.sh scripts/check-compose.sh scripts/check-gateway.sh scripts/check-build-performance.sh deploy/init-postgres.sh deploy/worker-entrypoint.sh deploy/query-entrypoint.sh deploy/query-gateway-entrypoint.sh; do
   bash -n "$script"
 done
 sh -n deploy/gateway-config.sh
@@ -12,6 +12,7 @@ python3 -c 'import ast; from pathlib import Path; [ast.parse(Path(p).read_text()
 go vet ./...
 python3 -m unittest discover -s scripts -p 'test_build_acceptance.py'
 python3 -m unittest discover -s scripts -p 'test_query_replicas.py'
+python3 -m unittest discover -s scripts -p 'test_migrate_control.py'
 python3 -m unittest discover -s scripts -p 'test_phase2_*.py'
 mkdir -p artifacts
 set +e

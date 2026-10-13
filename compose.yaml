@@ -2,7 +2,7 @@
 name: ${SICP_PROJECT:-sicp-production}
 
 x-database-environment: &database-environment
-  # Two logical log databases share db-log. Drain legacy writers before upgrade.
+  # Control and two logical log databases share db-log; each has its own pool.
   LOG_STORAGE_MODE: dual
   DATABASE_M0_URL: "${DATABASE_M0_URL:?Set DATABASE_M0_URL in .env (copy .env.example)}"
   DATABASE_M1_URL: "${DATABASE_M1_URL:?Set DATABASE_M1_URL in .env (copy .env.example)}"
@@ -86,7 +86,7 @@ services:
       - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
   db-log:
     <<: *postgres
-    command: [postgres, -c, "max_connections=${POSTGRES_LOG_MAX_CONNECTIONS-100}"]
+    command: [postgres, -c, "max_connections=${POSTGRES_LOG_MAX_CONNECTIONS-160}"]
     environment:
       <<: *postgres-environment
       SICP_CLUSTER: log

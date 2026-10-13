@@ -19,6 +19,8 @@ __pycache__/
 .env.*
 !.env.example
 artifacts/
+.control-migration/
+.control-migration.lock
 deploy/runtime/
 *.test
 frontend/node_modules/

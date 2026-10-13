@@ -4,6 +4,8 @@
 
 ## 升级前记录
 
+控制库迁移是独立的停写操作：新部署 control 位于 db-log，已有 db-m/control 按 [控制库迁移方案](../deploy/CONTROL_DATABASE_MIGRATION.md)执行，不能只修改 `.env`。迁移后 pg-log 同时包含控制数据，禁止删除该目录来清空日志。旧二进制若强制 control 位于 M，不支持在新布局上直接回退。
+
 登记当前 SHA、镜像 digest、项目名、SICP_DATA_ROOT、卷/缓冲目录清单和原日志目标；秘密只保存在原配置/备份系统中，不写入报告。保持原 AUDIT_KEY、SNAPSHOT_KEY、平台 URL、项目名和目录。先停旧生产者并备份控制库、两日志库、M/S、持久缓冲及其标记、构建/恢复所需文件，记录一致恢复点、时区、备份摘要和可恢复性。不要只备份 events：receipts、commit_state、cleanup_receipts、控制引用退休/身份映射和通知事实同样需要保留。
 
 已有卷不会因为 `.env` 改密码自动改角色密码。标准 `.env.example` 的 QUERY_PASSWORD/WORKER_PASSWORD 同时供服务业务连接和日志读取/维护；LOGGER_PASSWORD/UPSTREAM_LOGGER_PASSWORD 只供各自 writer。应用管理员 ADMIN_USERNAME/ADMIN_PASSWORD 具有全部管理能力，无需新增 LOG_CURSOR_KEYS/LOG_CURSOR_ACTIVE/LOG_INTERNAL_TOKEN 或四个 READ/MAINTENANCE URL；标准部署从现有 SNAPSHOT_KEY 分域派生日志签名/内部令牌。不要把数据库管理员或 writer 账号用作日志 reader。

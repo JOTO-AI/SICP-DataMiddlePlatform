@@ -79,6 +79,30 @@ func TestT02_02FixedConnectionsSurviveRouteChanges(t *testing.T) {
 	}
 }
 
+func TestControlCanRelocateToLogInstanceWithoutChangingBusinessRoutes(t *testing.T) {
+	values := connectionValues()
+	values["DATABASE_CONTROL_URL"] = "postgres://control:synthetic-secret@db-log:5432/control?sslmode=disable"
+	r, err := load(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, instance := range []storage.Instance{storage.Main, storage.Standby} {
+		for slot := 0; slot < 2; slot++ {
+			c, err := r.Business(storage.Position{Instance: instance, Slot: slot})
+			if err != nil || strings.Contains(c.DSN(), "db-log") {
+				t.Fatal("control relocation changed a business route", err)
+			}
+		}
+	}
+	if r.Control().DSN() != values["DATABASE_CONTROL_URL"] {
+		t.Fatal("control did not use the relocated endpoint")
+	}
+	values["DATABASE_CONTROL_URL"] = values["DATABASE_LOG_URL"]
+	if _, err := load(values); err == nil {
+		t.Fatal("control and log database overlap accepted")
+	}
+}
+
 func TestT02_01InvalidConnectionConfiguration(t *testing.T) {
 	for _, key := range []string{"DATABASE_M0_URL", "DATABASE_M1_URL", "DATABASE_S0_URL", "DATABASE_S1_URL", "DATABASE_CONTROL_URL", "DATABASE_LOG_URL"} {
 		t.Run(key, func(t *testing.T) {

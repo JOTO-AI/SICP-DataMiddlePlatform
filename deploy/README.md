@@ -1,5 +1,9 @@
 # Docker Compose 部署与运维
 
+## 控制库迁移到 db-log
+
+新部署在 db-log 中创建三个独立库：`control`、`logs`、`upstream_logs`，M/S 只保留各自业务槽位。已有 `db-m/control` 须按 [控制库迁移方案与脚本](CONTROL_DATABASE_MIGRATION.md)备份、恢复、校验、切换，再删除旧库；不要提前改控制地址。管理接口沿用原 HTTP 路由，底层通过 `DATABASE_CONTROL_URL` 读取新库。**迁移后的 pg-log 包含控制数据，不能再通过删除它来清空日志。**
+
 ## 一键启动（推荐）
 
 上游采集每页条数通过 `.env` 的 `SOURCE_PAGE_SIZE` 设置，默认 `1000`，本地允许 `1`—`10000`。例如 `SOURCE_PAGE_SIZE=5000` 可将约 144 万条数据的请求从约 1440 页降到 288 页，前提是上游允许该条数且每页能在请求超时内返回；这不是对总耗时的保证。修改后重建 worker 才生效，当前任务不会动态改变分页；重启会中断尚未封存的采集。已有配置未设置该变量时继续使用 1000。
@@ -22,9 +26,9 @@ Windows PowerShell 使用 `Copy-Item .env.example .env`，部署脚本通过 WSL
 
 根目录唯一的 `compose.yaml` 直接定义所有服务（含 console），正式环境默认项目名 `sicp-production`。部署脚本依次初始化目录与数据库、迁移、排空旧日志缓冲，再启动 query/worker 和控制台；任何步骤失败停止部署。Compose 同样保证启动顺序：db-m/db-s/db-log 健康后运行 migrate，query/worker 等待 migrate 成功及目录权限初始化完成后启动，网关和控制台再等待应用健康。迁移失败时应用不会启动。该依赖只控制 Compose 启动顺序，运行期间日志库故障不会自动停止应用；通过 Compose 重新启动依赖链时仍需数据库健康及迁移成功。
 
-首次部署，或停服并清空日志数据库及全部本地日志缓冲后，补齐 `.env` 即可执行 `docker compose up -d --build`，自动完成建库、建表和应用启动。已有单库数据及缓冲需要保留的升级仍按下文登记和部署流程执行，直接 up 不会补建已有 PG 数据目录中缺失的上游库，也不替代旧缓冲切换。可用 `docker compose logs volumes db-m db-s db-log migrate` 排查初始化失败。
+首次全新部署补齐 `.env` 即可执行 `docker compose up -d --build`，自动完成建库、建表和应用启动。已有单库数据及缓冲需要保留的升级仍按下文登记和部署流程执行，直接 up 不会补建已有 PG 数据目录中缺失的上游库，也不替代旧缓冲切换或控制库迁移。控制库迁到 db-log 后，清空 pg-log 会同时丢失任务和控制状态，不能用于单纯清理日志。可用 `docker compose logs volumes db-m db-s db-log migrate` 排查初始化失败。
 
-一个独立于 M/S 的 `db-log` PostgreSQL 服务承载 `logs` / `upstream_logs` 两个逻辑库，共用 `pg-log` 卷；两库分别管理写入、读取和清理权限，实例故障与连接总额度共享。只使用 compose.yaml，无需额外 overlay。上游默认地址为 `postgres://db-log:5432/upstream_logs?sslmode=disable`，另填 `UPSTREAM_LOGGER_PASSWORD`。
+一个独立于 M/S 的 `db-log` PostgreSQL 服务承载 `control` / `logs` / `upstream_logs` 三个逻辑库，共用 `pg-log` 卷；日志权限仍分别管理，控制库不参与日志清理。实例故障与连接总额度共享。只使用 compose.yaml，无需额外 overlay。上游默认地址为 `postgres://db-log:5432/upstream_logs?sslmode=disable`，另填 `UPSTREAM_LOGGER_PASSWORD`。
 
 控制台只有一个管理员账号：使用 ADMIN_USERNAME/ADMIN_PASSWORD 登录即可访问全部已实现管理操作，日志历史/实时读取和清理无需另配账号或启用开关。query/worker 自动用自己的数据库凭据连接两个日志库，新增 logs_007/upstream_logs_006 迁移负责读取及受限清理授权；现有实例先迁移，再重建应用。数据库服务凭据和外部 SMTP 等连接配置仍需按实际环境提供，它们不是额外的控制台账号。
 
@@ -53,7 +57,7 @@ docker compose down
 
 统一配置模板为根目录 `.env.example`，实际部署只维护根目录 `.env`。七个写入目标 `DATABASE_*_URL` 只配置共享端点和库名，不含账号密码；`POSTGRES_PASSWORD`、`QUERY_PASSWORD`、`WORKER_PASSWORD`、`LOGGER_PASSWORD`、`UPSTREAM_LOGGER_PASSWORD` 各填写一次。Compose 按服务分配账号与密码，进程自动编码特殊字符并构造完整连接串；query 不会获得 worker 或迁移账号密码。读取和清理地址自动组装，无需额外 URL。已有 PG 卷不会因修改环境变量而自动修改角色密码，轮换时仍需先在数据库内修改，再更新 `.env`。
 
-业务持久化数据只需在 `.env` 设置一个宿主机绝对路径：`SICP_DATA_ROOT=/home/ubuntu/sicp`。Compose 启动时自动在 `${SICP_DATA_ROOT}/<Compose 实际项目名>/` 下创建 `pg-m`、`pg-s`、`pg-log`（含两类日志库）、`redis`、`query-logs`、`query-replicas`、`worker-logs`、`query-upstream-logs`、`worker-upstream-logs`、`staging`、`targets`、`spool` 子目录并分别挂载；默认项目名来自 `SICP_PROJECT`；使用 `docker compose -p` 或 `COMPOSE_PROJECT_NAME` 覆盖时，数据子目录也跟随实际项目名，保持隔离。容器内路径由 Compose 固定，无需在 `.env` 配置。开发环境的模拟邮件使用 Docker 管理的 `mock-mail` 命名卷，无需配置宿主机路径；`down --volumes` 会删除该测试邮件卷。
+业务持久化数据只需在 `.env` 设置一个宿主机绝对路径：`SICP_DATA_ROOT=/home/ubuntu/sicp`。Compose 启动时自动在 `${SICP_DATA_ROOT}/<Compose 实际项目名>/` 下创建 `pg-m`、`pg-s`、`pg-log`（含 control 及两类日志库）、`redis`、`query-logs`、`query-replicas`、`worker-logs`、`query-upstream-logs`、`worker-upstream-logs`、`staging`、`targets`、`spool` 子目录并分别挂载；默认项目名来自 `SICP_PROJECT`；使用 `docker compose -p` 或 `COMPOSE_PROJECT_NAME` 覆盖时，数据子目录也跟随实际项目名，保持隔离。容器内路径由 Compose 固定，无需在 `.env` 配置。开发环境的模拟邮件使用 Docker 管理的 `mock-mail` 命名卷，无需配置宿主机路径；`down --volumes` 会删除该测试邮件卷。
 
 从旧命名卷切换前，先停止写入并备份数据，将各卷内容复制到对应宿主机目录，保留文件所有权和权限；仅修改配置不会自动迁移。已有宿主机目录更换路径时也需迁移数据，再执行 `docker compose up -d --force-recreate` 使挂载生效，单纯 `restart` 不会更新挂载。全新部署会创建缺失目录，应用目录权限仍由初始化服务设置。
 
@@ -99,7 +103,7 @@ SICP_PROJECT=sicp-${ENVIRONMENT}
 
 ## Bash 分步运维
 
-脚本使用根目录统一配置，默认按正式环境部署。要求 Linux amd64、Bash、Python 3.10+、Docker Engine 与 Compose ≥ 2.30；各服务进程使用 UID/GID 65532，配置/日志时区按 `Asia/Shanghai` 解析源时间，数据库会话使用 UTC。M、S、日志分别为独立 PostgreSQL 容器，控制库固定在 M；db-log 内含 logs / upstream_logs；服务不能通过活动路由选择控制或日志库。
+脚本使用根目录统一配置，默认按正式环境部署。要求 Linux amd64、Bash、Python 3.10+、Docker Engine 与 Compose ≥ 2.30；各服务进程使用 UID/GID 65532，配置/日志时区按 `Asia/Shanghai` 解析源时间，数据库会话使用 UTC。M、S、db-log 分别为独立 PostgreSQL 容器；db-log 内含 control / logs / upstream_logs；服务不能通过活动路由选择控制或日志库。
 
 ```bash
 ./scripts/sicp.sh deploy
@@ -162,7 +166,7 @@ GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 
 | QUERY_DB_CONTROL_MAX_CONNS | 16 | 1—1000，query 的控制库连接池上限 |
 | QUERY_DB_LOG_MAX_CONNS | 16 | 1—1000，query 的日志库连接池上限 |
 
-上述参数仅对 query 生效，也可直接作为 query 进程的环境变量。worker 和数据库迁移工具保留原有默认池上限。BUSINESS 设置分别作用于 M0、M1、S0、S1，不表示四池共享该数量；池按需建连，最小连接数仍为 0。内置 db-m 同时承载两个业务槽位和 control，需将 query、worker 各池、迁移及其他客户端的连接需求合计，与 PostgreSQL max_connections 和保留连接额度核对。此配置不自动修改数据库服务端连接上限。
+上述参数仅对 query 生效，也可直接作为 query 进程的环境变量。worker 和数据库迁移工具保留原有默认池上限。BUSINESS 设置分别作用于 M0、M1、S0、S1，不表示四池共享该数量；池按需建连，最小连接数仍为 0。内置 db-m 承载两个业务槽位，db-log 承载 control 和两个日志库，需将 query、worker 各池、迁移及其他客户端的连接需求合计，与 PostgreSQL max_connections 和保留连接额度核对。此配置不自动修改数据库服务端连接上限。
 
 首次升级需要重新构建镜像；之后修改 .env 需通过 docker compose up -d 重新创建 query 服务，单纯 restart 不会重新注入环境变量。配置变大仅改变资源门限，不代表已经达到 300 并发吞吐目标；缓存命中仍有快照、控制库和日志开销。共享查询被所有调用者取消时仍会取消实际执行，发布、快照与副本切换的一致性规则不变。
 
@@ -184,9 +188,9 @@ GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 
 
 ### PostgreSQL 服务端连接上限
 
-内置 Compose 从 `.env` 读取 `POSTGRES_M_MAX_CONNECTIONS=256`、`POSTGRES_S_MAX_CONNECTIONS=128`、`POSTGRES_LOG_MAX_CONNECTIONS=100`，分别作为 db-m、db-s、db-log 的 `postgres -c max_connections=...` 启动参数。省略变量时也使用这些项目默认值；它们不同于 PostgreSQL 通常为 100 的原生默认值。值须为 PostgreSQL 接受的正整数，显式空值或非法值会导致数据库启动失败。外部数据库不受这些 Compose 参数控制。
+内置 Compose 从 `.env` 读取 `POSTGRES_M_MAX_CONNECTIONS=256`、`POSTGRES_S_MAX_CONNECTIONS=128`、`POSTGRES_LOG_MAX_CONNECTIONS=160`，分别作为 db-m、db-s、db-log 的 `postgres -c max_connections=...` 启动参数。省略变量时也使用这些项目默认值；它们不同于 PostgreSQL 通常为 100 的原生默认值。值须为 PostgreSQL 接受的正整数，显式空值或非法值会导致数据库启动失败。外部数据库不受这些 Compose 参数控制。
 
-上限由整个数据库实例共享，包含 query、worker、迁移、运维和保留连接；db-log 的两库共用 POSTGRES_LOG_MAX_CONNECTIONS，须合计各源写入、读取及维护连接池，同凭据的 worker 读取/维护共用池；db-m 的 slot0、slot1 与 control 共用 M 的额度。连接池按需建连，这些配置不代表预先建立同等数量的连接，也不保证 300 并发达标；调大上限会增加 PostgreSQL 的资源需求。应用池参数和 worker 设置不会因此自动改变。
+上限由整个数据库实例共享，包含 query、worker、迁移、运维和保留连接；db-log 的 control 和两日志库共用 POSTGRES_LOG_MAX_CONNECTIONS，须合计控制连接池及各源写入、读取和维护连接池，同凭据的 worker 读取/维护共用池；db-m 的 slot0、slot1 共用 M 的额度。连接池按需建连，这些配置不代表预先建立同等数量的连接，也不保证 300 并发达标；调大上限会增加 PostgreSQL 的资源需求。应用池参数和 worker 设置不会因此自动改变。
 
 已有数据卷同样适用，无需重新初始化数据库。更新 Compose 后，旧 `.env` 即使未添加这些变量，也会在下次重建数据库容器时使用新的项目默认值。安排同步任务空闲的维护窗口，暂停应用后重建数据库，再恢复应用：
 

@@ -12,6 +12,12 @@ SELECT 'CREATE DATABASE upstream_logs'
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname='upstream_logs') \gexec
 SQL
 }
+provision_control() {
+  psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres <<'SQL'
+SELECT 'CREATE DATABASE control'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname='control') \gexec
+SQL
+}
 # Existing pg-log volumes do not rerun Docker's first-start initialization.
 # This explicit provisioning path adds missing objects without changing passwords
 # or existing data; it is also used during first-start initialization below.
@@ -35,9 +41,9 @@ case "$SICP_CLUSTER" in
   M|S)
     createdb --username "$POSTGRES_USER" slot0
     createdb --username "$POSTGRES_USER" slot1
-    if [[ "$SICP_CLUSTER" == M ]]; then createdb --username "$POSTGRES_USER" control; fi
     ;;
   log)
+    provision_control
     createdb --username "$POSTGRES_USER" logs
     provision_upstream
     ;;

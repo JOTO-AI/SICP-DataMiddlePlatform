@@ -213,8 +213,10 @@ func LoadRegistry(lookup func(string) (string, bool)) (Registry, error) {
 	if r.slots[0][0].endpoint == r.slots[1][0].endpoint {
 		return Registry{}, fmt.Errorf("DATABASE_S0_URL: M and S require independent endpoints")
 	}
-	if r.control.endpoint != r.slots[0][0].endpoint {
-		return Registry{}, fmt.Errorf("DATABASE_CONTROL_URL: control database must use the fixed M endpoint")
+	// Keep the M endpoint readable during the explicit relocation workflow.
+	// New deployments place the distinct control database on db-log.
+	if r.control.endpoint != r.slots[0][0].endpoint && r.control.endpoint != r.logs.endpoint {
+		return Registry{}, fmt.Errorf("DATABASE_CONTROL_URL: control database must use the fixed M or platform-log endpoint")
 	}
 	if r.logs.endpoint == r.slots[0][0].endpoint || r.logs.endpoint == r.slots[1][0].endpoint {
 		return Registry{}, fmt.Errorf("DATABASE_LOG_URL: logs require an independent endpoint")

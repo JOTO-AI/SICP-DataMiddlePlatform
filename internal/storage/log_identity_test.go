@@ -203,3 +203,24 @@ func TestLogIdentityAllowsSharedClusterOnlyForDistinctLogDatabases(t *testing.T)
 		t.Fatal("alias to same physical log database accepted", err)
 	}
 }
+
+func TestControlAndLogsCanShareClusterButNeverPhysicalDatabase(t *testing.T) {
+	r, db := identityFixture(t)
+	// Model an alias during deployment: physical checks must not rely only on
+	// the configured hostname when allowing control on the shared log cluster.
+	db.facts[r.Control()] = identityFact{"303", 9, "sicp_control"}
+	if _, err := storage.VerifyLogIsolation(t.Context(), db, r); err != nil {
+		t.Fatal("distinct control on log cluster rejected", err)
+	}
+	for _, source := range []storage.LogSource{storage.PlatformLog, storage.UpstreamLog} {
+		c, _ := r.LogConnection(source)
+		before := db.facts[c]
+		changed := before
+		changed.cluster, changed.oid = "303", 9
+		db.facts[c] = changed
+		if _, err := storage.VerifyLogIsolation(t.Context(), db, r); !errors.Is(err, storage.ErrLogIsolation) {
+			t.Fatal("log aliases relocated control database", err)
+		}
+		db.facts[c] = before
+	}
+}

@@ -59,7 +59,7 @@ func TestT15_14RepositoryDeploymentFixturesReachActualAssembly(t *testing.T) {
 					}
 				}
 			}
-			if c.Databases.Control().DSN() != "postgres://"+entry.user+":synthetic@db-m:5432/control?sslmode=disable" || c.Databases.Logs().DSN() != "postgres://sicp_logger:synthetic@db-log:5432/logs?sslmode=disable" {
+			if c.Databases.Control().DSN() != "postgres://"+entry.user+":synthetic@db-log:5432/control?sslmode=disable" || c.Databases.Logs().DSN() != "postgres://sicp_logger:synthetic@db-log:5432/logs?sslmode=disable" {
 				t.Fatal("fixed endpoint drift")
 			}
 			if entry.role == config.Worker {

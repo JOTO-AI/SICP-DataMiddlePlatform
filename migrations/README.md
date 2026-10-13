@@ -1,8 +1,11 @@
 # Database migrations
 
 Provision PostgreSQL 18.6 on M, S and one separate log instance. Create two business
-databases per M/S instance, a fixed control database on M, and two logical
-databases (`logs`, `upstream_logs`) on the log instance. Configure the seven write
+databases per M/S instance, and three distinct logical databases (`control`,
+`logs`, `upstream_logs`) on db-log. Existing control databases on M must follow
+the [control relocation procedure](../deploy/CONTROL_DATABASE_MIGRATION.md)
+before changing their endpoint; SQL migrations alone do not copy data.
+Configure the seven write
 target URLs in `.env.example`. Compose always uses dual mode; direct processes
 must explicitly set `LOG_STORAGE_MODE=dual` (or `single_legacy` for compatibility).
 Use the same canonical host name for databases
@@ -21,7 +24,7 @@ The canonical, embedded migration files live in `internal/storage/migrate/sql`:
 | Domain | Targets | Objects |
 | --- | --- | --- |
 | business | M/0, M/1, S/0, S/1 | `source`: fourteen source tables, exact column types, TEXT primary keys and read/write group grants |
-| control | fixed M control database | `control`: tasks, steps, checkpoints, schedule, execution ownership, bundles, slots, candidates, progress, publication/notification outbox and readers |
+| control | fixed control database on db-log (M retained for relocation compatibility) | `control`: tasks, steps, checkpoints, schedule, execution ownership, bundles, slots, candidates, progress, publication/notification outbox and readers |
 | logs | independent log database | `logs`: immutable deduplicated events and lookup indexes |
 | upstream_logs | upstream logical database on the shared log instance | `logs`: call/attempt events, independent ledger and logger/reader grants |
 

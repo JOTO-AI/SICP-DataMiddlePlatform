@@ -124,7 +124,7 @@ def check_modes(env_file):
     pg_limits = {
         "db-m": ("POSTGRES_M_MAX_CONNECTIONS", "256", "320"),
         "db-s": ("POSTGRES_S_MAX_CONNECTIONS", "128", "160"),
-        "db-log": ("POSTGRES_LOG_MAX_CONNECTIONS", "100", "120"),
+        "db-log": ("POSTGRES_LOG_MAX_CONNECTIONS", "160", "192"),
     }
     for mode in ("production", "development"):
         baseline = fixture_text(mode)
@@ -321,6 +321,7 @@ def main(directory):
         "DATABASE_UPSTREAM_LOG_URL", "DATABASE_UPSTREAM_LOG_USER", "DATABASE_UPSTREAM_LOG_PASSWORD",
     }
     for role in ("query", "worker", "migrate"):
+        assert services[role]["environment"]["DATABASE_CONTROL_URL"] == "postgres://db-log:5432/control?sslmode=disable"
         assert services[role]["environment"]["LOG_STORAGE_MODE"] == "dual"
         assert services[role]["environment"]["DATABASE_UPSTREAM_LOG_URL"] == "postgres://db-log:5432/upstream_logs?sslmode=disable"
         for retired in ("LOG_CURSOR_KEYS", "LOG_CURSOR_ACTIVE", "LOG_INTERNAL_TOKEN",
