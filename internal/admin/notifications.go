@@ -9,6 +9,9 @@ import (
 )
 
 func MountNotifications(mux *http.ServeMux, auth *Sessions, n *operations.Notifier, tokens *operations.Tokens) error {
+	if auth == nil || n == nil || tokens == nil {
+		return operations.ErrUnavailable
+	}
 	register := func(pattern string, action Action, fn http.HandlerFunc) error {
 		h, e := auth.Protect(action, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != "GET" && r.URL.RawQuery != "" {

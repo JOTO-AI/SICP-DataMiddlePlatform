@@ -120,3 +120,8 @@ P32.05 已完成：代理保留 X-SICP-Combination；8→9 独立 token、版本
 P33.01 已收尾。通知设置响应保留 channel_state，新增 channel_diagnostics.last_result/observed_at（本实例上次真实通道结果，未发送前 not_observed/null），无主动 SMTP 探测。下一步 P33.02。
 
 P33.02 已完成，发送/租约不超过原 24 小时期限，模糊回执保留 unknown。下一步 P33.04。
+
+
+### P33.04 开发收尾（未运行测试）
+
+`tests/integration/notification_api_test.go` 覆盖 T33-15—17：保存无投递、重复键/旧 revision、本人作业查回、两类分页/未知详情、游标接口/主体隔离、未登录与 CSRF、临时地址和非法分页参数拒绝。复核补齐 Deliveries 游标校验、详情读取失败清空部分结果、路由依赖缺失拒绝挂载。Linux integration 编译、operations/admin go vet 通过；未运行测试、迁移或 SMTP。无 schema 修改，代码可独立回退。P33.04 已勾选，下一项 P33.05；T/OI 实测框保持未勾选。

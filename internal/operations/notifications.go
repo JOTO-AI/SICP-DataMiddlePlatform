@@ -589,7 +589,7 @@ func (r Repository) AcceptNotificationTest(ctx context.Context, subject, key str
 	})
 }
 func (r Repository) Deliveries(ctx context.Context, after string, limit int) ([]Delivery, error) {
-	if limit < 1 || limit > 201 {
+	if limit < 1 || limit > 201 || after != "" && !ValidID(after) {
 		return nil, ErrArgument
 	}
 	out := []Delivery{}
@@ -658,7 +658,7 @@ func (r Repository) Delivery(ctx context.Context, id string) (Delivery, []Delive
 		defer rows.Close()
 		for rows.Next() {
 			var a DeliveryAttempt
-			if rows.Scan(&a.Number, &a.StartedAt, &a.FinishedAt, &a.Outcome) != nil {
+			if rows.Scan(&a.Number, &a.StartedAt, &a.FinishedAt, &a.Outcome) != nil || len(attempts) >= 16 {
 				return ErrUnavailable
 			}
 			attempts = append(attempts, a)
@@ -668,5 +668,8 @@ func (r Repository) Delivery(ctx context.Context, id string) (Delivery, []Delive
 		}
 		return nil
 	})
-	return d, attempts, e
+	if e != nil {
+		return Delivery{}, nil, e
+	}
+	return d, attempts, nil
 }
