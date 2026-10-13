@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/streamio"
 )
 
 type scanEntry struct {
@@ -134,14 +136,17 @@ func (s *StreamServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
+	lifetime := time.NewTimer(5*time.Minute - 5*time.Second)
+	defer lifetime.Stop()
 	defer cancel()
 	b, err := s.scan(ctx, c)
 	if err != nil {
 		streamHTTPError(w, err)
 		return
 	}
-	controller := http.NewResponseController(w)
-	if controller.SetWriteDeadline(time.Now().Add(5*time.Second)) != nil {
+	output := streamio.New(ctx, w, 5*time.Second)
+	defer output.Close()
+	if output.Prepare() != nil {
 		streamHTTPError(w, ErrUnavailable)
 		return
 	}
@@ -153,18 +158,18 @@ func (s *StreamServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if e != nil || len(data) > MaxEventBytes {
 			return ErrLimit
 		}
-		if e = controller.SetWriteDeadline(time.Now().Add(5 * time.Second)); e != nil {
+		if e = output.Prepare(); e != nil {
 			return e
 		}
 		if id != "" {
-			if _, e = fmt.Fprintf(w, "id: %s\n", id); e != nil {
+			if _, e = fmt.Fprintf(output, "id: %s\n", id); e != nil {
 				return e
 			}
 		}
-		if _, e = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", kind, data); e != nil {
+		if _, e = fmt.Fprintf(output, "event: %s\ndata: %s\n\n", kind, data); e != nil {
 			return e
 		}
-		return controller.Flush()
+		return output.Flush()
 	}
 	control := func(err error) {
 		_, code := HTTPError(err)
@@ -180,6 +185,9 @@ func (s *StreamServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, rec := range b.Records {
+			if ctx.Err() != nil {
+				return
+			}
 			if !s.Service.Now().Before(c.ExpiresAt) {
 				control(ErrExpired)
 				return
@@ -213,18 +221,18 @@ func (s *StreamServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		select {
 		case <-ctx.Done():
-			if r.Context().Err() == nil {
-				_ = write("control", "", map[string]any{"code": "connection_expired", "retryable": true, "rebuild_required": false})
-			}
+			return
+		case <-lifetime.C:
+			_ = write("control", "", map[string]any{"code": "connection_expired", "retryable": true, "rebuild_required": false})
 			return
 		case <-heartbeat.C:
-			if controller.SetWriteDeadline(time.Now().Add(5*time.Second)) != nil {
+			if output.Prepare() != nil {
 				return
 			}
-			if _, e = fmt.Fprint(w, ": heartbeat\n\n"); e != nil {
+			if _, e = fmt.Fprint(output, ": heartbeat\n\n"); e != nil {
 				return
 			}
-			if controller.Flush() != nil {
+			if output.Flush() != nil {
 				return
 			}
 		case <-poll.C:

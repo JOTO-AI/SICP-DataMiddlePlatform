@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/logquery"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/streamio"
 )
 
 // LogRoutes is mounted only on query-service and protected with a credential
@@ -92,7 +93,7 @@ func LogProxy(address, token string, sessions *Sessions) (http.Handler, error) {
 
 func logProxy(address, token string, sessions *Sessions, recheck time.Duration) (http.Handler, error) {
 	u, err := url.Parse(address)
-	if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") || (u.Scheme != "http" && u.Scheme != "https") || token == "" || sessions == nil {
+	if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") || (u.Scheme != "http" && u.Scheme != "https") || token == "" || sessions == nil || recheck <= 0 {
 		return nil, errors.New("invalid log proxy configuration")
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -139,9 +140,14 @@ func logProxy(address, token string, sessions *Sessions, recheck time.Duration) 
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), timeout)
 		defer cancel()
-		controller := http.NewResponseController(w)
+		var output *streamio.Writer
 		if streaming {
+			output = streamio.New(ctx, w, 5*time.Second)
+			defer output.Close()
+			done := make(chan struct{})
+			defer func() { cancel(); <-done }()
 			go func() {
+				defer close(done)
 				ticker := time.NewTicker(recheck)
 				defer ticker.Stop()
 				for {
@@ -151,7 +157,6 @@ func logProxy(address, token string, sessions *Sessions, recheck time.Duration) 
 					case <-ticker.C:
 						if _, ok := sessions.lookup(r); !ok {
 							cancel()
-							_ = controller.SetWriteDeadline(time.Now())
 							return
 						}
 					}
@@ -215,13 +220,13 @@ func logProxy(address, token string, sessions *Sessions, recheck time.Duration) 
 				return
 			}
 			if n > 0 {
-				if controller.SetWriteDeadline(time.Now().Add(5*time.Second)) != nil {
+				if output.Prepare() != nil {
 					return
 				}
-				if _, err = w.Write(buffer[:n]); err != nil {
+				if _, err = output.Write(buffer[:n]); err != nil {
 					return
 				}
-				if controller.Flush() != nil {
+				if output.Flush() != nil {
 					return
 				}
 			}
