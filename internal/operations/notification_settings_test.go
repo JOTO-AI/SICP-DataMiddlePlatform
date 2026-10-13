@@ -45,7 +45,7 @@ func TestT33_04ChannelObservationNeverClaimsDeliveryOrLeaksReceipt(t *testing.T)
 		receipt notification.Receipt
 		want    string
 	}{{notification.Receipt{Accepted: true}, "accepted"}, {notification.Receipt{Rejected: true}, "rejected"}, {notification.Receipt{Temporary: true}, "temporary_failure"}, {notification.Receipt{}, "unknown"}} {
-		n.observeChannel(tc.receipt, at)
+		n.observeChannel(tc.receipt, nil, at)
 		d := n.ChannelDiagnostics()
 		raw, _ := json.Marshal(d)
 		if d.LastResult != tc.want || d.ObservedAt == nil || !d.ObservedAt.Equal(at) || strings.Contains(string(raw), "delivered") {

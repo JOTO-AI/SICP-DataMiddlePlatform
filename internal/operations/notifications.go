@@ -280,6 +280,9 @@ func scanDelivery(row storage.Row) (Delivery, error) {
 	return d, nil
 }
 func (r Repository) ClaimDelivery(ctx context.Context, owner string, now time.Time) (*Delivery, error) {
+	if !ValidID(owner) || now.IsZero() {
+		return nil, ErrArgument
+	}
 	var out *Delivery
 	err := r.transaction(ctx, false, func(ctx context.Context, tx storage.Transaction) error {
 		s, e := settings(ctx, tx, true)
@@ -311,6 +314,9 @@ func (r Repository) ClaimDelivery(ctx context.Context, owner string, now time.Ti
 		}
 		d.Attempts++
 		lease := now.Add(time.Minute)
+		if d.Deadline.Before(lease) {
+			lease = d.Deadline
+		}
 		if _, e = tx.Exec(ctx, "UPDATE control.notification_deliveries SET status='sending',attempts=$2,owner=$3,lease_until=$4 WHERE id=$1", d.ID, d.Attempts, owner, lease); e != nil {
 			return ErrUnavailable
 		}
@@ -323,7 +329,10 @@ func (r Repository) ClaimDelivery(ctx context.Context, owner string, now time.Ti
 		out = &d
 		return nil
 	})
-	return out, err
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 func (r Repository) FinishDelivery(ctx context.Context, d Delivery, receipt notification.Receipt, sendErr error, now time.Time) error {
 	status := "unknown"
@@ -405,14 +414,14 @@ func (n *Notifier) ChannelDiagnostics() ChannelDiagnostics {
 	}
 	return out
 }
-func (n *Notifier) observeChannel(r notification.Receipt, at time.Time) {
+func (n *Notifier) observeChannel(r notification.Receipt, sendErr error, at time.Time) {
 	result := "unknown"
 	switch {
-	case r.Accepted:
+	case r.Accepted && !r.Rejected && !r.Temporary && sendErr == nil:
 		result = "accepted"
-	case r.Rejected:
+	case r.Rejected && !r.Accepted && !r.Temporary:
 		result = "rejected"
-	case r.Temporary:
+	case r.Temporary && !r.Accepted && !r.Rejected:
 		result = "temporary_failure"
 	}
 	n.channelMu.Lock()
@@ -454,10 +463,14 @@ func (n *Notifier) Pump(ctx context.Context) error {
 	if e != nil || d == nil {
 		return e
 	}
-	send, cancel := context.WithTimeout(ctx, 30*time.Second)
+	deadline := time.Now().UTC().Add(30 * time.Second)
+	if d.Deadline.Before(deadline) {
+		deadline = d.Deadline
+	}
+	send, cancel := context.WithDeadline(ctx, deadline)
 	receipt, sendErr := n.Channel.Send(send, notification.Mail{ID: d.ID, From: n.From, To: d.Recipient, Subject: "SICP " + d.Rule, Body: "Event reference: " + d.FactID + "\nRule: " + d.Rule})
 	cancel()
-	n.observeChannel(receipt, time.Now().UTC())
+	n.observeChannel(receipt, sendErr, time.Now().UTC())
 	finish, stop := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer stop()
 	return n.Repository.FinishDelivery(finish, *d, receipt, sendErr, time.Now().UTC())
