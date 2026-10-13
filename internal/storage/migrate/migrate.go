@@ -72,7 +72,7 @@ func Catalog(domain Domain) ([]Migration, error) {
 		versions = append(versions, "business_002", "business_003", "business_004")
 	}
 	if domain == Control {
-		versions = append(versions, "control_002", "control_003", "control_004", "control_005", "control_006", "control_007", "control_008", "control_009", "control_010", "control_011")
+		versions = append(versions, "control_002", "control_003", "control_004", "control_005", "control_006", "control_007", "control_008", "control_009", "control_010", "control_011", "control_012")
 	}
 	plan := make([]Migration, 0, len(versions))
 	for _, version := range versions {

@@ -23,6 +23,7 @@ func TestT34_04To06PostgresReferenceRetirementAndReceivedPrefix(t *testing.T) {
 	m := operations.Maintenance{Repository: repo, LogDatabase: e.db, Owner: "maintenance"}
 	now := time.Now().UTC()
 	l := newLogs(t, "")
+	m.Correlate = l.sanitizer.Correlation
 	if err = repo.EnsureNotifications(e.ctx, "", false, now); err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +90,7 @@ func TestT34_04To06PostgresReferenceRetirementAndReceivedPrefix(t *testing.T) {
 	if n, err := appendProtocol(e.ctx, logs, protocolEvent(t, l, "terminal", events.Task)); err != nil || n != 1 {
 		t.Fatal("receipt replay", n, err)
 	}
-	if err = logs.QueryRow(e.ctx, "SELECT count(*) FROM logs.events WHERE event_id='terminal'").Scan(&count); err != nil || count != 0 {
+	if err = logs.QueryRow(e.ctx, "SELECT count(*) FROM logs.events WHERE event_id=$1", l.sanitizer.Correlation("terminal")).Scan(&count); err != nil || count != 0 {
 		t.Fatal("deleted payload resurrected", count, err)
 	}
 	// A live reference added AFTER preview wins over retirement at execution.

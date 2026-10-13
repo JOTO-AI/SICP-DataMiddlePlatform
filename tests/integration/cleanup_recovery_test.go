@@ -55,6 +55,7 @@ func TestT34_12And13PostgresDeleteCommitThenControlFailureRecoversOnce(t *testin
 	repo := operations.Repository{Registry: registry, Database: fault}
 	m := operations.Maintenance{Repository: repo, LogDatabase: e.db, Owner: "first"}
 	fixture := newLogs(t, "")
+	m.Correlate = fixture.sanitizer.Correlation
 	if _, err = appendProtocol(e.ctx, l, protocolEvent(t, fixture, "cleanup", events.Request)); err != nil {
 		t.Fatal(err)
 	}

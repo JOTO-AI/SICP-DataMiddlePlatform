@@ -169,7 +169,7 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 		}
 		console := http.NewServeMux()
 		opsRepo := operations.Repository{Registry: c.Databases, Database: r.Database}
-		a.Maintenance = &operations.Maintenance{Repository: opsRepo, LogDatabase: logDB, Owner: r.ProcessID}
+		a.Maintenance = &operations.Maintenance{Repository: opsRepo, LogDatabase: logDB, Owner: r.ProcessID, Correlate: r.Sanitizer.Correlation}
 		if e = admin.MountMaintenance(console, auth, *a.Maintenance, a.OperationsStatus); e != nil {
 			return nil, e
 		}

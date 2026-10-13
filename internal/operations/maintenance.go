@@ -86,6 +86,7 @@ type Maintenance struct {
 	Repository  Repository
 	LogDatabase storage.Database
 	Owner       string
+	Correlate   func(string) string
 }
 
 type LogStorage struct {
@@ -138,6 +139,9 @@ func (m Maintenance) Preview(ctx context.Context, source storage.LogSource, subj
 	if source != storage.PlatformLog && source != storage.UpstreamLog {
 		return CleanupPreview{}, ErrArgument
 	}
+	if err := m.indexReferences(ctx); err != nil {
+		return CleanupPreview{}, err
+	}
 	s, e := m.Repository.Retention(ctx)
 	if e != nil {
 		return CleanupPreview{}, e
@@ -166,7 +170,7 @@ func (m Maintenance) Preview(ctx context.Context, source storage.LogSource, subj
 	}
 	e = m.Repository.transaction(ctx, true, func(ctx context.Context, tx storage.Transaction) error {
 		var err error
-		p.References, err = eligibleReferences(ctx, tx, refs)
+		p.References, err = m.eligibleLogReferences(ctx, tx, refs)
 		return err
 	})
 	if e != nil {
@@ -260,6 +264,7 @@ func (m Maintenance) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			_ = m.indexReferences(ctx)
 			_ = m.Pump(ctx)
 		}
 	}
