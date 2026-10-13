@@ -233,9 +233,9 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 		if !ok {
 			return update.ErrInitialization
 		}
-		limiter, e := ingest.NewLimiter(c.SourcePageConcurrency)
-		if e != nil {
-			return e
+		limiter := r.SourceAdmission
+		if limiter == nil {
+			return update.ErrInitialization
 		}
 		collector, e := ingest.NewCoordinator(sourceClient.Client, ingest.BudgetConfig{RequestTimeout: c.DependencyTimeout, PageTimeout: time.Minute, InitialBackoff: time.Second, MaxBackoff: 10 * time.Second, MaxAttempts: 3, RetryHTTP: []int{408, 429, 500, 502, 503, 504}}, ingest.SystemTimer{}, rand.Reader, repo, limiter)
 		if e != nil {
@@ -250,7 +250,7 @@ func (w Executor) execute(ctx context.Context, task control.Task, owner control.
 		acquirer.Progress = func(ctx context.Context, tables []control.TableAcquisitionProgress) error {
 			return repo.SaveAcquisitionProgress(ctx, control.AcquisitionProgress{Tables: tables, UpdatedAt: w.Clock.Now()})
 		}
-		if c.MailEnabled() {
+		{
 			consumer, e := notification.NewConsumer(repo, r.Sanitizer, c.Environment)
 			if e != nil {
 				return e

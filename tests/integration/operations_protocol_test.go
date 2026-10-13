@@ -1,0 +1,193 @@
+//go:build integration
+
+package integration
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/observability"
+	"github.com/jackc/pgx/v5"
+)
+
+// These exercise actual PostgreSQL transactions and privileges. They are
+// narrower protocol regressions, not replacements for the full OI scenarios.
+func protocolEvent(t *testing.T, l *logFixture, id string, kind events.Kind) observability.SafeEvent {
+	t.Helper()
+	e := events.Event{ID: id, EntityID: id, Kind: kind, Phase: events.Started, OccurredAt: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)}
+	if kind == events.Task {
+		e.Identity.TaskID = id
+	} else {
+		e.Identity.RequestID = id
+	}
+	safe, err := l.sanitizer.Sanitize(e, observability.Details{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return safe
+}
+
+func appendProtocol(ctx context.Context, q interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, safe observability.SafeEvent) (int64, error) {
+	e := safe.Event()
+	var n int64
+	err := q.QueryRow(ctx, "SELECT logs.append_event($1,$2,$3,$4,$5,$6::jsonb)", e.ID, string(e.Kind), e.EntityID, string(e.Phase), e.OccurredAt, string(safe.Bytes())).Scan(&n)
+	return n, err
+}
+
+func TestT29_PostgresCounterCannotExposeLaterCommitPastPendingWriter(t *testing.T) {
+	e := newEnvironment(t)
+	e.migrate(t)
+	l := newLogs(t, "")
+	one, two, observer := e.connection(t, 5), e.connection(t, 5), e.connection(t, 5)
+	first, err := one.Begin(e.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer first.Rollback(context.Background())
+	if n, err := appendProtocol(e.ctx, first, protocolEvent(t, l, "first", events.Request)); err != nil || n != 1 {
+		t.Fatal(n, err)
+	}
+	second, err := two.Begin(e.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Rollback(context.Background())
+	ctx, cancel := context.WithTimeout(e.ctx, 5*time.Second)
+	defer cancel()
+	completed := make(chan error, 1)
+	safe := protocolEvent(t, l, "second", events.Request)
+	go func() {
+		n, err := appendProtocol(ctx, second, safe)
+		if err == nil && n != 2 {
+			err = errors.New("unexpected allocation")
+		}
+		if err == nil {
+			err = second.Commit(ctx)
+		}
+		completed <- err
+	}()
+	// Wait for PostgreSQL's own lock observation, not a timing assumption.
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		var waiting bool
+		if err := observer.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE pid=$1 AND wait_event_type='Lock')", two.PgConn().PID()).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			break
+		}
+		select {
+		case err := <-completed:
+			t.Fatalf("second writer escaped pending commit: %v", err)
+		case <-ctx.Done():
+			t.Fatal("writer lock not observed")
+		case <-ticker.C:
+		}
+	}
+	var high, count int64
+	if err := observer.QueryRow(e.ctx, "SELECT high_water,(SELECT count(*) FROM logs.events) FROM logs.commit_state").Scan(&high, &count); err != nil || high != 0 || count != 0 {
+		t.Fatal("uncommitted high-water exposed", high, count, err)
+	}
+	if err := first.Commit(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-completed; err != nil {
+		t.Fatal(err)
+	}
+	if err := observer.QueryRow(e.ctx, "SELECT high_water,(SELECT count(*) FROM logs.events) FROM logs.commit_state").Scan(&high, &count); err != nil || high != 2 || count != 2 {
+		t.Fatal(high, count, err)
+	}
+	rolled, err := one.Begin(e.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n, err := appendProtocol(e.ctx, rolled, protocolEvent(t, l, "rolled", events.Request)); err != nil || n != 3 {
+		t.Fatal(n, err)
+	}
+	if err := rolled.Rollback(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := appendProtocol(e.ctx, one, protocolEvent(t, l, "after-rollback", events.Request)); err != nil || n != 3 {
+		t.Fatal("rollback consumed committed position", n, err)
+	}
+}
+
+func TestT34_PostgresCleanupKeepsProtectedPrefixAndPermanentReplayReceipt(t *testing.T) {
+	e := newEnvironment(t)
+	e.migrate(t)
+	l := newLogs(t, "")
+	conn := e.connection(t, 5)
+	items := []observability.SafeEvent{protocolEvent(t, l, "old-request", events.Request), protocolEvent(t, l, "protected-task", events.Task), protocolEvent(t, l, "later-request", events.Request)}
+	for i, safe := range items {
+		if n, err := appendProtocol(e.ctx, conn, safe); err != nil || n != int64(i+1) {
+			t.Fatal(n, err)
+		}
+	}
+	if _, err := conn.Exec(e.ctx, "UPDATE logs.events SET received_at=clock_timestamp()-interval '40 days'"); err != nil {
+		t.Fatal(err)
+	}
+	var epoch string
+	var floor, through, count int64
+	cutoff := time.Now().Add(-30 * 24 * time.Hour)
+	if err := conn.QueryRow(e.ctx, "SELECT epoch,floor,through,count FROM logs.cleanup_preview($1)", cutoff).Scan(&epoch, &floor, &through, &count); err != nil || floor != 0 || through != 1 || count != 1 {
+		t.Fatal("protected row did not stop prefix", floor, through, count, err)
+	}
+	for range 2 {
+		var removed int64
+		if err := conn.QueryRow(e.ctx, "SELECT logs.cleanup_prefix('synthetic-cleanup',$1,$2,$3,$4)", epoch, floor, through, cutoff).Scan(&removed); err != nil || removed != 1 {
+			t.Fatal("cleanup receipt replay", removed, err)
+		}
+	}
+	if err := conn.QueryRow(e.ctx, "SELECT floor,(SELECT count(*) FROM logs.events) FROM logs.commit_state").Scan(&floor, &count); err != nil || floor != 1 || count != 2 {
+		t.Fatal("delete and floor disagree", floor, count, err)
+	}
+	if n, err := appendProtocol(e.ctx, conn, items[0]); err != nil || n != 1 {
+		t.Fatal("receipt not replayable", n, err)
+	}
+	if err := conn.QueryRow(e.ctx, "SELECT count(*) FROM logs.events WHERE event_id=$1", items[0].ID()).Scan(&count); err != nil || count != 0 {
+		t.Fatal("cleaned payload resurrected", count, err)
+	}
+	// Same id, different content stays a conflict after payload retirement.
+	var conflict int64
+	event := items[0].Event()
+	changed := event.OccurredAt.Add(time.Second)
+	if err := conn.QueryRow(e.ctx, `SELECT logs.append_event($1,$2,$3,$4,$5,jsonb_set($6::jsonb,'{event,occurred_at}',to_jsonb($7::text)))`, event.ID, string(event.Kind), event.EntityID, string(event.Phase), changed, string(items[0].Bytes()), changed.Format(time.RFC3339Nano)).Scan(&conflict); err != nil || conflict != -1 {
+		t.Fatal("lost retained conflict marker", conflict, err)
+	}
+}
+
+func TestT29_PostgresRolesRejectWriterBypassAndReaderMutation(t *testing.T) {
+	e := newEnvironment(t)
+	e.migrate(t)
+	l := newLogs(t, "")
+	conn := e.connection(t, 5)
+	if _, err := conn.Exec(e.ctx, "SET ROLE sicp_logger"); err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Exec(context.Background(), "RESET ROLE")
+	if _, err := conn.Exec(e.ctx, "DELETE FROM logs.events"); err == nil {
+		t.Fatal("dispatcher can delete")
+	}
+	if _, err := conn.Exec(e.ctx, "INSERT INTO logs.events(event_id,kind,entity_id,phase,occurred_at,payload,sequence) VALUES('bypass','request','bypass','started',now(),'{}',999)"); err == nil {
+		t.Fatal("old direct writer still permitted")
+	}
+	if _, err := appendProtocol(e.ctx, conn, protocolEvent(t, l, "allowed", events.Request)); err != nil {
+		t.Fatal("supported writer rejected", err)
+	}
+	if _, err := conn.Exec(e.ctx, "RESET ROLE; SET ROLE sicp_log_reader"); err != nil {
+		t.Fatal(err)
+	}
+	var count int64
+	if err := conn.QueryRow(e.ctx, "SELECT count(*) FROM logs.events").Scan(&count); err != nil || count != 1 {
+		t.Fatal("reader cannot read", err)
+	}
+	if _, err := appendProtocol(e.ctx, conn, protocolEvent(t, l, "reader-write", events.Request)); err == nil {
+		t.Fatal("reader can execute write function")
+	}
+}

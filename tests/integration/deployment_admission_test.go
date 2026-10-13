@@ -239,6 +239,7 @@ func TestI06_07(t *testing.T) {
 				"MAIL_ADDRESS": "mock-mail:1025", "MAIL_TO": "operator@example.invalid",
 				"MAIL_FROM": "worker@example.invalid", "MAIL_TLS": "none",
 				"DATABASE_USER": "sicp_worker", "DATABASE_LOG_USER": "sicp_logger",
+				"LOG_STORAGE_MODE": "dual", "DATABASE_UPSTREAM_LOG_USER": "sicp_upstream_logger",
 			} {
 				if values[key] != expected {
 					t.Fatal("worker used unexpected runtime configuration", key)
@@ -255,6 +256,7 @@ func TestI06_07(t *testing.T) {
 				"DATABASE_M0_URL": "db-m", "DATABASE_M1_URL": "db-m",
 				"DATABASE_S0_URL": "db-s", "DATABASE_S1_URL": "db-s",
 				"DATABASE_CONTROL_URL": "db-m", "DATABASE_LOG_URL": "db-log", "REDIS_URL": "redis",
+				"DATABASE_UPSTREAM_LOG_URL": "db-log",
 			} {
 				u, err := url.Parse(values[key])
 				if err != nil || u.Hostname() != host {
@@ -263,10 +265,25 @@ func TestI06_07(t *testing.T) {
 			}
 		}
 	}
-	for d.sql(t, fmt.Sprintf(`SELECT count(*) FROM control.notification_outbox
-WHERE task_id='%s' AND status='accepted' AND sent_at IS NOT NULL AND attempts=1
-AND payload->'delivery'->'attempts'->0->>'result'='accepted'
-AND NOT (payload->'delivery' ? 'delivered_at')`, id)) != "1" {
+	// The console needs no extra login or log URLs. Migrations authorize existing
+	// service identities on both databases without granting query cleanup rights.
+	for _, database := range []string{"logs", "upstream_logs"} {
+		privileges := `SELECT
+has_table_privilege('sicp_query','logs.events','SELECT') AND
+NOT has_table_privilege('sicp_query','logs.events','INSERT') AND
+NOT has_function_privilege('sicp_query','logs.cleanup_prefix(text,text,bigint,bigint,timestamptz)','EXECUTE') AND
+has_table_privilege('sicp_worker','logs.events','SELECT') AND
+has_function_privilege('sicp_worker','logs.cleanup_prefix(text,text,bigint,bigint,timestamptz)','EXECUTE') AND
+NOT has_table_privilege('sicp_worker','logs.events','DELETE')`
+		if got := strings.TrimSpace(d.compose(t, "exec", "-T", "db-log", "psql", "-U", "postgres", "-d", database, "-Atc", privileges)); got != "t" {
+			t.Fatal("automatic service log permissions missing or excessive", database)
+		}
+	}
+	for d.sql(t, fmt.Sprintf(`SELECT count(*) FROM control.notification_deliveries d
+JOIN control.notification_outbox n ON d.fact_id='schema:'||n.id
+JOIN control.notification_attempts a ON a.delivery_id=d.id AND a.number=1
+WHERE n.task_id='%s' AND d.status='accepted' AND d.accepted_at IS NOT NULL AND d.attempts=1
+AND a.outcome='accepted' AND a.finished_at IS NOT NULL`, id)) != "1" {
 		if time.Now().After(deadline) {
 			t.Fatal("notification acknowledgement not persisted")
 		}

@@ -40,6 +40,9 @@ func (m Mail) GoString() string { return m.String() }
 type Receipt struct {
 	Accepted bool
 	Rejected bool
+	// Temporary proves no DATA submission was accepted; unknown outcomes must
+	// leave this false so they are never retried by the management sender.
+	Temporary bool
 	// DeliveredAt must be backed by explicit provider delivery confirmation.
 	// A successful SMTP submission alone MUST leave this nil.
 	DeliveredAt *time.Time

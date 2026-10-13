@@ -1,6 +1,6 @@
 # P28 日志存储配置与迁移边界
 
-**当前更新：P28.01—P28.04 后端代码已完成，尚未实际部署或运行验收。下面的 P28.01 说明为历史记录；当前装配及切换流程以文末 P28.03/P28.04 为准。**
+**2026-10-13 更新：按用户确认，部署使用一个独立于 M/S 的 db-log PostgreSQL 服务，内含 logs / upstream_logs 两个逻辑数据库，全部定义在 compose.yaml。双日志指逻辑存储与管线分离，不再要求两个 PostgreSQL 实例。下面的 P28.01 说明为历史记录；当前装配及切换流程以文末 P28.03/P28.04 为准。代码尚未实际部署或运行验收。**
 
 日期：2026-10-12。本步提供独立上游日志 Registry、凭据校验、物理身份检查和迁移基础。**双库投递/连接池/Compose 新服务尚未装配**，见 P28.02—P28.04；本步不表示双日志库已部署或可用。
 
@@ -52,16 +52,20 @@ dual 模式的日志迁移必须通过物理隔离预检，在写事务内重新
 
 追加 logs_004/upstream_logs_002，建立仅部署账号可写的 deployment_identity。双库迁移在 DDL 后再次核验目标身份并记录源、集群、库 OID 和全目标拓扑摘要。运行账号只可执行固定 search_path、无动态 SQL 的 verify_deployment 函数，每笔日志事务核验当前实际后端与部署记录；不授予 writer pg_control_system 或身份表写权限。拓扑摘要不含凭据，轮换密码不要求重新迁移；更换数据库目标需要重新隔离预检。缺失 schema、身份不符和未核验都表现为对应能力未就绪，恢复后逐源重试。
 
-Linux 双库配置位于 compose.dual-logs.yaml，显式选择 `SICP_DUAL_LOGS=1 scripts/sicp.sh ...`；overlay 设置 dual，并启用 db-upstream-log、独立 pg-upstream-log 数据目录和 query/worker 上游缓冲。需要在部署配置填 DATABASE_UPSTREAM_LOG_URL、独立 UPSTREAM_LOGGER_PASSWORD；进程收到独立 DATABASE_UPSTREAM_LOG_USER/PASSWORD。查询副本沿用固定 slot 锁，两个日志源各有该副本的目录。初始化脚本在上游实例只创建 upstream logger/reader 角色，不复用平台 logger 登录。
+当前只使用根目录 `compose.yaml`，不再提供双日志 overlay 或 SICP_DUAL_LOGS 开关。db-log 的同一个 pg-log 数据目录承载 logs / upstream_logs；两个逻辑库各自保留 schema、迁移 ledger、写入和只读账号。`DATABASE_UPSTREAM_LOG_URL=postgres://db-log:5432/upstream_logs?sslmode=disable`，另填独立 UPSTREAM_LOGGER_PASSWORD。Compose 固定注入 dual；模板中的 LOG_STORAGE_MODE 供直接进程参考，不能用它切换 Compose 服务为 legacy。
 
-迁移是显式部署步骤：按 `infra → migrate → start` 执行（scripts/sicp.sh deploy 已按此顺序）。query/worker 不再依赖 migrate 或日志库健康，已迁移系统重启时单日志库离线不会间接卡住业务启动。首次未部署 schema 不表示就绪，日志保留在缓冲；禁止以 start 替代首次迁移。日志就绪状态与业务 query_ready/sync_ready 分离，single_legacy 明示兼容模式。
+隔离校验仍禁止日志与 M/S/control 共用实例，允许两类日志同集群但要求不同数据库 OID/库名，DNS 别名指向同一个数据库仍拒绝。两套连接池、缓冲、配额和账号独立；实例宕机、磁盘不足和连接总数由两类日志共同承担。POSTGRES_LOG_MAX_CONNECTIONS 是两库共享额度。查询副本沿用固定 slot 锁，两类日志各有该副本的目录。
+
+空卷初始化创建两个数据库；已有 pg-log 卷由 `scripts/sicp.sh infra` 在数据库健康后显式调用初始化脚本的 `--upstream-only` 分支，仅补建缺失的上游账号/逻辑库，不清空数据、不修改已有密码。外部数据库需操作者预建库及 LOGIN；若已存在同名 NOLOGIN 组角色，须先按部署权限方案配置可登录账号。迁移新增 upstream_logs_005，将上游清理授权由集群共享的 sicp_log_maintenance 改为 sicp_upstream_maintenance；已有上游维护 LOGIN 需调整成员关系，平台维护账号不变。
+
+迁移是显式部署步骤：按 `infra → migrate → log-cutover → start` 执行（scripts/sicp.sh deploy 已按此顺序；旧部署先按下节登记目标并停写）。query/worker 不再依赖 migrate 或日志库健康，已迁移系统重启时单日志库离线不会间接卡住业务启动。首次未部署 schema 不表示就绪，日志保留在缓冲；禁止以 start 替代首次迁移。日志就绪状态与业务 query_ready/sync_ready 分离，single_legacy 明示兼容模式。
 
 关闭先停业务生产，再并行关闭两套 Dispatcher，单侧阻塞不会占用另一侧排空机会；失败/未知确认保留文件并报告未完成。该代码已做静态审查和源码编译，但尚未执行测试、DDL、容器启动、角色权限或故障演练。
 
 ## P28.04 切换与回退边界
 
-1. 保持原平台目标、原 AUDIT_KEY 和 single_legacy 配置，构建当前代码。运行 `scripts/sicp.sh log-register`：停止 query/worker/gateway/console，逐个锁定并登记旧查询 slot 1—32 中存在的目录及 worker 目录。只启动准备资源的一次性入口，不启动 HTTP、采集任务或通知发送。目录内 .legacy-target 保存 HMAC 目标摘要，不保存 URL/凭据。没有原目标登记的非空目录不能直接切为双库。
-2. 配置独立上游库后，以 `SICP_DUAL_LOGS=1` 执行 infra、migrate、log-cutover、start，或 deploy。dual deploy 在迁移前停止旧生产者，并在启动新服务前运行 log-cutover。运行 log-cutover 同样先停止旧服务，逐个处理全部已存在查询 slot 和 worker；任何一步失败整体退出非零，不报告完成。
+1. 保持原平台目标、数据根目录、项目名及 AUDIT_KEY，在现有 .env 补齐上游 URL/密码并构建当前代码。运行 `scripts/sicp.sh log-register`：停止 query/worker/gateway/console，仅给一次性登记进程显式注入 single_legacy 并清空上游配置，逐个锁定并登记旧查询 slot 1—32 中存在的目录及 worker 目录。此入口不启动 HTTP、采集任务或通知发送。目录内 .legacy-target 保存 HMAC 目标摘要，不保存 URL/凭据。没有原目标登记的非空目录不能直接切为双库。全新空目录部署不需要 log-register。
+2. 执行 infra、migrate、log-cutover、start，或 deploy，无需额外环境开关。deploy 在迁移前停止旧生产者，并在启动新服务前运行 log-cutover。运行 log-cutover 同样先停止旧服务，逐个处理全部已存在查询 slot 和 worker；任何一步失败整体退出非零，不报告完成。
 3. 每个目录由 Linux flock 独占；新进程在安装 Recorder 前，将旧缓冲全部通过**原平台目标**提交，旧 call/attempt 不搬到上游。只有提交确认、文件回收、旧 Dispatcher 关闭和目录确认为空后才写 .storage-mode。丢失提交应答时保留文件，重试依靠原 ID/原 payload 去重，绝不重新哈希。
 4. 标记绑定完整拓扑和关联密钥；双库重启核对标记后各源独立降级。无旧数据的新目录可直接登记；旧非空缓冲遇原库不可达时必须拒绝完成升级，不能为了启动而丢弃文件。未知临时文件、损坏/半写标记也拒绝，保留现场供恢复核验。
 5. 一旦某目录标记 dual，当前二进制拒绝用 single_legacy 打开该目录。部分目录完成、另一目录失败时继续修复并重试，不混用旧 writer。不要手工删除标记、锁文件或缓冲，也不能用不识别标记的旧二进制直接回退；P29 的 writer 协议升级还有单独回退边界。

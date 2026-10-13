@@ -34,15 +34,14 @@ case "${ENVIRONMENT:-production}" in
         echo 'Development source is not allowed outside development mode' >&2; exit 1 ;;
     esac
     if mail_enabled; then
-      : "${MAIL_ADDRESS:?Configure the real SMTP MAIL_ADDRESS}"
-      : "${MAIL_FROM:?Configure MAIL_FROM}" "${MAIL_TO:?Configure MAIL_TO}"
-      mail_host=$(printf '%s' "${MAIL_ADDRESS%:*}" | tr '[:upper:]' '[:lower:]')
+      mail_host=$(printf '%s' "${MAIL_ADDRESS:-}" | tr '[:upper:]' '[:lower:]')
+      mail_host=${mail_host%:*}
       case "$mail_host" in
-        mock|mock-source|mock-mail) echo 'Development mail is not allowed outside development mode' >&2; exit 1 ;;
+        mock|mock-source|mock-mail) export MAIL_ADDRESS= ;;
       esac
       case "${MAIL_TLS:-}" in
         tls|starttls) ;;
-        *) echo 'Real SMTP requires MAIL_TLS=tls or starttls' >&2; exit 1 ;;
+        *) export MAIL_ADDRESS= ;;
       esac
     fi
     ;;

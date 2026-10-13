@@ -16,8 +16,11 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/assembly"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/config"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ingest"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/logquery"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/notification"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/observability"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/operations"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/ports"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/cache"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/compute"
@@ -45,6 +48,9 @@ type utcClock struct{}
 func (utcClock) Now() time.Time { return time.Now().UTC().Truncate(time.Microsecond) }
 
 type Application struct {
+	Maintenance  *operations.Maintenance
+	Notifier     *operations.Notifier
+	SourceTests  *operations.TestRunner
 	Queries      map[contract.Operation]http.Handler
 	Management   http.Handler
 	Engine       *worker.Engine
@@ -109,6 +115,20 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 	}
 	observe := func(error) { a.observations.Add(1) }
 	if c.Service.Role == config.Query {
+		signer, err := c.LogQuerySigner()
+		if err != nil {
+			return nil, err
+		}
+		if signer != nil {
+			logs, err := logquery.NewService(logquery.Repository{Registry: c.Databases, Database: logDB, Sanitizer: r.Sanitizer}, signer, r.Sanitizer)
+			if err != nil {
+				return nil, err
+			}
+			a.Management, err = admin.LogRoutes(logs, logquery.NewStreamServer(logs), c.Service.APIKey, c.LogManagementToken())
+			if err != nil {
+				return nil, err
+			}
+		}
 		proof, ok := r.Database.(coord.ExecutionProof)
 		if !ok {
 			return nil, errors.New("database execution proof unavailable")
@@ -148,6 +168,50 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 			return nil, e
 		}
 		console := http.NewServeMux()
+		opsRepo := operations.Repository{Registry: c.Databases, Database: r.Database}
+		a.Maintenance = &operations.Maintenance{Repository: opsRepo, LogDatabase: logDB, Owner: r.ProcessID}
+		if e = admin.MountMaintenance(console, auth, *a.Maintenance, a.OperationsStatus); e != nil {
+			return nil, e
+		}
+		a.Notifier = &operations.Notifier{Repository: opsRepo, From: c.MailFrom, LegacyTo: c.MailTo, Owner: r.ProcessID, Audit: guard}
+		if channel, ok := r.Mail.(*adapters.Mail); ok {
+			a.Notifier.Channel = channel.SavedRecipients()
+		} else if r.Mail != nil {
+			a.Notifier.Channel = r.Mail
+		}
+		if e = admin.MountNotifications(console, auth, a.Notifier, operations.NewTokens(c.AuditKey)); e != nil {
+			return nil, e
+		}
+		if sourceClient, ok := r.Source.(*adapters.Source); ok && r.SourceAdmission != nil {
+			client, err := sourceClient.Client.Bounded(2 << 20)
+			if err != nil {
+				return nil, err
+			}
+			collector, err := ingest.NewCoordinator(client, ingest.BudgetConfig{RequestTimeout: c.DependencyTimeout, PageTimeout: 30 * time.Second, InitialBackoff: time.Second, MaxBackoff: time.Second, MaxAttempts: 1}, ingest.SystemTimer{}, rand.Reader, r.Control, r.SourceAdmission.LowPriority())
+			if err != nil {
+				return nil, err
+			}
+			a.SourceTests = &operations.TestRunner{Repository: opsRepo, Collector: collector, Recorder: recorder, Results: operations.NewResults(), Owner: r.ProcessID}
+		}
+		if e = admin.MountCatalog(console, auth, opsRepo, a.SourceTests); e != nil {
+			return nil, e
+		}
+		views := admin.OperationsViews{Repository: operations.Repository{Registry: c.Databases, Database: r.Database}, Control: r.Control, Tokens: operations.NewTokens(c.AuditKey), Correlate: r.Sanitizer.Correlation, Active: r.Active}
+		views.Traces = observability.TaskDiagnostics{Repository: observability.Repository{Registry: c.Databases, Database: logDB}, Sanitizer: r.Sanitizer}
+		if e = views.Mount(console, auth, admin.StatusHandler{Store: r.Control, Selection: r.Control, Acquisition: r.Control, Work: r.Control, Diagnostics: observability.TaskDiagnostics{Repository: observability.Repository{Registry: c.Databases, Database: logDB}, Sanitizer: r.Sanitizer}}); e != nil {
+			return nil, e
+		}
+		signer, err := c.LogQuerySigner()
+		if err != nil {
+			return nil, err
+		}
+		if signer != nil {
+			logs, err := admin.LogProxy(c.ConsoleQueryURL, c.LogManagementToken(), auth)
+			if err != nil {
+				return nil, err
+			}
+			console.Handle("/admin/v1/logs/", logs)
+		}
 		console.Handle("/admin/", a.Management)
 		console.Handle("GET /admin/v1/tasks/{$}", auth.Require(admin.TaskListHandler{Store: r.Control}))
 		console.HandleFunc("POST /console-api/login", auth.Login)
@@ -174,12 +238,6 @@ func New(c config.Runtime, r *assembly.Runtime) (a *Application, err error) {
 		a.Management = console
 		termination := worker.Termination{Runtime: r}
 		a.Engine = &worker.Engine{Store: r.Control, Recovery: update.Recovery{Store: r.Control, Active: r.Active, Execution: termination, Restorer: worker.Restorer{Runtime: r}}, Work: worker.Executor{Runtime: r, Config: c, Clock: clock, Recorder: recorder, Sink: guard, Observe: observe}, Clock: clock, Random: rand.Reader, Process: r.ProcessID}
-		if c.MailEnabled() {
-			a.Sender, e = notification.NewSender(r.Control, r.Mail, clock, r.Sanitizer, notification.DeliveryConfig{From: c.MailFrom, To: c.MailTo, MaxAttempts: 8, Batch: 20, RetryDelay: time.Minute, SendTimeout: c.DependencyTimeout, StoreTimeout: c.DependencyTimeout, Lease: 3*c.DependencyTimeout + time.Second})
-			if e != nil {
-				return nil, e
-			}
-		}
 	}
 	return a, nil
 }
@@ -196,6 +254,15 @@ func (a *Application) Start(ctx context.Context) {
 			}
 			if a.Engine != nil {
 				group.Go(func() { a.Engine.Run(ctx, func(error) { a.observations.Add(1) }) })
+			}
+			if a.SourceTests != nil {
+				group.Go(func() { a.SourceTests.Run(ctx) })
+			}
+			if a.Notifier != nil {
+				group.Go(func() { a.Notifier.Run(ctx) })
+			}
+			if a.Maintenance != nil {
+				group.Go(func() { a.Maintenance.Run(ctx) })
 			}
 			if a.Sender != nil {
 				group.Go(func() {

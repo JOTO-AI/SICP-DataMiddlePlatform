@@ -100,6 +100,9 @@ func newHTTP(role config.Role, apiKey string, clock ports.Clock, random ports.Ra
 		mux.Handle("/console-api/", management)
 	}
 	if role == config.Query {
+		if management != nil {
+			mux.Handle("/internal/admin/", management)
+		}
 		// Validate the configured credential even when all handlers are supplied.
 		if _, err := transport.APIKey(apiKey, http.NotFoundHandler()); err != nil {
 			return nil, err

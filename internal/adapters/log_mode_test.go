@@ -41,6 +41,28 @@ func TestT28_11IndependentLogPoolsAreLazyAndDoNotBlockStartup(t *testing.T) {
 			t.Fatal("log health gates startup")
 		}
 	}
+	managed, err := r.WithServiceLogAccess(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	managedDB, err := openPostgresWithLimits(t.Context(), managed, time.Millisecond, PostgresPoolLimits{8, 4, 2}, func(context.Context, *pgxpool.Pool) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer managedDB.Close(t.Context())
+	if len(managedDB.pools) != 9 || len(managedDB.order) != 9 {
+		t.Fatal("shared reader/maintenance connection allocated duplicate pools")
+	}
+	for _, source := range []storage.LogSource{storage.PlatformLog, storage.UpstreamLog} {
+		reader, _ := managed.LogReader(source)
+		maintenance, _ := managed.LogMaintenance(source)
+		if reader != maintenance || managedDB.pools[reader] == nil || managedDB.pools[reader].Config().MaxConns != 2 {
+			t.Fatal("managed log connection missing or using business pool limits")
+		}
+		if _, err := r.LogReader(source); err == nil {
+			t.Fatal("managed copy modified original registry")
+		}
+	}
 	partial, err := openPostgresWithLimits(t.Context(), r, time.Millisecond, PostgresPoolLimits{8, 4, 2}, func(context.Context, *pgxpool.Pool) error { return errors.New("private-driver-error") })
 	if err != ErrPostgres || partial == nil || len(partial.order) != 1 {
 		t.Fatal("fatal partial construction hidden")

@@ -100,7 +100,8 @@ def setup():
     path.write_text(value + '\nSICP_GATEWAY_PORT=28080\nSICP_DATA_ROOT=' + str(Path(os.environ['RUNNER_TEMP']) / 'sicp-gateway-data') + '\n')
     CERTS.mkdir(mode=0o755)
     create_ca(CERTS)
-    Compose().run('up', '-d', '--build', '--wait', '--wait-timeout', '300', timeout=900)
+    for operation in ('build', 'infra', 'migrate', 'log-cutover', 'start'):
+        run('bash', 'scripts/sicp.sh', operation)
     smoke()
     # Unset and explicitly empty TLS variables both use real /dev/null binds.
     configure(False)

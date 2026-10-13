@@ -118,6 +118,17 @@ func (c *Client) Fetch(ctx context.Context, input PageRequest) (Page, error) {
 	return c.fetch(ctx, input, c.staticToken())
 }
 
+// Bounded shares fixed credentials, token refresh and transport but narrows the
+// response budget for a one-page management test before reading its body.
+func (c *Client) Bounded(maxBytes int64) (*Client, error) {
+	if c == nil || maxBytes < 1024 || maxBytes > c.maxBytes {
+		return nil, &Failure{Kind: ConfigurationFailure}
+	}
+	copy := *c
+	copy.maxBytes = maxBytes
+	return &copy, nil
+}
+
 func (c *Client) staticToken() string {
 	if c == nil {
 		return ""

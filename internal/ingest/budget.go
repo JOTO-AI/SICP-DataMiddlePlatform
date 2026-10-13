@@ -50,7 +50,11 @@ type Admission interface {
 	Acquire(context.Context) (func(), error)
 }
 
-type Limiter struct{ permits chan struct{} }
+type Limiter struct {
+	permits chan struct{}
+	mu      sync.Mutex
+	waiting int
+}
 
 func NewLimiter(concurrency int) (*Limiter, error) {
 	if concurrency < 1 || concurrency > 100 {
@@ -62,12 +66,41 @@ func (l *Limiter) Acquire(ctx context.Context) (func(), error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	l.mu.Lock()
+	l.waiting++
+	l.mu.Unlock()
+	defer func() { l.mu.Lock(); l.waiting--; l.mu.Unlock() }()
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case l.permits <- struct{}{}:
 		var once sync.Once
 		return func() { once.Do(func() { <-l.permits }) }, nil
+	}
+}
+
+type lowPriorityAdmission struct{ limiter *Limiter }
+
+// LowPriority rejects when a synchronization request is active or waiting.
+// The permit remains shared through the actual HTTP attempt and is never
+// queued in front of synchronization work.
+func (l *Limiter) LowPriority() Admission { return lowPriorityAdmission{l} }
+func (a lowPriorityAdmission) Acquire(ctx context.Context) (func(), error) {
+	if e := ctx.Err(); e != nil {
+		return nil, e
+	}
+	l := a.limiter
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.waiting > 0 || len(l.permits) > 0 {
+		return nil, &Failure{Kind: BudgetFailure}
+	}
+	select {
+	case l.permits <- struct{}{}:
+		var once sync.Once
+		return func() { once.Do(func() { <-l.permits }) }, nil
+	default:
+		return nil, &Failure{Kind: BudgetFailure}
 	}
 }
 

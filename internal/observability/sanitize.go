@@ -249,6 +249,24 @@ func (s *Sanitizer) restore(body []byte) (SafeEvent, error) {
 	}
 	return SafeEvent{body: string(canonical), id: env.Event.ID}, nil
 }
+
+// Restore validates persisted data using exactly the buffer recovery boundary.
+// It never re-hashes correlations and rejects unknown fields and unsafe IDs.
+func (s *Sanitizer) Restore(body []byte) (SafeEvent, error) { return s.restore(body) }
+
+type Redaction struct {
+	Redacted      bool  `json:"redacted"`
+	OriginalBytes int64 `json:"original_bytes,string"`
+	FieldCount    int   `json:"field_count"`
+	Truncated     bool  `json:"truncated"`
+}
+
+func (s SafeEvent) Redaction() Redaction {
+	var env envelope
+	_ = json.Unmarshal([]byte(s.body), &env)
+	d := env.Details
+	return Redaction{d.Redacted, d.OriginalBytes, d.FieldCount, d.Truncated}
+}
 func digestID(id string, optional bool) bool {
 	if id == "" {
 		return optional

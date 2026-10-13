@@ -39,11 +39,13 @@ func (c Connection) GoString() string { return c.String() }
 // Registry has no mutable active route. Callers supply their pinned position.
 // Fixed connections cannot be selected through the business lookup.
 type Registry struct {
-	slots        [2][2]Connection
-	control      Connection
-	logs         Connection
-	upstreamLogs Connection
-	logMode      LogStorageMode
+	slots          [2][2]Connection
+	control        Connection
+	logs           Connection
+	upstreamLogs   Connection
+	logMode        LogStorageMode
+	logReaders     map[LogSource]Connection
+	logMaintenance map[LogSource]Connection
 }
 
 type LogStorageMode string
@@ -57,6 +59,65 @@ const (
 )
 
 func (r Registry) LogMode() LogStorageMode { return r.logMode }
+
+func (r Registry) LogReader(source LogSource) (Connection, error) {
+	c := r.logReaders[source]
+	if c.dsn == "" {
+		return c, fmt.Errorf("log reader not configured")
+	}
+	return c, nil
+}
+func (r Registry) LogMaintenance(source LogSource) (Connection, error) {
+	c := r.logMaintenance[source]
+	if c.dsn == "" {
+		return c, fmt.Errorf("log maintenance not configured")
+	}
+	return c, nil
+}
+
+// WithServiceLogAccess reuses this process's service login on the fixed log
+// targets. Migrations grant query read access and worker read/cleanup access.
+// It never substitutes the log writer or provisioning administrator account.
+func (r Registry) WithServiceLogAccess(maintenance bool) (Registry, error) {
+	service, err := url.Parse(r.control.dsn)
+	if err != nil || service.User == nil || service.User.Username() == "" {
+		return Registry{}, fmt.Errorf("service database credentials required")
+	}
+	readers, maintainers := map[LogSource]Connection{}, map[LogSource]Connection{}
+	for source, c := range r.logReaders {
+		readers[source] = c
+	}
+	for source, c := range r.logMaintenance {
+		if maintenance {
+			maintainers[source] = c
+		}
+	}
+	for _, source := range []LogSource{PlatformLog, UpstreamLog} {
+		target, err := r.LogConnection(source)
+		if err != nil {
+			continue
+		}
+		u, err := url.Parse(target.dsn)
+		if err != nil {
+			return Registry{}, fmt.Errorf("invalid log target")
+		}
+		u.User = service.User
+		c, err := parseConnection(u.String())
+		if err != nil {
+			return Registry{}, fmt.Errorf("invalid log service connection")
+		}
+		if _, ok := readers[source]; !ok {
+			readers[source] = c
+		}
+		if maintenance {
+			if _, ok := maintainers[source]; !ok {
+				maintainers[source] = c
+			}
+		}
+	}
+	r.logReaders, r.logMaintenance = readers, maintainers
+	return r, nil
+}
 
 // LogConnection never falls back to the platform database for upstream reads
 // or writes. Legacy routing remains an explicit decision of the old pipeline.
@@ -158,8 +219,38 @@ func LoadRegistry(lookup func(string) (string, bool)) (Registry, error) {
 	if r.logs.endpoint == r.slots[0][0].endpoint || r.logs.endpoint == r.slots[1][0].endpoint {
 		return Registry{}, fmt.Errorf("DATABASE_LOG_URL: logs require an independent endpoint")
 	}
-	if r.logMode == DualLogs && (r.upstreamLogs.endpoint == r.slots[0][0].endpoint || r.upstreamLogs.endpoint == r.slots[1][0].endpoint || r.upstreamLogs.endpoint == r.logs.endpoint) {
-		return Registry{}, fmt.Errorf("DATABASE_UPSTREAM_LOG_URL: upstream logs require an independent endpoint")
+	if r.logMode == DualLogs && (r.upstreamLogs.endpoint == r.slots[0][0].endpoint || r.upstreamLogs.endpoint == r.slots[1][0].endpoint) {
+		return Registry{}, fmt.Errorf("DATABASE_UPSTREAM_LOG_URL: upstream logs require an endpoint separate from M/S")
+	}
+	r.logReaders = map[LogSource]Connection{}
+	for _, source := range []LogSource{PlatformLog, UpstreamLog} {
+		key := "DATABASE_LOG_READ_URL"
+		if source == UpstreamLog {
+			key = "DATABASE_UPSTREAM_LOG_READ_URL"
+		}
+		if raw, _ := lookup(key); raw != "" {
+			c, err := configuredConnection(lookup, key)
+			target, e := r.LogConnection(source)
+			if err != nil || e != nil || c.endpoint != target.endpoint || c.database != target.database || c.dsn == target.dsn {
+				return Registry{}, fmt.Errorf("%s: independent reader credentials on matching target required", key)
+			}
+			r.logReaders[source] = c
+		}
+	}
+	r.logMaintenance = map[LogSource]Connection{}
+	for _, source := range []LogSource{PlatformLog, UpstreamLog} {
+		key := "DATABASE_LOG_MAINTENANCE_URL"
+		if source == UpstreamLog {
+			key = "DATABASE_UPSTREAM_LOG_MAINTENANCE_URL"
+		}
+		if raw, _ := lookup(key); raw != "" {
+			c, err := parseConnection(raw)
+			target, e := r.LogConnection(source)
+			if err != nil || e != nil || c.endpoint != target.endpoint || c.database != target.database || c.dsn == target.dsn {
+				return Registry{}, fmt.Errorf("%s: matching target and independent maintenance credentials required", key)
+			}
+			r.logMaintenance[source] = c
+		}
 	}
 	return r, nil
 }
@@ -174,6 +265,10 @@ func configuredConnection(lookup func(string) (string, bool), key string) (Conne
 		prefix = "DATABASE_LOG_"
 	} else if key == "DATABASE_UPSTREAM_LOG_URL" {
 		prefix = "DATABASE_UPSTREAM_LOG_"
+	} else if key == "DATABASE_LOG_READ_URL" {
+		prefix = "DATABASE_LOG_READ_"
+	} else if key == "DATABASE_UPSTREAM_LOG_READ_URL" {
+		prefix = "DATABASE_UPSTREAM_LOG_READ_"
 	}
 	user, hasUser := lookup(prefix + "USER")
 	password, hasPassword := lookup(prefix + "PASSWORD")

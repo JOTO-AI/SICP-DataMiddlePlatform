@@ -151,13 +151,19 @@ func VerifyLogIsolation(ctx context.Context, db Database, r Registry) (LogIsolat
 		}
 		proof.identities[c] = id
 	}
-	// Even different databases on the same server violate the independent log
-	// instance requirement. Cloned clusters with the same system ID fail closed.
+	// Logs remain on an instance separate from M/S. The two log sources may
+	// share a cluster, but never the same physical database (including aliases).
 	for _, logTarget := range targets[5:] {
-		for _, other := range targets {
-			if other != logTarget && proof.identities[other].cluster == proof.identities[logTarget].cluster {
+		for _, other := range targets[:5] {
+			if proof.identities[other].cluster == proof.identities[logTarget].cluster {
 				return LogIsolation{}, ErrLogIsolation
 			}
+		}
+	}
+	if r.logMode == DualLogs {
+		platform, upstream := proof.identities[r.logs], proof.identities[r.upstreamLogs]
+		if platform.cluster == upstream.cluster && (platform.oid == upstream.oid || platform.name == upstream.name) {
+			return LogIsolation{}, ErrLogIsolation
 		}
 	}
 	return proof, nil

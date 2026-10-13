@@ -10,13 +10,17 @@ python3 scripts/check-compose-config.py --write-development-env .env
 python3 - <<'PY'
 from pathlib import Path
 path = Path(".env")
-passwords = {"POSTGRES_PASSWORD", "QUERY_PASSWORD", "WORKER_PASSWORD", "LOGGER_PASSWORD"}
+passwords = {"POSTGRES_PASSWORD", "QUERY_PASSWORD", "WORKER_PASSWORD", "LOGGER_PASSWORD", "UPSTREAM_LOGGER_PASSWORD"}
 lines = path.read_text(encoding="utf-8").replace("QUERY_REPLICAS=1", "QUERY_REPLICAS=2").splitlines()
 lines = [f"{key}='compose-{key}-@:/?#%$ space'" if (key := line.split("=", 1)[0]) in passwords else line for line in lines]
 path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 PY
 docker compose config --quiet
-docker compose up -d --build --wait --wait-timeout 300
+bash scripts/sicp.sh build
+bash scripts/sicp.sh infra
+bash scripts/sicp.sh migrate
+bash scripts/sicp.sh log-cutover
+bash scripts/sicp.sh start
 
 check_database_limits() {
   for spec in db-m:256 db-s:128 db-log:100; do

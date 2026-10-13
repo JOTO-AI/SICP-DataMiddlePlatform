@@ -35,7 +35,6 @@ func TestT28_01LogRegistryUsesIndependentFixedTargets(t *testing.T) {
 		t.Fatal("unrestricted target")
 	}
 	for _, value := range []string{
-		"postgres://u:upstream-secret@DB-LOG:05432/other?sslmode=require",
 		"postgres://u:upstream-secret@db-log:5432/sicp_log?sslmode=disable",
 		"postgres://u:upstream-secret@db-m:5432/other?sslmode=disable",
 		"postgres://u:upstream-secret@db-s:5432/other?sslmode=disable",
@@ -45,6 +44,19 @@ func TestT28_01LogRegistryUsesIndependentFixedTargets(t *testing.T) {
 		if _, err := load(v); err == nil || strings.Contains(err.Error(), "upstream-secret") {
 			t.Fatal("overlapping target accepted or disclosed")
 		}
+	}
+}
+
+func TestLogRegistryAllowsSeparateDatabasesOnOneLogInstance(t *testing.T) {
+	v := dualValues()
+	v["DATABASE_UPSTREAM_LOG_URL"] = "postgres://upstream:upstream-secret@DB-LOG:05432/upstream_logs?sslmode=require"
+	r, err := load(v)
+	if err != nil {
+		t.Fatal("shared log instance rejected", err)
+	}
+	upstream, err := r.LogConnection(storage.UpstreamLog)
+	if err != nil || upstream.DSN() == r.Logs().DSN() {
+		t.Fatal("logical log targets collapsed", err)
 	}
 }
 

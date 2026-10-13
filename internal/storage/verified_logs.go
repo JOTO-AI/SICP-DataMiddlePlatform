@@ -15,6 +15,15 @@ type VerifiedLogs struct {
 }
 
 func (v VerifiedLogs) Begin(ctx context.Context, c Connection) (Transaction, error) {
+	return v.begin(ctx, c, false)
+}
+
+// BeginRead fixes the snapshot before the identity query (SET TRANSACTION
+// after a SELECT is too late in PostgreSQL).
+func (v VerifiedLogs) BeginRead(ctx context.Context, c Connection) (Transaction, error) {
+	return v.begin(ctx, c, true)
+}
+func (v VerifiedLogs) begin(ctx context.Context, c Connection, read bool) (Transaction, error) {
 	if v.Database == nil || v.Registry.LogMode() != DualLogs {
 		return nil, ErrLogIdentity
 	}
@@ -24,6 +33,14 @@ func (v VerifiedLogs) Begin(ctx context.Context, c Connection) (Transaction, err
 		if e == nil && target == c {
 			source = s
 		}
+		reader, e := v.Registry.LogReader(s)
+		if read && e == nil && reader == c {
+			source = s
+		}
+		maintenance, e := v.Registry.LogMaintenance(s)
+		if e == nil && maintenance == c {
+			source = s
+		}
 	}
 	if source == "" {
 		return nil, ErrLogIdentity
@@ -31,6 +48,14 @@ func (v VerifiedLogs) Begin(ctx context.Context, c Connection) (Transaction, err
 	tx, err := v.Database.Begin(ctx, c)
 	if err != nil {
 		return nil, ErrLogIdentity
+	}
+	if read {
+		if _, err := tx.Exec(ctx, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"); err != nil {
+			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Second)
+			defer cancel()
+			_ = tx.Rollback(cleanup)
+			return nil, ErrLogIdentity
+		}
 	}
 	var valid bool
 	if err = tx.QueryRow(ctx, "SELECT logs.verify_deployment($1,$2)", string(source), v.Registry.LogTopology()).Scan(&valid); err != nil || !valid || ctx.Err() != nil {

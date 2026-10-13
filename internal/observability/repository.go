@@ -1,9 +1,7 @@
 package observability
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
@@ -49,36 +47,21 @@ func (r Repository) StoreBatch(ctx context.Context, batch []SafeEvent) error {
 	}()
 	for _, safe := range batch {
 		e := safe.Event()
-		count, err := tx.Exec(ctx, "INSERT INTO logs.events (event_id,kind,entity_id,phase,occurred_at,payload) VALUES ($1,$2,$3,$4,$5,$6::jsonb) ON CONFLICT (event_id) DO NOTHING", safe.ID(), string(e.Kind), e.EntityID, string(e.Phase), e.OccurredAt, string(safe.Bytes()))
-		if err != nil || count < 0 || count > 1 {
+		// Cutover runs after schema migration. Old buffered calls keep their
+		// original target and payload, but must use the current writer protocol.
+		var sequence int64
+		if err := tx.QueryRow(ctx, "SELECT logs.append_event($1,$2,$3,$4,$5,$6::jsonb)", safe.ID(), string(e.Kind), e.EntityID, string(e.Phase), e.OccurredAt, string(safe.Bytes())).Scan(&sequence); err != nil {
 			return ErrDelivery
 		}
-		if count == 0 {
-			var stored string
-			if tx.QueryRow(ctx, "SELECT payload::text FROM logs.events WHERE event_id=$1", safe.ID()).Scan(&stored) != nil {
-				return ErrDelivery
-			}
-			if !sameJSON([]byte(stored), safe.Bytes()) {
-				return ErrConflict
-			}
+		if sequence == -1 {
+			return ErrConflict
+		}
+		if sequence <= 0 {
+			return ErrDelivery
 		}
 	}
 	if ctx.Err() != nil || tx.Commit(ctx) != nil {
 		return ErrDelivery
 	}
 	return nil
-}
-func sameJSON(a, b []byte) bool {
-	decode := func(raw []byte) []byte {
-		var value any
-		decoder := json.NewDecoder(bytes.NewReader(raw))
-		decoder.UseNumber()
-		if decoder.Decode(&value) != nil {
-			return nil
-		}
-		result, _ := json.Marshal(value)
-		return result
-	}
-	left, right := decode(a), decode(b)
-	return left != nil && right != nil && bytes.Equal(left, right)
 }

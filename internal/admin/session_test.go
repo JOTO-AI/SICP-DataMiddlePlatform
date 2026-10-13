@@ -142,6 +142,43 @@ func TestLoginRejectsCrossSiteAndLimitsAttempts(t *testing.T) {
 	}
 }
 
+func TestSingleAdministratorHasAllManagementActions(t *testing.T) {
+	s, err := NewSessions("admin", "synthetic-admin-password", "query-secret", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cookie, csrf := loginSession(t, s)
+	for _, action := range []Action{Incremental, ForceFull, Rerun, Status, LogsRead, APITest, NotificationsRead, NotificationsWrite, SystemRead, RetentionWrite, Cleanup} {
+		h, err := s.Protect(action, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			operator, got, ok := Identity(r.Context())
+			if !ok || operator != "admin" || got != action {
+				t.Error("administrator audit identity missing")
+			}
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		if err != nil {
+			t.Fatal(action, err)
+		}
+		for _, authenticated := range []bool{false, true} {
+			r := httptest.NewRequest(http.MethodPost, "/admin/v1/management", nil)
+			r.Header.Set("X-SICP-Request", "console")
+			r.Header.Set(CSRFHeader, csrf)
+			if authenticated {
+				r.AddCookie(cookie)
+			}
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, r)
+			want := http.StatusUnauthorized
+			if authenticated {
+				want = http.StatusNoContent
+			}
+			if w.Code != want {
+				t.Fatal(action, authenticated, w.Code)
+			}
+		}
+	}
+}
+
 func TestConsoleProxyKeepsSecretsServerSideAndRejectsRedirects(t *testing.T) {
 	calls := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

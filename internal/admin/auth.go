@@ -14,15 +14,21 @@ import (
 type Action string
 
 const (
-	Incremental Action = "incremental"
-	ForceFull   Action = "force_full"
-	Rerun       Action = "rerun"
-	Status      Action = "status"
-	LogsRead    Action = "logs_read"
+	Incremental        Action = "incremental"
+	ForceFull          Action = "force_full"
+	Rerun              Action = "rerun"
+	Status             Action = "status"
+	LogsRead           Action = "logs_read"
+	APITest            Action = "api_test"
+	NotificationsRead  Action = "notifications_read"
+	NotificationsWrite Action = "notifications_write"
+	SystemRead         Action = "system_read"
+	RetentionWrite     Action = "retention_write"
+	Cleanup            Action = "cleanup"
 )
 
 func validAction(a Action) bool {
-	return a == Incremental || a == ForceFull || a == Rerun || a == Status || a == LogsRead
+	return a == Incremental || a == ForceFull || a == Rerun || a == Status || a == LogsRead || a == APITest || a == NotificationsRead || a == NotificationsWrite || a == SystemRead || a == RetentionWrite || a == Cleanup
 }
 
 type Credential struct {

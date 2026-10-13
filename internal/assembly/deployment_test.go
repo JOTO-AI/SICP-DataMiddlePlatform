@@ -67,10 +67,31 @@ func TestT15_14RepositoryDeploymentFixturesReachActualAssembly(t *testing.T) {
 					t.Fatal("worker contract drift")
 				}
 			}
+			upstream, err := c.Databases.LogConnection(storage.UpstreamLog)
+			if err != nil || c.Databases.LogMode() != storage.DualLogs || upstream.DSN() != "postgres://sicp_upstream_logger:synthetic-upstream@db-log:5432/upstream_logs?sslmode=disable" || c.UpstreamLogDirectory != "/var/lib/sicp/upstream-logs" {
+				t.Fatal("shared instance log database contract drift", err)
+			}
+			for _, source := range []storage.LogSource{storage.PlatformLog, storage.UpstreamLog} {
+				database := "logs"
+				if source == storage.UpstreamLog {
+					database = "upstream_logs"
+				}
+				reader, err := c.Databases.LogReader(source)
+				if err != nil || reader.DSN() != "postgres://"+entry.user+":synthetic@db-log:5432/"+database+"?sslmode=disable" {
+					t.Fatal("service reader not automatically configured", err)
+				}
+				maintenance, err := c.Databases.LogMaintenance(source)
+				if entry.role == config.Query && err == nil || entry.role == config.Worker && (err != nil || maintenance != reader) {
+					t.Fatal("maintenance must be worker-only")
+				}
+			}
+			if signer, err := c.LogQuerySigner(); err != nil || signer == nil || c.LogManagementToken() == "" {
+				t.Fatal("management requires unexpected extra credentials", err)
+			}
 			// Preserve every deployed value except replacing the asserted absolute
 			// volume roots with an isolated unit-test directory. No DB/Redis network.
 			root := t.TempDir()
-			for _, p := range []*string{&c.LogDirectory, &c.StagingDirectory, &c.TargetDirectory, &c.SpoolDirectory} {
+			for _, p := range []*string{&c.LogDirectory, &c.UpstreamLogDirectory, &c.StagingDirectory, &c.TargetDirectory, &c.SpoolDirectory} {
 				if *p != "" {
 					*p = strings.Replace(*p, "/var/lib/sicp", root, 1)
 					if err = os.Mkdir(*p, 0700); err != nil {
@@ -99,7 +120,7 @@ func TestT15_14RepositoryDeploymentFixturesReachActualAssembly(t *testing.T) {
 	}
 }
 func TestT15_14InvalidDeploymentCreatesNoDependencies(t *testing.T) {
-	for _, key := range []string{"DATABASE_CONTROL_URL", "SOURCE_ORIGIN", "MAIL_ADDRESS", "SOURCE_QUALITY", "ADMIN_USERNAME", "ADMIN_PASSWORD", "CONSOLE_QUERY_URL"} {
+	for _, key := range []string{"DATABASE_CONTROL_URL", "SOURCE_ORIGIN", "SOURCE_QUALITY", "ADMIN_USERNAME", "ADMIN_PASSWORD", "CONSOLE_QUERY_URL"} {
 		t.Run(key, func(t *testing.T) {
 			v := deploymentValues(t, "worker")
 			delete(v, key)

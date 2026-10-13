@@ -179,3 +179,27 @@ func TestT28_01UnavailableOrMalformedIdentityNeverVerifies(t *testing.T) {
 		t.Fatal("cancelled inspection opened database", err)
 	}
 }
+
+func TestLogIdentityAllowsSharedClusterOnlyForDistinctLogDatabases(t *testing.T) {
+	r, db := identityFixture(t)
+	upstream, _ := r.LogConnection(storage.UpstreamLog)
+	platform := db.facts[r.Logs()]
+	fact := db.facts[upstream]
+	fact.cluster = platform.cluster
+	fact.oid = platform.oid + 1
+	db.facts[upstream] = fact
+	proof, err := storage.VerifyLogIsolation(t.Context(), db, r)
+	if err != nil {
+		t.Fatal("separate databases on shared log cluster rejected", err)
+	}
+	tx, _ := db.Begin(t.Context(), upstream)
+	defer tx.Rollback(context.Background())
+	if err := proof.Match(t.Context(), tx, upstream); err != nil {
+		t.Fatal("shared-cluster proof cannot verify write target", err)
+	}
+	fact.oid = platform.oid
+	db.facts[upstream] = fact
+	if _, err := storage.VerifyLogIsolation(t.Context(), db, r); !errors.Is(err, storage.ErrLogIsolation) {
+		t.Fatal("alias to same physical log database accepted", err)
+	}
+}

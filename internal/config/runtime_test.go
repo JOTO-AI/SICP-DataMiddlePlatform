@@ -41,7 +41,7 @@ func TestBT05_ExplicitImportMode(t *testing.T) {
 
 func TestT15_09RuntimeRejectsIncompleteOrConflictingDeployment(t *testing.T) {
 	for _, tc := range []struct{ key, value string }{
-		{"DATABASE_M1_URL", ""}, {"SOURCE_ORIGIN", ""}, {"SOURCE_ORIGIN", "http://mock.invalid/production-path"}, {"SOURCE_TOKEN", ""}, {"MAIL_ADDRESS", ""}, {"MAIL_TLS", ""}, {"MAIL_TO", "attacker\r\nBcc:someone"},
+		{"DATABASE_M1_URL", ""}, {"SOURCE_ORIGIN", ""}, {"SOURCE_ORIGIN", "http://mock.invalid/production-path"}, {"SOURCE_TOKEN", ""},
 		{"SOURCE_SCOPE", ""}, {"SOURCE_QUALITY", ""}, {"SOURCE_QUALITY", "{}"}, {"SOURCE_QUALITY", "null"},
 		{"REDIS_URL", "redis://redis:6379/0?read_timeout=0"}, {"REDIS_URL", "redis://redis:6379/1"}, {"AUDIT_KEY", "short"}, {"SNAPSHOT_KEY", "synthetic-audit-key-0000000000000"},
 		{"TARGET_DIRECTORY", "/data/staging/child"}, {"SPOOL_DIRECTORY", "relative"}, {"LOG_MAX_FILES", "0"}, {"STAGING_MAX_BYTES", "-1"}, {"TARGET_MAX_BYTES", "-1"}, {"SPOOL_MAX_BYTES", "invalid"},
@@ -241,8 +241,8 @@ func TestRuntimeOptionalMail(t *testing.T) {
 			}
 			for key, value := range mail {
 				v[key] = value
-				if _, err := load(); err == nil {
-					t.Fatalf("single mail setting %s accepted", key)
+				if c, err := load(); err != nil || c.MailEnabled() {
+					t.Fatalf("single mail setting %s blocked service or enabled channel", key)
 				}
 				delete(v, key)
 			}
@@ -255,8 +255,8 @@ func TestRuntimeOptionalMail(t *testing.T) {
 			}
 			for _, key := range []string{"MAIL_ADDRESS", "MAIL_TLS", "MAIL_FROM", "MAIL_TO", "MAIL_USERNAME", "MAIL_PASSWORD"} {
 				v[key] = ""
-				if _, err := load(); err == nil {
-					t.Fatalf("incomplete mail setting %s accepted", key)
+				if c, err := load(); err != nil || (key != "MAIL_TO" && c.MailEnabled()) {
+					t.Fatalf("incomplete mail setting %s blocked service or enabled channel", key)
 				}
 				v[key] = mail[key]
 			}

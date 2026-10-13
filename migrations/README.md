@@ -1,10 +1,11 @@
 # Database migrations
 
-Provision PostgreSQL 18.6 on M, S and a separate log instance. Create two business
-databases per M/S instance, a separate fixed control database on M and a log
-database on the log instance. Configure the six explicit URLs documented in
-the root `.env.example`. Direct processes must explicitly set
-`LOG_STORAGE_MODE=single_legacy`. Use the same canonical host name for databases
+Provision PostgreSQL 18.6 on M, S and one separate log instance. Create two business
+databases per M/S instance, a fixed control database on M, and two logical
+databases (`logs`, `upstream_logs`) on the log instance. Configure the seven write
+target URLs in `.env.example`. Compose always uses dual mode; direct processes
+must explicitly set `LOG_STORAGE_MODE=dual` (or `single_legacy` for compatibility).
+Use the same canonical host name for databases
 on one instance; DNS aliases must not disguise shared instances.
 
 Run `roles.sql` as the provisioning administrator on each instance. It creates
@@ -22,12 +23,27 @@ The canonical, embedded migration files live in `internal/storage/migrate/sql`:
 | business | M/0, M/1, S/0, S/1 | `source`: fourteen source tables, exact column types, TEXT primary keys and read/write group grants |
 | control | fixed M control database | `control`: tasks, steps, checkpoints, schedule, execution ownership, bundles, slots, candidates, progress, publication/notification outbox and readers |
 | logs | independent log database | `logs`: immutable deduplicated events and lookup indexes |
-| upstream_logs | separate upstream log database (P28.01 primitives only) | `logs`: call/attempt events, independent ledger and logger/reader grants |
+| upstream_logs | upstream logical database on the shared log instance | `logs`: call/attempt events, independent ledger and logger/reader grants |
 
-P28.01 adds the upstream catalog and actual cluster/database identity preflight.
-The service adapter and deployment job still reject dual mode until P28.03
-assembles independent resources. No new database is automatically provisioned
-by this step; see [configuration and migration boundaries](../development_docs/P28_LOG_STORAGE_CONFIGURATION.md).
+The service adapter and deployment job support dual mode. Identity preflight
+requires both log databases to be separate from M/S, and their physical database
+identities to differ even when their cluster is shared. `scripts/sicp.sh infra`
+provisions missing upstream objects on existing built-in log volumes; external
+instances require explicit provisioning. Apply migrations before starting services;
+see [configuration and migration boundaries](../development_docs/P28_LOG_STORAGE_CONFIGURATION.md).
+
+Maintenance membership is source-specific: platform uses `sicp_log_maintenance`,
+upstream uses `sicp_upstream_maintenance`. The append-only `upstream_logs_005`
+migration revokes the former group's upstream grants, preserving old checksums.
+
+`logs_007` and `upstream_logs_006` automatically grant both reader groups to the
+existing `sicp_query` / `sicp_worker` service roles, and the source-specific
+maintenance groups to `sicp_worker` only. Built-in db-log already provisions these
+service logins. External deployments must provision their service LOGIN roles and
+matching credentials/memberships on the log instance. The console administrator
+uses the existing web login; no additional reader/maintenance URLs are required.
+Query never receives cleanup grants and worker does not receive direct table
+DELETE/TRUNCATE grants. Old SQL files and their checksums remain unchanged.
 
 `migrate.Catalog` selects the domain plan. `migrate.Apply` receives the explicit
 target and database transaction adapter, locks migrations per database and

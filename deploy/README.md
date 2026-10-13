@@ -15,12 +15,20 @@
 ```sh
 cp .env.example .env
 # 编辑 .env，填写所有必填凭据和真实上游；SMTP 按需配置
-docker compose up -d --build --wait --wait-timeout 300
+bash scripts/sicp.sh deploy --url http://127.0.0.1:18080
 ```
 
-Windows PowerShell 使用 `Copy-Item .env.example .env`。复制只需首次执行，不覆盖已有配置。
+Windows PowerShell 使用 `Copy-Item .env.example .env`，部署脚本通过 WSL / Git Bash 执行。复制只需首次执行，不覆盖已有配置。
 
-根目录唯一的 `compose.yaml` 直接定义所有服务（含 console），正式环境默认项目名 `sicp-production`。启动顺序由 Compose 依赖关系保证：数据库完成空卷初始化并可通过 TCP 访问后执行迁移；卷目录权限初始化成功、迁移成功且 Redis 健康后启动 query/worker（开发模式的 worker 同时等待 Mock 健康）；两服务存活后启动控制台。初始化或迁移失败会阻止依赖服务启动，可用 `docker compose logs volumes migrate db-m db-s db-log` 排查。
+根目录唯一的 `compose.yaml` 直接定义所有服务（含 console），正式环境默认项目名 `sicp-production`。部署脚本依次初始化目录与数据库、迁移、排空旧日志缓冲，再启动 query/worker 和控制台；任何步骤失败停止部署。query/worker 不把日志库健康或 migrate 设为启动硬依赖，已迁移环境的日志故障不会阻止业务重启。首次安装或升级不能用直接 up 跳过部署步骤，可用 `docker compose logs volumes db-m db-s db-log` 排查，迁移错误见部署命令输出。
+
+一个独立于 M/S 的 `db-log` PostgreSQL 服务承载 `logs` / `upstream_logs` 两个逻辑库，共用 `pg-log` 卷；两库分别管理写入、读取和清理权限，实例故障与连接总额度共享。只使用 compose.yaml，无需额外 overlay。上游默认地址为 `postgres://db-log:5432/upstream_logs?sslmode=disable`，另填 `UPSTREAM_LOGGER_PASSWORD`。
+
+控制台只有一个管理员账号：使用 ADMIN_USERNAME/ADMIN_PASSWORD 登录即可访问全部已实现管理操作，日志历史/实时读取和清理无需另配账号或启用开关。query/worker 自动用自己的数据库凭据连接两个日志库，新增 logs_007/upstream_logs_006 迁移负责读取及受限清理授权；现有实例先迁移，再重建应用。数据库服务凭据和外部 SMTP 等连接配置仍需按实际环境提供，它们不是额外的控制台账号。
+
+模板不再包含 LOG_CURSOR_KEYS、LOG_CURSOR_ACTIVE、LOG_INTERNAL_TOKEN 和四个日志 READ/MAINTENANCE URL；现有 .env 中这些旧项可删除，当前 Compose 不再读取。内部令牌及游标签名密钥由已有 SNAPSHOT_KEY 按不同用途派生，所有副本必须一致；变更 SNAPSHOT_KEY 或切换旧显式游标密钥后，客户端需要重新查询取得新游标。真实 .env 不会被自动覆盖。
+
+已有单库部署先补齐上游 URL/密码，保持原 AUDIT_KEY、平台地址及目录，构建后执行 `bash scripts/sicp.sh log-register`，再执行 deploy；infra 会为已有 pg-log 卷补建缺失的上游逻辑库及账号。详细步骤见 [旧缓冲切换说明](../development_docs/P28_LOG_STORAGE_CONFIGURATION.md)。此流程不自动搬迁已启用双实例部署的数据；这类部署需保留原目标，另行安排备份/恢复及拓扑标记切换。
 
 | 服务 | 本机入口 |
 | --- | --- |
@@ -41,15 +49,15 @@ docker compose down
 
 容器通过服务自身的 `--healthcheck` 检查 `/livez`，探测地址跟随服务进程的 `HTTP_ADDRESS`；通配监听地址会转换为对应的本机回环地址。初始化、更新或恢复期间 `/readyz` 暂时不就绪属于正常状态，不应将它用作容器存活检查。仅网关发布宿主机端口，由 `SICP_GATEWAY_PORT` 设置；外部 `/livez`、`/readyz` 返回 404。
 
-统一配置模板为根目录 `.env.example`，实际部署只维护根目录 `.env`。六个 `DATABASE_*_URL` 只配置共享端点和库名，不含账号密码；`POSTGRES_PASSWORD`、`QUERY_PASSWORD`、`WORKER_PASSWORD`、`LOGGER_PASSWORD` 各填写一次。Compose 按服务分配账号与密码，进程自动编码特殊字符并构造完整连接串；query 不会获得 worker 或迁移账号密码。已有 PG 卷不会因修改环境变量而自动修改角色密码，轮换时仍需先在数据库内修改，再更新 `.env`。
+统一配置模板为根目录 `.env.example`，实际部署只维护根目录 `.env`。七个写入目标 `DATABASE_*_URL` 只配置共享端点和库名，不含账号密码；`POSTGRES_PASSWORD`、`QUERY_PASSWORD`、`WORKER_PASSWORD`、`LOGGER_PASSWORD`、`UPSTREAM_LOGGER_PASSWORD` 各填写一次。Compose 按服务分配账号与密码，进程自动编码特殊字符并构造完整连接串；query 不会获得 worker 或迁移账号密码。读取和清理地址自动组装，无需额外 URL。已有 PG 卷不会因修改环境变量而自动修改角色密码，轮换时仍需先在数据库内修改，再更新 `.env`。
 
-业务持久化数据只需在 `.env` 设置一个宿主机绝对路径：`SICP_DATA_ROOT=/home/ubuntu/sicp`。Compose 启动时自动在 `${SICP_DATA_ROOT}/<Compose 实际项目名>/` 下创建 `pg-m`、`pg-s`、`pg-log`、`redis`、`query-logs`、`worker-logs`、`staging`、`targets`、`spool` 子目录并分别挂载；默认项目名来自 `SICP_PROJECT`；使用 `docker compose -p` 或 `COMPOSE_PROJECT_NAME` 覆盖时，数据子目录也跟随实际项目名，保持隔离。容器内路径由 Compose 固定，无需在 `.env` 配置。开发环境的模拟邮件使用 Docker 管理的 `mock-mail` 命名卷，无需配置宿主机路径；`down --volumes` 会删除该测试邮件卷。
+业务持久化数据只需在 `.env` 设置一个宿主机绝对路径：`SICP_DATA_ROOT=/home/ubuntu/sicp`。Compose 启动时自动在 `${SICP_DATA_ROOT}/<Compose 实际项目名>/` 下创建 `pg-m`、`pg-s`、`pg-log`（含两类日志库）、`redis`、`query-logs`、`query-replicas`、`worker-logs`、`query-upstream-logs`、`worker-upstream-logs`、`staging`、`targets`、`spool` 子目录并分别挂载；默认项目名来自 `SICP_PROJECT`；使用 `docker compose -p` 或 `COMPOSE_PROJECT_NAME` 覆盖时，数据子目录也跟随实际项目名，保持隔离。容器内路径由 Compose 固定，无需在 `.env` 配置。开发环境的模拟邮件使用 Docker 管理的 `mock-mail` 命名卷，无需配置宿主机路径；`down --volumes` 会删除该测试邮件卷。
 
 从旧命名卷切换前，先停止写入并备份数据，将各卷内容复制到对应宿主机目录，保留文件所有权和权限；仅修改配置不会自动迁移。已有宿主机目录更换路径时也需迁移数据，再执行 `docker compose up -d --force-recreate` 使挂载生效，单纯 `restart` 不会更新挂载。全新部署会创建缺失目录，应用目录权限仍由初始化服务设置。
 
 项目名和端口也统一在 `.env` 设置：`SICP_PROJECT`、`SICP_GATEWAY_PORT`。终端同名环境变量优先。统一入口同时启动 query-gateway、worker 和 console，query 由依赖自动启动。
 
-旧版 `deploy/compose*.yaml`、`deploy/examples/*.env.example` 和 `configs/*.env.example` 已移除。原有 `deploy/runtime/*.env` 不再加载，请先将自定义值迁入根目录 `.env`；旧文件不会自动改写。上一版的 `QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 也不再读取：请将相同的端点与库名合并为六个不含凭据的 `DATABASE_*_URL`，账号密码填写到上方对应变量。旧项目 `sicp-phase1` 的卷不会自动迁移。仅在确认旧卷数据属于目标环境后，才将其迁入对应宿主机目录；不要将含合成数据的卷直接用于正式环境。
+旧版 `deploy/compose*.yaml`、`deploy/examples/*.env.example` 和 `configs/*.env.example` 已移除。原有 `deploy/runtime/*.env` 不再加载，请先将自定义值迁入根目录 `.env`；旧文件不会自动改写。上一版的 `QUERY_DATABASE_*`、`WORKER_DATABASE_*`、`MIGRATE_DATABASE_*` 也不再读取：请将相同的端点与库名合并为七个不含凭据的 `DATABASE_*_URL`，账号密码填写到上方对应变量。旧项目 `sicp-phase1` 的卷不会自动迁移。仅在确认旧卷数据属于目标环境后，才将其迁入对应宿主机目录；不要将含合成数据的卷直接用于正式环境。
 
 升级已有部署时先 `docker compose stop console query-gateway query worker` 并备份全部卷；如果涉及 PostgreSQL 大版本变化，先完成下节的数据迁移，再运行上述启动命令。如需要明确重跑应用表结构迁移，先执行 `docker compose build`、`docker compose run --rm migrate`。重复迁移校验已应用版本与 checksum。不要在旧服务仍运行时直接进行结构升级。
 
@@ -89,18 +97,18 @@ SICP_PROJECT=sicp-${ENVIRONMENT}
 
 ## Bash 分步运维
 
-脚本使用根目录统一配置，默认按正式环境部署。要求 Linux amd64、Bash、Python 3.10+、Docker Engine 与 Compose ≥ 2.30；各服务进程使用 UID/GID 65532，配置/日志时区按 `Asia/Shanghai` 解析源时间，数据库会话使用 UTC。M、S、日志分别为独立 PostgreSQL 容器，控制库固定在 M；服务不能通过活动路由选择控制或日志库。
+脚本使用根目录统一配置，默认按正式环境部署。要求 Linux amd64、Bash、Python 3.10+、Docker Engine 与 Compose ≥ 2.30；各服务进程使用 UID/GID 65532，配置/日志时区按 `Asia/Shanghai` 解析源时间，数据库会话使用 UTC。M、S、日志分别为独立 PostgreSQL 容器，控制库固定在 M；db-log 内含 logs / upstream_logs；服务不能通过活动路由选择控制或日志库。
 
 ```bash
 ./scripts/sicp.sh deploy
 ./scripts/sicp.sh status
 ```
 
-`deploy` 依次 prepare → build → validate → infra → migrate → start → 外部入口校验。也可逐项执行；迁移在服务首次启动前运行，重复迁移校验原版本与 checksum，不修改已应用脚本。数据库角色与空数据库由 `init-postgres.sh` 在空 PG 卷第一次启动时创建，后续结构更新由 一次性 `db-migrate` 部署任务 完成。升级先停应用，备份全部卷，构建、校验、迁移，再启动应用；不删除旧迁移记录。
+`deploy` 依次 prepare → build → validate → 停止应用 → infra → migrate → log-cutover → start → 外部入口校验。也可逐项执行；迁移在服务首次启动前运行，重复迁移校验原版本与 checksum，不修改已应用脚本。数据库角色与空数据库由 `init-postgres.sh` 在空 PG 卷第一次启动时创建，后续结构更新由 一次性 `db-migrate` 部署任务 完成。升级先停应用，备份全部卷，构建、校验、迁移，再启动应用；不删除旧迁移记录。
 
 `prepare` 只在根目录 `.env` 缺失时复制 `.env.example`，生成文件权限受 umask 077 约束；已有 `.env` 保持不变。`.env` 被 Git 和镜像构建上下文排除。文件使用 Compose dotenv 语法，不作为 Shell 脚本执行；包含字面量 `$` 或 `#` 的值使用单引号，JSON 保持单行。参数列表详见 [运行配置](../development_docs/P15_RUNTIME_CONFIGURATION.md)。
 
-部署凭据由操作者填写。query 使用 sicp_query，worker 使用 sicp_worker，日志使用 sicp_logger；配置文件统一管理凭据，但迁移账号只传给 migrate，管理员账号密码只传给 worker。query 通过 query-gateway 向宿主机的 0.0.0.0 发布 18080，worker 和 console 不再独立发布端口，管理路由与页面共用网关入口。数据库、Redis 和开发模式的 Mock 仅连接 internal 网络，不发布宿主端口，可通过 `docker compose exec` 在对应容器内排查。仅开发模式的 Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
+部署凭据由操作者填写。query 使用 sicp_query，worker 使用 sicp_worker，平台日志使用 sicp_logger，上游日志使用 sicp_upstream_logger；配置文件统一管理凭据，但迁移账号只传给 migrate，管理员账号密码只传给 worker。query 通过 query-gateway 向宿主机的 0.0.0.0 发布 18080，worker 和 console 不再独立发布端口，管理路由与页面共用网关入口。数据库、Redis 和开发模式的 Mock 仅连接 internal 网络，不发布宿主端口，可通过 `docker compose exec` 在对应容器内排查。仅开发模式的 Mock 从只读挂载的 `mock_data` 加载合成快照，从不加载 source_samples，也不发送外部邮件。
 
 ```bash
 ./scripts/sicp.sh stop
@@ -165,9 +173,9 @@ GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 
 
 六个查询容量参数均为每实例预算。例如四个实例各设置 8 个执行任务，合计最多 32 个缓存未命中任务。db-m 的 query 连接上限预算为 `QUERY_REPLICAS × (2 × QUERY_DB_BUSINESS_MAX_CONNS + QUERY_DB_CONTROL_MAX_CONNS)`，还需加 worker、迁移、保留连接与其他客户端。此功能不自动调整 PostgreSQL 上限，也不代表 300 并发验收通过。
 
-日志最终仍统一写入 logs 数据库。本地文件是入库前的持久缓冲：第一个取得目录锁的实例复用原 `query-logs`，其余实例使用 `query-replicas/2` 至 `query-replicas/32`。编号是目录租约，不对应固定容器编号。锁保持到进程退出，异常退出后由内核释放；新实例会复用空闲目录并处理其中的日志。两个宿主机目录必须放在支持 Linux flock 的本地文件系统上，不适用于跨主机共享卷。不得删除 `.lock` 文件。
+平台日志写入 db-log 的 logs 库，上游 call/attempt 写入同一实例的 upstream_logs 库。本地文件是入库前的持久缓冲：第一个取得目录锁的实例复用原 `query-logs`，其余实例使用 `query-replicas/2` 至 `query-replicas/32`。编号是目录租约，不对应固定容器编号。锁保持到进程退出，异常退出后由内核释放；新实例会复用空闲目录并处理其中的日志。两个宿主机目录必须放在支持 Linux flock 的本地文件系统上，不适用于跨主机共享卷。不得删除 `.lock` 文件。
 
-缩容不会删除日志；停用目录中尚未入库的缓冲仍会保留，后续再次分配该目录时继续处理。若日志库故障期间需要缩容，恢复日志库、确认缓冲入库后再缩容，避免历史日志延迟可见。LOG_MAX_BYTES / LOG_MAX_FILES 为每实例限额，需按副本数计算总磁盘预算。
+缩容不会删除日志；停用目录中尚未入库的缓冲仍会保留，后续再次分配该目录时继续处理。若日志库故障期间需要缩容，恢复日志库、确认缓冲入库后再缩容，避免历史日志延迟可见。LOG_MAX_BYTES / LOG_MAX_FILES 和 UPSTREAM_LOG_MAX_BYTES / UPSTREAM_LOG_MAX_FILES 分别为每实例的平台/上游缓冲限额，需按副本数计算总磁盘预算。
 
 入口保留 API 密钥、快照头和响应内容，不自动重放已发送到后端的 POST。扩缩容期间地址刷新和在途请求仍可能出现短暂失败；这不是无损滚动升级承诺。GitHub Compose 验证覆盖多实例分流、跨实例快照查询、共享日志入库、实例重建、扩缩容及独立目录租约。
 
@@ -176,7 +184,7 @@ GitHub Actions 先执行单元测试、race、配置解析/装配、Bash/Python 
 
 内置 Compose 从 `.env` 读取 `POSTGRES_M_MAX_CONNECTIONS=256`、`POSTGRES_S_MAX_CONNECTIONS=128`、`POSTGRES_LOG_MAX_CONNECTIONS=100`，分别作为 db-m、db-s、db-log 的 `postgres -c max_connections=...` 启动参数。省略变量时也使用这些项目默认值；它们不同于 PostgreSQL 通常为 100 的原生默认值。值须为 PostgreSQL 接受的正整数，显式空值或非法值会导致数据库启动失败。外部数据库不受这些 Compose 参数控制。
 
-上限由整个数据库实例共享，包含 query、worker、迁移、运维和保留连接；db-m 的 slot0、slot1 与 control 共用 M 的额度。连接池按需建连，这些配置不代表预先建立同等数量的连接，也不保证 300 并发达标；调大上限会增加 PostgreSQL 的资源需求。应用池参数和 worker 设置不会因此自动改变。
+上限由整个数据库实例共享，包含 query、worker、迁移、运维和保留连接；db-log 的两库共用 POSTGRES_LOG_MAX_CONNECTIONS，须合计各源写入、读取及维护连接池，同凭据的 worker 读取/维护共用池；db-m 的 slot0、slot1 与 control 共用 M 的额度。连接池按需建连，这些配置不代表预先建立同等数量的连接，也不保证 300 并发达标；调大上限会增加 PostgreSQL 的资源需求。应用池参数和 worker 设置不会因此自动改变。
 
 已有数据卷同样适用，无需重新初始化数据库。更新 Compose 后，旧 `.env` 即使未添加这些变量，也会在下次重建数据库容器时使用新的项目默认值。安排同步任务空闲的维护窗口，暂停应用后重建数据库，再恢复应用：
 

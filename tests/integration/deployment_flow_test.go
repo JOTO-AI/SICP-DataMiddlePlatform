@@ -180,7 +180,7 @@ func TestI06_06(t *testing.T) {
 		t.Fatal("failed flow changed published data or success progress")
 	}
 	d.assertTaskLog(t, failed, "failed")
-	d.waitSQL(t, fmt.Sprintf("SELECT count(*) FROM control.notification_outbox WHERE task_id='%s' AND status='accepted' AND attempts=1 AND sent_at IS NOT NULL", failed), "1")
+	d.waitSQL(t, fmt.Sprintf("SELECT count(*) FROM control.notification_deliveries d JOIN control.notification_outbox n ON d.fact_id='schema:'||n.id WHERE n.task_id='%s' AND d.status='accepted' AND d.attempts=1 AND d.accepted_at IS NOT NULL", failed), "1")
 	mail := d.mockMail(t)
 	if len(mail) != 1 || strings.Contains(mail[0]["body"].(string), "synthetic-private-detail") {
 		t.Fatal("failed flow notice missing, duplicated or leaked source value")

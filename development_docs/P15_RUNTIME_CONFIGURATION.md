@@ -1,6 +1,8 @@
 # 运行配置与依赖装配
 
-Docker Compose 的统一配置模板位于根目录 `.env.example`，复制为 `.env` 后使用根目录 `compose.yaml` 启动全部服务。六个共享 `DATABASE_*_URL` 不含凭据，四个角色密码各配置一次；Compose 为每个服务传入 `DATABASE_USER/PASSWORD` 与 `DATABASE_LOG_USER/PASSWORD`，进程使用标准 URL 编码生成连接串。旧 `deploy/runtime/*.env` 和按角色展开的 URL 变量不再读取。
+Docker Compose 的统一配置模板位于根目录 `.env.example`，复制为 `.env` 后按部署脚本执行迁移并使用根目录 `compose.yaml` 启动服务。七个共享 `DATABASE_*_URL` 不含凭据，五个数据库密码各配置一次；Compose 为每个服务分配业务及两类日志凭据，进程使用标准 URL 编码生成连接串。旧 `deploy/runtime/*.env` 和按角色展开的 URL 变量不再读取。
+
+控制台采用单管理员账号，ADMIN_USERNAME/ADMIN_PASSWORD 登录后具有全部已实现管理操作权限。日志管理默认启用，不再需要三项日志密钥/令牌或四个 READ/MAINTENANCE URL：读取/清理连接自动复用服务数据库凭据，迁移授予 query 读取权限、worker 读取及受限清理权限；SNAPSHOT_KEY 按独立用途派生日志游标密钥与内部令牌。会话和 CSRF 校验保留；凭据及实际依赖仍须正确配置。
 
 `ENVIRONMENT=production` 为 Compose 默认部署模式，必须配置真实数据源，SMTP 按需启用。所有环境中六个 `MAIL_*` 参数全空时关闭邮件。只有 `development` 会通过 worker 容器入口切换为内部合成数据源；邮件参数非空时使用测试邮件，并清空真实 SMTP 登录凭据。`COMPOSE_PROFILES=${ENVIRONMENT}` 同步控制开发服务是否启用；默认项目名按环境隔离。直接运行 Go 二进制时仍需显式提供完整运行配置，不会自动注入开发夹具。
 
@@ -14,7 +16,7 @@ Docker Compose 的统一配置模板位于根目录 `.env.example`，复制为 `
 | QUERY_API_KEY | 两角色均要求；用于查询鉴权及与管理秘密隔离校验 |
 | DATABASE_M0_URL、DATABASE_M1_URL、DATABASE_S0_URL、DATABASE_S1_URL | 显式 postgres URL，端口/数据库/sslmode 必填；同实例槽位同端点、不同数据库，M/S 独立端点 |
 | DATABASE_CONTROL_URL、DATABASE_LOG_URL | 控制库固定 M 端点且独立数据库；日志库独立端点 |
-| LOG_STORAGE_MODE | 当前运行入口必须为 single_legacy；Compose 对旧 .env 显式注入该值，直接进程须自行设置。dual Registry/迁移基础已提供，但服务装配尚未接通，启用会拒绝启动；见 [P28.01 配置边界](P28_LOG_STORAGE_CONFIGURATION.md) |
+| LOG_STORAGE_MODE | Compose 固定为 dual：一个 db-log 实例中的 logs / upstream_logs 两个逻辑库。直接进程须显式设置 dual 或兼容 single_legacy；旧缓冲升级见 [P28 配置边界](P28_LOG_STORAGE_CONFIGURATION.md) |
 | DATABASE_USER、DATABASE_PASSWORD | 分离配置时成对提供非空值，供四个业务槽位及 control 使用；URL 此时不得内嵌凭据，密码填写原文、自动编码 |
 | DATABASE_LOG_USER、DATABASE_LOG_PASSWORD | 分离配置时成对提供非空值，只供日志库使用；直接运行进程仍兼容完整 URL，但不能同时提供同组分离凭据 |
 | REDIS_URL | redis/rediss URL，显式端口，固定 `/0`，禁止查询参数覆盖客户端行为 |

@@ -2,14 +2,15 @@
 name: ${SICP_PROJECT:-sicp-production}
 
 x-database-environment: &database-environment
-  # Dual deployments add compose.dual-logs.yaml after draining legacy writers.
-  LOG_STORAGE_MODE: "${LOG_STORAGE_MODE-single_legacy}"
+  # Two logical log databases share db-log. Drain legacy writers before upgrade.
+  LOG_STORAGE_MODE: dual
   DATABASE_M0_URL: "${DATABASE_M0_URL:?Set DATABASE_M0_URL in .env (copy .env.example)}"
   DATABASE_M1_URL: "${DATABASE_M1_URL:?Set DATABASE_M1_URL in .env (copy .env.example)}"
   DATABASE_S0_URL: "${DATABASE_S0_URL:?Set DATABASE_S0_URL in .env (copy .env.example)}"
   DATABASE_S1_URL: "${DATABASE_S1_URL:?Set DATABASE_S1_URL in .env (copy .env.example)}"
   DATABASE_CONTROL_URL: "${DATABASE_CONTROL_URL:?Set DATABASE_CONTROL_URL in .env (copy .env.example)}"
   DATABASE_LOG_URL: "${DATABASE_LOG_URL:?Set DATABASE_LOG_URL in .env (copy .env.example)}"
+  DATABASE_UPSTREAM_LOG_URL: "${DATABASE_UPSTREAM_LOG_URL:?Set DATABASE_UPSTREAM_LOG_URL in .env (copy .env.example)}"
 
 x-runtime-environment: &runtime-environment
   <<: *database-environment
@@ -24,6 +25,11 @@ x-runtime-environment: &runtime-environment
   LOG_MAX_FILES: "${LOG_MAX_FILES:?Set LOG_MAX_FILES in .env (copy .env.example)}"
   SNAPSHOT_KEY: "${SNAPSHOT_KEY:?Set SNAPSHOT_KEY in .env (copy .env.example)}"
   AUDIT_KEY: "${AUDIT_KEY:?Set AUDIT_KEY in .env (copy .env.example)}"
+  DATABASE_UPSTREAM_LOG_USER: sicp_upstream_logger
+  DATABASE_UPSTREAM_LOG_PASSWORD: "${UPSTREAM_LOGGER_PASSWORD:?Set independent upstream log password in .env}"
+  UPSTREAM_LOG_DIRECTORY: /var/lib/sicp/upstream-logs
+  UPSTREAM_LOG_MAX_BYTES: "${UPSTREAM_LOG_MAX_BYTES:-67108864}"
+  UPSTREAM_LOG_MAX_FILES: "${UPSTREAM_LOG_MAX_FILES:-10000}"
   ENVIRONMENT: "${ENVIRONMENT:?Set ENVIRONMENT in .env (copy .env.example)}"
 
 x-service: &service
@@ -84,6 +90,7 @@ services:
     environment:
       <<: *postgres-environment
       SICP_CLUSTER: log
+      UPSTREAM_LOGGER_PASSWORD: "${UPSTREAM_LOGGER_PASSWORD:?Set independent upstream log password in .env}"
     volumes:
       - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/pg-log:/var/lib/postgresql"
       - ./deploy/init-postgres.sh:/docker-entrypoint-initdb.d/10-sicp.sh:ro
@@ -104,8 +111,16 @@ services:
     platform: linux/amd64
     restart: "no"
     network_mode: none
-    volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-logs:/query-logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-replicas:/query-replicas", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/worker-logs:/worker-logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/staging:/staging", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/targets:/targets", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/spool:/spool"]
-    command: [sh, -c, "chown 65532:65532 /query-logs /query-replicas /worker-logs /staging /targets /spool && chmod 700 /query-logs /query-replicas /worker-logs /staging /targets /spool"]
+    volumes:
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-logs:/query-logs"
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-replicas:/query-replicas"
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/worker-logs:/worker-logs"
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-upstream-logs:/query-upstream-logs"
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/worker-upstream-logs:/worker-upstream-logs"
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/staging:/staging"
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/targets:/targets"
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/spool:/spool"
+    command: [sh, -c, "chown 65532:65532 /query-logs /query-replicas /worker-logs /staging /targets /spool /query-upstream-logs /worker-upstream-logs && chmod 700 /query-logs /query-replicas /worker-logs /staging /targets /spool /query-upstream-logs /worker-upstream-logs"]
   mock-volumes:
     image: busybox:1.37
     platform: linux/amd64
@@ -160,7 +175,10 @@ services:
       DATABASE_PASSWORD: "${QUERY_PASSWORD:?Set QUERY_PASSWORD in .env (copy .env.example)}"
       DATABASE_LOG_USER: "sicp_logger"
       DATABASE_LOG_PASSWORD: "${LOGGER_PASSWORD:?Set LOGGER_PASSWORD in .env (copy .env.example)}"
-    volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-logs:/var/lib/sicp/logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-replicas:/var/lib/sicp/query-replicas"]
+    volumes:
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-logs:/var/lib/sicp/logs"
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-replicas:/var/lib/sicp/query-replicas"
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/query-upstream-logs:/var/lib/sicp/upstream-logs"
     healthcheck:
       test: [CMD, /usr/local/bin/service, --healthcheck]
       interval: 5s
@@ -239,7 +257,12 @@ services:
       SICP_GATEWAY_MANAGED: "true"
       SICP_TLS_CERT_FILE: "${SICP_TLS_CERT_FILE:-}"
       SICP_TLS_KEY_FILE: "${SICP_TLS_KEY_FILE:-}"
-    volumes: ["${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/worker-logs:/var/lib/sicp/logs", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/staging:/var/lib/sicp/staging", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/targets:/var/lib/sicp/targets", "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/spool:/var/lib/sicp/spool"]
+    volumes:
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/worker-logs:/var/lib/sicp/logs"
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/worker-upstream-logs:/var/lib/sicp/upstream-logs"
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/staging:/var/lib/sicp/staging"
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/targets:/var/lib/sicp/targets"
+      - "${SICP_DATA_ROOT:?Set SICP_DATA_ROOT in .env}/${COMPOSE_PROJECT_NAME}/spool:/var/lib/sicp/spool"
     healthcheck:
       test: [CMD, /usr/local/bin/service, --healthcheck]
       interval: 5s
@@ -261,6 +284,8 @@ services:
       DATABASE_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy .env.example)}"
       DATABASE_LOG_USER: "${POSTGRES_USER:?Set POSTGRES_USER in .env (copy .env.example)}"
       DATABASE_LOG_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy .env.example)}"
+      DATABASE_UPSTREAM_LOG_USER: "${POSTGRES_USER:?Set POSTGRES_USER in .env (copy .env.example)}"
+      DATABASE_UPSTREAM_LOG_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy .env.example)}"
   console:
     build: {context: ./frontend}
     image: sicp-console:phase1

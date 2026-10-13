@@ -64,23 +64,24 @@ type Factories struct {
 	Mail     func(context.Context, config.Runtime) (Mail, error)
 }
 type Runtime struct {
-	ProcessID    string
-	Database     Database
-	Redis        Redis
-	Files        *FileSet
-	Source       Source
-	Mail         Mail
-	Control      control.Repository
-	Active       publication.Atomic
-	Cache        cache.Redis
-	Sanitizer    *observability.Sanitizer
-	Logs         *observability.Buffer
-	UpstreamLogs *observability.Buffer
-	LogSink      observability.SafeSink
-	LogDatabase  storage.Database
-	manager      *lifecycle.Manager
-	once         sync.Once
-	closed       error
+	SourceAdmission *ingest.Limiter
+	ProcessID       string
+	Database        Database
+	Redis           Redis
+	Files           *FileSet
+	Source          Source
+	Mail            Mail
+	Control         control.Repository
+	Active          publication.Atomic
+	Cache           cache.Redis
+	Sanitizer       *observability.Sanitizer
+	Logs            *observability.Buffer
+	UpstreamLogs    *observability.Buffer
+	LogSink         observability.SafeSink
+	LogDatabase     storage.Database
+	manager         *lifecycle.Manager
+	once            sync.Once
+	closed          error
 }
 
 func RealFactories() Factories {
@@ -131,6 +132,13 @@ func Open(ctx context.Context, c config.Runtime, f Factories) (*Runtime, []lifec
 		return nil, nil, errors.New("required dependency factory missing")
 	}
 	r := &Runtime{}
+	if c.Service.Role == config.Worker {
+		limiter, e := ingest.NewLimiter(c.SourcePageConcurrency)
+		if e != nil {
+			return nil, nil, e
+		}
+		r.SourceAdmission = limiter
+	}
 	var random [16]byte
 	if _, e := rand.Read(random[:]); e != nil {
 		return nil, nil, errors.New("process identity unavailable")

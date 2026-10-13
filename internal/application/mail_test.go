@@ -55,7 +55,7 @@ func TestWorkerApplicationOptionalMail(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if (a.Sender != nil) != enabled || a.Engine == nil || a.Management == nil || a.Logs == nil {
+			if a.Notifier == nil || (a.Notifier.Channel != nil) != enabled || a.Sender != nil || a.Engine == nil || a.Management == nil || a.Logs == nil {
 				t.Fatal("mail setting must only control the notification sender")
 			}
 		})

@@ -74,6 +74,14 @@ func openPostgresWithLimits(ctx context.Context, r storage.Registry, timeout tim
 		connections = append(connections, upstream)
 	}
 	configs := make([]*pgxpool.Config, 0, len(connections))
+	for _, source := range []storage.LogSource{storage.PlatformLog, storage.UpstreamLog} {
+		if reader, e := r.LogReader(source); e == nil {
+			connections = append(connections, reader)
+		}
+		if maintenance, e := r.LogMaintenance(source); e == nil {
+			connections = append(connections, maintenance)
+		}
+	}
 	for i, c := range connections {
 		limit := limits.Business
 		if i == 4 {
@@ -94,6 +102,9 @@ func openPostgresWithLimits(ctx context.Context, r storage.Registry, timeout tim
 	}
 	for i, c := range connections {
 		cfg := configs[i]
+		if _, exists := p.pools[c]; exists {
+			continue // Worker reads and maintenance share the same service login.
+		}
 		pool, e := pgxpool.NewWithConfig(ctx, cfg)
 		if e != nil {
 			return p, ErrPostgres

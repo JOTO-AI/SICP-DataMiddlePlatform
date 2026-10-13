@@ -2,7 +2,6 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 compose=(docker compose --project-directory "$root" --env-file "$root/.env" --file "$root/compose.yaml")
-if [[ "${SICP_DUAL_LOGS:-0}" == 1 ]]; then compose+=(--file "$root/compose.dual-logs.yaml"); fi
 operation="${1:-help}"
 if (($#)); then shift; fi
 case "$operation" in
@@ -20,29 +19,34 @@ case "$operation" in
   infra)
     "${compose[@]}" run --rm --no-deps volumes
     "${compose[@]}" up -d --wait --wait-timeout 120 db-m db-s db-log redis
-    if [[ "${SICP_DUAL_LOGS:-0}" == 1 ]]; then "${compose[@]}" up -d --wait --wait-timeout 120 db-upstream-log; fi
+    "${compose[@]}" exec -T db-log bash /docker-entrypoint-initdb.d/10-sicp.sh --upstream-only
     for service in $("${compose[@]}" config --services); do
       if [[ "$service" == mock ]]; then "${compose[@]}" up -d --wait --wait-timeout 120 mock; fi
     done
     ;;
   migrate) "${compose[@]}" run --rm --no-deps migrate ;;
   log-register|log-cutover)
-    if [[ "$operation" == log-register && "${SICP_DUAL_LOGS:-0}" == 1 ]] || [[ "$operation" == log-cutover && "${SICP_DUAL_LOGS:-0}" != 1 ]]; then
-      printf '%s\n' 'log-register requires legacy mode; log-cutover requires SICP_DUAL_LOGS=1' >&2; exit 1
+    overrides=()
+    if [[ "$operation" == log-register ]]; then
+      # Only this one-off preparation uses legacy mode. Normal services are dual.
+      overrides=(-e LOG_STORAGE_MODE=single_legacy
+        -e DATABASE_UPSTREAM_LOG_URL= -e DATABASE_UPSTREAM_LOG_USER= -e DATABASE_UPSTREAM_LOG_PASSWORD=
+        -e DATABASE_UPSTREAM_LOG_READ_URL= -e DATABASE_UPSTREAM_LOG_MAINTENANCE_URL=
+        -e UPSTREAM_LOG_DIRECTORY= -e UPSTREAM_LOG_MAX_BYTES= -e UPSTREAM_LOG_MAX_FILES=)
     fi
     "${compose[@]}" stop query query-gateway worker console
-    "${compose[@]}" run --rm --no-deps query /usr/local/bin/service --prepare-log-cutover
-    "${compose[@]}" run --rm --no-deps worker /usr/local/bin/service --prepare-log-cutover
+    "${compose[@]}" run --rm --no-deps "${overrides[@]}" query /usr/local/bin/service --prepare-log-cutover
+    "${compose[@]}" run --rm --no-deps "${overrides[@]}" worker /usr/local/bin/service --prepare-log-cutover
     ;;
   start) "${compose[@]}" up -d --wait --wait-timeout 90 query-gateway worker console ;;
   deploy)
     "$0" prepare
     "$0" build
     "$0" validate
+    "${compose[@]}" stop query query-gateway worker console
     "$0" infra
-    if [[ "${SICP_DUAL_LOGS:-0}" == 1 ]]; then "${compose[@]}" stop query query-gateway worker console; fi
     "$0" migrate
-    if [[ "${SICP_DUAL_LOGS:-0}" == 1 ]]; then "$0" log-cutover; fi
+    "$0" log-cutover
     "$0" start
     python3 "$root/scripts/gateway.py" verify "$@"
     ;;

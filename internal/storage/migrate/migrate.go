@@ -63,16 +63,16 @@ func Catalog(domain Domain) ([]Migration, error) {
 	}
 	versions := []string{string(domain) + "_001"}
 	if domain == Logs {
-		versions = append(versions, "logs_002", "logs_003", "logs_004")
+		versions = append(versions, "logs_002", "logs_003", "logs_004", "logs_005", "logs_006", "logs_007")
 	}
 	if domain == UpstreamLogs {
-		versions = append(versions, "upstream_logs_002")
+		versions = append(versions, "upstream_logs_002", "upstream_logs_003", "upstream_logs_004", "upstream_logs_005", "upstream_logs_006")
 	}
 	if domain == Business {
 		versions = append(versions, "business_002", "business_003", "business_004")
 	}
 	if domain == Control {
-		versions = append(versions, "control_002", "control_003", "control_004", "control_005", "control_006")
+		versions = append(versions, "control_002", "control_003", "control_004", "control_005", "control_006", "control_007", "control_008", "control_009")
 	}
 	plan := make([]Migration, 0, len(versions))
 	for _, version := range versions {

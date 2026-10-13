@@ -29,6 +29,7 @@ def fixture_text(mode):
         "ENVIRONMENT": mode,
         "POSTGRES_PASSWORD": "synthetic", "QUERY_PASSWORD": "synthetic",
         "WORKER_PASSWORD": "synthetic", "LOGGER_PASSWORD": "synthetic",
+        "UPSTREAM_LOGGER_PASSWORD": "synthetic-upstream",
         "QUERY_API_KEY": query["QUERY_API_KEY"], "SNAPSHOT_KEY": query["SNAPSHOT_KEY"],
         "AUDIT_KEY": query["AUDIT_KEY"],
         "ADMIN_USERNAME": worker["ADMIN_USERNAME"],
@@ -195,11 +196,12 @@ def check_modes(env_file):
     assert "SOURCE_APP_SECRET" not in services["query"]["environment"]
     for key in ("SOURCE_ORIGIN", "SOURCE_APP_ID", "SOURCE_APP_SECRET", "SOURCE_SCOPE", "MAIL_ADDRESS", "MAIL_TLS", "MAIL_USERNAME", "MAIL_PASSWORD"):
         assert runtime[key] == services["worker"]["environment"][key]
-    for missing in ("SOURCE_ORIGIN", "SOURCE_APP_ID", "SOURCE_APP_SECRET", "SOURCE_SCOPE", "MAIL_ADDRESS", "MAIL_FROM", "MAIL_TO"):
+    for missing in ("SOURCE_ORIGIN", "SOURCE_APP_ID", "SOURCE_APP_SECRET", "SOURCE_SCOPE"):
         entrypoint({**services["worker"]["environment"], missing: ""}, success=False)
     for address in ("http://mock-source:8090", "http://mock-source", "https://MOCK-SOURCE/"):
         entrypoint({**services["worker"]["environment"], "SOURCE_ORIGIN": address}, success=False)
-    entrypoint({**services["worker"]["environment"], "MAIL_ADDRESS": "mock-mail:1025"}, success=False)
+    rejected_mail = entrypoint({**services["worker"]["environment"], "MAIL_ADDRESS": "mock-mail:1025"})
+    assert rejected_mail["MAIL_ADDRESS"] == ""
     entrypoint({**services["worker"]["environment"], "ENVIRONMENT": "typo"}, success=False)
     ignored = entrypoint({**services["worker"]["environment"], "ENVIRONMENT": "development"})
     assert ignored["SOURCE_ORIGIN"] == "http://mock-source:8090"
@@ -217,7 +219,10 @@ def check_modes(env_file):
         assert all(entrypoint(disabled).get(key, "") == "" for key in mail_keys)
         if mode != "development":
             for key in mail_keys:
-                entrypoint({**disabled, key: services["worker"]["environment"][key]}, success=False)
+                partial = entrypoint({**disabled, key: services["worker"]["environment"][key]})
+                # Invalid SMTP disables the channel without blocking startup;
+                # the process validates the remaining fields as a complete set.
+                assert partial.get("MAIL_ADDRESS", "") == ""
     env_file.write_text(fixture_text("development"), encoding="utf-8")
     development = render(env_file)
     assert development["services"]["mock"]["profiles"] == ["development"]
@@ -235,6 +240,8 @@ def check_host_mounts(env_file):
         "query-logs": [("query", "/var/lib/sicp/logs"), ("volumes", "/query-logs")],
         "query-replicas": [("query", "/var/lib/sicp/query-replicas"), ("volumes", "/query-replicas")],
         "worker-logs": [("worker", "/var/lib/sicp/logs"), ("volumes", "/worker-logs")],
+        "query-upstream-logs": [("query", "/var/lib/sicp/upstream-logs"), ("volumes", "/query-upstream-logs")],
+        "worker-upstream-logs": [("worker", "/var/lib/sicp/upstream-logs"), ("volumes", "/worker-upstream-logs")],
         "staging": [("worker", "/var/lib/sicp/staging"), ("volumes", "/staging")],
         "targets": [("worker", "/var/lib/sicp/targets"), ("volumes", "/targets")],
         "spool": [("worker", "/var/lib/sicp/spool"), ("volumes", "/spool")],
@@ -290,6 +297,8 @@ def main(directory):
             if key.startswith("DATABASE_"):
                 endpoint = urlsplit(expected[key])
                 prefix = "DATABASE_LOG_" if key == "DATABASE_LOG_URL" else "DATABASE_"
+                if key == "DATABASE_UPSTREAM_LOG_URL":
+                    prefix = "DATABASE_UPSTREAM_LOG_"
                 expected[prefix + "USER"] = endpoint.username
                 expected[prefix + "PASSWORD"] = endpoint.password
                 expected[key] = urlunsplit(endpoint._replace(netloc=endpoint.netloc.split("@", 1)[1]))
@@ -310,9 +319,16 @@ def main(directory):
         "DATABASE_M0_URL", "DATABASE_M1_URL", "DATABASE_S0_URL",
         "DATABASE_S1_URL", "DATABASE_CONTROL_URL", "DATABASE_LOG_URL",
         "DATABASE_USER", "DATABASE_PASSWORD", "DATABASE_LOG_USER", "DATABASE_LOG_PASSWORD",
+        "DATABASE_UPSTREAM_LOG_URL", "DATABASE_UPSTREAM_LOG_USER", "DATABASE_UPSTREAM_LOG_PASSWORD",
     }
     for role in ("query", "worker", "migrate"):
-        assert services[role]["environment"]["LOG_STORAGE_MODE"] == "single_legacy"
+        assert services[role]["environment"]["LOG_STORAGE_MODE"] == "dual"
+        assert services[role]["environment"]["DATABASE_UPSTREAM_LOG_URL"] == "postgres://db-log:5432/upstream_logs?sslmode=disable"
+        for retired in ("LOG_CURSOR_KEYS", "LOG_CURSOR_ACTIVE", "LOG_INTERNAL_TOKEN",
+                        "DATABASE_LOG_READ_URL", "DATABASE_UPSTREAM_LOG_READ_URL",
+                        "DATABASE_LOG_MAINTENANCE_URL", "DATABASE_UPSTREAM_LOG_MAINTENANCE_URL"):
+            assert retired not in services[role]["environment"]
+            assert retired not in values(EXAMPLE)
     all_services = render(env_file, all_profiles=True)["services"]
     assert "ctl" not in all_services
     assert services["migrate"]["entrypoint"] == ["/usr/local/bin/db-migrate"]
@@ -352,7 +368,8 @@ def main(directory):
                             "POSTGRES_PASSWORD='admin-@:/?#%$value'\n"
                             "QUERY_PASSWORD='query-@:/?#%$value'\n"
                             "WORKER_PASSWORD='worker-@:/?#%$value'\n"
-                            "LOGGER_PASSWORD='logger-@:/?#%$value'\n", encoding="utf-8")
+                            "LOGGER_PASSWORD='logger-@:/?#%$value'\n"
+                            "UPSTREAM_LOGGER_PASSWORD='upstream-@:/?#%$value'\n", encoding="utf-8")
         custom = render(env_file)
         assert custom["name"] == "compose-config-test"
         assert custom["services"]["query-gateway"]["ports"][0]["published"] == "28082"
@@ -362,11 +379,16 @@ def main(directory):
             assert custom["services"][role]["environment"]["QUERY_API_KEY"] == "literal-$$value-#-secret"
         # A single edit must feed bootstrap and every consumer without exposing
         # another role's password or inserting raw credentials into endpoint URLs.
-        endpoints = {k for k in values(EXAMPLE) if k.startswith("DATABASE_")}
+        endpoints = {k for k in values(EXAMPLE) if k.startswith("DATABASE_") and k not in {
+            "DATABASE_LOG_READ_URL", "DATABASE_UPSTREAM_LOG_READ_URL",
+            "DATABASE_LOG_MAINTENANCE_URL", "DATABASE_UPSTREAM_LOG_MAINTENANCE_URL",
+        }}
         for role, password in (("query", "query"), ("worker", "worker"), ("migrate", "admin")):
             runtime = custom["services"][role]["environment"]
             assert runtime["DATABASE_PASSWORD"] == password + "-@:/?#%$$value"
             assert runtime["DATABASE_LOG_PASSWORD"] == ("admin" if role == "migrate" else "logger") + "-@:/?#%$$value"
+            assert runtime["DATABASE_UPSTREAM_LOG_PASSWORD"] == ("admin" if role == "migrate" else "upstream") + "-@:/?#%$$value"
+            assert runtime["DATABASE_UPSTREAM_LOG_USER"] == ("custom_admin" if role == "migrate" else "sicp_upstream_logger")
             assert runtime["DATABASE_USER"] == ("custom_admin" if role == "migrate" else "sicp_" + role)
             for key in endpoints:
                 assert runtime[key] == services[role]["environment"][key]
@@ -378,6 +400,10 @@ def main(directory):
             assert bootstrap["POSTGRES_USER"] == "custom_admin"
             for key, prefix in (("POSTGRES_PASSWORD", "admin"), ("QUERY_PASSWORD", "query"), ("WORKER_PASSWORD", "worker"), ("LOGGER_PASSWORD", "logger")):
                 assert bootstrap[key] == prefix + "-@:/?#%$$value"
+            if name == "db-log":
+                assert bootstrap["UPSTREAM_LOGGER_PASSWORD"] == "upstream-@:/?#%$$value"
+            else:
+                assert "UPSTREAM_LOGGER_PASSWORD" not in bootstrap
         env_file.write_text("QUERY_API_KEY=\n", encoding="utf-8")
         render(env_file, success=False)
     with tempfile.TemporaryDirectory() as mount_directory:

@@ -69,7 +69,11 @@ func (t *logTransaction) QueryRow(ctx context.Context, sql string, args ...any) 
 				cluster = "505"
 			}
 			*dest[0].(*string) = cluster
-			*dest[1].(*int64) = 1
+			oid := int64(1)
+			if u.Hostname() == "db-log" && u.Path == "/upstream_logs" {
+				oid = 2
+			}
+			*dest[1].(*int64) = oid
 			*dest[2].(*string) = strings.TrimPrefix(u.Path, "/")
 			return nil
 		})
@@ -88,6 +92,10 @@ func (t *logTransaction) QueryRow(ctx context.Context, sql string, args ...any) 
 }
 
 func dualLogRegistry(t *testing.T) storage.Registry {
+	return logRegistryAt(t, "db-upstream")
+}
+
+func logRegistryAt(t *testing.T, upstreamHost string) storage.Registry {
 	t.Helper()
 	v := map[string]string{
 		"LOG_STORAGE_MODE":          "dual",
@@ -97,7 +105,7 @@ func dualLogRegistry(t *testing.T) storage.Registry {
 		"DATABASE_S1_URL":           "postgres://admin@db-s:5432/slot1?sslmode=disable",
 		"DATABASE_CONTROL_URL":      "postgres://admin@db-m:5432/control?sslmode=disable",
 		"DATABASE_LOG_URL":          "postgres://admin@db-log:5432/logs?sslmode=disable",
-		"DATABASE_UPSTREAM_LOG_URL": "postgres://admin@db-upstream:5432/upstream_logs?sslmode=disable",
+		"DATABASE_UPSTREAM_LOG_URL": "postgres://admin@" + upstreamHost + ":5432/upstream_logs?sslmode=disable",
 	}
 	r, err := storage.LoadRegistry(func(k string) (string, bool) { value, ok := v[k]; return value, ok })
 	if err != nil {
@@ -107,7 +115,13 @@ func dualLogRegistry(t *testing.T) storage.Registry {
 }
 
 func TestT28_04IndependentLogLedgersReplayAndConflict(t *testing.T) {
-	r := dualLogRegistry(t)
+	for _, host := range []string{"db-upstream", "db-log"} {
+		t.Run(host, func(t *testing.T) { checkLogLedgers(t, logRegistryAt(t, host)) })
+	}
+}
+
+func checkLogLedgers(t *testing.T, r storage.Registry) {
+	t.Helper()
 	db := &logDatabases{}
 	for _, domain := range []migrate.Domain{migrate.Logs, migrate.UpstreamLogs} {
 		plan, err := migrate.Catalog(domain)
@@ -127,7 +141,7 @@ func TestT28_04IndependentLogLedgersReplayAndConflict(t *testing.T) {
 		}
 	}
 	upstream, _ := r.LogConnection(storage.UpstreamLog)
-	if len(db.items[r.Logs()].ledger) != 4 || len(db.items[upstream].ledger) != 2 {
+	if len(db.items[r.Logs()].ledger) != 7 || len(db.items[upstream].ledger) != 6 {
 		t.Fatal("logs share a ledger")
 	}
 	if _, ok := db.items[upstream].ledger["upstream_logs_001"]; !ok {
@@ -177,8 +191,17 @@ func TestT28_04WrongTargetAliasAndChangedBackendRefuseDDL(t *testing.T) {
 
 func TestT28_04MigrationSchemaPermissionsAndErrorsAreBounded(t *testing.T) {
 	plan, err := migrate.Catalog(migrate.UpstreamLogs)
-	if err != nil || len(plan) != 2 || plan[0].Version != "upstream_logs_001" {
+	if err != nil || len(plan) != 6 || plan[0].Version != "upstream_logs_001" {
 		t.Fatal("wrong upstream catalog", err)
+	}
+	for _, required := range []string{
+		"REVOKE ALL ON DATABASE %I FROM sicp_log_maintenance",
+		"REVOKE ALL ON SCHEMA logs FROM sicp_log_maintenance;",
+		"TO sicp_upstream_maintenance;",
+	} {
+		if !strings.Contains(plan[4].SQL, required) {
+			t.Fatal("shared-instance maintenance privilege boundary missing", required)
+		}
 	}
 	for _, required := range []string{"CREATE SCHEMA logs;", "kind IN ('call','attempt')", "GRANT SELECT ON logs.events TO sicp_upstream_reader;", "GRANT SELECT, INSERT ON logs.events TO sicp_upstream_logger;"} {
 		if !strings.Contains(plan[0].SQL, required) {

@@ -124,7 +124,7 @@ class GatewayContainers(unittest.TestCase):
                 self.assertEqual(status, 200)
                 data = json.loads(payload)
                 self.assertEqual((data['path'], data['method'], data['body']), (path + '?a=1', 'POST', '{"literal":"value"}'))
-            for path in ('/livez', '/readyz', '/console-other/', '/console-api', '/admin/v1/tasks', '/admin/v1/tables', '/api/v1/sicp', '/admin/v1/tasksx/', '/admin/v1/tablesx/', '/api/v1/sicpx/', '/unknown'):
+            for path in ('/livez', '/readyz', '/internal/admin/v1/logs/platform/events', '/internal/admin/v1/logs/upstream/stream', '/console-other/', '/console-api', '/admin/v1/tasks', '/admin/v1/tables', '/api/v1/sicp', '/admin/v1/tasksx/', '/admin/v1/tablesx/', '/api/v1/sicpx/', '/unknown'):
                 self.assertEqual(self.request(path, tls=tls)[0], 404)
             for path in ('/', '/console'):
                 self.assertEqual(self.request(path, tls=tls)[1]['Location'], '/console/')
@@ -133,7 +133,7 @@ class GatewayContainers(unittest.TestCase):
             item = json.loads(raw)[0]
             ip = item['NetworkSettings']['Networks'][NETWORK]['IPAddress']
             connection = http.client.HTTPConnection(ip, 8080, timeout=5)
-            for path, status in (('/livez', 200), ('/readyz', 200), ('/api/v1/sicp/x', 200), ('/console/', 404), ('/admin/v1/tasks/x', 404)):
+            for path, status in (('/livez', 200), ('/readyz', 200), ('/api/v1/sicp/x', 200), ('/internal/admin/v1/logs/platform/events', 200), ('/internal/admin/v1/logs/upstream/stream', 200), ('/console/', 404), ('/admin/v1/tasks/x', 404)):
                 connection.request('GET', path, headers={'Host': 'internal.example:8080', 'X-Forwarded-Proto': 'forged', 'X-Forwarded-Host': 'forged'})
                 response = connection.getresponse()
                 self.assertEqual(response.status, status)

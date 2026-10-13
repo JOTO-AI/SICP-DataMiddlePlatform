@@ -29,18 +29,21 @@ func (d *logsDB) Begin(_ context.Context, c storage.Connection) (storage.Transac
 	return &logsTx{d, pending}, nil
 }
 func (t *logsTx) Exec(_ context.Context, sql string, args ...any) (int64, error) {
-	if !strings.HasPrefix(sql, "INSERT INTO logs.events ") || !strings.Contains(sql, "ON CONFLICT (event_id) DO NOTHING") || len(args) != 6 {
-		return 0, errors.New("unexpected SQL")
-	}
-	id := args[0].(string)
-	if _, ok := t.pending[id]; ok {
-		return 0, nil
-	}
-	t.pending[id] = args[5].(string)
-	return 1, nil
+	// The migrated logger cannot insert directly, including during cutover.
+	return 0, errors.New("direct log writes forbidden")
 }
 
 type logRow struct{ body string }
+
+type appendRow struct{ sequence int64 }
+
+func (r appendRow) Scan(dest ...any) error {
+	if len(dest) != 1 {
+		return errors.New("bad append destinations")
+	}
+	*dest[0].(*int64) = r.sequence
+	return nil
+}
 
 func (r logRow) Scan(dest ...any) error {
 	if len(dest) != 1 {
@@ -50,6 +53,17 @@ func (r logRow) Scan(dest ...any) error {
 	return nil
 }
 func (t *logsTx) QueryRow(_ context.Context, sql string, args ...any) storage.Row {
+	if sql == "SELECT logs.append_event($1,$2,$3,$4,$5,$6::jsonb)" {
+		id, body := args[0].(string), args[5].(string)
+		if prior, ok := t.pending[id]; ok {
+			if prior != body {
+				return appendRow{-1}
+			}
+			return appendRow{1}
+		}
+		t.pending[id] = body
+		return appendRow{int64(len(t.pending))}
+	}
 	if sql != "SELECT payload::text FROM logs.events WHERE event_id=$1" {
 		return logRow{}
 	}
