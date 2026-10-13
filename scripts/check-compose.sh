@@ -16,11 +16,9 @@ lines = [f"{key}='compose-{key}-@:/?#%$ space'" if (key := line.split("=", 1)[0]
 path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 PY
 docker compose config --quiet
-bash scripts/sicp.sh build
-bash scripts/sicp.sh infra
-bash scripts/sicp.sh migrate
-bash scripts/sicp.sh log-cutover
-bash scripts/sicp.sh start
+# Fresh volumes must initialize through the public Compose entry point alone.
+# query/worker must wait for successful migrations before they can start.
+docker compose up -d --build --wait --wait-timeout 300
 
 check_database_limits() {
   for spec in db-m:256 db-s:128 db-log:100; do

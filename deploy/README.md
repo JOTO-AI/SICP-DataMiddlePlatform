@@ -20,7 +20,9 @@ bash scripts/sicp.sh deploy --url http://127.0.0.1:18080
 
 Windows PowerShell 使用 `Copy-Item .env.example .env`，部署脚本通过 WSL / Git Bash 执行。复制只需首次执行，不覆盖已有配置。
 
-根目录唯一的 `compose.yaml` 直接定义所有服务（含 console），正式环境默认项目名 `sicp-production`。部署脚本依次初始化目录与数据库、迁移、排空旧日志缓冲，再启动 query/worker 和控制台；任何步骤失败停止部署。query/worker 不把日志库健康或 migrate 设为启动硬依赖，已迁移环境的日志故障不会阻止业务重启。首次安装或升级不能用直接 up 跳过部署步骤，可用 `docker compose logs volumes db-m db-s db-log` 排查，迁移错误见部署命令输出。
+根目录唯一的 `compose.yaml` 直接定义所有服务（含 console），正式环境默认项目名 `sicp-production`。部署脚本依次初始化目录与数据库、迁移、排空旧日志缓冲，再启动 query/worker 和控制台；任何步骤失败停止部署。Compose 同样保证启动顺序：db-m/db-s/db-log 健康后运行 migrate，query/worker 等待 migrate 成功及目录权限初始化完成后启动，网关和控制台再等待应用健康。迁移失败时应用不会启动。该依赖只控制 Compose 启动顺序，运行期间日志库故障不会自动停止应用；通过 Compose 重新启动依赖链时仍需数据库健康及迁移成功。
+
+首次部署，或停服并清空日志数据库及全部本地日志缓冲后，补齐 `.env` 即可执行 `docker compose up -d --build`，自动完成建库、建表和应用启动。已有单库数据及缓冲需要保留的升级仍按下文登记和部署流程执行，直接 up 不会补建已有 PG 数据目录中缺失的上游库，也不替代旧缓冲切换。可用 `docker compose logs volumes db-m db-s db-log migrate` 排查初始化失败。
 
 一个独立于 M/S 的 `db-log` PostgreSQL 服务承载 `logs` / `upstream_logs` 两个逻辑库，共用 `pg-log` 卷；两库分别管理写入、读取和清理权限，实例故障与连接总额度共享。只使用 compose.yaml，无需额外 overlay。上游默认地址为 `postgres://db-log:5432/upstream_logs?sslmode=disable`，另填 `UPSTREAM_LOGGER_PASSWORD`。
 

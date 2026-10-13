@@ -58,7 +58,7 @@ dual 模式的日志迁移必须通过物理隔离预检，在写事务内重新
 
 空卷初始化创建两个数据库；已有 pg-log 卷由 `scripts/sicp.sh infra` 在数据库健康后显式调用初始化脚本的 `--upstream-only` 分支，仅补建缺失的上游账号/逻辑库，不清空数据、不修改已有密码。外部数据库需操作者预建库及 LOGIN；若已存在同名 NOLOGIN 组角色，须先按部署权限方案配置可登录账号。迁移新增 upstream_logs_005，将上游清理授权由集群共享的 sicp_log_maintenance 改为 sicp_upstream_maintenance；已有上游维护 LOGIN 需调整成员关系，平台维护账号不变。
 
-迁移是显式部署步骤：按 `infra → migrate → log-cutover → start` 执行（scripts/sicp.sh deploy 已按此顺序；旧部署先按下节登记目标并停写）。query/worker 不再依赖 migrate 或日志库健康，已迁移系统重启时单日志库离线不会间接卡住业务启动。首次未部署 schema 不表示就绪，日志保留在缓冲；禁止以 start 替代首次迁移。日志就绪状态与业务 query_ready/sync_ready 分离，single_legacy 明示兼容模式。
+保留旧日志的升级按 `infra → migrate → log-cutover → start` 执行（scripts/sicp.sh deploy 已按此顺序；旧部署先按下节登记目标并停写）。2026-10-13 恢复 query/worker 对 migrate 成功完成的 Compose 依赖：数据库健康后先迁移，再启动应用。首次部署或停服清空日志数据库及全部日志缓冲后，可直接 `docker compose up -d --build`；已有单库的补建和旧缓冲登记/切换仍需部署流程。运行期间日志故障不触发 Compose 停止应用，但重新启动依赖链会受数据库健康及迁移结果约束。日志就绪状态与业务 query_ready/sync_ready 分离，single_legacy 明示兼容模式。
 
 关闭先停业务生产，再并行关闭两套 Dispatcher，单侧阻塞不会占用另一侧排空机会；失败/未知确认保留文件并报告未完成。该代码已做静态审查和源码编译，但尚未执行测试、DDL、容器启动、角色权限或故障演练。
 

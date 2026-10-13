@@ -158,6 +158,7 @@ services:
     entrypoint: [/bin/sh, /usr/local/bin/query-entrypoint.sh]
     depends_on:
       volumes: {condition: service_completed_successfully}
+      migrate: {condition: service_completed_successfully}
       redis: {condition: service_healthy}
     networks: [sicp, ingress]
     build: {context: ., dockerfile: deploy/Dockerfile, args: {SERVICE: query-service}}
@@ -216,6 +217,7 @@ services:
     <<: *service
     depends_on:
       volumes: {condition: service_completed_successfully}
+      migrate: {condition: service_completed_successfully}
       redis: {condition: service_healthy}
       mock: {condition: service_healthy, required: false}
     networks: [sicp, ingress]

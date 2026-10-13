@@ -306,9 +306,8 @@ def main(directory):
         actual = entrypoint(services[role]["environment"]) if role == "worker" else services[role]["environment"]
         for key, value in expected.items():
             assert actual[key] == value, f"{role} runtime contract drift: {key}"
-        for dependency in ("volumes",):
+        for dependency in ("volumes", "migrate"):
             assert services[role]["depends_on"][dependency]["condition"] == "service_completed_successfully"
-        assert "migrate" not in services[role]["depends_on"]
         assert "db-log" not in services[role]["depends_on"]
         assert Path(services[role]["build"]["context"]) == ROOT
     assert "POSTGRES_PASSWORD" not in services["query"]["environment"]
@@ -333,6 +332,8 @@ def main(directory):
     assert "ctl" not in all_services
     assert services["migrate"]["entrypoint"] == ["/usr/local/bin/db-migrate"]
     assert services["migrate"]["restart"] == "no"
+    for dependency in ("db-m", "db-s", "db-log"):
+        assert services["migrate"]["depends_on"][dependency]["condition"] == "service_healthy"
     assert "MANAGEMENT_URL" not in values(EXAMPLE)
     for service in all_services.values():
         assert "tools" not in service.get("profiles", [])
