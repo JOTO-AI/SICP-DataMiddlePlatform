@@ -145,7 +145,7 @@ func Catalog() []API {
 		}
 		notes := []string{"Business execution uses the existing /console-api/query proxy.", "Unknown fields are rejected; null optional request fields are treated as omitted.", "Response timestamps follow the existing business contract and are not log timestamps."}
 		if contract.SupportsSnapshot(d.Operation) {
-			notes = append(notes, "Use X-Query-Snapshot for subsequent pages; teaching-classes students must reuse the staff teaching-classes snapshot.")
+			notes = append(notes, "Use each operation's own X-Query-Snapshot for subsequent pages. For staff teaching-classes and class students, compare X-SICP-Combination on every page and reconcile student_count with the complete unique roster; discard and restart the round if versions or counts differ. Never send one operation's token to another.")
 		} else {
 			notes = append(notes, "Timetable is not paginated and does not accept X-Query-Snapshot.")
 		}

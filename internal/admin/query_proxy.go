@@ -36,7 +36,7 @@ func QueryProxy(address, apiKey string) (http.Handler, error) {
 			return errors.New("upstream redirect rejected")
 		}
 		headers := make(http.Header)
-		for _, key := range []string{"Content-Type", "X-Request-ID", "X-Query-Snapshot", "Retry-After"} {
+		for _, key := range []string{"Content-Type", "X-Request-ID", "X-Query-Snapshot", "X-SICP-Combination", "Retry-After"} {
 			if value := r.Header.Get(key); value != "" {
 				headers.Set(key, value)
 			}
