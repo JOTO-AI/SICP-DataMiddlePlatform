@@ -204,6 +204,17 @@ type SourceState struct {
 	LogTaskID      *string               `json:"log_task_id"`
 	Window         *control.SourceWindow `json:"window"`
 	WindowTaskID   *string               `json:"window_task_id"`
+	LastFailure    *SourceFailure        `json:"last_failure"`
+	FailureState   string                `json:"failure_state"`
+}
+
+// SourceFailure is a control fact, not an inferred failure from missing logs.
+// Only the bounded code is exposed; provider errors and payloads stay private.
+type SourceFailure struct {
+	TaskID     string    `json:"task_id"`
+	LogTaskID  string    `json:"log_task_id"`
+	Code       string    `json:"code"`
+	ObservedAt time.Time `json:"observed_at"`
 }
 
 func (r Repository) Sources(ctx context.Context, correlate func(string) string) ([]SourceState, error) {
@@ -218,23 +229,46 @@ func (r Repository) Sources(ctx context.Context, correlate func(string) string) 
 			return ErrUnavailable
 		}
 		for _, table := range source.Catalog() {
-			v := SourceState{ID: table.Name, PrimaryKey: table.PrimaryKey}
+			v := SourceState{ID: table.Name, PrimaryKey: table.PrimaryKey, FailureState: "none"}
 			if window, ok := plan.Windows[table.Name]; ok {
 				v.Window = &window
 				id := plan.TaskID
 				v.WindowTaskID = &id
 			}
 			var raw *string
-			if tx.QueryRow(ctx, "SELECT (SELECT json_build_object('confirmed_until',confirmed_until,'checked_at',checked_at,'task_id',task_id)::text FROM control.source_progress WHERE source=$1)", table.Name).Scan(&raw) != nil {
+			if tx.QueryRow(ctx, `SELECT json_build_object(
+'confirmed_until',(SELECT confirmed_until FROM control.source_progress WHERE source=$1),
+'checked_at',(SELECT checked_at FROM control.source_progress WHERE source=$1),
+'task_id',(SELECT task_id FROM control.source_progress WHERE source=$1),
+'last_failure',(SELECT json_build_object('task_id',c.task_id,'code','acquisition_failed','observed_at',c.recorded_at)
+ FROM control.checkpoints c JOIN control.tasks t ON t.id=c.task_id
+ WHERE c.name='acquisition-progress' AND t.status='failed'
+ AND EXISTS(SELECT 1 FROM jsonb_array_elements(c.payload->'tables') AS item
+ WHERE item->>'table'=$1 AND item->>'status'='failed')
+ ORDER BY c.recorded_at DESC,c.task_id DESC LIMIT 1))::text`, table.Name).Scan(&raw) != nil {
 				return ErrUnavailable
 			}
 			if raw != nil {
-				if len(*raw) > 2048 || json.Unmarshal([]byte(*raw), &v) != nil {
+				if len(*raw) > 4096 || json.Unmarshal([]byte(*raw), &v) != nil {
 					return ErrUnavailable
 				}
 				if v.TaskID != nil && correlate != nil {
 					id := correlate(*v.TaskID)
 					v.LogTaskID = &id
+				}
+				if v.LastFailure != nil {
+					f := v.LastFailure
+					if !ValidID(f.TaskID) || f.Code != "acquisition_failed" || f.ObservedAt.IsZero() {
+						return ErrUnavailable
+					}
+					if correlate == nil {
+						return ErrUnavailable
+					}
+					f.LogTaskID = correlate(f.TaskID)
+					v.FailureState = "unresolved"
+					if v.CheckedAt != nil && !v.CheckedAt.Before(f.ObservedAt) {
+						v.FailureState = "superseded_by_success"
+					}
 				}
 			}
 			out = append(out, v)

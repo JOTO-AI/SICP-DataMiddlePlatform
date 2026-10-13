@@ -191,7 +191,7 @@ func TestT28_04WrongTargetAliasAndChangedBackendRefuseDDL(t *testing.T) {
 
 func TestT28_04MigrationSchemaPermissionsAndErrorsAreBounded(t *testing.T) {
 	plan, err := migrate.Catalog(migrate.UpstreamLogs)
-	if err != nil || len(plan) != 6 || plan[0].Version != "upstream_logs_001" {
+	if err != nil || len(plan) != 7 || plan[0].Version != "upstream_logs_001" {
 		t.Fatal("wrong upstream catalog", err)
 	}
 	for _, required := range []string{

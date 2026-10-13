@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
@@ -241,7 +242,9 @@ func (m Maintenance) Pump(ctx context.Context) error {
 		// Recovery acknowledges an already committed deletion before applying
 		// changed policy/preview checks to a potential new deletion.
 		if e = m.logTx(ctx, p.Source, func(ctx context.Context, log storage.Transaction) error {
-			if log.QueryRow(ctx, "SELECT (SELECT deleted FROM logs.cleanup_receipts WHERE job_id=$1 AND epoch=$2 AND through=$3)", j.ID, p.Epoch, p.Through).Scan(&removed) != nil {
+			// The function shares the append/delete lock, so an uncertain older
+			// commit must settle before absence of its receipt is authoritative.
+			if log.QueryRow(ctx, "SELECT logs.cleanup_result($1,$2,$3)", j.ID, p.Epoch, p.Through).Scan(&removed) != nil {
 				return ErrUnavailable
 			}
 			return nil
@@ -260,8 +263,11 @@ func (m Maintenance) Pump(ctx context.Context) error {
 		}
 		return m.logTx(ctx, p.Source, func(ctx context.Context, tx storage.Transaction) error {
 			var count int64
-			if tx.QueryRow(ctx, "SELECT logs.cleanup_prefix($1,$2,$3,$4,$5)", j.ID, p.Epoch, p.Floor, p.Through, p.Cutoff).Scan(&count) != nil {
+			if tx.QueryRow(ctx, "SELECT logs.cleanup_try_prefix($1,$2,$3,$4,$5)", j.ID, p.Epoch, p.Floor, p.Through, p.Cutoff).Scan(&count) != nil {
 				return ErrUnavailable
+			}
+			if count < 0 {
+				return ErrConflict
 			}
 			removed = &count
 			return nil
@@ -269,10 +275,16 @@ func (m Maintenance) Pump(ctx context.Context) error {
 	})
 	status := "succeeded"
 	if e != nil {
+		if errors.Is(e, ErrUnavailable) || ctx.Err() != nil {
+			// Keep running until its lease is reclaimed. A database/commit error
+			// is not evidence of zero deletion; recovery must resolve the receipt.
+			return ErrUnavailable
+		}
 		status = "partial_failed"
-		removed = nil
+		zero := int64(0)
+		removed = &zero
 	}
 	finish, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
-	return m.Repository.Finish(finish, *j, status, map[string]any{"source": p.Source, "deleted": removed, "outcome_known": e == nil, "receipt_id": j.ID}, time.Now().UTC())
+	return m.Repository.Finish(finish, *j, status, map[string]any{"source": p.Source, "deleted": removed, "outcome_known": true, "receipt_id": j.ID}, time.Now().UTC())
 }

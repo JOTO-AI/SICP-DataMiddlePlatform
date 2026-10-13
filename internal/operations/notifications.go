@@ -92,10 +92,11 @@ func settings(ctx context.Context, tx storage.Transaction, lock bool) (Notificat
 }
 func (r Repository) EnsureNotifications(ctx context.Context, legacy string, channel bool, now time.Time) error {
 	s := NotificationSettings{Revision: 1, Recipients: []string{}, Rules: map[string]bool{"source_schema": true, "task_failed": false, "source_test_failed": false}}
-	if legacy != "" && channel {
-		if a, e := NormalizeAddress(legacy); e == nil {
+	legacyRecipient, legacyErr := NormalizeAddress(legacy)
+	if legacyErr == nil {
+		if channel {
 			s.Enabled = true
-			s.Recipients = []string{a}
+			s.Recipients = []string{legacyRecipient}
 		}
 	}
 	recipients, _ := json.Marshal(s.Recipients)
@@ -113,9 +114,11 @@ func (r Repository) EnsureNotifications(ctx context.Context, legacy string, chan
 		if _, e = tx.Exec(ctx, `INSERT INTO control.notification_facts(id,code,task_id,occurred_at,decision,revision) SELECT 'schema:'||id,'source_schema',task_id,created_at,'legacy',1 FROM control.notification_outbox WHERE attempts>0 OR status<>'pending' ON CONFLICT(id) DO NOTHING`); e != nil {
 			return ErrUnavailable
 		}
-		if len(s.Recipients) == 1 {
+		// Historical outcomes belong to the old address even if the transport
+		// is currently disabled. Importing history must not enable sending.
+		if legacyErr == nil {
 			if _, e = tx.Exec(ctx, `INSERT INTO control.notification_deliveries(id,fact_id,rule_id,revision,recipient,status,attempts,created_at,deadline,next_attempt_at,accepted_at)
- SELECT 'legacy:'||id,'schema:'||id,'source_schema',1,$1,CASE WHEN status IN ('accepted','delivered') THEN 'accepted' WHEN attempts>=3 THEN 'exhausted' ELSE 'unknown' END,attempts,created_at,created_at+interval '24 hours',NULL,sent_at FROM control.notification_outbox WHERE attempts>0 OR status<>'pending' ON CONFLICT(id) DO NOTHING`, s.Recipients[0]); e != nil {
+ SELECT 'legacy:'||id,'schema:'||id,'source_schema',1,$1,CASE WHEN status IN ('accepted','delivered') THEN 'accepted' WHEN payload #>> '{delivery,attempts,-1,result}'='rejected' THEN 'rejected' WHEN attempts>=3 THEN 'exhausted' ELSE 'unknown' END,attempts,created_at,created_at+interval '24 hours',NULL,sent_at FROM control.notification_outbox WHERE attempts>0 OR status<>'pending' ON CONFLICT(id) DO NOTHING`, legacyRecipient); e != nil {
 				return ErrUnavailable
 			}
 			if _, e = tx.Exec(ctx, `INSERT INTO control.notification_attempts(delivery_id,number,started_at,finished_at,outcome) SELECT 'legacy:'||n.id,(a->>'number')::integer,(a->>'started_at')::timestamptz,(a->>'finished_at')::timestamptz,CASE WHEN a->>'result'='delivered' THEN 'accepted' ELSE a->>'result' END FROM control.notification_outbox n CROSS JOIN LATERAL jsonb_array_elements(coalesce(n.payload #> '{delivery,attempts}','[]'::jsonb)) a WHERE n.attempts>0 ON CONFLICT DO NOTHING`); e != nil {
@@ -431,6 +434,18 @@ func (n *Notifier) test(ctx context.Context) error {
 		return ErrUnavailable
 	}
 	e = n.Repository.transaction(ctx, false, func(ctx context.Context, tx storage.Transaction) error {
+		// Serialize with claim/recovery before locking settings, the same order
+		// as acceptance. An expired executor must never create new deliveries.
+		if _, e := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(734219100)"); e != nil {
+			return ErrUnavailable
+		}
+		var owns bool
+		if tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM control.management_jobs WHERE id=$1 AND owner=$2 AND status='running' AND lease_until>clock_timestamp() AND deadline>clock_timestamp())", j.ID, n.Owner).Scan(&owns) != nil {
+			return ErrUnavailable
+		}
+		if !owns {
+			return ErrConflict
+		}
 		current, e := settings(ctx, tx, true)
 		if e != nil {
 			return e

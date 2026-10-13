@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
@@ -56,7 +57,7 @@ func (r *Results) prune(now time.Time) {
 	}
 }
 func (r *Results) Put(id, subject string, raw []byte, now time.Time) bool {
-	if r == nil || len(raw) > 2<<20 || !json.Valid(raw) {
+	if r == nil || !ValidID(id) || subject == "" || len(subject) > 128 || len(raw) > 2<<20 || !json.Valid(raw) {
 		return false
 	}
 	r.mu.Lock()
@@ -66,7 +67,8 @@ func (r *Results) Put(id, subject string, raw []byte, now time.Time) bool {
 		r.bytes -= len(old.body)
 		delete(r.items, id)
 	}
-	for r.bytes+len(raw) > 20<<20 {
+	// Bound metadata too: tiny responses must not create an unbounded map.
+	for r.bytes+len(raw) > 20<<20 || len(r.items) >= 1000 {
 		oldest := ""
 		var expiry time.Time
 		for key, v := range r.items {
@@ -105,6 +107,7 @@ type TestRunner struct {
 	Recorder   *events.Recorder
 	Results    *Results
 	Owner      string
+	running    atomic.Bool
 }
 
 func (r *TestRunner) Run(ctx context.Context) {
@@ -123,6 +126,10 @@ func (r *TestRunner) Pump(ctx context.Context) error {
 	if r == nil || r.Collector == nil || r.Recorder == nil || r.Results == nil {
 		return ErrUnavailable
 	}
+	if !r.running.CompareAndSwap(false, true) {
+		return ErrLimit
+	}
+	defer r.running.Store(false)
 	j, err := r.Repository.Claim(ctx, "source_test", r.Owner, time.Now().UTC())
 	if err != nil || j == nil {
 		return err

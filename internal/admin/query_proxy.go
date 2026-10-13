@@ -11,7 +11,7 @@ import (
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 )
 
-// QueryProxy only forwards the four public query operations and health checks.
+// QueryProxy only forwards the nine public query operations and health checks.
 // The browser never receives the service API key or controls the upstream host.
 func QueryProxy(address, apiKey string) (http.Handler, error) {
 	u, err := url.Parse(address)

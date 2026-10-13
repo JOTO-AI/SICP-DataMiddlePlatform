@@ -71,7 +71,7 @@ func schema(t reflect.Type, request bool) Field {
 				child.Limit = "1..1000"
 			}
 			if request && name == "academic_year" {
-				child.Limit = "YYYY-YYYY; consecutive years"
+				child.Limit = "YYYY-YYYY; consecutive years; first year 1000..9998"
 			}
 			if request && name == "semester" {
 				child.Limit = "1 or 2"
@@ -90,7 +90,7 @@ func schema(t reflect.Type, request bool) Field {
 	case reflect.String:
 		f.Type = "string"
 		if request {
-			f.Limit = "nonblank; <=512 UTF-8 bytes"
+			f.Limit = "nonblank; <=512 UTF-8 bytes; no control characters or U+FFFD"
 		}
 	case reflect.Bool:
 		f.Type = "boolean"
@@ -100,7 +100,7 @@ func schema(t reflect.Type, request bool) Field {
 		f.Type = "number"
 	case reflect.Slice, reflect.Array:
 		f.Type = "array"
-		child := schema(t.Elem(), false)
+		child := schema(t.Elem(), request)
 		f.Items = &child
 		if request {
 			f.Limit = "1..1000 nonblank values when supplied"
@@ -123,7 +123,7 @@ func Catalog() []API {
 		request := schema(reflect.TypeOf(v[0]), true)
 		if d.Operation == contract.StudentGrades || d.Operation == contract.BatchGrades {
 			field := request.Properties["academic_year"]
-			field.Limit = "YYYY-YYYY with consecutive years, or all"
+			field.Limit = "YYYY-YYYY; consecutive years; first year 1000..9998; or all"
 			request.Properties["academic_year"] = field
 		}
 		example := map[string]any{}

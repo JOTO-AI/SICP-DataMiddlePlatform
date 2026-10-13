@@ -191,3 +191,77 @@ func TestT29_PostgresRolesRejectWriterBypassAndReaderMutation(t *testing.T) {
 		t.Fatal("reader can execute write function")
 	}
 }
+
+func TestT34_PostgresCleanupRecoveryWaitsForUncertainDeletion(t *testing.T) {
+	e := newEnvironment(t)
+	e.migrate(t)
+	l := newLogs(t, "")
+	writer, recovery, observer := e.connection(t, 5), e.connection(t, 5), e.connection(t, 5)
+	if _, err := appendProtocol(e.ctx, writer, protocolEvent(t, l, "retained-receipt", events.Request)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writer.Exec(e.ctx, "UPDATE logs.events SET received_at=clock_timestamp()-interval '40 days'"); err != nil {
+		t.Fatal(err)
+	}
+	var epoch string
+	if err := writer.QueryRow(e.ctx, "SELECT epoch FROM logs.commit_state WHERE singleton").Scan(&epoch); err != nil {
+		t.Fatal(err)
+	}
+	tx, err := writer.Begin(e.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(context.Background())
+	var removed int64
+	cutoff := time.Now().Add(-30 * 24 * time.Hour)
+	if err := tx.QueryRow(e.ctx, "SELECT logs.cleanup_try_prefix('uncertain-job',$1,0,1,$2)", epoch, cutoff).Scan(&removed); err != nil || removed != 1 {
+		t.Fatal(removed, err)
+	}
+	ctx, cancel := context.WithTimeout(e.ctx, 5*time.Second)
+	defer cancel()
+	type result struct {
+		count *int64
+		err   error
+	}
+	done := make(chan result, 1)
+	joined := make(chan struct{})
+	go func() {
+		defer close(joined)
+		var out result
+		out.err = recovery.QueryRow(ctx, "SELECT logs.cleanup_result('uncertain-job',$1,1)", epoch).Scan(&out.count)
+		done <- out
+	}()
+	defer func() { cancel(); <-joined }()
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		var waiting bool
+		if err := observer.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE pid=$1 AND wait_event_type='Lock')", recovery.PgConn().PID()).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			break
+		}
+		select {
+		case out := <-done:
+			t.Fatalf("recovery observed an unsettled transaction: %v", out.err)
+		case <-ctx.Done():
+			t.Fatal("recovery lock not observed")
+		case <-ticker.C:
+		}
+	}
+	if err := tx.Commit(e.ctx); err != nil {
+		t.Fatal(err)
+	}
+	out := <-done
+	if out.err != nil || out.count == nil || *out.count != 1 {
+		t.Fatal("committed deletion lost", out.err)
+	}
+	if err := observer.QueryRow(e.ctx, "SELECT logs.cleanup_try_prefix('stale-job',$1,0,1,$2)", epoch, cutoff).Scan(&removed); err != nil || removed != -1 {
+		t.Fatal("stale preview not a known refusal", removed, err)
+	}
+	var count, floor int64
+	if err := observer.QueryRow(e.ctx, "SELECT floor,(SELECT count(*) FROM logs.cleanup_receipts) FROM logs.commit_state WHERE singleton").Scan(&floor, &count); err != nil || floor != 1 || count != 1 {
+		t.Fatal("refusal changed deletion ledger", floor, count, err)
+	}
+}
