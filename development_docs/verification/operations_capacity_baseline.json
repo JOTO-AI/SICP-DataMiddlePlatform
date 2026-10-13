@@ -1,0 +1,17 @@
+{
+  "version": "2026-10-13.v1",
+  "machine": {"os": "linux", "min_cpus": 4, "min_memory_bytes": 8589934592},
+  "records_per_source": 10000,
+  "event_bytes": 512,
+  "event_max_bytes": 1024,
+  "write_rate": 100,
+  "history_clients": 4,
+  "sse_clients": 8,
+  "duration_seconds": 60,
+  "retention_days": 30,
+  "p95_ms": 500,
+  "max_memory_bytes": 536870912,
+  "max_backlog": 1000,
+  "max_error_rate": 0.01,
+  "max_db_connections": 64
+}

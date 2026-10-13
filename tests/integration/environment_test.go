@@ -17,7 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Each case owns six databases; none can inherit another case's state. Outer
+// Each case owns six legacy or seven dual databases; none inherit state. Outer
 // Actions cleanup destroys the entire Compose project even after a test crash.
 type environment struct {
 	ctx      context.Context
@@ -33,6 +33,9 @@ func newEnvironmentWithTimeout(t *testing.T, budget time.Duration) *environment 
 	return newEnvironmentWithLocale(t, budget, "")
 }
 func newEnvironmentWithLocale(t *testing.T, budget time.Duration, locale string) *environment {
+	return newEnvironmentMode(t, budget, locale, false)
+}
+func newEnvironmentMode(t *testing.T, budget time.Duration, locale string, dual bool) *environment {
 	t.Helper()
 	if locale != "" && locale != "en_US.utf8" {
 		t.Fatal("unsupported synthetic locale")
@@ -55,6 +58,11 @@ func newEnvironmentWithLocale(t *testing.T, budget time.Duration, locale string)
 	}
 	clusters := []string{"M", "M", "S", "S", "M", "LOG"}
 	values := map[string]string{"LOG_STORAGE_MODE": "single_legacy"}
+	if dual {
+		keys = append(keys, "DATABASE_UPSTREAM_LOG_URL")
+		clusters = append(clusters, "LOG")
+		values["LOG_STORAGE_MODE"] = "dual"
+	}
 	for i, key := range keys {
 		name := fmt.Sprintf("%s_%d", prefix, i)
 		endpoint := net.JoinHostPort(hosts[clusters[i]], "5432")
@@ -111,7 +119,11 @@ func newEnvironmentWithLocale(t *testing.T, budget time.Duration, locale string)
 
 func (e *environment) migrate(t *testing.T) {
 	t.Helper()
-	for _, target := range targets() {
+	planTargets := targets()
+	if e.registry.LogMode() == storage.DualLogs {
+		planTargets = append(planTargets, migrate.Target{Domain: migrate.UpstreamLogs})
+	}
+	for _, target := range planTargets {
 		plan, err := migrate.Catalog(target.Domain)
 		if err != nil {
 			t.Fatal(err)

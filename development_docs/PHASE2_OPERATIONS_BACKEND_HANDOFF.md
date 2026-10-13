@@ -154,3 +154,8 @@ maintenance_test.go 补所有维护路由的业务凭据拒绝、CSRF、客户�
 
 
 P34 关联身份复核补正：日志 ID 是 HMAC 关联值，不能直接查询原始控制 ID。新增 control_012 的事务内待映射登记和分 namespace 持久映射；worker/预览每次最多处理 1000 项，复用实际 Sanitizer.Correlation，密钥不入库。预览与日志确认保持关联 ID，退休检查解析回原始控制 ID；未完成索引/旧密钥映射缺失均保守保护，不猜测身份。后台逐批补齐映射，升级已有记录由迁移排队。真实清理测试已接实际 sanitizer，并用对应关联 ID 核验删除结果。此补正继续属于 P34.03，P35 场景开发在修正后继续。仅编译/go vet/review，未运行迁移和测试。
+
+
+### P35.01 开发收尾
+
+32 个 OI 场景源码已补齐，详见 verification/OI_CASE_MAP.md；实际 PG/HTTP/代理、双实例、通知 Mock、受保护清理、容量输入及测量输出均已接通。运行器补进程组超时/中断回收、逐项 seed 工件和容量数据检查。Linux integration 仅编译、go vet、Python AST 和人工 review 完成，未执行测试。P35.01 已勾选，下一项 P35.02；前文早期“未实现 OI”描述由本条替代。

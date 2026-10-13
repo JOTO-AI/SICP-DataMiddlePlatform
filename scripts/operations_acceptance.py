@@ -1,6 +1,6 @@
 """Strict P35 evidence runner. Execution is restricted to Linux GitHub Actions.
 
-This tool intentionally fails while any of the 32 required OI cases is absent.
+This tool rejects missing cases, incomplete evidence, and any failed execution.
 It neither supplies placeholder tests nor counts compilation as acceptance.
 """
 from __future__ import annotations
@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import platform
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -101,6 +102,41 @@ def check_events(lines: list[str], names: dict[str, str], exit_code: int) -> dic
     return {"expected": len(expected), "executed": len(started), "passed": len(passed), "failed": 0, "skipped": 0}
 
 
+def check_case_artifacts(directory: Path, names: dict[str, str], seed: int) -> None:
+    for name in names.values():
+        path = directory / (name + ".json")
+        value = json.loads(path.read_text(encoding="utf-8"))
+        if value.get("case") != name or value.get("seed") != seed or value.get("failed") is not False or not value.get("started_at") or not value.get("finished_at"):
+            raise ValueError("missing or inconsistent case evidence")
+    value = json.loads((directory / "capacity-measurements.json").read_text(encoding="utf-8"))
+    for key in ("p50_ms", "p95_ms", "history_requests", "platform_written", "sse_observed", "rss_peak_bytes", "db_connections", "duration_seconds"):
+        number = value.get(key)
+        if isinstance(number, bool) or not isinstance(number, (int, float)) or not 0 < number < float("inf"):
+            raise ValueError("capacity measurements are incomplete")
+
+
+def run_process(command: list[str], *, cwd: Path, env: dict, output, timeout: int) -> int:
+    """Own the process group, including go's spawned test binary."""
+    process = subprocess.Popen(command, cwd=cwd, env=env, stdout=output,
+                               stderr=subprocess.STDOUT, text=True, start_new_session=True)
+    try:
+        return process.wait(timeout=timeout)
+    except BaseException:
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait(timeout=5)
+        except ProcessLookupError:
+            pass
+        raise
+
+
+def interrupted(signum, frame):
+    raise InterruptedError("runner interrupted")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--prerequisites", required=True, type=Path)
@@ -117,29 +153,35 @@ def main() -> int:
     capacity_raw = args.capacity.read_bytes()
     capacity = json.loads(capacity_raw)
     check_capacity(capacity)
+    frozen = json.loads((root / "development_docs/verification/operations_capacity_baseline.json").read_text(encoding="utf-8"))
+    if capacity != frozen:
+        raise ValueError("capacity input differs from the reviewed frozen baseline")
     output = args.output.resolve()
     if output.exists() and any(output.iterdir()):
         raise ValueError("output must be a new or empty directory")
     output.mkdir(parents=True, exist_ok=True)
     (output / "capacity.json").write_bytes(capacity_raw)
     report = {"sha": sha, "seed": args.seed, "status": "failed", "unit_artifacts": unit_artifacts, "capacity_sha256": hashlib.sha256(capacity_raw).hexdigest(), "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    previous_term = signal.signal(signal.SIGTERM, interrupted)
     try:
-        discovery = subprocess.run(["go", "test", "-tags=integration", "-list", "^TestOI", "./tests/integration"], cwd=root, capture_output=True, text=True, timeout=180, check=False)
-        (output / "discovery.txt").write_text(discovery.stdout, encoding="utf-8")
-        if discovery.returncode:
+        with (output / "discovery.txt").open("w", encoding="utf-8") as discovery:
+            discovery_exit = run_process(["go", "test", "-tags=integration", "-list", "^TestOI", "./tests/integration"], cwd=root, env=dict(os.environ), output=discovery, timeout=180)
+        if discovery_exit:
             raise ValueError("test discovery failed")
-        names = check_discovery(discovery.stdout.splitlines())
-        command = ["go", "test", "-json", "-tags=integration", "-count=1", "-timeout=20m", "-run", "^TestOI(01|02|03|04|05|06|07)_", "./tests/integration"]
+        names = check_discovery((output / "discovery.txt").read_text(encoding="utf-8").splitlines())
+        command = ["go", "test", "-json", "-tags=integration", "-count=1", "-timeout=60m", "-run", "^TestOI(01|02|03|04|05|06|07)_", "./tests/integration"]
         report["command"] = command
         env = dict(os.environ, SICP_OI_SEED=str(args.seed), SICP_OI_CAPACITY=str(args.capacity.resolve()), SICP_OI_OUTPUT=str(output))
         with (output / "tests.jsonl").open("w", encoding="utf-8") as log:
-            result = subprocess.run(command, cwd=root, env=env, stdout=log, stderr=subprocess.DEVNULL, text=True, timeout=1260, check=False)
-        report["exit_code"] = result.returncode
-        report["counts"] = check_events((output / "tests.jsonl").read_text(encoding="utf-8").splitlines(), names, result.returncode)
+            exit_code = run_process(command, cwd=root, env=env, output=log, timeout=3660)
+        report["exit_code"] = exit_code
+        report["counts"] = check_events((output / "tests.jsonl").read_text(encoding="utf-8").splitlines(), names, exit_code)
+        check_case_artifacts(output, names, args.seed)
         report["status"] = "passed"
-    except (ValueError, OSError, subprocess.TimeoutExpired) as exc:
-        report["reason"] = "timeout" if isinstance(exc, subprocess.TimeoutExpired) else str(exc)
+    except (ValueError, OSError, subprocess.TimeoutExpired, KeyboardInterrupt) as exc:
+        report["reason"] = "timeout" if isinstance(exc, subprocess.TimeoutExpired) else "interrupted" if isinstance(exc, (KeyboardInterrupt, InterruptedError)) else str(exc)
     finally:
+        signal.signal(signal.SIGTERM, previous_term)
         report["artifacts"] = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in output.iterdir() if p.is_file() and p.name != "report.json"}
         report["finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         (output / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
