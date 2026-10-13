@@ -1,0 +1,1093 @@
+{
+  "catalog_version": "2026-10-13.v2",
+  "examples": [
+    {
+      "name": "login",
+      "pattern": "POST /console-api/login",
+      "path": "/console-api/login",
+      "request": {
+        "username": "synthetic-admin",
+        "password": "synthetic-password-only"
+      },
+      "request_headers": {},
+      "status": 200,
+      "response_type": "session",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "operator": "synthetic-admin",
+          "csrf": "<csrf>"
+        }
+      }
+    },
+    {
+      "name": "session",
+      "pattern": "GET /console-api/session",
+      "path": "/console-api/session",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "session",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "operator": "synthetic-admin",
+          "csrf": "<csrf>"
+        }
+      }
+    },
+    {
+      "name": "logout",
+      "pattern": "POST /console-api/logout",
+      "path": "/console-api/logout",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "null",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": null
+      }
+    },
+    {
+      "name": "log_live",
+      "pattern": "GET /admin/v1/logs/{source}/events",
+      "path": "/admin/v1/logs/platform/events?mode=live&page_size=50",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "log_page",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "items": [],
+          "filter": {
+            "mode": "live",
+            "from": "2026-10-12T00:00:00Z",
+            "to": null,
+            "page_size": 50
+          },
+          "source": "platform",
+          "epoch": "00000000-0000-4000-8000-000000000001",
+          "high_water": "20",
+          "retained_through": "0",
+          "next_cursor": null,
+          "stream_cursor": "<stream_cursor>",
+          "expires_at": "2026-10-14T00:00:00Z"
+        }
+      }
+    },
+    {
+      "name": "log_history",
+      "pattern": "GET /admin/v1/logs/{source}/events",
+      "path": "/admin/v1/logs/upstream/events?mode=history&from=2026-10-12T00:00:00Z&to=2026-10-13T00:00:00Z",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "log_page",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "items": [],
+          "filter": {
+            "mode": "history",
+            "from": "2026-10-12T00:00:00Z",
+            "to": "2026-10-13T00:00:00Z",
+            "page_size": 50
+          },
+          "source": "upstream",
+          "epoch": "00000000-0000-4000-8000-000000000001",
+          "high_water": "20",
+          "retained_through": "0",
+          "next_cursor": null,
+          "stream_cursor": null,
+          "expires_at": "2026-10-14T00:00:00Z"
+        }
+      }
+    },
+    {
+      "name": "log_detail",
+      "pattern": "GET /admin/v1/logs/{source}/events/{event_id}",
+      "path": "/admin/v1/logs/platform/events/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "log_detail",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "source": "platform",
+          "epoch": "00000000-0000-4000-8000-000000000001",
+          "event_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "sequence": "21",
+          "kind": "request",
+          "phase": "started",
+          "occurred_at": "2026-10-13T00:00:00Z",
+          "received_at": "2026-10-13T00:00:00Z",
+          "outcome": null,
+          "operation": null,
+          "request_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "task_id": null,
+          "step_id": null,
+          "call_id": null,
+          "attempt_id": null,
+          "attempt_no": null,
+          "http_status": null,
+          "business_code": null,
+          "duration_ns": null,
+          "test": null,
+          "audit": null,
+          "entity_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "metadata": {},
+          "response": null,
+          "redaction": {
+            "redacted": true,
+            "truncated": false,
+            "original_bytes": "128",
+            "field_count": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "log_stream",
+      "pattern": "GET /admin/v1/logs/{source}/stream",
+      "path": "/admin/v1/logs/platform/stream?cursor=<stream_cursor>",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "log_event",
+      "response_scope": "sse_event_data",
+      "frame": {
+        "event": "event",
+        "id": "<event_token>",
+        "data": {
+          "source": "platform",
+          "epoch": "00000000-0000-4000-8000-000000000001",
+          "event_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "sequence": "21",
+          "kind": "request",
+          "phase": "started",
+          "occurred_at": "2026-10-13T00:00:00Z",
+          "received_at": "2026-10-13T00:00:00Z",
+          "outcome": null,
+          "operation": null,
+          "request_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "task_id": null,
+          "step_id": null,
+          "call_id": null,
+          "attempt_id": null,
+          "attempt_no": null,
+          "http_status": null,
+          "business_code": null,
+          "duration_ns": null,
+          "test": null,
+          "audit": null
+        }
+      }
+    },
+    {
+      "name": "updates",
+      "pattern": "GET /admin/v1/update-events",
+      "path": "/admin/v1/update-events?page_size=50",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "event_page",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "items": [],
+          "next_cursor": null
+        }
+      }
+    },
+    {
+      "name": "update_detail",
+      "pattern": "GET /admin/v1/update-events/{id}",
+      "path": "/admin/v1/update-events/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "task",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "mode": "incremental",
+          "status": "queued",
+          "operator": "synthetic-admin",
+          "predecessor_id": null,
+          "accepted_at": "2026-10-13T00:00:00Z",
+          "started_at": null,
+          "ready_at": null,
+          "published_at": null,
+          "checked_at": null,
+          "finished_at": null,
+          "confirmed_until": null,
+          "counts": null,
+          "progress_confirmed": false
+        }
+      }
+    },
+    {
+      "name": "operation_nodes",
+      "pattern": "GET /admin/v1/update-events/{id}/operations",
+      "path": "/admin/v1/update-events/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/operations",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "operation_page",
+      "response_scope": "selected_items",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "items": [
+            {
+              "id": "publication",
+              "parent_operation_id": null,
+              "kind": "publication",
+              "state": "unknown",
+              "evidence": "control_task",
+              "instance": null,
+              "slot": null,
+              "generation": null,
+              "started_at": null,
+              "finished_at": null,
+              "count": null
+            }
+          ],
+          "next_cursor": null,
+          "parent_operation_id": ""
+        }
+      }
+    },
+    {
+      "name": "sources",
+      "pattern": "GET /admin/v1/sources",
+      "path": "/admin/v1/sources",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "sources",
+      "response_scope": "selected_items",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "items": [
+            {
+              "id": "dwd_bzkscjzlb",
+              "primary_key": "ID",
+              "confirmed_until": null,
+              "checked_at": null,
+              "task_id": null,
+              "log_task_id": null,
+              "window": null,
+              "window_task_id": null,
+              "last_failure": null,
+              "failure_state": "none"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "overview",
+      "pattern": "GET /admin/v1/overview",
+      "path": "/admin/v1/overview",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "overview",
+      "response_scope": "selected_fields",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "observed_at": "2026-10-13T00:00:00Z",
+          "tasks": {
+            "items": [],
+            "initialized": false,
+            "next_due_at": null,
+            "cooldown_until": null,
+            "interval_seconds": 1800
+          },
+          "slots": [],
+          "active": null,
+          "active_state": "empty",
+          "actions": {}
+        }
+      }
+    },
+    {
+      "name": "apis",
+      "pattern": "GET /admin/v1/apis",
+      "path": "/admin/v1/apis",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "catalog",
+      "response_scope": "selected_items_and_fields",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "version": "2026-10-13.v2",
+          "items": [
+            {
+              "id": "dwd_bzkscjzlb",
+              "version": "2026-10-13.v2",
+              "kind": "source",
+              "implemented": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "api_detail",
+      "pattern": "GET /admin/v1/apis/{id}",
+      "path": "/admin/v1/apis/dwd_bzkscjzlb",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "api",
+      "response_scope": "selected_fields",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "id": "dwd_bzkscjzlb",
+          "version": "2026-10-13.v2",
+          "kind": "source",
+          "implemented": true
+        }
+      }
+    },
+    {
+      "name": "source_test",
+      "pattern": "POST /admin/v1/api-tests",
+      "path": "/admin/v1/api-tests",
+      "request": {
+        "api_id": "dwd_bzkscjzlb",
+        "version": "2026-10-13.v2",
+        "page": 1,
+        "page_size": 10,
+        "idempotency_key": "synthetic-test-001"
+      },
+      "request_headers": {},
+      "status": 202,
+      "response_type": "job",
+      "response_scope": "full",
+      "response": {
+        "code": "accepted",
+        "message": "",
+        "data": {
+          "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "action": "source_test",
+          "status": "queued",
+          "accepted_at": "2026-10-13T00:00:00Z",
+          "deadline": "2026-10-13T00:00:30Z",
+          "idempotency_expires_at": "2026-10-20T00:00:00Z",
+          "started_at": null,
+          "finished_at": null,
+          "summary": {}
+        }
+      }
+    },
+    {
+      "name": "test_result",
+      "pattern": "GET /admin/v1/api-tests/{id}",
+      "path": "/admin/v1/api-tests/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "test_result",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "job": {
+            "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "action": "source_test",
+            "status": "queued",
+            "accepted_at": "2026-10-13T00:00:00Z",
+            "deadline": "2026-10-13T00:00:30Z",
+            "idempotency_expires_at": "2026-10-20T00:00:00Z",
+            "started_at": null,
+            "finished_at": null,
+            "summary": {}
+          },
+          "result_state": "result_unavailable",
+          "result": null
+        }
+      }
+    },
+    {
+      "name": "notification_settings",
+      "pattern": "GET /admin/v1/settings/notifications",
+      "path": "/admin/v1/settings/notifications",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "notification_settings_view",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "settings": {
+            "revision": "1",
+            "enabled": false,
+            "recipients": [],
+            "rules": {
+              "source_schema": true,
+              "task_failed": false,
+              "source_test_failed": false
+            },
+            "updated_at": "2026-10-13T00:00:00Z"
+          },
+          "channel_state": "unconfigured",
+          "channel_diagnostics": {
+            "configured": false,
+            "last_result": "not_observed",
+            "observed_at": null
+          }
+        }
+      }
+    },
+    {
+      "name": "save_notifications",
+      "pattern": "PUT /admin/v1/settings/notifications",
+      "path": "/admin/v1/settings/notifications",
+      "request": {
+        "revision": "1",
+        "enabled": false,
+        "recipients": [],
+        "rules": {
+          "source_schema": true,
+          "task_failed": false,
+          "source_test_failed": false
+        }
+      },
+      "request_headers": {},
+      "status": 200,
+      "response_type": "notification_settings",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "revision": "2",
+          "enabled": false,
+          "recipients": [],
+          "rules": {
+            "source_schema": true,
+            "task_failed": false,
+            "source_test_failed": false
+          },
+          "updated_at": "2026-10-13T00:00:00Z"
+        }
+      }
+    },
+    {
+      "name": "test_notifications",
+      "pattern": "POST /admin/v1/notifications/test",
+      "path": "/admin/v1/notifications/test",
+      "request": {
+        "revision": "2",
+        "idempotency_key": "synthetic-mail-001"
+      },
+      "request_headers": {},
+      "status": 202,
+      "response_type": "job",
+      "response_scope": "full",
+      "response": {
+        "code": "accepted",
+        "message": "",
+        "data": {
+          "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "action": "notification_test",
+          "status": "queued",
+          "accepted_at": "2026-10-13T00:00:00Z",
+          "deadline": "2026-10-13T00:00:30Z",
+          "idempotency_expires_at": "2026-10-20T00:00:00Z",
+          "started_at": null,
+          "finished_at": null,
+          "summary": {}
+        }
+      }
+    },
+    {
+      "name": "notification_test_job",
+      "pattern": "GET /admin/v1/notifications/tests/{id}",
+      "path": "/admin/v1/notifications/tests/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "job",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "action": "notification_test",
+          "status": "queued",
+          "accepted_at": "2026-10-13T00:00:00Z",
+          "deadline": "2026-10-13T00:00:30Z",
+          "idempotency_expires_at": "2026-10-20T00:00:00Z",
+          "started_at": null,
+          "finished_at": null,
+          "summary": {}
+        }
+      }
+    },
+    {
+      "name": "decisions",
+      "pattern": "GET /admin/v1/notifications/decisions",
+      "path": "/admin/v1/notifications/decisions",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "decisions",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "items": [
+            {
+              "id": "task:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "code": "task_failed",
+              "decision": "disabled",
+              "revision": "1",
+              "occurred_at": "2026-10-13T00:00:00Z",
+              "deliveries": "0",
+              "accepted": "0",
+              "pending": "0",
+              "unknown": "0"
+            }
+          ],
+          "next_cursor": null
+        }
+      }
+    },
+    {
+      "name": "deliveries",
+      "pattern": "GET /admin/v1/notifications",
+      "path": "/admin/v1/notifications",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "deliveries",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "items": [
+            {
+              "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "fact_id": "test:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "rule_id": "test",
+              "revision": "2",
+              "recipient": "synthetic@example.invalid",
+              "status": "unknown",
+              "attempts": 1,
+              "created_at": "2026-10-13T00:00:00Z",
+              "deadline": "2026-10-14T00:00:00Z",
+              "next_attempt_at": null,
+              "lease_until": null,
+              "accepted_at": null
+            }
+          ],
+          "next_cursor": null
+        }
+      }
+    },
+    {
+      "name": "delivery_detail",
+      "pattern": "GET /admin/v1/notifications/{id}",
+      "path": "/admin/v1/notifications/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "delivery_detail",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "delivery": {
+            "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "fact_id": "test:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "rule_id": "test",
+            "revision": "2",
+            "recipient": "synthetic@example.invalid",
+            "status": "unknown",
+            "attempts": 1,
+            "created_at": "2026-10-13T00:00:00Z",
+            "deadline": "2026-10-14T00:00:00Z",
+            "next_attempt_at": null,
+            "lease_until": null,
+            "accepted_at": null
+          },
+          "attempts": [
+            {
+              "number": 1,
+              "started_at": "2026-10-13T00:00:00Z",
+              "finished_at": null,
+              "outcome": "unknown"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "system",
+      "pattern": "GET /admin/v1/system/status",
+      "path": "/admin/v1/system/status",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "system",
+      "response_scope": "selected_fields",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "log_storage_mode": "dual",
+          "retention": null,
+          "retention_state": "unavailable",
+          "cleanup_protection": "durable_reference_retirement",
+          "cleanup_objects": [
+            "request",
+            "task",
+            "step",
+            "call",
+            "attempt",
+            "audit"
+          ],
+          "runtime_fields": [
+            "retention",
+            "notification_settings"
+          ],
+          "deployment_fields": [
+            "credentials",
+            "log_capacity",
+            "connection_limits",
+            "snapshot_key"
+          ]
+        }
+      }
+    },
+    {
+      "name": "retention",
+      "pattern": "GET /admin/v1/settings/retention",
+      "path": "/admin/v1/settings/retention",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "retention",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "revision": "1",
+          "platform_days": 30,
+          "upstream_days": 30
+        }
+      }
+    },
+    {
+      "name": "save_retention",
+      "pattern": "PUT /admin/v1/settings/retention",
+      "path": "/admin/v1/settings/retention",
+      "request": {
+        "revision": "1",
+        "platform_days": 30,
+        "upstream_days": 30
+      },
+      "request_headers": {},
+      "status": 200,
+      "response_type": "retention",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "revision": "2",
+          "platform_days": 30,
+          "upstream_days": 30
+        }
+      }
+    },
+    {
+      "name": "preview",
+      "pattern": "POST /admin/v1/maintenance/cleanup/preview",
+      "path": "/admin/v1/maintenance/cleanup/preview",
+      "request": {
+        "source": "platform"
+      },
+      "request_headers": {},
+      "status": 200,
+      "response_type": "preview",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "source": "platform",
+          "revision": "1",
+          "epoch": "00000000-0000-4000-8000-000000000001",
+          "floor": "0",
+          "through": "0",
+          "count": "0",
+          "cutoff": "2026-09-13T00:00:00Z",
+          "expires_at": "2026-10-13T00:10:00Z",
+          "protection": "durable_reference_retirement"
+        }
+      }
+    },
+    {
+      "name": "cleanup",
+      "pattern": "POST /admin/v1/maintenance/cleanup",
+      "path": "/admin/v1/maintenance/cleanup",
+      "request": {
+        "preview_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "revision": "1",
+        "idempotency_key": "synthetic-cleanup-001"
+      },
+      "request_headers": {},
+      "status": 202,
+      "response_type": "job",
+      "response_scope": "full",
+      "response": {
+        "code": "accepted",
+        "message": "",
+        "data": {
+          "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "action": "cleanup",
+          "status": "queued",
+          "accepted_at": "2026-10-13T00:00:00Z",
+          "deadline": "2026-10-13T00:05:00Z",
+          "idempotency_expires_at": "2026-10-20T00:00:00Z",
+          "started_at": null,
+          "finished_at": null,
+          "summary": {}
+        }
+      }
+    },
+    {
+      "name": "cleanup_job",
+      "pattern": "GET /admin/v1/maintenance/cleanup/{id}",
+      "path": "/admin/v1/maintenance/cleanup/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "job",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "action": "cleanup",
+          "status": "queued",
+          "accepted_at": "2026-10-13T00:00:00Z",
+          "deadline": "2026-10-13T00:05:00Z",
+          "idempotency_expires_at": "2026-10-20T00:00:00Z",
+          "started_at": null,
+          "finished_at": null,
+          "summary": {}
+        }
+      }
+    },
+    {
+      "name": "incremental",
+      "pattern": "POST /admin/v1/tasks/incremental",
+      "path": "/admin/v1/tasks/incremental",
+      "request": {},
+      "request_headers": {
+        "Idempotency-Key": "synthetic-task-001"
+      },
+      "status": 202,
+      "response_type": "receipt",
+      "response_scope": "full",
+      "response": {
+        "code": "accepted",
+        "message": "",
+        "data": {
+          "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "status": "queued",
+          "accepted_at": "2026-10-13T00:00:00Z",
+          "created": true
+        }
+      }
+    },
+    {
+      "name": "full",
+      "pattern": "POST /admin/v1/tasks/force-full",
+      "path": "/admin/v1/tasks/force-full",
+      "request": {},
+      "request_headers": {
+        "Idempotency-Key": "synthetic-task-001"
+      },
+      "status": 202,
+      "response_type": "receipt",
+      "response_scope": "full",
+      "response": {
+        "code": "accepted",
+        "message": "",
+        "data": {
+          "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "status": "queued",
+          "accepted_at": "2026-10-13T00:00:00Z",
+          "created": true
+        }
+      }
+    },
+    {
+      "name": "table_full",
+      "pattern": "POST /admin/v1/tables/{table}/force-full",
+      "path": "/admin/v1/tables/dwd_bzkscjzlb/force-full",
+      "request": {},
+      "request_headers": {
+        "Idempotency-Key": "synthetic-task-001"
+      },
+      "status": 202,
+      "response_type": "receipt",
+      "response_scope": "full",
+      "response": {
+        "code": "accepted",
+        "message": "",
+        "data": {
+          "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "status": "queued",
+          "accepted_at": "2026-10-13T00:00:00Z",
+          "created": true
+        }
+      }
+    },
+    {
+      "name": "rerun",
+      "pattern": "POST /admin/v1/tasks/{task_id}/rerun",
+      "path": "/admin/v1/tasks/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/rerun",
+      "request": {},
+      "request_headers": {
+        "Idempotency-Key": "synthetic-task-001"
+      },
+      "status": 202,
+      "response_type": "receipt",
+      "response_scope": "full",
+      "response": {
+        "code": "accepted",
+        "message": "",
+        "data": {
+          "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "status": "queued",
+          "accepted_at": "2026-10-13T00:00:00Z",
+          "created": true
+        }
+      }
+    },
+    {
+      "name": "task_detail",
+      "pattern": "GET /admin/v1/tasks/{task_id}",
+      "path": "/admin/v1/tasks/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "request": null,
+      "request_headers": {},
+      "status": 200,
+      "response_type": "task",
+      "response_scope": "full",
+      "response": {
+        "code": "ok",
+        "message": "",
+        "data": {
+          "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "mode": "incremental",
+          "status": "queued",
+          "operator": "synthetic-admin",
+          "predecessor_id": null,
+          "accepted_at": "2026-10-13T00:00:00Z",
+          "started_at": null,
+          "ready_at": null,
+          "published_at": null,
+          "checked_at": null,
+          "finished_at": null,
+          "confirmed_until": null,
+          "counts": null,
+          "progress_confirmed": false
+        }
+      }
+    }
+  ],
+  "business": [
+    {
+      "operation": "students.grades.query",
+      "path": "/console-api/query/api/v1/sicp/students/grades/query",
+      "request": {
+        "student_number": "S001",
+        "academic_year": "all"
+      },
+      "response_from_catalog": "students.grades.query"
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "path": "/console-api/query/api/v1/sicp/students/grades/batch-query",
+      "request": {
+        "student_numbers": [
+          "S001"
+        ],
+        "academic_year": "all"
+      },
+      "response_from_catalog": "students.grades.batch-query"
+    },
+    {
+      "operation": "students.timetable.query",
+      "path": "/console-api/query/api/v1/sicp/students/timetable/query",
+      "request": {
+        "student_number": "S001",
+        "academic_year": "2026-2027",
+        "semester": "1"
+      },
+      "response_from_catalog": "students.timetable.query"
+    },
+    {
+      "operation": "staff.timetable.query",
+      "path": "/console-api/query/api/v1/sicp/staff/timetable/query",
+      "request": {
+        "staff_number": "T001",
+        "academic_year": "2026-2027",
+        "semester": "1"
+      },
+      "response_from_catalog": "staff.timetable.query"
+    },
+    {
+      "operation": "organizations.query",
+      "path": "/console-api/query/api/v1/sicp/organizations/query",
+      "request": {},
+      "response_from_catalog": "organizations.query"
+    },
+    {
+      "operation": "students.query",
+      "path": "/console-api/query/api/v1/sicp/students/query",
+      "request": {
+        "student_number": "S001"
+      },
+      "response_from_catalog": "students.query"
+    },
+    {
+      "operation": "staff.query",
+      "path": "/console-api/query/api/v1/sicp/staff/query",
+      "request": {
+        "staff_number": "T001"
+      },
+      "response_from_catalog": "staff.query"
+    },
+    {
+      "operation": "staff.teaching-classes.query",
+      "path": "/console-api/query/api/v1/sicp/staff/teaching-classes/query",
+      "request": {
+        "staff_number": "T001",
+        "academic_year": "2026-2027",
+        "semester": "1",
+        "page": 1,
+        "page_size": 100
+      },
+      "response_from_catalog": "staff.teaching-classes.query"
+    },
+    {
+      "operation": "teaching-classes.students.query",
+      "path": "/console-api/query/api/v1/sicp/teaching-classes/students/query",
+      "request": {
+        "teaching_class_number": "J001",
+        "planned_course_code": "C001",
+        "academic_year": "2026-2027",
+        "semester": "1",
+        "page": 1,
+        "page_size": 100
+      },
+      "response_from_catalog": "teaching-classes.students.query"
+    }
+  ],
+  "errors": [
+    {
+      "status": 400,
+      "code": "invalid_argument",
+      "data": null
+    },
+    {
+      "status": 401,
+      "code": "unauthenticated",
+      "data": null
+    },
+    {
+      "status": 403,
+      "code": "forbidden",
+      "data": null
+    },
+    {
+      "status": 404,
+      "code": "not_found",
+      "data": null
+    },
+    {
+      "status": 409,
+      "code": "cursor_expired",
+      "data": null
+    },
+    {
+      "status": 409,
+      "code": "revision_conflict",
+      "data": null
+    },
+    {
+      "status": 413,
+      "code": "request_too_large",
+      "data": null
+    },
+    {
+      "status": 429,
+      "code": "resource_exhausted",
+      "data": null
+    },
+    {
+      "status": 502,
+      "code": "proxy_unavailable",
+      "data": null
+    },
+    {
+      "status": 503,
+      "code": "unavailable",
+      "data": null
+    },
+    {
+      "status": 504,
+      "code": "deadline_exceeded",
+      "data": null
+    }
+  ]
+}
