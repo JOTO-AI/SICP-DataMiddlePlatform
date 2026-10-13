@@ -76,7 +76,7 @@ func TestT31_02And03OperationFactsDoNotInferPublication(t *testing.T) {
 	slot := int16(1)
 	generation := int64(7)
 	at := time.Date(2026, 10, 13, 0, 0, 0, 0, time.UTC)
-	rows := &viewRows{items: [][]any{{"copy-1", "ready", &instance, &slot, &generation, nil, &at}}}
+	rows := &viewRows{items: [][]any{{"copy-1", "ready", &instance, &slot, &generation, nil, &at, "builds"}}}
 	tx := &viewTx{fakeTx: fakeTx{row: func(string, []any) storage.Row {
 		return fakeRow(func(d ...any) error { *d[0].(*bool) = true; return nil })
 	}}, query: func(q string, a []any) (storage.Rows, error) {

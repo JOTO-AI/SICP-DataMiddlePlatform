@@ -3,9 +3,10 @@ package operations
 import (
 	"context"
 	"encoding/json"
-	"sort"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/observability"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
@@ -117,7 +118,9 @@ type Operation struct {
 // Every terminal state below comes from a control fact. Merely having a
 // successful task never fabricates per-copy or per-stage success timestamps.
 func (r Repository) Operations(ctx context.Context, task, parent, after string, limit int) ([]Operation, error) {
-	if !ValidID(task) || limit < 1 || limit > 201 || after != "" && !ValidID(after) {
+	// Persisted step names include maintenance/<resource>. They are not task
+	// IDs; accept their bounded text as a parameter, never as SQL syntax.
+	if !ValidID(task) || limit < 1 || limit > 201 || len(after) > 512 || !utf8.ValidString(after) || strings.IndexFunc(after, unicode.IsControl) >= 0 {
 		return nil, ErrArgument
 	}
 	out := []Operation{}
@@ -152,11 +155,29 @@ func (r Repository) Operations(ctx context.Context, task, parent, after string, 
 		var sql string
 		switch parent {
 		case "builds":
-			sql = `SELECT id,state,instance,slot,generation,NULL::timestamptz,ready_at FROM control.candidates WHERE task_id=$1 AND id>$2 ORDER BY id LIMIT $3`
+			sql = `SELECT id,state,instance,slot,generation,NULL::timestamptz,ready_at,'builds' FROM control.candidates WHERE task_id=$1 AND id>$2 ORDER BY id LIMIT $3`
 		case "publication":
-			sql = `SELECT id,status,NULL::text,NULL::smallint,NULL::bigint,created_at,confirmed_at FROM control.publication_outbox WHERE task_id=$1 AND id>$2 ORDER BY id LIMIT $3`
-		case "acquisition", "progress", "cleanup":
-			sql = `SELECT name,status,NULL::text,NULL::smallint,NULL::bigint,started_at,finished_at FROM control.steps WHERE task_id=$1 AND name>$2 AND name LIKE $4 ORDER BY name LIMIT $3`
+			// The outbox contains route shifts as well as bundle publications.
+			// Preserve the recorded kind; confirmation of a shift is not publish.
+			sql = `SELECT id,status,NULL::text,NULL::smallint,NULL::bigint,created_at,confirmed_at,kind FROM control.publication_outbox WHERE task_id=$1 AND id>$2 ORDER BY id LIMIT $3`
+		case "acquisition":
+			// Acquisition telemetry is written to a checkpoint, not control.steps.
+			// Its observation time is not a per-source start or finish boundary.
+			sql = `SELECT item->>'table',item->>'status',NULL::text,NULL::smallint,NULL::bigint,NULL::timestamptz,NULL::timestamptz,'acquisition'
+FROM control.checkpoints c CROSS JOIN LATERAL jsonb_array_elements(c.payload->'tables') item
+WHERE c.task_id=$1 AND c.name='acquisition-progress' AND item->>'table'>$2 ORDER BY item->>'table' LIMIT $3`
+		case "progress":
+			// The immutable plan belongs to this task. Current source_progress
+			// rows may already belong to a later task and cannot prove history.
+			sql = `WITH fact AS (SELECT c.name,t.finished_at,
+t.status IN ('success_published','success_unchanged') AND t.started_at=(c.payload->>'StartedAt')::timestamptz
+AND t.checked_at=(c.payload->>'CheckedAt')::timestamptz AND t.mode=c.payload->>'Mode' AND t.id=c.payload->>'TaskID' AS confirmed
+FROM control.checkpoints c JOIN control.tasks t ON t.id=c.task_id WHERE c.task_id=$1 AND c.name='successful-progress-plan')
+SELECT name,CASE WHEN confirmed THEN 'confirmed' ELSE 'staged' END,NULL::text,NULL::smallint,NULL::bigint,NULL::timestamptz,
+CASE WHEN confirmed THEN finished_at ELSE NULL END,'progress' FROM fact WHERE name>$2 ORDER BY name LIMIT $3`
+		case "cleanup":
+			sql = `SELECT name,status,NULL::text,NULL::smallint,NULL::bigint,started_at,finished_at,'cleanup' FROM control.steps
+WHERE task_id=$1 AND name>$2 AND (name LIKE 'maintenance/%' OR name LIKE 'cleanup%') ORDER BY name LIMIT $3`
 		default:
 			return ErrArgument
 		}
@@ -164,18 +185,17 @@ func (r Repository) Operations(ctx context.Context, task, parent, after string, 
 		if !ok {
 			return ErrUnavailable
 		}
-		args := []any{task, after, limit}
-		if parent != "builds" && parent != "publication" {
-			args = append(args, parent+"%")
-		}
-		rows, e := q.Query(ctx, sql, args...)
+		rows, e := q.Query(ctx, sql, task, after, limit)
 		if e != nil {
 			return ErrUnavailable
 		}
 		defer rows.Close()
 		for rows.Next() {
 			v := Operation{Parent: &parent, Kind: parent, Evidence: "control"}
-			if rows.Scan(&v.ID, &v.State, &v.Instance, &v.Slot, &v.Generation, &v.StartedAt, &v.FinishedAt) != nil || len(out) >= limit {
+			if parent == "acquisition" || parent == "progress" {
+				v.Evidence = "control_checkpoint"
+			}
+			if rows.Scan(&v.ID, &v.State, &v.Instance, &v.Slot, &v.Generation, &v.StartedAt, &v.FinishedAt, &v.Kind) != nil || len(out) >= limit {
 				return ErrUnavailable
 			}
 			out = append(out, v)
@@ -188,7 +208,8 @@ func (r Repository) Operations(ctx context.Context, task, parent, after string, 
 	if err != nil {
 		return nil, err
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	// SQL ordering and its keyset predicate use the same database collation.
+	// Re-sorting rows in Go could move the last cursor behind an emitted row.
 	if len(out) > limit {
 		out = out[:limit]
 	}
