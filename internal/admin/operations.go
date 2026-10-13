@@ -17,10 +17,12 @@ import (
 type OperationsViews struct {
 	Traces     observability.TaskDiagnostics
 	Repository operations.Repository
-	Control    control.Repository
-	Tokens     *operations.Tokens
-	Correlate  func(string) string
-	Active     interface {
+	Control    interface {
+		RecentTasks(context.Context) (control.TaskOverview, error)
+	}
+	Tokens    *operations.Tokens
+	Correlate func(string) string
+	Active    interface {
 		Read(context.Context) (control.ActiveMetadata, bool, error)
 	}
 }
@@ -190,6 +192,10 @@ func (v OperationsViews) Mount(mux *http.ServeMux, auth *Sessions, detail Status
 			}
 			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 			defer cancel()
+			if v.Control == nil {
+				operationError(w, operations.ErrUnavailable)
+				return
+			}
 			tasks, e := v.Control.RecentTasks(ctx)
 			if e != nil {
 				operationError(w, operations.ErrUnavailable)
@@ -209,9 +215,23 @@ func (v OperationsViews) Mount(mux *http.ServeMux, auth *Sessions, detail Status
 			if v.Active != nil {
 				if active, found, e := v.Active.Read(ctx); e == nil {
 					out.ActiveState = "empty"
-					if found {
+					if found && active.Validate() == nil {
 						out.Active = &active
-						out.ActiveState = "available"
+						out.ActiveState = "slot_unavailable"
+						for _, slot := range slots {
+							if slot.Instance == string(active.Position.Position.Instance) && int(slot.Slot) == active.Position.Position.Slot && slot.Generation == active.Position.Generation && slot.BundleID != nil && *slot.BundleID == active.Position.BundleID && slot.State == "ready" && slot.AdmissionOpen {
+								out.ActiveState = "available"
+							}
+						}
+					} else if found {
+						out.ActiveState = "unavailable"
+					}
+				}
+			}
+			if out.ActiveState != "available" && (tasks.Initialized || out.ActiveState != "empty") {
+				for action, reason := range out.Actions {
+					if reason == "available_recheck_on_submit" {
+						out.Actions[action] = "active_" + out.ActiveState
 					}
 				}
 			}

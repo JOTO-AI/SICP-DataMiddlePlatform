@@ -9,11 +9,16 @@ import (
 )
 
 type TaskSummary struct {
-	ID         string    `json:"task_id"`
-	Mode       string    `json:"mode"`
-	Status     string    `json:"status"`
-	Operator   string    `json:"operator"`
-	AcceptedAt time.Time `json:"accepted_at"`
+	ID          string     `json:"task_id"`
+	Mode        string     `json:"mode"`
+	Status      string     `json:"status"`
+	Operator    string     `json:"operator"`
+	AcceptedAt  time.Time  `json:"accepted_at"`
+	StartedAt   *time.Time `json:"started_at"`
+	ReadyAt     *time.Time `json:"ready_at"`
+	PublishedAt *time.Time `json:"published_at"`
+	CheckedAt   *time.Time `json:"checked_at"`
+	FinishedAt  *time.Time `json:"finished_at"`
 }
 
 type TaskOverview struct {
@@ -42,7 +47,7 @@ func (r Repository) RecentTasks(ctx context.Context) (TaskOverview, error) {
 		}
 		var raw string
 		if err = tx.QueryRow(ctx, `SELECT COALESCE(json_agg(t ORDER BY accepted_at DESC, task_id DESC), '[]'::json)::text FROM
- (SELECT id AS task_id, mode, status, requested_by AS operator, accepted_at FROM control.tasks ORDER BY accepted_at DESC, id DESC LIMIT 50) t`).Scan(&raw); err != nil {
+ (SELECT id AS task_id, mode, status, requested_by AS operator, accepted_at, started_at, ready_at, published_at, checked_at, finished_at FROM control.tasks ORDER BY accepted_at DESC, id DESC LIMIT 50) t`).Scan(&raw); err != nil {
 			return err
 		}
 		return json.Unmarshal([]byte(raw), &out.Items)
