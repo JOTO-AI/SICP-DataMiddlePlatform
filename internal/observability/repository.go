@@ -50,7 +50,11 @@ func (r Repository) StoreBatch(ctx context.Context, batch []SafeEvent) error {
 		// Cutover runs after schema migration. Old buffered calls keep their
 		// original target and payload, but must use the current writer protocol.
 		var sequence int64
-		if err := tx.QueryRow(ctx, "SELECT logs.append_event($1,$2,$3,$4,$5,$6::jsonb)", safe.ID(), string(e.Kind), e.EntityID, string(e.Phase), e.OccurredAt, string(safe.Bytes())).Scan(&sequence); err != nil {
+		// pgx truncates binary timestamps to microseconds, but PostgreSQL rounds
+		// the JSON timestamp when append_event validates it. Parse both as text
+		// on the server so nanosecond events (including old journal replays) agree.
+		// Keep the immutable payload intact for receipt digest deduplication.
+		if err := tx.QueryRow(ctx, "SELECT logs.append_event($1,$2,$3,$4,$5::text::timestamptz,$6::jsonb)", safe.ID(), string(e.Kind), e.EntityID, string(e.Phase), e.OccurredAt.Format(time.RFC3339Nano), string(safe.Bytes())).Scan(&sequence); err != nil {
 			return ErrDelivery
 		}
 		if sequence == -1 {

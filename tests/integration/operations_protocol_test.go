@@ -5,12 +5,15 @@ package integration
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/observability"
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // These exercise actual PostgreSQL transactions and privileges. They are
@@ -263,5 +266,57 @@ func TestT34_PostgresCleanupRecoveryWaitsForUncertainDeletion(t *testing.T) {
 	var count, floor int64
 	if err := observer.QueryRow(e.ctx, "SELECT floor,(SELECT count(*) FROM logs.cleanup_receipts) FROM logs.commit_state WHERE singleton").Scan(&floor, &count); err != nil || floor != 1 || count != 1 {
 		t.Fatal("refusal changed deletion ledger", floor, count, err)
+	}
+}
+
+func TestI02_LogRepositoryNanosecondTimestamps(t *testing.T) {
+	e := newEnvironmentMode(t, 3*time.Minute, "", true)
+	e.migrate(t)
+	l := newLogs(t, "")
+	for i, source := range []storage.LogSource{storage.PlatformLog, storage.UpstreamLog} {
+		t.Run(string(source), func(t *testing.T) {
+			conn := e.connection(t, 5+i)
+			store := observability.Repository{Registry: e.registry, Database: storage.VerifiedLogs{Registry: e.registry, Database: e.db}, Source: source}
+			for _, ns := range []int{0, 123456000, 123456499, 123456500, 123456501, 123456789, 999999999} {
+				raw := events.Event{ID: fmt.Sprintf("event-%d", ns), EntityID: "entity", Kind: events.Request, Phase: events.Started, OccurredAt: time.Date(2026, 10, 13, 23, 59, 59, ns, time.UTC)}
+				raw.Identity.RequestID = "entity"
+				if source == storage.UpstreamLog {
+					raw.Kind = events.Call
+					raw.Identity.Purpose, raw.Identity.TestRunID = events.TestPurpose, "test-run"
+				}
+				safe, err := l.sanitizer.Sanitize(raw, observability.Details{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				original := string(safe.Bytes())
+				// Reproduce the production failure with the old binary timestamp
+				// parameter before exercising the repository's text conversion.
+				if ns == 123456789 {
+					var sequence int64
+					err := conn.QueryRow(e.ctx, "SELECT logs.append_event($1,$2,$3,$4,$5,$6::jsonb)", safe.ID(), string(raw.Kind), safe.Event().EntityID, string(raw.Phase), raw.OccurredAt, original).Scan(&sequence)
+					var pgErr *pgconn.PgError
+					if !errors.As(err, &pgErr) || pgErr.Code != "P0001" || pgErr.Message != "invalid event" {
+						t.Fatal("old timestamp binding did not reproduce invalid event", err)
+					}
+				}
+				safe, err = l.sanitizer.Restore(safe.Bytes())
+				if err != nil {
+					t.Fatal(err)
+				}
+				for replay := 0; replay < 2; replay++ {
+					if err := store.StoreBatch(e.ctx, []observability.SafeEvent{safe}); err != nil {
+						t.Fatalf("nanoseconds=%d replay=%d: %v", ns, replay, err)
+					}
+				}
+				var intact bool
+				if err := conn.QueryRow(e.ctx, `SELECT payload=$2::jsonb AND occurred_at=(payload #>> '{event,occurred_at}')::timestamptz FROM logs.events WHERE event_id=$1`, safe.ID(), original).Scan(&intact); err != nil || !intact {
+					t.Fatal("payload changed or timestamp validation disagrees", err)
+				}
+			}
+			var high, count int64
+			if err := conn.QueryRow(e.ctx, "SELECT high_water,(SELECT count(*) FROM logs.events) FROM logs.commit_state WHERE singleton").Scan(&high, &count); err != nil || high != 7 || count != 7 {
+				t.Fatal("replay advanced sequence or duplicated events", high, count, err)
+			}
+		})
 	}
 }

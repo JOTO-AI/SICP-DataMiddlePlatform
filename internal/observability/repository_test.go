@@ -2,18 +2,24 @@ package observability_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/observability"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type logsDB struct {
 	rows        map[string]string
 	lostReply   bool
 	connections []string
+	checkAppend func(string, []any)
 }
 type logsTx struct {
 	db      *logsDB
@@ -53,7 +59,10 @@ func (r logRow) Scan(dest ...any) error {
 	return nil
 }
 func (t *logsTx) QueryRow(_ context.Context, sql string, args ...any) storage.Row {
-	if sql == "SELECT logs.append_event($1,$2,$3,$4,$5,$6::jsonb)" {
+	if strings.HasPrefix(sql, "SELECT logs.append_event(") {
+		if t.db.checkAppend != nil {
+			t.db.checkAppend(sql, args)
+		}
 		id, body := args[0].(string), args[5].(string)
 		if prior, ok := t.pending[id]; ok {
 			if prior != body {
@@ -68,6 +77,66 @@ func (t *logsTx) QueryRow(_ context.Context, sql string, args ...any) storage.Ro
 		return logRow{}
 	}
 	return logRow{t.pending[args[0].(string)]}
+}
+
+func TestRepositoryPreservesNanosecondPayloadOnReplay(t *testing.T) {
+	for _, source := range []storage.LogSource{storage.PlatformLog, storage.UpstreamLog} {
+		for _, ns := range []int{0, 123456000, 123456499, 123456500, 123456501, 123456789, 999999999} {
+			t.Run(fmt.Sprintf("%s/%d", source, ns), func(t *testing.T) {
+				e := event()
+				e.OccurredAt = time.Date(2026, 10, 13, 23, 59, 59, ns, time.FixedZone("UTC+8", 8*60*60))
+				if source == storage.UpstreamLog {
+					e.Kind = events.Call
+					e.Identity.Purpose, e.Identity.TestRunID = events.TestPurpose, "test-run"
+				}
+				s := sanitizer(t)
+				safe, err := s.Sanitize(e, observability.Details{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				original := string(safe.Bytes())
+				// Simulate recovering an immutable pre-fix journal event.
+				safe, err = s.Restore(safe.Bytes())
+				if err != nil || string(safe.Bytes()) != original {
+					t.Fatal("recovery changed the event", err)
+				}
+				calls := 0
+				db := &logsDB{lostReply: true, checkAppend: func(sql string, args []any) {
+					calls++
+					if !strings.Contains(sql, "$5::text::timestamptz") {
+						t.Fatal("timestamp must use PostgreSQL text parsing, as the JSON timestamp does")
+					}
+					var body struct {
+						Event struct {
+							At string `json:"occurred_at"`
+						} `json:"event"`
+					}
+					if err := json.Unmarshal([]byte(args[5].(string)), &body); err != nil {
+						t.Fatal(err)
+					}
+					for _, format := range []int16{pgtype.TextFormatCode, pgtype.BinaryFormatCode} {
+						wire, err := pgtype.NewMap().Encode(pgtype.TextOID, format, args[4], nil)
+						if err != nil || string(wire) != body.Event.At {
+							t.Fatal("timestamp parameter differs from immutable JSON timestamp", err)
+						}
+					}
+					if args[5].(string) != original || !safe.Event().OccurredAt.Equal(e.OccurredAt) {
+						t.Fatal("event payload or precision changed")
+					}
+				}}
+				r := observability.Repository{Registry: logRegistry(t, true), Database: db, Source: source}
+				if err := r.StoreBatch(context.Background(), []observability.SafeEvent{safe}); err != observability.ErrDelivery {
+					t.Fatal("expected lost commit acknowledgement", err)
+				}
+				if err := r.StoreBatch(context.Background(), []observability.SafeEvent{safe}); err != nil {
+					t.Fatal("replay failed", err)
+				}
+				if calls != 2 || len(db.rows) != 1 || db.rows[safe.ID()] != original {
+					t.Fatal("replay duplicated or changed the event")
+				}
+			})
+		}
+	}
 }
 func (t *logsTx) Commit(context.Context) error {
 	t.db.rows = t.pending
