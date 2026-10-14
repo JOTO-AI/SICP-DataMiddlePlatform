@@ -114,3 +114,5 @@ Playwright 测试拦截 HTTP 并使用合成响应，验证前端协议与交互
 正式路径统一位于 `/console/`：login、overview、apis、apis/:apiId、updates、updates/:id、sources、logs/:source、notifications、settings/:section，以及 403/404。旧 queries/tasks 路径重定向到 apis/updates，参数语义保留。未知地址显示 404 页面，不静默回总览。
 
 认证恢复等待首次路由就绪；未登录时去 login，原合法站内路径暂存在当前页面内存，登录跳转成功后清理。刷新 login 页时没有保存原目标则回总览；显式 returnTo 仅接受可识别的站内路径，外部地址和 login 自环被拒绝。认证从不自动查询业务或提交动作。当前详情路由只建立页面结构，未完成模块仍明确显示“暂未开放”，后续步骤再接入接口。
+
+日志详情固定为 `/console/logs/:source/events/:eventId`，source 为 platform/upstream，eventId 使用服务端原始小写 64 位十六进制 ID。`app/links.ts` 提供路径构造，不把原始 request/task ID 当 eventId，也不再次哈希。实际详情读取在 F08 实现。接口测试属于 `/console/apis/:apiId` 内的弹窗状态，F06 接入时绑定接口/版本/弹窗实例；不创建独立测试路由，打开页面不执行测试。

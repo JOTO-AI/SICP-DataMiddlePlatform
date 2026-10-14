@@ -1148,3 +1148,22 @@ test('F03 route skeleton resolves details, 403 and 404 and rejects external logi
   await expect(page).toHaveURL(/\/console\/apis\/students.query$/)
   await expect(page.getByRole('heading', { name: '接口详情', exact: true })).toBeVisible()
 })
+
+test('F03 log detail keeps source and backend event ID while API tests have no standalone route', async ({ page }) => {
+  const examples = JSON.parse(readFileSync(new URL('../../development_docs/verification/operations_http_examples.json', import.meta.url), 'utf8')).examples
+  const record = examples.find((item: { name: string }) => item.name === 'log_detail').response.data
+  const { logDetailPath } = await import('../src/app/links')
+  const path = logDetailPath(record.source, record.event_id)
+  expect(path).toBe(`/logs/${record.source}/events/${record.event_id}`)
+  expect(logDetailPath(record.source, 'raw-request-id')).toBeNull()
+  expect(logDetailPath('unknown', record.event_id)).toBeNull()
+  await setup(page)
+  await page.goto(`/console${path}`)
+  await expect(page.getByRole('heading', { name: '日志详情', exact: true })).toBeVisible()
+  await expect(page.getByRole('navigation').getByRole('link', { name: '日志中心', exact: true })).toHaveAttribute('aria-current', 'page')
+  expect(new URL(page.url()).pathname).toBe(`/console${path}`)
+  for (const target of ['/apis/students.query/test', '/api-tests', `/logs/unknown/events/${record.event_id}`, '/logs/platform/events/raw-request-id']) {
+    await page.goto(`/console${target}`)
+    await expect(page.getByRole('heading', { name: '页面不存在', exact: true })).toBeVisible()
+  }
+})
