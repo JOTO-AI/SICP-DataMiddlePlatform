@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
+import { router } from '../app/router'
+import { updateDetailPath, sourceLogContext } from '../app/links'
+import { prepareSourceLogs } from '../app/logNavigation'
 import { request, ApiError, describe, type Envelope } from '../api'
-import { sourceItems, filterSources, sourceFailureLabels, type SourceState } from '../app/sources'
+import { sourceItems, filterSources, sourceFailureLabels, sourceFailureExplanation, type SourceState } from '../app/sources'
 import { displayEnum } from '../shared/display'
 import { pollingDelay } from '../app/polling'
 import { useRequestScope } from '../composables/useRequestScope'
@@ -46,6 +49,7 @@ async function refresh() {
     }
   }
 }
+function openLogs(id?: string | null) { if (prepareSourceLogs(id)) { drawerOpen.value = false; void router.push('/logs/upstream') } }
 function openSource(id: string) { selectedId.value = id; drawerOpen.value = true }
 onActivated(() => { active = true; void refresh() })
 function stop() { active = false; cancel(); drawerOpen.value = false; selectedId.value = '' }
@@ -70,9 +74,18 @@ onUnmounted(stop)
       <p v-if="error" class="warning">旧快照，当前状态未确认。读取时间：<Timestamp :value="readAt" /></p>
       <template v-if="selected">
         <h3>基本信息</h3><dl class="facts"><div><dt>源标识</dt><dd><CopyId :value="selected.id" label="源标识" /></dd></div><div><dt>主键</dt><dd><code>{{ selected.primary_key || '未提供' }}</code></dd></div><div><dt>成功检查</dt><dd><Timestamp :value="selected.checked_at" /></dd></div><div><dt>已确认进度</dt><dd><Timestamp :value="selected.confirmed_until" /></dd></div><div><dt>失败状态</dt><dd><StatusBadge :value="selected.failure_state" :labels="sourceFailureLabels" :tone="!error && selected.failure_state === 'unresolved' ? 'danger' : 'neutral'" /></dd></div></dl>
-        <h3>本次窗口</h3><dl v-if="selected.window" class="facts"><div><dt>原确认进度</dt><dd><Timestamp :value="selected.window.ConfirmedUntil" /></dd></div><div><dt>窗口开始</dt><dd><Timestamp :value="selected.window.Start" /></dd></div><div><dt>窗口结束</dt><dd><Timestamp :value="selected.window.End" /></dd></div><div><dt>窗口任务号</dt><dd><CopyId :value="selected.window_task_id" label="窗口任务号" /></dd></div></dl><p v-else class="hint">后端未提供当前窗口。</p>
+        <p class="hint">{{ sourceFailureExplanation(selected.failure_state) }}</p><h3 class="source-detail-heading">本次窗口</h3><dl v-if="selected.window" class="facts"><div><dt>原确认进度</dt><dd><Timestamp :value="selected.window.ConfirmedUntil" /></dd></div><div><dt>窗口开始</dt><dd><Timestamp :value="selected.window.Start" /></dd></div><div><dt>窗口结束</dt><dd><Timestamp :value="selected.window.End" /></dd></div><div><dt>窗口任务号</dt><dd><CopyId :value="selected.window_task_id" label="窗口任务号" /></dd></div></dl><p v-else class="hint">后端未提供当前窗口。</p>
         <h3 class="source-detail-heading">最近失败</h3><dl v-if="selected.last_failure" class="facts"><div><dt>失败码</dt><dd><code>{{ selected.last_failure.code }}</code></dd></div><div><dt>观测时间</dt><dd><Timestamp :value="selected.last_failure.observed_at" /></dd></div><div><dt>控制任务号</dt><dd><CopyId :value="selected.last_failure.task_id" label="失败任务号" /></dd></div><div><dt>日志关联任务号</dt><dd><CopyId :value="selected.last_failure.log_task_id" label="失败日志关联任务号" /></dd></div></dl><p v-else class="hint">后端未提供失败记录。</p>
         <h3 class="source-detail-heading">成功检查关联</h3><dl class="facts"><div><dt>控制任务号</dt><dd><CopyId :value="selected.task_id" label="控制任务号" /></dd></div><div><dt>日志关联任务号</dt><dd><CopyId :value="selected.log_task_id" label="日志关联任务号" /></dd></div></dl>
+                <h3 class="source-detail-heading">关联记录</h3>
+        <div class="source-links">
+          <RouterLink v-if="updateDetailPath(selected.task_id)" :to="updateDetailPath(selected.task_id)!">查看成功检查任务</RouterLink>
+          <RouterLink v-if="updateDetailPath(selected.window_task_id)" :to="updateDetailPath(selected.window_task_id)!">查看窗口任务</RouterLink>
+          <RouterLink v-if="updateDetailPath(selected.last_failure?.task_id)" :to="updateDetailPath(selected.last_failure?.task_id)!">查看失败任务</RouterLink>
+          <button v-if="sourceLogContext(selected.log_task_id)" @click="openLogs(selected.log_task_id)">查看成功检查关联日志</button>
+          <button v-if="sourceLogContext(selected.last_failure?.log_task_id)" @click="openLogs(selected.last_failure?.log_task_id)">查看失败关联日志</button>
+        </div>
+        <p class="hint">仅为后端提供的有效 ID 开放关联入口。更新详情与日志查询仍在后续步骤开放；日志关联条件只暂存内存。</p>
         <p class="hint">窗口、检查和确认时间分别展示；不根据失败或日志记录推算同步进度。</p>
       </template>
       <EmptyState v-else title="当前响应中没有该源" description="请关闭详情后重新读取列表。" />
@@ -82,6 +95,7 @@ onUnmounted(stop)
 <style scoped>
 .source-read { margin: 12px 0; }
 .sources-page table { min-width: 900px; }
+.source-links { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
 .source-detail-heading { margin-top: 24px; }
 .sources-page :deep(.filter-bar fieldset) { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(220px, .6fr) auto; align-items: end; gap: 16px; }
 @media (max-width: 767px) { .sources-page :deep(.filter-bar fieldset) { grid-template-columns: minmax(0, 1fr); } }
