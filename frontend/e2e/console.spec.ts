@@ -977,3 +977,35 @@ test('F01 read polling backs off, pauses when hidden and resumes without posting
   await expect.poll(() => reads).toBe(5)
   expect(posts).toBe(0)
 })
+
+test('F02 desktop shell uses planned dimensions and collapsed navigation stays usable', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await setup(page)
+  await expect(page.getByRole('heading', { name: '运行总览', exact: true })).toBeVisible()
+  const dimensions = () => page.evaluate(() => ({
+    sidebar: document.querySelector('.sidebar')!.getBoundingClientRect().width,
+    topbar: document.querySelector('.topbar')!.getBoundingClientRect().height,
+    padding: getComputedStyle(document.querySelector('#main')!).paddingLeft,
+    title: getComputedStyle(document.querySelector('h1')!).fontSize,
+    overflow: document.documentElement.scrollWidth > innerWidth,
+  }))
+  expect(await dimensions()).toEqual({ sidebar: 216, topbar: 56, padding: '24px', title: '24px', overflow: false })
+  await page.screenshot({ path: testInfo.outputPath('shell-expanded.png'), fullPage: true })
+  await page.getByRole('button', { name: '折叠侧栏', exact: true }).click()
+  await expect(page.getByRole('button', { name: '展开侧栏', exact: true })).toHaveAttribute('aria-expanded', 'false')
+  expect((await dimensions()).sidebar).toBe(64)
+  await page.screenshot({ path: testInfo.outputPath('shell-collapsed.png'), fullPage: true })
+  const queryLink = page.getByRole('link', { name: '业务查询', exact: true })
+  await queryLink.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
+  const fixture = backendCapture('students.query')
+  await page.route('**/console-api/query/api/v1/sicp/students/query', route => route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response }))
+  await page.getByRole('button', { name: '学生信息', exact: true }).click()
+  await page.getByRole('button', { name: '查询数据', exact: true }).click()
+  await expect(page.getByRole('table')).toContainText('虚构学生001')
+  expect(await page.getByRole('row').first().evaluate(row => row.getBoundingClientRect().height)).toBe(44)
+  await page.getByRole('button', { name: '展开侧栏', exact: true }).click()
+  expect((await dimensions()).sidebar).toBe(216)
+  await page.screenshot({ path: testInfo.outputPath('shell-table.png'), fullPage: true })
+})

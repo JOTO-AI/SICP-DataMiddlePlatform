@@ -1,6 +1,16 @@
 /* V5 Hub palette. Keep brand swatches exact; use dedicated text roles on tints. */
 :root {
   color-scheme: light;
+  --layout-topbar-height: 56px;
+  --layout-sidebar-width: 216px;
+  --layout-sidebar-collapsed-width: 64px;
+  --layout-content-padding: 24px;
+  --font-page-title: 24px;
+  --font-section-title: 18px;
+  --font-body: 14px;
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  --table-row-height: 44px;
   --color-primary: #195BFF;
   --color-primary-hover: #0F48D8;
   --color-primary-text: #1D4ED8;

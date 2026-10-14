@@ -154,7 +154,7 @@ frontend/gateway-e2e/  真实网关与部署验证
 关联需求：R11。参考全部图片，重点为 04、05、16、18、25、26、27。
 
 - [x] F02-01 建立主题令牌：主色 `#195BFF`、悬停 `#0F48D8`、背景 `#F7F8FA`、面板白、正文 `#1A1C19`、次级文字 `#667085`、成功 `#16823C`、错误 `#D92D20`；警告使用独立语义色并验证对比度。
-- [ ] F02-02 固定桌面布局：顶栏约 56px，侧栏 216px/折叠 64px，内容边距 24px；标题 24px、区块标题 18px、正文 14px，系统中文字体；控件圆角 6px、面板 8px、表格行高约 44px。
+- [x] F02-02 固定桌面布局：顶栏约 56px，侧栏 216px/折叠 64px，内容边距 24px；标题 24px、区块标题 18px、正文 14px，系统中文字体；控件圆角 6px、面板 8px、表格行高约 44px。
 - [ ] F02-03 实现 AppShell、PageHeader、FilterBar、StatusBadge、Timestamp、CopyId、CursorTable、EmptyState、ErrorState、ConnectionStatus；统一 0/null/空数组/未知枚举显示规则。
 - [ ] F02-04 实现可访问的 Dialog、Drawer、AsyncActionDialog：焦点限制与返回、Escape、标题关联、内部滚动、Teleport 及统一层级；普通关闭不增加确认。
 - [ ] F02-05 实现 ParameterTable、ExampleViewer、RequestEditor、ResponseViewer；参数/JSON 切换不丢文本，JSON 按文本显示并支持有界展开、复制和截断说明。
