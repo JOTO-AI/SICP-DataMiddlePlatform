@@ -11,11 +11,11 @@ import { newIdempotencyKey } from '../idempotency'
 import { session } from '../session'
 import { loadPendingRecovery, savePendingRecovery, removePendingRecovery } from '../storage/pending'
 import { createTaskOperation, submitOperation, type PendingOperation } from '../api/operations'
-import AcquisitionProgress from '../AcquisitionProgress.vue'
-import WorkProgress from '../WorkProgress.vue'
+import AcquisitionProgress from '../components/updates/AcquisitionProgress.vue'
+import WorkProgress from '../components/updates/WorkProgress.vue'
 import type { WorkProgress as WorkProgressData } from '../workProgress'
 import { sourceTables, type Acquisition } from '../acquisition'
-import FailedAttempts, { type FailedAttempt } from '../FailedAttempts.vue'
+import FailedAttempts, { type FailedAttempt } from '../components/updates/FailedAttempts.vue'
 interface Task { task_id: string; mode: string; status: string; operator?: string; predecessor_id?: string; accepted_at: string; started_at?: string; ready_at?: string; published_at?: string; checked_at?: string; finished_at?: string; progress_confirmed?: boolean; confirmed_until?: Record<string, string>; counts?: Record<string, number>; failure?: string; work_progress?: WorkProgressData; acquisition?: Acquisition; failed_attempts?: FailedAttempt[]; diagnostics_unavailable?: boolean; selected_table?: string }
 const action = ref('force-full'), predecessor = ref(''), key = ref(newIdempotencyKey()), lookup = ref('')
 interface Overview { items: Task[]; initialized: boolean; next_due_at?: string; cooldown_until?: string; interval_seconds: number }

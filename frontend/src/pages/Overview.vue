@@ -10,8 +10,8 @@ import { pollingDelay } from '../app/polling'
 import { usePageVisibility } from '../composables/usePageVisibility'
 import { useRequestScope } from '../composables/useRequestScope'
 import type { RequestRun } from '../app/requestScope'
-import AcquisitionProgress from '../AcquisitionProgress.vue'
-import WorkProgress from '../WorkProgress.vue'
+import AcquisitionProgress from '../components/updates/AcquisitionProgress.vue'
+import WorkProgress from '../components/updates/WorkProgress.vue'
 import type { WorkProgress as WorkProgressData } from '../workProgress'
 import type { Acquisition } from '../acquisition'
 const busy = ref(false)
@@ -63,6 +63,7 @@ const currentTask = ref<Task | null>(null), taskError = ref(''), now = ref(Date.
 const activityTitle = computed(() => currentTask.value?.status === 'accepted' ? '更新任务等待执行' : currentTask.value?.mode === 'initialize' ? '正在初始化' : currentTask.value?.mode === 'force_full' ? '正在全量更新' : '正在同步')
 const elapsed = computed(() => {
   const minutes = Math.max(0, Math.floor((now.value - Date.parse(currentTask.value?.started_at || '')) / 60000))
+  if (!Number.isFinite(minutes)) return '未知时长'
   return minutes < 1 ? '不足 1 分钟' : `${minutes} 分钟`
 })
 let active = false, failures = 0, serverDelay = 0

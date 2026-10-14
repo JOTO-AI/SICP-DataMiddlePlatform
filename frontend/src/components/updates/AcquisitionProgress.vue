@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { time } from './api'
-import type { Acquisition, TableAcquisition } from './acquisition'
+import { progressPercent } from '../../workProgress'
+import { time } from '../../api'
+import type { Acquisition, TableAcquisition } from '../../acquisition'
 const props = defineProps<{ progress?: Acquisition; status: string; compact?: boolean; allowUpdate?: boolean }>()
 defineEmits<{ updateTable: [table: string] }>()
 const tables = computed(() => props.progress?.tables || [])
@@ -25,7 +26,7 @@ function hint(table: TableAcquisition) {
   return table.status === 'acquiring' ? '等待首个分页结果，暂未取得总页数。' : '总页数待开始处理后获取。'
 }
 function percent(table: TableAcquisition) {
-  return table.total_pages ? `${Math.floor(table.completed_pages / table.total_pages * 1000) / 10}%` : ''
+  return progressPercent(table.completed_pages, table.total_pages)
 }
 </script>
 <template>
@@ -36,9 +37,9 @@ function percent(table: TableAcquisition) {
         <li v-for="table in visible" :key="table.table">
           <div class="acquisition-heading"><code>{{ table.table }}</code><span>{{ label(table) }}</span></div>
           <button v-if="!compact" type="button" :disabled="!allowUpdate" :aria-label="`强制更新 ${table.table}`" @click="$emit('updateTable', table.table)">强制更新此表</button>
-          <template v-if="table.total_pages !== null">
-            <div class="acquisition-count">{{ table.completed_pages }} / {{ table.total_pages }} 页 · {{ percent(table) }}</div>
-            <progress :value="table.completed_pages" :max="table.total_pages" :aria-label="`${table.table} ${phase(table)}进度`">{{ percent(table) }}</progress>
+          <template v-if="percent(table) !== undefined">
+            <div class="acquisition-count">{{ table.completed_pages }} / {{ table.total_pages }} 页 · {{ percent(table) }}%</div>
+            <progress :value="table.completed_pages" :max="table.total_pages ?? undefined" :aria-label="`${table.table} ${phase(table)}进度`">{{ percent(table) }}%</progress>
           </template>
           <p v-else-if="!ended" class="hint">{{ hint(table) }}</p>
         </li>

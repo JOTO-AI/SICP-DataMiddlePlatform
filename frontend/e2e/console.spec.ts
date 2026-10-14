@@ -40,6 +40,11 @@ test('BT09 real work, unknown totals, stalls and final timers', async ({ page })
   const frozen = await timer.textContent()
   await page.clock.runFor(61000)
   await expect(timer).toHaveText(frozen!)
+  // Missing finished_at is an unknown duration, not the last heartbeat.
+  finished = undefined
+  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await expect(timer).toContainText('未知')
+  await expect(stage).toContainText('累计量包含重复执行')
   await page.setViewportSize({ width: 390, height: 844 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
 })

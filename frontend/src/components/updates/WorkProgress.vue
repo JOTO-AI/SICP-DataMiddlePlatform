@@ -1,18 +1,27 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
-import { time } from './api'
-import { operationTitles as operations } from './queryOperations'
-import type { WorkProgress } from './workProgress'
+import { computed, ref, onMounted, onUnmounted, onActivated, onDeactivated, watch } from 'vue'
+import { time } from '../../api'
+import { operationTitles as operations } from '../../queryOperations'
+import { usePageVisibility } from '../../composables/usePageVisibility'
+import { progressCounter, progressPercent } from '../../workProgress'
+import type { WorkProgress } from '../../workProgress'
 const props = defineProps<{ progress?: WorkProgress; status: string; startedAt?: string; finishedAt?: string }>()
 const now = ref(Date.now())
-let timer: ReturnType<typeof setInterval> | undefined
-function stopTimer() { clearInterval(timer); timer = undefined }
-function startTimer() { stopTimer(); now.value = Date.now(); timer = setInterval(() => { now.value = Date.now() }, 1000) }
-onMounted(startTimer)
-onActivated(startTimer)
-onDeactivated(stopTimer)
-onUnmounted(stopTimer)
 const ended = computed(() => props.status === 'failed' || props.status.startsWith('success_'))
+let timer: ReturnType<typeof setInterval> | undefined, active = false
+function stopTimer() { clearInterval(timer); timer = undefined }
+const pageVisible = usePageVisibility(stopTimer, () => { if (active) startTimer() })
+function startTimer() {
+  stopTimer(); now.value = Date.now()
+  if (active && !ended.value && pageVisible.value) timer = setInterval(() => { now.value = Date.now() }, 1000)
+}
+function activate() { active = true; startTimer() }
+function deactivate() { active = false; stopTimer() }
+onMounted(activate)
+onActivated(activate)
+onDeactivated(deactivate)
+onUnmounted(deactivate)
+watch(ended, startTimer)
 const stale = computed(() => !!props.progress && (!Number.isFinite(Date.parse(props.progress.heartbeat_at)) || now.value - Date.parse(props.progress.heartbeat_at) > 45000))
 const stalled = computed(() => !!props.progress?.unit && now.value - Date.parse(props.progress.last_progress_at || props.progress.started_at) > 45000)
 const labels: Record<string, string> = {
@@ -22,9 +31,9 @@ const labels: Record<string, string> = {
   publishing: '发布数据版本', confirming_progress: '确认同步进度',
   content_check: '核对数据库内容', business_check: '核对业务案例', index_check: '核对索引', draining: '等待旧读者退出',
 }
-const phase = computed(() => labels[props.progress?.phase || ''] || '处理数据')
+const phase = computed(() => labels[props.progress?.phase || ''] || (props.progress?.phase ? `未知阶段（${props.progress.phase}）` : '未提供阶段'))
 const title = computed(() => ended.value ? `${props.status === 'failed' ? '失败' : '结束'}前阶段：${phase.value}` : stale.value ? `最近阶段：${phase.value}` : `当前阶段：${phase.value}`)
-const endTime = computed(() => ended.value ? Date.parse(props.finishedAt || props.progress?.heartbeat_at || '') : now.value)
+const endTime = computed(() => ended.value ? Date.parse(props.finishedAt || '') : now.value)
 function duration(ms: number) {
   const seconds = Math.max(0, Math.floor(ms / 1000))
   if (!Number.isFinite(seconds)) return '未知'
@@ -32,22 +41,22 @@ function duration(ms: number) {
 }
 const elapsed = computed(() => duration(endTime.value - Date.parse(props.progress?.started_at || '')))
 const totalElapsed = computed(() => duration(endTime.value - Date.parse(props.startedAt || '')))
-const unit = computed(() => props.progress?.unit === 'cases' ? '案例' : '行')
-const completed = computed(() => props.progress?.completed ?? 0)
-const percent = computed(() => props.progress?.total_known && (props.progress.total ?? 0) > 0 ? Math.min(100, Math.floor(completed.value / props.progress.total! * 100)) : undefined)
+const unit = computed(() => props.progress?.unit === 'cases' ? '案例' : props.progress?.unit === 'rows' ? '行' : '未知单位')
+const completed = computed(() => progressCounter(props.progress?.completed))
+const percent = computed(() => progressPercent(props.progress?.completed, props.progress?.total, props.progress?.total_known === true))
 </script>
 <template>
   <section v-if="progress" class="work-progress" aria-label="当前执行阶段">
     <div class="section-bar"><h3>{{ title }}</h3><span class="tag" :class="{ progress: !ended && !stale, warning: !ended && stale }">{{ ended ? '已结束' : stale ? '状态待确认' : '执行器在线' }}</span></div>
     <p v-if="progress.table || progress.instance"><span v-if="progress.table">当前表：<code>{{ progress.table }}</code></span><span v-if="progress.instance"> · 数据库副本：{{ progress.instance }}</span></p>
     <p v-if="progress.tables?.length">当前构建的表：<span v-for="(table,index) in progress.tables" :key="table">{{ index ? '、' : '' }}<code>{{ table }}</code></span></p>
-    <p v-if="progress.detail">检查项目：{{ operations[progress.detail] || '业务查询' }}</p>
+    <p v-if="progress.detail">检查项目：{{ operations[progress.detail] || progress.detail }}</p>
     <template v-if="progress.unit">
-      <p>已处理 {{ completed.toLocaleString() }}<template v-if="progress.total_known"> / {{ (progress.total ?? 0).toLocaleString() }}</template> {{ unit }}<template v-if="percent !== undefined"> · {{ percent }}%</template><template v-if="progress.batches"> · 已提交 {{ progress.batches }} 批</template></p>
+      <p>已处理 {{ completed?.toLocaleString() ?? '未提供' }}<template v-if="progress.total_known"> / {{ progressCounter(progress.total)?.toLocaleString() ?? '未提供' }}</template> {{ unit }}<template v-if="percent !== undefined"> · {{ percent }}%</template><template v-if="progress.batches"> · 已提交 {{ progress.batches }} 批</template></p>
       <progress v-if="percent !== undefined" :value="completed" :max="progress.total" aria-label="当前阶段工作量" />
       <p class="hint">最后实际进展：{{ progress.last_progress_at ? time(progress.last_progress_at) : '本阶段尚无已确认进展' }}。行数完成后仍需等待完整校验与发布。</p>
     </template>
-    <p v-if="(progress.attempt ?? 0) > 1" class="hint">本阶段第 {{ progress.attempt }} 次执行 · 历次累计 {{ progress.cumulative_completed ?? 0 }} {{ unit }} · 历次累计耗时 {{ duration(progress.cumulative_elapsed_ms ?? 0) }}</p>
+    <p v-if="(progress.attempt ?? 0) > 1" class="hint">本阶段第 {{ progress.attempt }} 次执行 · 历次累计 {{ progressCounter(progress.cumulative_completed)?.toLocaleString() ?? '未提供' }} {{ unit }} · 历次累计耗时 {{ duration(progressCounter(progress.cumulative_elapsed_ms) ?? NaN) }}。累计量包含重复执行，不表示本次完成量或新增数据量。</p>
     <p v-if="startedAt" class="hint">任务总耗时：{{ totalElapsed }}</p>
     <p class="hint">本阶段耗时：{{ elapsed }} · 执行器最近心跳：{{ time(progress.heartbeat_at) }}</p>
     <p v-if="!ended && stale" class="error" role="status">超过 45 秒未收到执行器心跳，暂时无法确认是否仍在执行，请检查服务状态。</p>
