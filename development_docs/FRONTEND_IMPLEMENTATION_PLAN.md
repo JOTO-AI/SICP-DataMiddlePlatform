@@ -166,7 +166,7 @@ frontend/gateway-e2e/  真实网关与部署验证
 关联需求：R01。参考图 01、27。
 
 - [x] F03-01 复用 `/console-api/login`、`/session`、`/logout`；区分错误凭据、429、服务不可达与会话失效；登录后返回合法的原目标页面。
-- [ ] F03-02 一级导航固定为运行总览、接口中心、更新事件、数据源、日志中心、通知中心、系统设置；移除独立“业务查询”导航。
+- [x] F03-02 一级导航固定为运行总览、接口中心、更新事件、数据源、日志中心、通知中心、系统设置；移除独立“业务查询”导航。
 - [ ] F03-03 建立 `/console/login`、`/overview`、`/apis`、`/apis/:apiId`、`/updates`、`/updates/:id`、`/sources`、`/logs/*`、`/notifications`、`/settings/*` 及 403/404；上述简写均位于 `/console` 下。
 - [ ] F03-04 日志详情使用 `/console/logs/:source/events/:eventId`；测试弹窗只作为接口详情页面状态，不建立独立测试路由。
 - [ ] F03-05 兼容当前 `#overview/#queries/#tasks` 及已发布的旧任务链接，映射到新页面且不自动执行查询或动作；退出清除敏感内存并关闭所有流/轮询。
