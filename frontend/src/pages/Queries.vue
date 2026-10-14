@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { request, describe, time, type Envelope } from './api'
-import { operations, queryBody, cell } from './queryOperations'
+import { computed, reactive, ref, watch, onActivated, onDeactivated, onUnmounted } from 'vue'
+import { request, describe, time, type Envelope } from '../api'
+import { operations, queryBody, cell } from '../queryOperations'
 const index = ref(0)
 const op = computed(() => operations[index.value]!)
 const form = reactive({ values: Object.fromEntries(operations[0]!.fields.map(field => [field.key, ''])) as Record<string, string>, size: 20, advanced: '{}' })
 const busy = ref(false), error = ref(''), snapshot = ref(''), page = ref(1), requestID = ref('')
 const result = ref<Envelope<{ items: any[]; total?: number; synced_at: string }> | null>(null)
+let active = false, generation = 0
+onActivated(() => { active = true })
+function deactivate() { active = false; generation++; busy.value = false }
+onDeactivated(deactivate)
+onUnmounted(deactivate)
 let submitted: Record<string, unknown> = {}
 const maxPage = computed(() => Math.max(1, Math.ceil((result.value?.data.total || 0) / Number(submitted.page_size || 20))))
 const advancedKeys = computed(() => op.value.advanced)
@@ -14,6 +19,8 @@ function reset() { result.value = null; snapshot.value = ''; error.value = ''; r
 watch(index, () => { form.values = Object.fromEntries(op.value.fields.map(field => [field.key, ''])); form.advanced = '{}'; reset() })
 watch(form, reset)
 async function query(next?: number) {
+  if (!active || busy.value) return
+  const run = ++generation
   const fresh = next === undefined
   next ??= 1
   error.value = ''
@@ -26,9 +33,10 @@ async function query(next?: number) {
   busy.value = true
   try {
     const response = await request<NonNullable<typeof result.value>>('query', op.value.path, { body: { ...submitted, ...(op.value.paginated ? { page: next } : {}) }, snapshot: fresh ? '' : snapshot.value })
+    if (!active || run !== generation) return
     result.value = response.body; snapshot.value = response.snapshot; requestID.value = response.requestID || response.body.request_id || ''; page.value = next
-  } catch (e) { result.value = null; snapshot.value = ''; requestID.value = ''; error.value = describe(e) }
-  finally { busy.value = false }
+  } catch (e) { if (!active || run !== generation) return; result.value = null; snapshot.value = ''; requestID.value = ''; error.value = describe(e) }
+  finally { if (run === generation) busy.value = false }
 }
 </script>
 <template>

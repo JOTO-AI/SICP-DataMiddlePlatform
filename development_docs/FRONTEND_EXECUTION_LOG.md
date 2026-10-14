@@ -47,3 +47,12 @@
 - 兼容核对：npm 官方 registry 元数据和安装包 peerDependencies 均为 Vue ^3.5.0，当前锁定 Vue 3.5.43；npm ls 无冲突。
 - 验证：单元测试 2/2、vue-tsc 与 Vite 生产构建通过。代码自审核对 lockfile 仅新增 vue-router 和 @vue/devtools-api 两项，未改代理/部署/运行时代码。
 - F00 五项基线完成；后续 F01-01 开始应用结构和懒加载迁移，页面及真实网关验收仍未完成。
+
+## F01-01 应用分层与懒加载
+
+- 前一步：`fe3c2ff` 已成功 push，输出 `ba655d6..fe3c2ff HEAD -> feat/frontend-development`。
+- 实现：拆分 app/router、app/startup、AppShell、LoginPage，将原三个页面移动到 pages，不复制第二套业务实现。Vue Router history 使用 /console/，旧 hash 兼容；三页分别懒加载，缓存绑定会话并有上限。查询停用时隔离迟到响应，进度计时器随缓存激活/停用启停。
+- 代码自审：发现 WorkProgress 原计时器只处理卸载而未处理缓存停用，已修正；3 个旧测试的学期下拉定位改为可访问 combobox 角色，保留原业务断言。检查路由切换不执行查询或任务，原任务幂等和各分页行为保留。外部请求取消/会话请求统一代次由 F01-02/F01-04 继续实现。
+- 验证：Node v24.15.0，本机 Chrome；受影响 22 项复测通过后，最终 `node node_modules/@playwright/test/cli.js test --reporter=line` 在 frontend 下执行，84/84 通过（2.3 分钟，loopback 与 intranet-http 各 42）。`npm.cmd run test:unit --prefix frontend` 2/2 通过，`npm.cmd run build --prefix frontend` 类型与构建通过；图稿/端点/夹具三个基线校验通过。
+- 新增业务交互场景直接使用 F00-04 后端学生样例，验证 12 条原始 mock 学生与前导零 ID；没有新增手写正常查询数据。
+- 截图证据：`frontend/test-results/console-session-survives-r-63901-d-logout-clears-the-console-loopback/overview-desktop.png` 及各进度/九接口 mobile 截图。已查看桌面截图，结构迁移未改变既有视觉；Hub 主题尚待 F02。真实静态网关没有运行，不勾选 FT09-08。

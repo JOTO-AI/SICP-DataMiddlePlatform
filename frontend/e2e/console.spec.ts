@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
+import { backendCapture } from '../fixtures/backend'
 import { operations, queryBody, cell } from '../src/queryOperations'
 
 test('BT09 real work, unknown totals, stalls and final timers', async ({ page }) => {
@@ -750,7 +751,7 @@ for (const entry of phase2Queries) {
     await expect(page.locator('[aria-label="查询接口"] button')).toHaveCount(9)
     await page.getByRole('button', { name: entry.title, exact: true }).click()
     for (const [label, value] of Object.entries(entry.fields)) await page.getByLabel(label, { exact: true }).fill(value!)
-    if (entry.semester) await page.getByLabel('学期 *', { exact: true }).selectOption('1')
+    if (entry.semester) await page.getByRole('combobox', { name: '学期 *', exact: true }).selectOption('1')
     else await expect(page.getByLabel(/^学年/)).toHaveCount(0)
     if (entry.advanced) {
       await page.getByText('高级筛选', { exact: true }).click()
@@ -805,7 +806,7 @@ test('T25-UI switching query clears incompatible fields, results and snapshot', 
   await page.getByRole('button', { name: '教师教学班', exact: true }).click()
   await page.getByLabel('工号 *', { exact: true }).fill('T001')
   await page.getByLabel('学年 *', { exact: true }).fill('2026-2027')
-  await page.getByLabel('学期 *', { exact: true }).selectOption('1')
+  await page.getByRole('combobox', { name: '学期 *', exact: true }).selectOption('1')
   await page.getByRole('button', { name: '查询数据', exact: true }).click()
   await expect(page.getByText('没有符合条件的数据，请调整筛选条件后重新查询。')).toBeVisible()
   await page.getByRole('button', { name: '教职工信息', exact: true }).click()
@@ -814,4 +815,52 @@ test('T25-UI switching query clears incompatible fields, results and snapshot', 
   await expect(page.getByText('没有符合条件的数据，请调整筛选条件后重新查询。')).toBeVisible()
   expect(requests[1]!.body).toEqual({ page: 1, page_size: 20 })
   expect(requests[1]!.snapshot).toBeUndefined()
+})
+
+test('F01 lazy routes preserve deep links, history and old hashes without executing queries', async ({ page }) => {
+  await setup(page)
+  let queries = 0
+  await page.route('**/console-api/query/api/**', route => { queries++; return route.abort() })
+  await page.getByRole('link', { name: '业务查询', exact: true }).click()
+  await expect(page).toHaveURL(/\/console\/queries$/)
+  await page.reload()
+  await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await expect(page).toHaveURL(/\/console\/tasks$/)
+  await page.goBack()
+  await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
+  await page.goto('./#tasks')
+  await expect(page).toHaveURL(/\/console\/tasks$/)
+  await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
+  expect(queries).toBe(0)
+})
+
+test('F01 a deactivated query ignores late original-mock results and can query again', async ({ page }) => {
+  await setup(page)
+  const fixture = backendCapture('students.query')
+  let release!: () => void, entered!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const seen = new Promise<void>(resolve => { entered = resolve })
+  let calls = 0
+  await page.route('**/console-api/query/api/v1/sicp/students/query', async route => {
+    expect(route.request().postDataJSON()).toEqual({ ...fixture.request, page: 1, page_size: 20 })
+    if (++calls === 1) { entered(); await gate }
+    await route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response })
+  })
+  try {
+    await page.getByRole('link', { name: '业务查询', exact: true }).click()
+    await page.getByRole('button', { name: '学生信息', exact: true }).click()
+    await page.getByRole('button', { name: '查询数据', exact: true }).click()
+    await seen
+    await page.getByRole('link', { name: '运行总览', exact: true }).click()
+    const response = page.waitForResponse(r => r.url().endsWith('/sicp/students/query'))
+    release()
+    await (await response).finished()
+    await page.getByRole('link', { name: '业务查询', exact: true }).click()
+    await expect(page.getByRole('table')).toHaveCount(0)
+    await page.getByRole('button', { name: '查询数据', exact: true }).click()
+    await expect(page.getByRole('table')).toContainText('00202600001')
+    await expect(page.getByRole('table')).toContainText('虚构学生001')
+    await expect(page.getByRole('row')).toHaveCount(13)
+  } finally { release() }
 })

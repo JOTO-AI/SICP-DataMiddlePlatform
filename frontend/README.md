@@ -67,7 +67,7 @@ Playwright 测试拦截 HTTP 并使用合成响应，验证前端协议与交互
 
 已实现：双服务健康、九接口筛选与结果表格/JSON、七个分页接口的快照翻页、自动任务记录与调度时间、强制全量/失败重跑、按 ID 查任务、可停止轮询、独立凭据和可选部署。
 
-尚未纳入：日志检索/SSE、源状态目录、邮件配置。这些需要额外后端 API；当前接口约定见 [公共查询契约](../development_docs/P06_QUERY_CONTRACT.md)。
+尚未纳入前端页面：日志检索/SSE、源状态目录、邮件配置。对应运维后端已有实现，前端按 [搭建计划](../development_docs/FRONTEND_IMPLEMENTATION_PLAN.md) 逐步接入；实际契约见 [端点基线](../development_docs/FRONTEND_ENDPOINT_BASELINE.md)。后端实现完成不代表联调验收已通过。
 
 实现参考：[Vue TypeScript 与组合式 API](https://vuejs.org/guide/typescript/composition-api)、[Vite 静态构建](https://vite.dev/guide/build)。
 
@@ -84,3 +84,11 @@ Playwright 测试拦截 HTTP 并使用合成响应，验证前端协议与交互
 查询目录、表单与结果列集中在 src/queryOperations.ts；新增 Playwright 用例覆盖五接口请求、null/false/0、前后翻页、409 后重查、跨接口清空和 390px 布局。目录用例对照后端交付清单，避免再次出现前后端接口数量不一致。本次 vue-tsc 静态检查通过，浏览器测试与生产构建尚未执行；CI 按会话要求暂不等待。
 
 已运行的旧 console 镜像不会随 Git push 自动更新。后端已升级到九接口版本时，拉取新代码后在现有部署根目录执行 `docker compose up -d --build --no-deps console`，完成后刷新页面。本次没有操作实际部署。
+
+## 工程迁移进度（F01-01）
+
+`src/app/` 负责启动和 Vue Router，`src/layouts/AppShell.vue` 负责控制台框架，`src/pages/` 放置登录与三个既有页面。总览、查询、任务按路由懒加载，KeepAlive 最多保留三个页面；停用后停止轮询和进度计时器，旧查询响应不写回重新打开的页面。退出/会话失效销毁缓存。
+
+当前地址为 `/console/overview`、`/console/queries`、`/console/tasks`；旧 `#overview/#queries/#tasks` 自动映射，导航不会自动执行业务查询或任务动作。七模块导航与完整详情路由在后续 F03/F05/F07 中接入，不能将本步骤标为最终导航交付。
+
+正常业务测试复用 [后端来源夹具](fixtures/README.md)。`npm.cmd run test:unit` 执行不依赖浏览器服务的协议/状态检查，`npm.cmd run check:fixtures` 核对来源与固定预期；`npm.cmd test` 继续执行两个 origin 的浏览器交互回归。可设 `SICP_TEST_BROWSER` 使用本地 Chromium/Chrome。完整逐步提交与复核见 [开发记录](../development_docs/FRONTEND_EXECUTION_LOG.md)。

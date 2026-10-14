@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
-import { request, describe, time, type Envelope } from './api'
-import AcquisitionProgress from './AcquisitionProgress.vue'
-import WorkProgress from './WorkProgress.vue'
-import type { WorkProgress as WorkProgressData } from './workProgress'
-import type { Acquisition } from './acquisition'
+import { request, describe, time, type Envelope } from '../api'
+import AcquisitionProgress from '../AcquisitionProgress.vue'
+import WorkProgress from '../WorkProgress.vue'
+import type { WorkProgress as WorkProgressData } from '../workProgress'
+import type { Acquisition } from '../acquisition'
 const busy = ref(false)
 const checked = ref('')
 interface Task { task_id: string; mode: string; status: string; accepted_at: string; started_at?: string; work_progress?: WorkProgressData; acquisition?: Acquisition }

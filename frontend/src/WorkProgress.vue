@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
 import { time } from './api'
 import { operationTitles as operations } from './queryOperations'
 import type { WorkProgress } from './workProgress'
 const props = defineProps<{ progress?: WorkProgress; status: string; startedAt?: string; finishedAt?: string }>()
 const now = ref(Date.now())
 let timer: ReturnType<typeof setInterval> | undefined
-onMounted(() => { timer = setInterval(() => { now.value = Date.now() }, 1000) })
-onUnmounted(() => clearInterval(timer))
+function stopTimer() { clearInterval(timer); timer = undefined }
+function startTimer() { stopTimer(); now.value = Date.now(); timer = setInterval(() => { now.value = Date.now() }, 1000) }
+onMounted(startTimer)
+onActivated(startTimer)
+onDeactivated(stopTimer)
+onUnmounted(stopTimer)
 const ended = computed(() => props.status === 'failed' || props.status.startsWith('success_'))
 const stale = computed(() => !!props.progress && (!Number.isFinite(Date.parse(props.progress.heartbeat_at)) || now.value - Date.parse(props.progress.heartbeat_at) > 45000))
 const stalled = computed(() => !!props.progress?.unit && now.value - Date.parse(props.progress.last_progress_at || props.progress.started_at) > 45000)
