@@ -360,7 +360,7 @@ test('expired session returns to login and removes protected pages', async ({ pa
 })
 
 async function setup(page: Page) {
-  for (const name of ['overview', 'system']) {
+  for (const name of ['overview', 'system', 'sources']) {
     const fixture = managementCapture(name)
     await page.route(`**${fixture.path}`, route => route.fulfill({ status: fixture.status, json: fixture.response }))
   }
@@ -1248,9 +1248,42 @@ test('F04 overview retains timestamped backend observations on failure without i
   await expect(query.locator('.tag')).toHaveText('当前状态未确认')
   await expect(query.locator('.success')).toHaveCount(0)
   await expect(query).toContainText('就绪状态与依赖沿用上次快照')
+  await query.locator('summary').filter({ hasText: '服务详情' }).click()
   await expect(query.getByText('可用', { exact: true })).toBeVisible()
   await expect(query.locator('time')).toHaveCount(1)
   await page.setViewportSize({ width: 390, height: 844 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('overview-stale-mobile.png'), fullPage: true })
+})
+
+test('F04 compact overview uses recorded source rows and separates missing event times', async ({ page }, testInfo) => {
+  await setup(page)
+  const source = (managementCapture('sources').response.data as { items: { id: string }[] }).items[0]!
+  const summary = page.locator('.overview-summary')
+  await expect(summary).toContainText('内容发布')
+  await expect(summary).toContainText('成功检查')
+  await expect(summary.locator('time')).toHaveCount(3)
+  await expect(summary.locator('time[datetime]')).toHaveCount(0)
+  const table = page.getByRole('region', { name: '数据源状态表', exact: true })
+  await expect(table.getByRole('row')).toHaveCount(2)
+  await expect(table).toContainText(source.id)
+  await expect(table).toContainText('无失败记录')
+  await expect(table.locator('.success')).toHaveCount(0)
+  await expect(page.getByRole('region', { name: '最近更新', exact: true })).toContainText('最近更新记录为空')
+  const service = page.getByRole('article').filter({ hasText: '业务查询服务' })
+  await expect(service.getByText('进程存活', { exact: true })).not.toBeVisible()
+  await service.locator('summary').filter({ hasText: '服务详情' }).click()
+  await expect(service.getByText('进程存活', { exact: true })).toBeVisible()
+  await service.locator('summary').filter({ hasText: '服务详情' }).click()
+  await page.screenshot({ path: testInfo.outputPath('compact-overview-desktop.png'), fullPage: true })
+  for (const width of [1280, 1024, 768, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  }
+  await page.screenshot({ path: testInfo.outputPath('compact-overview-mobile.png'), fullPage: true })
+  await page.route('**/admin/v1/sources', route => route.abort())
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  const sources = page.getByRole('region', { name: '数据源状态', exact: true })
+  await expect(sources).toContainText('沿用旧快照，当前状态未确认')
+  await expect(table).toContainText(source.id)
 })

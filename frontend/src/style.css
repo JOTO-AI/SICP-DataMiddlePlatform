@@ -300,3 +300,25 @@ dialog .actions { justify-content: flex-end; margin-top: 24px; }
 }
 .overview-facts { margin-top: 20px; }
 .overview-facts > p { margin-top: 10px; }
+/* F04-02: bounded observations, primary work on the left, diagnostics on the right. */
+.overview-summary { margin-bottom: 20px; padding-block: 18px; }
+.overview-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin: 0 0 12px; }
+.overview-metrics > div { min-width: 0; }
+.overview-metrics dt { color: var(--muted); font-size: 12px; }
+.overview-metrics dd { margin: 6px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+.overview-columns { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; margin-top: 20px; }
+.overview-main, .overview-side { min-width: 0; }
+.overview-main { display: flex; flex-direction: column; gap: 20px; }
+.overview-main .update-progress { margin: 0; }
+.overview-recent .facts { margin-bottom: 0; }
+.recent-task-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.overview-sources .table-wrap { margin-top: 16px; }
+.overview-sources table { min-width: 620px; }
+.overview-concerns { padding-left: 20px; margin: 16px 0; }
+.overview-concerns li { margin-block: 8px; overflow-wrap: anywhere; }
+.overview-shortcuts { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 20px; display: grid; gap: 12px; }
+.service-details { margin-top: 12px; }
+.service-details summary { font-size: 12px; }
+@media (max-width: 1279px) { .overview-columns { grid-template-columns: minmax(0, 1fr); } .overview-side { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } .overview-side .overview-facts { margin-top: 0; } }
+@media (max-width: 767px) { .overview-metrics { grid-template-columns: 1fr 1fr; gap: 16px; } .overview-side { grid-template-columns: minmax(0, 1fr); } }
+.overview-metrics dd { text-align: left; }
