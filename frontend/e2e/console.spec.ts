@@ -824,15 +824,15 @@ test('F01 lazy routes preserve deep links, history and old hashes without execut
   let queries = 0
   await page.route('**/console-api/query/api/**', route => { queries++; return route.abort() })
   await page.getByRole('link', { name: '接口中心', exact: true }).click()
-  await expect(page).toHaveURL(/\/console\/queries$/)
+  await expect(page).toHaveURL(/\/console\/apis$/)
   await page.reload()
   await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
-  await expect(page).toHaveURL(/\/console\/tasks$/)
+  await expect(page).toHaveURL(/\/console\/updates$/)
   await page.goBack()
   await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
   await page.goto('./#tasks')
-  await expect(page).toHaveURL(/\/console\/tasks$/)
+  await expect(page).toHaveURL(/\/console\/updates$/)
   await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
   expect(queries).toBe(0)
 })
@@ -1060,6 +1060,8 @@ test('F02 responsive shell uses three breakpoints and mobile navigation drawer w
 })
 
 test('F03 login distinguishes throttling and availability and returns to the original internal target', async ({ page }) => {
+  await page.route('**/console-api/**', route => route.abort())
+  await page.route('**/admin/v1/**', route => route.abort())
   let authenticated = false, mode: 'limited' | 'proxy' | 'offline' | 'success' = 'limited', attempts = 0, queries = 0
   const auth = { operator: 'admin', csrf: 'synthetic-csrf' }
   await page.route('**/console-api/session', route => route.fulfill({ status: authenticated ? 200 : 401, json: { code: authenticated ? 'ok' : 'unauthenticated', data: authenticated ? auth : null } }))
@@ -1091,8 +1093,8 @@ test('F03 login distinguishes throttling and availability and returns to the ori
   await password.fill('synthetic-password')
   await login.click()
   await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
-  expect(new URL(page.url()).pathname).toBe('/console/queries')
-  expect(new URL(page.url()).search).toBe('?redirect=https%3A%2F%2Fexample.invalid')
+  expect(new URL(page.url()).pathname).toBe('/console/apis')
+  expect(new URL(page.url()).searchParams.get('redirect')).toBe('https://example.invalid')
   expect(attempts).toBe(4); expect(queries).toBe(0)
   expect(await page.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0])
 })
@@ -1119,4 +1121,30 @@ test('F03 primary navigation has seven modules with no fabricated module results
   await page.getByRole('button', { name: '打开主导航' }).click()
   await expect(page.getByRole('navigation', { name: '主导航' }).getByRole('link')).toHaveCount(7)
   await page.screenshot({ path: testInfo.outputPath('seven-module-navigation.png') })
+})
+
+test('F03 route skeleton resolves details, 403 and 404 and rejects external login return targets', async ({ page }) => {
+  await setup(page)
+  const targets = [
+    ['/apis/students.query', '接口详情', '接口中心'], ['/updates/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', '更新详情', '更新事件'],
+    ['/sources', '数据源', '数据源'], ['/logs/platform', '日志中心', '日志中心'],
+    ['/notifications', '通知中心', '通知中心'], ['/settings/retention', '系统设置', '系统设置'],
+  ]
+  for (const [path, title, navigation] of targets) {
+    await page.goto(`/console${path}`)
+    await expect(page.getByRole('heading', { name: title!, exact: true })).toBeVisible()
+    await expect(page.getByRole('navigation').getByRole('link', { name: navigation!, exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(page.locator('.topbar-location')).toContainText(navigation!)
+  }
+  for (const [path, title] of [['403', '无权访问'], ['404', '页面不存在'], ['not-a-console-page', '页面不存在']]) {
+    await page.goto(`/console/${path}`)
+    await expect(page.getByRole('heading', { name: title!, exact: true })).toBeVisible()
+  }
+  await page.goto('/console/login?returnTo=https%3A%2F%2Fexample.invalid')
+  await expect(page).toHaveURL(/\/console\/overview$/)
+  await page.goto('/console/login?returnTo=%2F%2Fexample.invalid')
+  await expect(page).toHaveURL(/\/console\/overview$/)
+  await page.goto('/console/login?returnTo=%2Fapis%2Fstudents.query')
+  await expect(page).toHaveURL(/\/console\/apis\/students.query$/)
+  await expect(page.getByRole('heading', { name: '接口详情', exact: true })).toBeVisible()
 })
