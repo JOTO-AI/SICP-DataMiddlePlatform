@@ -3,7 +3,7 @@ import { sourceItems, sourceFailureLabels, type SourceState } from '../app/sourc
 import StatusBadge from '../components/StatusBadge.vue'
 import { displayEnum } from '../shared/display'
 import Timestamp from '../components/Timestamp.vue'
-import { latestTaskTime, taskModeLabels, observationLabel, type OverviewSnapshot, type SystemSnapshot } from '../app/overview'
+import { actionReason, initializationState, latestTaskTime, taskModeLabels, observationLabel, type OverviewSnapshot, type SystemSnapshot } from '../app/overview'
 import PageHeader from '../components/PageHeader.vue'
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, ApiError, type Envelope } from '../api'
@@ -23,6 +23,7 @@ const taskReadAt = ref('')
 const sources = ref<SourceState[] | null>(null), sourcesError = ref(''), sourcesReadAt = ref('')
 const recentItems = computed(() => overviewSnapshot.value?.tasks?.items ?? [])
 const latestTask = computed(() => recentItems.value[0])
+const initialization = computed(() => initializationState(overviewSnapshot.value?.tasks?.initialized, !!overviewError.value, !taskError.value && currentTask.value ? currentTask.value.status : latestTask.value?.status))
 const publicationTime = computed(() => latestTaskTime(recentItems.value, 'published_at'))
 const successCheckTime = computed(() => latestTaskTime(recentItems.value, 'checked_at'))
 const concerns = computed(() => [
@@ -184,6 +185,17 @@ onUnmounted(stop)
 
       </aside>
     </div>
-    <div v-if="overviewSnapshot?.tasks?.initialized === false" class="section-note"><h2>首次使用</h2><p>系统会自动初始化全新环境，并持续进行增量同步。可在更新任务中查看进度；数据就绪后即可查询。</p></div>
+    <section v-if="initialization !== 'complete'" class="panel initialization-note" aria-label="初始化状态">
+      <h2>{{ initialization === 'failed' ? '初始化尚未完成，等待补齐' : initialization === 'active' ? '初始化任务正在处理' : initialization === 'unknown' ? '初始化状态未确认' : '等待自动初始化' }}</h2>
+      <p v-if="initialization === 'unknown'" class="hint">尚未获得可靠的初始化状态，请重新读取。旧快照不能作为启动维护操作的依据。</p>
+      <template v-else>
+        <p v-if="initialization === 'failed'">可到更新事件中选择原失败任务重跑，或补齐失败表。已完成的表按后端规则复用；全部补齐并校验后才完成初始化。</p>
+        <p v-else-if="initialization === 'active'">初始化由后台执行，包含采集、构建、校验和发布。请查看当前进度，等待完成。</p>
+        <p v-else>全新环境由系统自动创建初始化任务。当前尚无可确认的已发布数据，首次初始化完成前不能进行业务查询。</p>
+        <RouterLink to="/updates">{{ initialization === 'failed' ? '查看失败任务与补齐入口 →' : '查看初始化进度 →' }}</RouterLink>
+        <dl v-if="initialization === 'failed'" class="facts"><div><dt>失败重跑条件</dt><dd>{{ actionReason(overviewSnapshot?.actions?.rerun) }}</dd></div><div><dt>单表补齐条件</dt><dd>{{ actionReason(overviewSnapshot?.actions?.table_force_full) }}</dd></div></dl>
+        <p class="hint">页面只提供既有更新操作入口；当前没有手动首次初始化操作。上游冷却和任务冲突以提交时后端判断为准。</p>
+      </template>
+    </section>
   </section>
 </template>

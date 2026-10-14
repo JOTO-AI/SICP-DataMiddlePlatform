@@ -1027,7 +1027,7 @@ test('F02 responsive shell uses three breakpoints and mobile navigation drawer w
   await setup(page)
   let queries = 0
   const fixture = backendCapture('students.query')
-  await page.route('**/console-api/query/**', route => { queries++; return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response }) })
+  await page.route('**/console-api/query/api/**', route => { queries++; return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response }) })
   for (const width of [1440, 1280, 1279, 1024, 768, 767, 390]) {
     await page.setViewportSize({ width, height: 900 })
     const state = await page.evaluate(() => ({ sidebar: document.querySelector('.sidebar')!.getBoundingClientRect().width, overflow: document.documentElement.scrollWidth > innerWidth }))
@@ -1365,4 +1365,31 @@ test('F04 source polling stops off-page and logout removes its drawer', async ({
   const exited = calls
   await page.clock.runFor(61000)
   expect(calls).toBe(exited)
+})
+
+test('F04 empty initialization directs to existing progress without exposing manual bootstrap', async ({ page }) => {
+  await setup(page)
+  const fixture = managementCapture('overview')
+  const tasks = (fixture.response.data as { tasks: unknown }).tasks
+  let posts = 0
+  await page.route('**/admin/v1/tasks/**', route => {
+    if (route.request().method() === 'POST') posts++
+    return route.fulfill({ json: { code: 'ok', data: tasks } })
+  })
+  const notice = page.getByRole('region', { name: '初始化状态', exact: true })
+  await expect(notice).toContainText('等待自动初始化')
+  await expect(notice).toContainText('首次初始化完成前不能进行业务查询')
+  await expect(notice.getByRole('button')).toHaveCount(0)
+  await notice.getByRole('link', { name: '查看初始化进度 →' }).click()
+  await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '强制全量更新', exact: true })).toBeDisabled()
+  await page.getByRole('radio', { name: /单表强制更新/ }).check()
+  await expect(page.getByRole('button', { name: '提交更新', exact: true })).toBeDisabled()
+  await expect(page.getByText('当前不可执行单表更新', { exact: false })).toBeVisible()
+  expect(posts).toBe(0)
+  await page.getByRole('link', { name: '运行总览', exact: true }).click()
+  await page.route('**/admin/v1/overview', route => route.abort())
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(notice).toContainText('初始化状态未确认')
+  await expect(notice.getByRole('link')).toHaveCount(0)
 })

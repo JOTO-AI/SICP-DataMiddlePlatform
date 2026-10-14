@@ -322,3 +322,5 @@ dialog .actions { justify-content: flex-end; margin-top: 24px; }
 @media (max-width: 1279px) { .overview-columns { grid-template-columns: minmax(0, 1fr); } .overview-side { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } .overview-side .overview-facts { margin-top: 0; } }
 @media (max-width: 767px) { .overview-metrics { grid-template-columns: 1fr 1fr; gap: 16px; } .overview-side { grid-template-columns: minmax(0, 1fr); } }
 .overview-metrics dd { text-align: left; }
+.initialization-note { margin-top: 20px; }
+.initialization-note > p, .initialization-note > a { display: block; margin-top: 12px; }

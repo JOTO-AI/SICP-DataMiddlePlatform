@@ -23,7 +23,7 @@ const overview = ref<Overview | null>(null), historyError = ref(''), historyBusy
 const hasActiveTask = computed(() => overview.value?.items.some(item => !['failed', 'success_published', 'success_unchanged'].includes(item.status)) ?? false)
 const acceptedLocation = ref<{ id: string; path: string } | null>(null)
 const selectedTable = ref('dwd_bzkscjzlb')
-const tableUpdateAllowed = computed(() => !!overview.value && !historyBusy.value && !historyError.value && !hasActiveTask.value && !busy.value && !loading.value && !pending.value)
+const tableUpdateAllowed = computed(() => !!overview.value && (overview.value.initialized || !!failedInitialization.value) && !historyBusy.value && !historyError.value && !hasActiveTask.value && !busy.value && !loading.value && !pending.value)
 const failedInitialization = computed(() => {
   const latest = overview.value?.items[0]
   return !overview.value?.initialized && latest?.mode === 'initialize' && latest.status === 'failed' ? latest : null
@@ -99,7 +99,7 @@ function confirm() {
   if (!pending.value) {
     if (action.value === 'incremental' && incrementalBlocked.value) { error.value = incrementalHelp.value; return }
     if (action.value === 'force-full' && forceFullBlocked.value) { error.value = forceFullHelp.value; return }
-    if (action.value === 'table-full' && (!tableUpdateAllowed.value || !sourceTables.includes(selectedTable.value))) { error.value = '请选择有效的来源表，并等待当前任务结束。'; return }
+    if (action.value === 'table-full' && (!tableUpdateAllowed.value || !sourceTables.includes(selectedTable.value))) { error.value = '请核对来源表与初始化状态，并等待当前任务结束。'; return }
     if (action.value === 'rerun' && !predecessor.value.trim()) { error.value = '请输入原失败任务号。'; return }
     if (!/^[\x21-\x7e]{1,128}$/.test(key.value) || key.value.includes(',')) { error.value = '幂等键须为 1–128 位可见 ASCII 字符，且不含逗号。'; return }
     const retryInitial = action.value === 'force-full' ? failedInitialization.value : null
@@ -183,7 +183,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
         <label v-if="action === 'rerun'">原失败任务号 *<input v-model="predecessor" required placeholder="输入失败任务号"></label>
         <label v-if="action === 'table-full'">来源表<select v-model="selectedTable"><option v-for="name in sourceTables" :key="name" :value="name">{{ name }}</option></select></label>
         <label class="key-label">幂等键<input v-model="key" required maxlength="128" spellcheck="false"></label></fieldset>
-        <p class="hint">响应丢失时用原键重试，可避免重复创建任务。</p>
+        <p v-if="action === 'table-full' && !tableUpdateAllowed" class="hint">当前不可执行单表更新：请先确认初始化已完成，或存在允许补齐的失败初始化任务，并等待当前任务和请求结束。</p><p class="hint">响应丢失时用原键重试，可避免重复创建任务。</p>
         <p v-if="pending" class="hint">已锁定请求：{{ pending.title }}。修改操作前请先结束本次请求。</p>
         <p v-if="pending && !recoveryAvailable" class="hint">当前浏览器无法保存恢复信息，刷新页面会丢失本次待确认请求。</p>
         <div class="actions"><button class="primary" :disabled="busy || loading || (!pending && ((action === 'incremental' && incrementalBlocked) || (action === 'force-full' && forceFullBlocked) || (action === 'table-full' && !tableUpdateAllowed)))">{{ busy ? '正在提交…' : pending ? '重试原请求' : '提交更新' }}</button><button v-if="pending" type="button" :disabled="busy" @click="abandon">结束本次请求</button></div>
