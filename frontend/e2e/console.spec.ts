@@ -4,8 +4,13 @@ import { backendCapture, backendCatalog, managementCapture } from '../fixtures/b
 import { operations, queryBody, cell } from '../src/queryOperations'
 
 test.beforeEach(async ({ page }) => {
-  const items = backendCatalog() as { version: string }[]
+  const items = backendCatalog() as { id: string; version: string }[]
   await page.route('**/admin/v1/apis', route => route.fulfill({ json: { code: 'ok', message: '', data: { version: items[0]!.version, items } } }))
+  await page.route('**/admin/v1/apis/*', route => {
+    const id = decodeURIComponent(new URL(route.request().url()).pathname.split('/').at(-1)!)
+    const api = items.find(item => item.id === id)
+    return route.fulfill({ status: api ? 200 : 404, json: { code: api ? 'ok' : 'not_found', data: api ?? null } })
+  })
 })
 async function showQueries(page: Page) {
   const opener = page.getByRole('button', { name: '业务数据核验', exact: true })
@@ -1161,7 +1166,7 @@ test('F03 primary navigation has seven modules with no fabricated module results
 test('F03 route skeleton resolves details, 403 and 404 and rejects external login return targets', async ({ page }) => {
   await setup(page)
   const targets = [
-    ['/apis/students.query', '接口详情', '接口中心'], ['/updates/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', '更新详情', '更新事件'],
+    ['/apis/students.query', '学生信息', '接口中心'], ['/updates/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', '更新详情', '更新事件'],
     ['/sources', '数据源', '数据源'], ['/logs/platform', '日志中心', '日志中心'],
     ['/notifications', '通知中心', '通知中心'], ['/settings/retention', '系统设置', '系统设置'],
   ]
@@ -1181,7 +1186,7 @@ test('F03 route skeleton resolves details, 403 and 404 and rejects external logi
   await expect(page).toHaveURL(/\/console\/overview$/)
   await page.goto('/console/login?returnTo=%2Fapis%2Fstudents.query')
   await expect(page).toHaveURL(/\/console\/apis\/students.query$/)
-  await expect(page.getByRole('heading', { name: '接口详情', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '学生信息', exact: true })).toBeVisible()
 })
 
 test('F03 log detail keeps source and backend event ID while API tests have no standalone route', async ({ page }) => {
@@ -1457,4 +1462,60 @@ test('F05 catalog searches the 23 backend entries without executing or inventing
   await page.getByRole('button', { name: '刷新目录', exact: true }).click()
   await expect(page.getByText('以下为上次成功读取的目录', { exact: false })).toBeVisible()
   await expect(table.getByRole('row')).toHaveCount(10)
+})
+
+test('F05 details keep endpoint and readiness visible while tabs stay read-only', async ({ page }, testInfo) => {
+  await setup(page)
+  await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+  const items = backendCatalog() as { id: string; method: string; path: string; kind: string }[]
+  const api = items.find(item => item.id === 'students.grades.query')!
+  let reads = 0, health = 0, executions = 0
+  await page.route(`**/admin/v1/apis/${api.id}`, route => { reads++; return route.fulfill({ json: { code: 'ok', data: api } }) })
+  await page.route('**/console-api/query/readyz', route => { health++; return route.fulfill({ json: { ready: true } }) })
+  await page.route('**/console-api/query/api/**', route => { executions++; return route.abort() })
+  await page.route('**/admin/v1/api-tests', route => { executions++; return route.abort() })
+  await page.getByRole('link', { name: '接口中心', exact: true }).click()
+  await page.getByRole('link', { name: '查看 学生成绩 文档', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '学生成绩', exact: true })).toBeVisible()
+  const info = page.getByRole('region', { name: '接口信息', exact: true })
+  await expect(info).toContainText(api.path)
+  await expect(info).toContainText('查询服务已就绪')
+  const buttons = page.getByRole('tab')
+  await expect(buttons).toHaveCount(5)
+  for (const label of ['参数', '请求案例', '响应案例', '调用记录', '概览']) {
+    await page.getByRole('tab', { name: label, exact: true }).click()
+    await expect(page.getByRole('tabpanel')).toBeVisible()
+    await expect(page.getByRole('tab', { name: label, exact: true })).toHaveAttribute('aria-controls', 'api-doc-panel')
+    await expect(info).toContainText(api.path)
+  }
+  await page.getByRole('tab', { name: '概览' }).focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByRole('tab', { name: '参数' })).toBeFocused()
+  await expect(page.getByRole('tab', { name: '参数' })).toHaveAttribute('aria-selected', 'true')
+  expect(reads).toBe(1)
+  expect(health).toBe(1)
+  expect(executions).toBe(0)
+  await page.screenshot({ path: testInfo.outputPath('api-detail-desktop.png'), fullPage: true })
+  await page.route('**/console-api/query/readyz', route => route.abort())
+  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await expect(info).toContainText('查询服务状态未确认')
+  await expect(info.locator('.success')).toHaveCount(0)
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('api-detail-mobile.png'), fullPage: true })
+})
+
+test('F05 source detail stays unprobed and unknown API is not fabricated', async ({ page }) => {
+  await setup(page)
+  const api = (backendCatalog() as { id: string; kind: string; path: string }[]).find(item => item.kind === 'source')!
+  await page.goto(`/console/apis/${api.id}`)
+  const info = page.getByRole('region', { name: '接口信息', exact: true })
+  await expect(info).toContainText(api.path)
+  await expect(info).toContainText('上游就绪未探测')
+  await expect(info.locator('.success')).toHaveCount(0)
+  await page.getByRole('tab', { name: '调用记录' }).click()
+  await expect(page.getByRole('tabpanel')).toContainText('尚未加载调用记录')
+  await page.goto('/console/apis/not-a-real-api')
+  await expect(page.getByRole('alert')).toContainText('未找到请求的对象')
+  await expect(page.getByRole('region', { name: '接口信息', exact: true })).toHaveCount(0)
 })

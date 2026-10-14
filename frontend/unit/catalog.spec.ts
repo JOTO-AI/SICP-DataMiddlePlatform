@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { backendCatalog } from '../fixtures/backend'
-import { readCatalog, filterCatalog, type CatalogAPI } from '../src/app/catalog'
+import { readCatalogAPI, readCatalog, filterCatalog, type CatalogAPI } from '../src/app/catalog'
 
 test('catalog validates the generated 9+14 entries and filters metadata only', () => {
   const items = backendCatalog() as CatalogAPI[]
@@ -14,4 +14,11 @@ test('catalog validates the generated 9+14 entries and filters metadata only', (
   expect(readCatalog({ version: 'mismatched-version', items })).toBeNull()
   expect(readCatalog({ version: items[0]!.version, items: [items[0], items[0]] })).toBeNull()
   expect(readCatalog(null)).toBeNull()
+})
+
+test('API detail binds to the requested backend identity', () => {
+  const item = (backendCatalog() as CatalogAPI[]).find(api => api.id === 'students.query')!
+  expect(readCatalogAPI(item, item.id)).toEqual(item)
+  expect(readCatalogAPI(item, 'staff.query')).toBeNull()
+  expect(readCatalogAPI(null, item.id)).toBeNull()
 })

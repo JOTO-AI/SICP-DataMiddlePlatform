@@ -18,7 +18,7 @@ export const router = createRouter({
     { path: '/login', name: 'login', component: () => import('../pages/LoginPage.vue') },
     { path: '/overview', name: 'overview', meta: { navigation: 'overview' }, component: () => import('../pages/Overview.vue') },
     { path: '/apis', name: 'queries', meta: { navigation: 'queries' }, component: () => import('../pages/ApiCenter.vue') },
-    { path: '/apis/:apiId', name: 'api-detail', meta: { navigation: 'queries' }, component: pending, props: { title: '接口详情' } },
+    { path: '/apis/:apiId', name: 'api-detail', meta: { navigation: 'queries' }, component: () => import('../pages/ApiDetail.vue'), props: { title: '接口详情' } },
     { path: '/updates', name: 'tasks', meta: { navigation: 'tasks' }, component: () => import('../pages/Tasks.vue') },
     { path: '/updates/:id', name: 'update-detail', meta: { navigation: 'tasks' }, component: pending, props: { title: '更新详情' } },
     { path: '/sources', name: 'sources', meta: { navigation: 'sources' }, component: () => import('../pages/Sources.vue') },

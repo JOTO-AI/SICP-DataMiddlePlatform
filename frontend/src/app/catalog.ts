@@ -21,3 +21,8 @@ export function filterCatalog(items: CatalogAPI[], search: string, group: string
   const term = search.trim().toLocaleLowerCase()
   return items.filter(item => (!group || item.kind === group) && [catalogName(item), item.id, item.path, item.purpose, catalogGroups[item.kind] ?? item.kind].join(' ').toLocaleLowerCase().includes(term))
 }
+
+export function readCatalogAPI(value: unknown, expectedId: string): CatalogAPI | null {
+  if (!value || typeof value !== 'object' || !('version' in value) || !('id' in value) || value.id !== expectedId) return null
+  return readCatalog({ version: value.version, items: [value] })?.items[0] ?? null
+}
