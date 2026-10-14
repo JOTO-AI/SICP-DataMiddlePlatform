@@ -12,7 +12,7 @@ import { executeBusinessTest, type BusinessTestResult } from '../app/businessTes
 import { useRequestScope } from '../composables/useRequestScope'
 import { ApiError, describe } from '../api'
 import ResponseViewer from './ResponseViewer.vue'
-import JsonText from './JsonText.vue'
+import ApiResponseViews from './ApiResponseViews.vue'
 import ErrorState from './ErrorState.vue'
 import Timestamp from './Timestamp.vue'
 import { useSourceTest } from '../composables/useSourceTest'
@@ -74,8 +74,8 @@ onDeactivated(close)
       <EmptyState v-if="api.kind === 'business' && !result" :loading="busy" title="尚未测试" :description="busy ? '等待本次实际查询响应，不会自动重试。' : '这里将展示本次实际请求的响应；文档案例不会作为测试结果。'" />
       <template v-else-if="api.kind === 'business' && result"><p class="hint">本次开始于 <Timestamp :value="result.startedAt" /> · 浏览器等待 {{ result.durationMs }} ms</p><ErrorState v-if="result.error" :message="describe(result.error)" />
         <p v-if="!response?.status" class="hint">未取得 HTTP 响应。</p>
-        <ResponseViewer v-if="response" :text="response.responseText ?? '未取得响应正文。'" :http-status="response.status || undefined" :code="responseCode" :request-id="response.requestID" label="响应原文" :stale="resultStale" />
-        <details><summary>实际响应头</summary><p class="hint">仅展示允许的诊断响应头；未返回的字段不补造。</p><JsonText :text="JSON.stringify(response?.headers ?? {}, null, 2)" label="响应头" /></details>
+        <ApiResponseViews v-if="response" :api="api" :raw="response.responseText ?? '未取得响应正文。'" :headers="response.headers" :http-status="response.status || undefined" :code="responseCode" :request-id="response.requestID" :stale="resultStale" />
+
       </template>
       <template v-if="api.kind === 'source'"><ErrorState v-if="source.error" :message="describe(source.error)" />
         <EmptyState v-if="!source.operation" title="尚未测试" description="点击执行源测试后提交一页读取作业；案例不是实际结果。" />
@@ -92,11 +92,11 @@ onDeactivated(close)
 
           <template v-if="source.response">
             <p class="hint">以下 HTTP 状态与响应头属于管理作业查询，不是上游响应。</p>
-            <ResponseViewer :text="source.response.responseText ?? ''" :http-status="source.response.status" :code="source.response.body.code" :request-id="source.response.requestID" label="管理作业响应原文" :stale="!!source.error || source.busy" />
-            <template v-if="source.job?.status === 'succeeded' && source.response.body.data.result_state === 'available'"><h4>本页源数据</h4><p class="hint">后端返回的 total/list 结果，保留原始数字；不是上游完整 HTTP 报文。</p><JsonText :text="source.response.resultText ?? ''" label="本页源数据 JSON" /></template>
-            <p v-else-if="source.terminal && source.job?.status === 'succeeded'" class="warning">作业已成功，但本次查询未取得结果。结果可能尚未进入缓存或已过期、淘汰、服务重启、落在其他实例；可查询原作业，不会自动重测。</p>
-            <p v-else-if="source.terminal" class="warning">作业已结束，未取得可展示的源数据，请查看作业摘要。</p>
-            <details><summary>管理响应头</summary><JsonText :text="JSON.stringify(source.response.headers, null, 2)" label="管理响应头 JSON" /></details>
+            <ApiResponseViews :api="api" :raw="source.response.responseText ?? ''" :headers="source.response.headers" :http-status="source.response.status" :code="source.response.body.code" :request-id="source.response.requestID" :stale="!!source.error || source.busy" :source-result-text="source.job?.status === 'succeeded' ? source.response.resultText : null" />
+
+            <p v-if="source.terminal && source.job?.status === 'succeeded' && source.response.body.data.result_state !== 'available'" class="warning">作业已成功，但本次查询未取得结果。结果可能尚未进入缓存或已过期、淘汰、服务重启、落在其他实例；可查询原作业，不会自动重测。</p>
+            <p v-if="source.terminal && source.job?.status !== 'succeeded'" class="warning">作业已结束，未取得可展示的源数据，请查看作业摘要。</p>
+
           </template>
           <details v-if="source.error?.responseText"><summary>本次管理错误响应</summary><ResponseViewer :text="source.error.responseText" :http-status="source.error.status || undefined" :request-id="source.error.requestID" label="管理错误响应原文" /></details>
           <button v-if="source.terminal || source.rejected" type="button" :disabled="source.busy" @click="source.reset">结束本次，准备新测试</button>

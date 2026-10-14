@@ -2073,3 +2073,66 @@ test('F06 outcomes reject changed business paths as protocol failures before any
   expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('test-outcome-mobile.png') })
 })
+
+for (const operation of ['students.grades.query', 'students.timetable.query', 'organizations.query']) test(`F06 shared views ${operation} switch locally without new requests`, async ({ page }, testInfo) => {
+  await setup(page)
+  const fixture = backendCapture(operation), api = operations.find(item => item.operation === operation)!
+  let calls = 0
+  await page.route(`**/console-api/query${api.path}`, route => { calls++; return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response }) })
+  await page.goto(`/console/apis/${operation}`)
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(fixture.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await expect(dialog.getByLabel('响应原文', { exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: '表格', exact: true }).click()
+  const table = dialog.getByLabel('本次响应表格', { exact: true })
+  await expect(table.locator('tbody tr')).toHaveCount((fixture.response.data as { items: unknown[] }).items.length)
+  if (api.kind === 'grades') await expect(table).toContainText('00202600001')
+  if (api.kind === 'organizations') {
+    await dialog.getByRole('button', { name: '组织树', exact: true }).click()
+    await expect(dialog.getByLabel('本次组织树', { exact: true })).toContainText('未核验全量完整性')
+    await expect(dialog.getByLabel('本次组织树', { exact: true }).locator('li')).toHaveCount(5)
+  }
+  if (api.kind === 'timetable') {
+    await dialog.getByRole('button', { name: '课表', exact: true }).click()
+    await expect(dialog.getByRole('combobox', { name: '上课日期', exact: true })).toHaveValue('2026-09-07')
+    await expect(dialog.getByLabel('本次日期课表', { exact: true }).locator('article')).toHaveCount(4)
+  }
+  await page.setViewportSize({ width: 390, height: 844 })
+  await dialog.locator('.response-views').scrollIntoViewIfNeeded()
+  expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath(`response-${api.kind}-mobile.png`) })
+  await dialog.getByRole('button', { name: '响应头', exact: true }).click()
+  await expect(dialog.getByLabel('本次响应头 JSON', { exact: true })).toContainText('X-SICP-Combination')
+  await dialog.getByRole('button', { name: 'JSON', exact: true }).click()
+  await expect(dialog.getByLabel('响应原文', { exact: true })).toHaveText(JSON.stringify(fixture.response).slice(0, 4096))
+  expect(calls).toBe(1)
+})
+
+test('F06 shared source views ignore a closed instance late result and recover with GET only', async ({ page }) => {
+  await setup(page)
+  const accepted = managementCapture('source_test'), fixture = sourceJobResult('dwd_bzkscjzlb')
+  let posts = 0, gets = 0, release: (() => void) | undefined, complete: (() => void) | undefined
+  const pending = new Promise<void>(resolve => { release = resolve }), completed = new Promise<void>(resolve => { complete = resolve })
+  await page.route('**/admin/v1/api-tests', route => { posts++; return route.fulfill({ status: accepted.status, headers: { Location: fixture.path }, json: accepted.response }) })
+  await page.route(`**${fixture.path}`, async route => { gets++; if (gets === 1) await pending; await route.fulfill({ status: fixture.status, body: fixture.raw }).catch(() => {}); complete!() })
+  await page.goto('/console/apis/dwd_bzkscjzlb')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: '执行源测试', exact: true }).click()
+  await expect.poll(() => gets).toBe(1)
+  await dialog.getByRole('button', { name: '停止等待并关闭', exact: true }).click()
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  release!(); await completed
+  await expect(dialog.getByLabel('本页源数据 JSON', { exact: true })).toHaveCount(0)
+  expect(posts).toBe(1); expect(gets).toBe(1)
+  await dialog.getByRole('button', { name: '查询原作业', exact: true }).click()
+  await expect(dialog.getByLabel('本页源数据 JSON', { exact: true })).toHaveText(fixture.resultText)
+  await dialog.getByRole('button', { name: '表格', exact: true }).click()
+  await expect(dialog.getByLabel('本次响应表格', { exact: true }).locator('tbody tr')).toHaveCount(JSON.parse(fixture.resultText).list.length)
+  await dialog.getByRole('button', { name: '响应头', exact: true }).click()
+  await dialog.getByRole('button', { name: 'JSON', exact: true }).click()
+  await expect(dialog.getByLabel('管理作业响应原文', { exact: true })).toHaveText(fixture.raw)
+  expect(posts).toBe(1); expect(gets).toBe(2)
+})

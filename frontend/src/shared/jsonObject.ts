@@ -30,3 +30,23 @@ export function objectTokens(text: string): Map<string, string> {
   }
   return values
 }
+
+// Split a validated JSON array without converting number tokens. Extra rows remain in the raw response.
+export function arrayTokens(text: string, limit = 1000): { values: string[]; truncated: boolean } {
+  let i = text.indexOf('[') + 1, start = i, depth = 0, quoted = false
+  const values: string[] = []
+  while (i < text.length) {
+    const char = text[i]!
+    if (quoted) { if (char === '\\') i++; else if (char === '"') quoted = false }
+    else if (char === '"') quoted = true
+    else if (depth === 0 && (char === ',' || char === ']')) {
+      const value = text.slice(start, i).trim()
+      if (value) { if (values.length === limit) return { values, truncated: true }; values.push(value) }
+      if (char === ']') return { values, truncated: false }
+      start = i + 1
+    } else if (char === '[' || char === '{') depth++
+    else if (char === ']' || char === '}') depth--
+    i++
+  }
+  throw new Error('记录数组不完整。')
+}
