@@ -1,4 +1,6 @@
 import type { CatalogAPI } from './catalog'
+import { recordBusinessTest } from './recentTests'
+import { ApiError } from '../api/http'
 import { executeBusinessTest, type BusinessTestResult } from './businessTest'
 import { nextPageRequest, acceptPage, pageCount, type QueryPageChain } from './queryPagination'
 import { responseRecords, organizationNodes, type ResponseRecords } from './responseViews'
@@ -42,7 +44,14 @@ export async function loadOrganizations(api: CatalogAPI, chain: QueryPageChain, 
   for (let page = 1; page <= pageCount(chain); page++) {
     if (page === chain.page) continue
     signal.throwIfAborted()
-    add(await executeBusinessTest(api, nextPageRequest(api, chain, page), signal, chain.snapshot), page)
+    const result = await executeBusinessTest(api, nextPageRequest(api, chain, page), signal, chain.snapshot)
+    signal.throwIfAborted()
+    try { add(result, page); recordBusinessTest(api, result) }
+    catch (cause) {
+      const response = result.response
+      recordBusinessTest(api, response ? { ...result, response: undefined, error: cause instanceof ApiError ? cause : new ApiError('组织分页未接纳。', 'invalid_response', response.requestID, response.status) } : result)
+      throw cause
+    }
   }
   if (collectionRecords(pages).rows.length !== chain.total) throw new Error('已接纳记录数与响应总数不一致，无法确认完整性。')
   return pages

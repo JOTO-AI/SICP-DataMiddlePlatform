@@ -6,6 +6,7 @@ import { apiCallsPath, readCallPage, type CallPage } from '../app/apiCalls'
 import { logDetailPath } from '../app/links'
 import { useRequestScope } from '../composables/useRequestScope'
 import Timestamp from './Timestamp.vue'
+import RecentTests from './RecentTests.vue'
 import ErrorState from './ErrorState.vue'
 import EmptyState from './EmptyState.vue'
 const props = defineProps<{ api: CatalogAPI }>()
@@ -38,7 +39,7 @@ onActivated(() => { if (props.api.kind === 'business' && !page.value && !busy.va
 </script>
 <template>
   <section aria-label="接口调用记录">
-    <h2>调用记录</h2>
+    <h2>调用记录</h2><RecentTests :api-id="api.id" /><h3>服务端调用日志</h3>
     <p class="hint">历史范围默认由服务端取最近 24 小时；以下是日志事件，开始/结束分别记录，不代表请求总数或持久测试历史。</p>
     <p v-if="api.kind === 'business'">本地日志按实际 operation <code>{{ api.id }}</code> 查询。</p>
     <form v-else @submit.prevent="read()"><p>后端尚未提供按源表查询全部调用的筛选。请填写当前源接口的真实测试作业 ID 或后端给出的日志关联 ID；不以当前页筛选冒充全部历史。</p><label>测试作业 ID<input v-model="identity" autocomplete="off" maxlength="128" spellcheck="false" /></label><label>ID 格式<select v-model="format"><option value="raw">原始作业 ID</option><option value="correlation">日志关联 ID</option></select></label><button :disabled="busy || !identity" type="submit">查询关联记录</button></form>

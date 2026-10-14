@@ -10,7 +10,7 @@ import TimetableViews from './TimetableViews.vue'
 import OrganizationTree from './OrganizationTree.vue'
 import PersonDetails from './PersonDetails.vue'
 import { rosterContext, type RosterContext } from '../app/roster'
-const props = defineProps<{ api: CatalogAPI; allowRecords?: boolean; requestText?: string; raw: string; headers: ResponseHeaders; httpStatus?: number; code?: string; requestId?: string; stale?: boolean; sourceResultText?: string | null }>()
+const props = withDefaults(defineProps<{ api: CatalogAPI; allowRecords?: boolean; requestText?: string; raw: string; headers: ResponseHeaders; httpStatus?: number; code?: string; requestId?: string; stale?: boolean; sourceResultText?: string | null }>(), { allowRecords: true })
 const emit = defineEmits<{ roster: [context: RosterContext] }>()
 const view = ref('json'), selectedPerson = ref<number | null>(null)
 const personnel = computed(() => ['students.query', 'staff.query'].includes(props.api.id))

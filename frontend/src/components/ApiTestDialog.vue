@@ -15,6 +15,8 @@ import ResponseViewer from './ResponseViewer.vue'
 import ApiResponseViews from './ApiResponseViews.vue'
 import OrganizationCollection from './OrganizationCollection.vue'
 import RosterCheck from './RosterCheck.vue'
+import SourceResultNotice from './SourceResultNotice.vue'
+import { recordBusinessTest } from '../app/recentTests'
 import { recordRosterPage, type RosterContext, type RosterProgress } from '../app/roster'
 import ErrorState from './ErrorState.vue'
 import Timestamp from './Timestamp.vue'
@@ -77,6 +79,7 @@ async function performQuery(draft: string, previous?: QueryPageChain, page = 1) 
       }
     } else paging.value = firstPageChain(api, value)
     if (props.rosterContext && paging.value && api.id === 'teaching-classes.students.query') rosterProgress.value = recordRosterPage(props.rosterContext, paging.value, value, previous ? rosterProgress.value : null)
+    recordBusinessTest(api, value)
     result.value = value
   } catch (cause) {
     if (run.current() && !closed) { preflightError.value = cause instanceof ApiError ? cause : null; executionError.value = cause instanceof ApiError ? describe(cause) : '参数不符合当前接口约定。' }
@@ -135,7 +138,7 @@ onDeactivated(close)
             <p class="hint">以下 HTTP 状态与响应头属于管理作业查询，不是上游响应。</p>
             <ApiResponseViews :api="api" :raw="source.response.responseText ?? ''" :headers="source.response.headers" :http-status="source.response.status" :code="source.response.body.code" :request-id="source.response.requestID" :stale="!!source.error || source.busy" :source-result-text="source.job?.status === 'succeeded' ? source.response.resultText : null" />
 
-            <p v-if="source.terminal && source.job?.status === 'succeeded' && source.response.body.data.result_state !== 'available'" class="warning">作业已成功，但本次查询未取得结果。结果可能尚未进入缓存或已过期、淘汰、服务重启、落在其他实例；可查询原作业，不会自动重测。</p>
+            <SourceResultNotice v-if="source.job" :status="source.job.status" :result-state="source.response.body.data.result_state" :stale="!!source.error || source.busy" />
             <p v-if="source.terminal && source.job?.status !== 'succeeded'" class="warning">作业已结束，未取得可展示的源数据，请查看作业摘要。</p>
 
           </template>
