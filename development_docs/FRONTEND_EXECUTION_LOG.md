@@ -264,3 +264,10 @@
 - 文档：九业务接口中文字段与组合规则核对 sicp-api-design.md、P06_QUERY_CONTRACT.md 及当前 DTO；保留成绩最近学期选择、当前关联、数值范围、课表独立数组、教学班实际去重人数和跨接口快照边界。十四源中文字段由 latest_api_docs 响应字段说明生成，仅提取标签，不导入样例/凭据；类型和限制仍来自运行时后端目录。
 - Review：参数文档区分受控源测试与上游 Query；响应字段明确业务 data / 源 data.list 单条记录，不声称 schema 是完整 HTTP 外壳。未知字段保留原名，纯文本展示。移动表格可键盘横向滚动，页面不横溢。
 - 验证：43/43 单元检查、类型/生产构建通过；6/6 接口中心回归与新增 2/2 字段浏览器检查通过（两 origin）。单元直接遍历后端导出 23 项目录，验证嵌套可空布尔与 100/1000 默认分页，不新增正常业务 mock 行。移动截图已查看，保存在 artifacts/frontend-f05-03。
+
+## F05-04 区分 POST Body、上游 Query 与测试作业
+
+- 前一步：`4ac7dce` 已成功 push。
+- 实现：本地业务参数标记为 application/json Body；十四源提供方 Query 从 latest_api_docs 第三节生成静态说明，保留提供方类型、必填和未提供默认值，不导入样例值或凭据。单列受控测试 POST /admin/v1/api-tests 的 api_id/version/idempotency_key 与后端目录分页定义。
+- 契约 review：对照 internal/admin/api_catalog.go、operations/source_tests.go，标明 page→page、page_size→pageSize，提供方 1/15 为示例，本地受控默认 1/10、上限 100；不开放自定义 token/URL/源筛选，重试须保留原键与原载荷。请求案例明确属于受控作业 JSON，不冒充 GET Query。
+- 验证：44/44 单元检查、最终类型/构建通过；10/10 接口中心浏览器回归通过，修正样式变量后相关 2/2 复核通过（两 origin）。新增检查使用后端完整十四源目录与已核对文档元信息，无正常业务 mock 行、无上游调用。手机截图已查看，证据 artifacts/frontend-f05-04。

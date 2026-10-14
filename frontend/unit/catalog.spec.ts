@@ -57,3 +57,16 @@ test('malformed or oversized Field metadata is visibly incomplete', () => {
   expect(result.rows).toHaveLength(13)
   expect(result.rows[0]).toMatchObject({ required: '未声明', nullable: '未声明', defaultText: 'false' })
 })
+
+import { sourceQueryFields } from '../src/app/sourceQueryFields'
+test('provider Query metadata covers recorded sources without turning examples into defaults', () => {
+  const sources = (backendCatalog() as CatalogAPI[]).filter(api => api.kind === 'source')
+  expect(Object.keys(sourceQueryFields).sort()).toEqual(sources.map(api => api.id).sort())
+  for (const api of sources) {
+    const fields = sourceQueryFields[api.id]!
+    expect(fields.find(field => field.name === 'pageSize')).toMatchObject({ type: 'Long', required: '是', defaultText: '未提供' })
+    expect(fields.find(field => field.name === 'page_size')).toBeUndefined()
+    expect(api.request.properties?.page_size?.default).toBe(10)
+    expect(api.request.properties?.page_size?.limit).toBe('1..100')
+  }
+})
