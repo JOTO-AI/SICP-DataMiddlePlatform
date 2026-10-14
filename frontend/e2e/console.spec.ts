@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { backendCapture, backendCatalog, managementCapture } from '../fixtures/backend'
+import { sourceJobResult } from '../fixtures/sourceTests'
 import { operations, queryBody, cell } from '../src/queryOperations'
 
 test.beforeEach(async ({ page }) => {
@@ -1845,4 +1846,141 @@ test('F06 double execution is guarded and closed instances ignore late actual re
   await expect(dialog.getByRole('heading', { name: '尚未测试', exact: true })).toBeVisible()
   await expect(dialog.getByRole('region', { name: '响应内容', exact: true })).toHaveCount(0)
   expect(calls).toBe(1)
+})
+
+test('F06 source executes one fixed page then reads Location and displays unchanged mock result text', async ({ page }, testInfo) => {
+  await setup(page)
+  const api = (backendCatalog() as { id: string; version: string }[]).find(api => api.id === 'dwd_bzkscjzlb')!
+  const accepted = managementCapture('source_test'), queued = managementCapture('test_result'), done = sourceJobResult(api.id)
+  let posts = 0, gets = 0, queries = 0, submitted: Record<string, unknown> | undefined
+  await page.route('**/console-api/query/api/**', route => { queries++; return route.abort() })
+  await page.route('**/admin/v1/api-tests', route => {
+    posts++; submitted = route.request().postDataJSON()
+    expect(submitted).toEqual({ api_id: api.id, version: api.version, page: 1, page_size: 10, idempotency_key: expect.any(String) })
+    expect(route.request().headers()['idempotency-key']).toBeUndefined()
+    return route.fulfill({ status: accepted.status, headers: { Location: queued.path }, json: accepted.response })
+  })
+  await page.route(`**${queued.path}`, route => {
+    gets++; expect(route.request().method()).toBe('GET')
+    return gets === 1 ? route.fulfill({ status: queued.status, json: queued.response }) : route.fulfill({ status: done.status, body: done.raw })
+  })
+  await page.goto(`/console/apis/${api.id}`)
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  expect(posts).toBe(0); expect(gets).toBe(0)
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill('{"page":null,"page_size":0}')
+  await dialog.getByRole('button', { name: '执行源测试', exact: true }).evaluate(element => { (element as HTMLButtonElement).click(); (element as HTMLButtonElement).click() })
+  await expect(dialog).toContainText('已受理，排队中')
+  await expect(dialog).toContainText('运行中尚无结果不代表失败')
+  await expect(dialog.getByLabel('请求 JSON', { exact: true })).toBeDisabled()
+  await expect(dialog).toContainText('作业执行成功')
+  await expect(dialog.getByLabel('本页源数据 JSON', { exact: true })).toHaveText(done.resultText.slice(0, 4096))
+  await expect(dialog.getByLabel('管理作业响应原文', { exact: true })).toHaveText(done.raw.slice(0, 4096))
+  expect(posts).toBe(1); expect(gets).toBe(2); expect(queries).toBe(0)
+  expect(await page.evaluate(() => sessionStorage.getItem('sicp.pending-operations.v1'))).toBeNull()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await dialog.getByRole('heading', { name: '本页源数据', exact: true }).scrollIntoViewIfNeeded()
+  expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('source-test-mobile.png') })
+  await dialog.getByRole('button', { name: '结束本次，准备新测试', exact: true }).click()
+  await expect(dialog.getByLabel('请求 JSON', { exact: true })).toBeEnabled()
+  await expect(dialog.getByRole('heading', { name: '尚未测试', exact: true })).toBeVisible()
+  expect(posts).toBe(1)
+})
+
+test('F06 source lost admission reply reopens without sending and retries the original key and payload', async ({ page }) => {
+  await setup(page)
+  const accepted = managementCapture('source_test'), done = sourceJobResult('dwd_bzkscjzlb')
+  const payloads: string[] = []
+  await page.route('**/admin/v1/api-tests', route => {
+    payloads.push(route.request().postData()!)
+    return payloads.length === 1 ? route.abort() : route.fulfill({ status: accepted.status, headers: { Location: done.path }, json: accepted.response })
+  })
+  await page.route(`**${done.path}`, route => route.fulfill({ status: done.status, body: done.raw }))
+  await page.goto('/console/apis/dwd_bzkscjzlb')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: '执行源测试', exact: true }).click()
+  await expect(dialog).toContainText('受理结果待确认')
+  await expect(dialog.getByRole('alert')).toContainText('受理结果未知')
+  await dialog.getByRole('button', { name: '关闭测试', exact: true }).click()
+  await page.reload()
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  await expect(dialog.getByRole('button', { name: '原键重试受理', exact: true })).toBeEnabled()
+  await expect(dialog.getByLabel('请求 JSON', { exact: true })).toBeDisabled()
+  expect(payloads).toHaveLength(1)
+  await dialog.getByRole('button', { name: '原键重试受理', exact: true }).click()
+  await expect(dialog).toContainText('作业执行成功')
+  expect(payloads).toHaveLength(2)
+  expect(payloads[0]).toBe(payloads[1])
+})
+
+test('F06 source accepted job closes polling and reopens with explicit GET only', async ({ page }) => {
+  await setup(page)
+  const accepted = managementCapture('source_test'), queued = managementCapture('test_result'), done = sourceJobResult('dwd_bzkscjzlb')
+  let posts = 0, gets = 0, finish = false
+  await page.route('**/admin/v1/api-tests', route => { posts++; return route.fulfill({ status: accepted.status, headers: { Location: queued.path }, json: accepted.response }) })
+  await page.route(`**${queued.path}`, route => { gets++; return finish ? route.fulfill({ status: done.status, body: done.raw }) : route.fulfill({ status: queued.status, json: queued.response }) })
+  await page.goto('/console/apis/dwd_bzkscjzlb')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: '执行源测试', exact: true }).click()
+  await expect(dialog).toContainText('已受理，排队中')
+  await expect.poll(() => gets).toBeGreaterThan(0)
+  await dialog.getByRole('button', { name: '停止等待并关闭', exact: true }).click()
+  const stoppedAt = gets
+  const saved = await page.evaluate(() => sessionStorage.getItem('sicp.pending-operations.v1'))
+  expect(saved).toContain(queued.path); expect(saved).not.toContain('result_state')
+  finish = true
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  await expect(dialog.getByRole('button', { name: '查询原作业', exact: true })).toBeEnabled()
+  expect(gets).toBe(stoppedAt); expect(posts).toBe(1)
+  await dialog.getByRole('button', { name: '查询原作业', exact: true }).click()
+  await expect(dialog).toContainText('作业执行成功')
+  expect(gets).toBe(stoppedAt + 1); expect(posts).toBe(1)
+})
+
+test('F06 source read failure stops the chain and explicit recovery never POSTs again', async ({ page }) => {
+  await setup(page)
+  const accepted = managementCapture('source_test'), done = sourceJobResult('dwd_bzkscjzlb')
+  let posts = 0, gets = 0
+  await page.route('**/admin/v1/api-tests', route => { posts++; return route.fulfill({ status: accepted.status, headers: { Location: done.path }, json: accepted.response }) })
+  await page.route(`**${done.path}`, route => { gets++; return gets === 1 ? route.fulfill({ status: 502, contentType: 'text/html', body: '<h1>Bad Gateway</h1>' }) : route.fulfill({ status: done.status, body: done.raw }) })
+  await page.goto('/console/apis/dwd_bzkscjzlb')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: '执行源测试', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toContainText('HTTP 502')
+  await expect(dialog.getByRole('button', { name: '查询原作业', exact: true })).toBeEnabled()
+  expect(posts).toBe(1); expect(gets).toBe(1)
+  await dialog.getByRole('button', { name: '查询原作业', exact: true }).click()
+  await expect(dialog).toContainText('作业执行成功')
+  expect(posts).toBe(1); expect(gets).toBe(2)
+})
+
+test('F06 source polling is bounded after a refused request becomes accepted and keeps its pending key', async ({ page }) => {
+  await setup(page)
+  await page.clock.install()
+  const accepted = managementCapture('source_test'), queued = managementCapture('test_result'), refused = backendCapture('students.query', 'invalid_argument')
+  let posts = 0, gets = 0
+  const payloads: string[] = []
+  await page.route('**/admin/v1/api-tests', route => {
+    posts++; payloads.push(route.request().postData()!)
+    return posts === 1 ? route.fulfill({ status: refused.status, json: refused.response }) : route.fulfill({ status: accepted.status, headers: { Location: queued.path }, json: accepted.response })
+  })
+  await page.route(`**${queued.path}`, route => { gets++; return route.fulfill({ status: queued.status, json: queued.response }) })
+  await page.goto('/console/apis/dwd_bzkscjzlb')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: '执行源测试', exact: true }).click()
+  await expect(dialog).toContainText('服务端拒绝受理')
+  await expect(dialog.getByRole('button', { name: '结束本次，准备新测试', exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: '原键重试受理', exact: true }).click()
+  await expect.poll(() => gets).toBe(1)
+  for (let count = 2; count <= 15; count++) { await page.clock.runFor(2001); await expect.poll(() => gets).toBe(count) }
+  await expect(dialog).toContainText('本轮等待已达上限')
+  await expect(dialog.getByRole('button', { name: '结束本次，准备新测试', exact: true })).toHaveCount(0)
+  await expect(dialog.getByLabel('请求 JSON', { exact: true })).toBeDisabled()
+  await page.clock.runFor(10000)
+  expect(gets).toBe(15); expect(posts).toBe(2); expect(payloads[0]).toBe(payloads[1])
 })
