@@ -2443,3 +2443,106 @@ test('F06 complete organizations stop and close discard late pages and never sta
   await page.getByRole('button', { name: '在线测试', exact: true }).click()
   await expect(scope).toHaveCount(0); expect(calls).toBe(2)
 })
+async function openClassRoster(page: Page, source = backendCapture('staff.teaching-classes.query')) {
+  await page.route('**/console-api/query/api/v1/sicp/staff/teaching-classes/query', route => {
+    expect(route.request().headers()['x-query-snapshot']).toBeUndefined()
+    expect(route.request().postDataJSON()).toEqual(source.request)
+    return route.fulfill({ status: source.status, headers: source.headers, json: source.response })
+  })
+  await page.goto('/console/apis/staff.teaching-classes.query')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(source.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await dialog.getByRole('button', { name: '表格', exact: true }).click()
+  await dialog.getByRole('button', { name: '查看第 1 条教学班名单', exact: true }).click()
+  await expect(page).toHaveURL(/\/console\/apis\/teaching-classes.students.query$/)
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('region', { name: '教学班名单核对', exact: true })).toContainText('尚未核对完整名单')
+  expect(JSON.parse(await dialog.getByLabel('请求 JSON', { exact: true }).inputValue())).toEqual(backendCapture('teaching-classes.students.query').request)
+  return dialog
+}
+
+test('F06 roster navigation fills only and counts all real independent snapshot pages exactly once', async ({ page }, testInfo) => {
+  await setup(page)
+  const first = paginationCapture('teaching-classes.students.query', 1), calls: number[] = []
+  await page.route('**/console-api/query/api/v1/sicp/teaching-classes/students/query', route => {
+    const body = route.request().postDataJSON(), fixture = paginationCapture('teaching-classes.students.query', body.page)
+    expect(body).toEqual(fixture.request)
+    expect(route.request().headers()['x-query-snapshot'] ?? '').toBe(calls.length ? first.headers['X-Query-Snapshot'] : '')
+    calls.push(body.page)
+    return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response })
+  })
+  const dialog = await openClassRoster(page), check = dialog.getByRole('region', { name: '教学班名单核对', exact: true })
+  expect(calls).toHaveLength(0)
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(first.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await expect(check).toContainText('已接纳 1 / 3 页')
+  await expect(check).not.toContainText('完整名单人数核对通过')
+  for (const [button, count] of [['下一页', 2], ['上一页', 2], ['下一页', 2], ['下一页', 3]] as const) {
+    await dialog.getByRole('button', { name: button, exact: true }).click()
+    await expect(check).toContainText(`已接纳 ${count} / 3 页`)
+    await expect(dialog.getByRole('button', { name: '执行测试', exact: true })).toBeEnabled()
+  }
+  await expect(check).toContainText('完整名单人数核对通过')
+  await expect(check).toContainText('已读学号去重 3 人')
+  expect(calls).toEqual([1, 2, 1, 2, 3])
+  await page.setViewportSize({ width: 390, height: 844 }); await check.scrollIntoViewIfNeeded()
+  expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('roster-verification-mobile.png') })
+  await dialog.getByRole('button', { name: '关闭测试', exact: true }).click()
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  await expect(check).toHaveCount(0)
+  await expect(dialog.getByLabel('请求 JSON', { exact: true })).toHaveValue('{}')
+  expect(calls).toHaveLength(5)
+  await dialog.getByRole('button', { name: '关闭测试', exact: true }).click()
+  await page.goBack()
+  await expect(page).toHaveURL(/\/console\/apis\/staff.teaching-classes.query$/)
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(backendCapture('staff.teaching-classes.query').request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await dialog.getByRole('button', { name: '表格', exact: true }).click()
+  await dialog.getByRole('button', { name: '查看第 1 条教学班名单', exact: true }).click()
+  await expect(check).toContainText('尚未核对完整名单')
+  expect(calls).toHaveLength(5)
+})
+
+for (const boundary of ['combination', 'count', 'duplicate', 'condition'] as const) test(`F06 roster ${boundary} boundary cannot pass reconciliation`, async ({ page }) => {
+  await setup(page)
+  const source = backendCapture('staff.teaching-classes.query'), fixture = backendCapture('teaching-classes.students.query')
+  // Only protocol metadata/scalar/duplicate mutations on real captured records.
+  if (boundary === 'count') (source.response.data as { items: { student_count: number }[] }).items[0]!.student_count = 2
+  if (boundary === 'combination') fixture.headers['X-SICP-Combination'] = 'C10'
+  if (boundary === 'duplicate') { const rows = (fixture.response.data as { items: unknown[] }).items; rows[1] = structuredClone(rows[0]) }
+  let calls = 0
+  await page.route('**/console-api/query/api/v1/sicp/teaching-classes/students/query', route => { calls++; expect(route.request().headers()['x-query-snapshot']).toBeUndefined(); return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response }) })
+  const dialog = await openClassRoster(page, source), check = dialog.getByRole('region', { name: '教学班名单核对', exact: true })
+  expect(calls).toBe(0)
+  if (boundary === 'condition') await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify({ ...fixture.request, semester: '2' }))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  const message = { combination: '数据组合不同', count: '完整名单去重人数与原 student_count 不一致', duplicate: '重复学号', condition: '查询条件已偏离' }[boundary]
+  await expect(check).toContainText(message)
+  await expect(check).not.toContainText('完整名单人数核对通过')
+  expect(calls).toBe(1)
+})
+
+test('F06 roster later combination mismatch keeps the previous member count incomplete', async ({ page }) => {
+  await setup(page)
+  const first = paginationCapture('teaching-classes.students.query', 1)
+  let calls = 0
+  await page.route('**/console-api/query/api/v1/sicp/teaching-classes/students/query', route => {
+    calls++; const fixture = paginationCapture('teaching-classes.students.query', route.request().postDataJSON().page)
+    if (calls > 1) fixture.headers['X-SICP-Combination'] = 'C10'
+    return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response })
+  })
+  const dialog = await openClassRoster(page), check = dialog.getByRole('region', { name: '教学班名单核对', exact: true })
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(first.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await expect(check).toContainText('已接纳 1 / 3 页')
+  await dialog.getByRole('button', { name: '下一页', exact: true }).click()
+  await expect(check).toContainText('本页未接纳')
+  await expect(check).toContainText('已读学号去重 1 人')
+  await expect(check).not.toContainText('完整名单人数核对通过')
+  await expect(dialog.getByRole('button', { name: '下一页', exact: true })).toBeDisabled()
+  expect(calls).toBe(2)
+})

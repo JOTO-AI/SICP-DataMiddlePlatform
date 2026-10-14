@@ -1,0 +1,8 @@
+<script setup lang="ts">
+import type { RosterContext, RosterProgress } from '../app/roster'
+defineProps<{ context: RosterContext; progress: RosterProgress | null }>()
+</script>
+<template><section aria-label="教学班名单核对" class="roster-check"><h4>教学班名单核对</h4><p>来自 {{ context.request.academic_year }} / {{ context.request.semester }} 学期 · 教学班 <code>{{ context.request.teaching_class_number }}</code> · 计划课程 <code>{{ context.request.planned_course_code }}</code></p><p>教学班 student_count：{{ context.expectedCount ?? '未提供有效人数' }} · 原数据组合：<code>{{ context.combination || '未确认' }}</code></p><p class="hint">只填入条件，需手动执行；名单取得独立快照，每页与教学班数据组合比对。通过下一页读完全部分页后才核对去重人数，最多保存 50 页 / 1000 条；翻回已读页不重复计数。</p><p v-if="!progress" role="status">尚未核对完整名单。</p><template v-else><p role="status">{{ progress.complete ? progress.matched ? '完整名单人数核对通过' : '完整名单已读取，人数未核对通过' : '名单尚未完整核验' }} · 已接纳 {{ progress.pages.size }} / {{ progress.totalPages ?? '未确认' }} 页</p><p>已接纳 {{ progress.rowCount }} 条 · 已读学号去重 {{ progress.uniqueCount }} 人 · 本次名单总数 {{ progress.total ?? '未确认' }} 条</p><p v-if="progress.issue" class="warning">{{ progress.issue }}</p><p v-else-if="progress.complete && !progress.matched" class="warning">完整名单去重人数与原 student_count 不一致或原人数未确认；请核对教学班与数据组合，不将其显示为通过。</p></template></section></template>
+<style scoped>
+.roster-check { border: 1px solid var(--line); padding: 16px; margin-top: 24px; overflow-wrap: anywhere; }
+</style>

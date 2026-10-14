@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onActivated, onDeactivated, onUnmounted, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { prepareRoster, consumeRoster } from '../app/rosterNavigation'
+import type { RosterContext } from '../app/roster'
 import { request, describe, ApiError, type Envelope } from '../api'
 import { catalogName, readCatalogAPI, type CatalogAPI } from '../app/catalog'
 import { useRequestScope } from '../composables/useRequestScope'
@@ -18,10 +20,16 @@ import ApiTestDialog from '../components/ApiTestDialog.vue'
 import type { RequestExample } from '../app/requestExamples'
 import { operationRules, commonBusinessRules } from '../app/catalogSchema'
 import ExampleViewer from '../components/ExampleViewer.vue'
+const router = useRouter(), draftRoster = ref<RosterContext | null>(null)
+async function openRoster(context: RosterContext) {
+  if (!prepareRoster(context)) return
+  closeTest()
+  try { if (await router.push('/apis/teaching-classes.students.query')) { consumeRoster(); error.value = '名单接口跳转未完成，请重新选择教学班。' } } catch { consumeRoster(); error.value = '名单接口跳转失败，请重新选择教学班。' }
+}
 const draftOpen = ref(false), draftText = ref(''), draftSnapshot = ref(false), draftKey = ref(0)
-function openTest() { draftText.value = '{}'; draftSnapshot.value = false; draftKey.value++; draftOpen.value = true }
-function closeTest() { draftOpen.value = false; draftText.value = ''; draftSnapshot.value = false }
-function loadExample(example: RequestExample) { draftText.value = JSON.stringify(example.body, null, 2); draftSnapshot.value = !!example.snapshot; draftKey.value++; draftOpen.value = true }
+function openTest() { draftRoster.value = null; draftText.value = '{}'; draftSnapshot.value = false; draftKey.value++; draftOpen.value = true }
+function closeTest() { draftRoster.value = null; draftOpen.value = false; draftText.value = ''; draftSnapshot.value = false }
+function loadExample(example: RequestExample) { draftRoster.value = null; draftText.value = JSON.stringify(example.body, null, 2); draftSnapshot.value = !!example.snapshot; draftKey.value++; draftOpen.value = true }
 const apiId = String(useRoute().params.apiId)
 const api = ref<CatalogAPI | null>(null), busy = ref(false), error = ref(''), readAt = ref('')
 const ready = ref<boolean | null>(null), healthError = ref(''), healthReadAt = ref('')
@@ -41,6 +49,10 @@ async function refresh() {
     const item = readCatalogAPI(response.body.data, apiId)
     if (!item) throw new ApiError('接口详情标识或格式与当前页面不一致。', 'invalid_response')
     api.value = item; error.value = ''; readAt.value = new Date().toISOString()
+    if (apiId === 'teaching-classes.students.query' && !draftOpen.value) {
+      const context = consumeRoster()
+      if (context) { draftRoster.value = context; draftText.value = JSON.stringify(context.request, null, 2); draftSnapshot.value = false; draftKey.value++; draftOpen.value = true }
+    }
     if (item.kind === 'business') {
       try {
         const result = await request<{ ready?: boolean }>('query', '/readyz', { health: true, signal: run.signal })
@@ -59,7 +71,7 @@ async function keyTab(event: KeyboardEvent) {
   await nextTick(); tabButtons.value[tab.value]?.focus()
 }
 onActivated(() => { active = true; void refresh() })
-function stop() { draftOpen.value = false; draftText.value = ''; draftSnapshot.value = false; active = false; requests.cancel(); busy.value = false }
+function stop() { if (apiId === 'teaching-classes.students.query') consumeRoster(); draftRoster.value = null; draftOpen.value = false; draftText.value = ''; draftSnapshot.value = false; active = false; requests.cancel(); busy.value = false }
 onDeactivated(stop)
 onUnmounted(stop)
 </script>
@@ -87,7 +99,7 @@ onUnmounted(stop)
       </section>
     </template>
     <EmptyState v-else :loading="busy" title="暂未取得接口详情" description="请重新读取或返回接口目录选择接口。" />
-    <ApiTestDialog v-if="draftOpen && api" :key="draftKey" :api="api" :initial-text="draftText" :needs-snapshot="draftSnapshot" @close="closeTest" />
+    <ApiTestDialog v-if="draftOpen && api" :key="draftKey" :api="api" :initial-text="draftText" :needs-snapshot="draftSnapshot" :roster-context="draftRoster" @close="closeTest" @roster="openRoster" />
   </section>
 </template>
 <style scoped>
