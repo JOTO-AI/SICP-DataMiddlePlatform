@@ -1,4 +1,4 @@
-﻿# 前端测试数据基线 v1
+# 前端测试数据基线 v1
 
 仅供开发和测试，禁止从 `src/` 导入。正常查询输出存于 `v1/business.json`，来自未改写的 `mock_data/snapshots/initial` 经真实后端 HTTP Pipeline 的导出；14 源成功及超末页空响应直接引用原有文件，不复制或重新拼装源记录。
 
@@ -43,3 +43,8 @@ node frontend/scripts/check-fixtures.mjs --write
 ```
 
 仅执行这个显式导出入口，不运行暂停的 T/OI 套件、不连接外部服务。新增分页样本/导出器变更须复核后才更新 149 项来源哈希；普通测试运行使用不带 `--write` 的校验命令。
+
+
+## 日志联动夹具（F06-12b）
+
+logTests.ts 复用 operations_http_examples.json 的 log_history 空页和 log_detail 既有事件，将详情的 EventItem 基础字段投影为列表项。查询范围、筛选回显、游标和高水位仅作为协议场景元数据调整；不新增日志业务记录、不声称这些调整是实测数据库响应。源日志使用已有空页，正常业务查询与源测试继续使用既有 captures。
