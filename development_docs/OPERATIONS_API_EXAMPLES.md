@@ -110,7 +110,7 @@ data: {"code":"connection_expired","retryable":true,"rebuild_required":false}
 
 任务入口仍用 **header** `Idempotency-Key: synthetic-task-001` 和空 JSON `{}`，不是新增作业的 JSON idempotency_key。POST `/admin/v1/tasks/incremental`、`/admin/v1/tasks/force-full`、`/admin/v1/tables/{table}/force-full`、`/admin/v1/tasks/{task_id}/rerun` 返回 202 和 `{task_id,status,accepted_at,created}`；Location 为 `/admin/v1/tasks/{task_id}`。GET 查询该位置或 update-events 同 ID。首次初始化自动执行，无手动初始化 API。旧错误码保留 busy/initialize_required/not_failed/idempotency_conflict；成功未变化不冒充发布。
 
-九接口均 POST `/console-api/query` 加目录提供的 path。示例请求如下；响应使用目录中每接口的 success_example/failure_example，包含业务原协议数值 code，不转换成管理字符串 code。
+九接口均 POST `/console-api/query` 加目录提供的 path。示例请求如下；响应使用目录中每接口的 success_example/failure_example；当前本地业务 transport 的 code 是字符串（成功为 "ok"），与上游源响应的数值 code 分开解释，不做全局转换。此处已按 internal/query/transport/security.go 修正历史描述。
 
 | 业务 path（省略 `/api/v1/sicp`） | 合成 JSON 请求 |
 |---|---|

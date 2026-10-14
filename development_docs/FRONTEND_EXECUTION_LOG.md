@@ -24,3 +24,10 @@
 - 验证：Node v24.15.0，`node frontend/scripts/check-endpoint-baseline.mjs` 通过：47 个方法/路径组合、九业务、十四源与既有管理 HTTP 样例均有登记。没有运行后端 T/OI，没有发送副作用请求。
 - 代码自审：逐项对照路由、DTO、解析器与接入包；修正本地业务 code 的字符串语义，区分业务 422/管理 429，明确 Organization 与 Department 的 is_active 可空性差异、根操作节点省略 parent 参数。路由校验包含集合双向比较，拒绝漏记或虚构端点。
 - 本步骤完成后勾选 F00-02，提交并 push；下一步 F00-03 处理差异关闭范围。真实接口可用性与页面验收均保持未勾选。
+
+## F00-03 契约差异归属与关闭条件
+
+- 前一步：`45b685c` 已成功 push，输出 `283dd68..45b685c HEAD -> feat/frontend-development`。
+- 交付：[差异登记](FRONTEND_CONTRACT_GAPS.md)，覆盖原计划九类差异及 is_active、源 Query/测试载荷两项补充；修正 `OPERATIONS_API_EXAMPLES.md` 的本地业务 code 类型错误。
+- 文档自审：每项区分前端工作、后端缺口、关闭条件；“登记完成”不等同于依赖关闭。所有页面及实际验收项保持待办，未改正常 mock 或后端代码。
+- 验证：复跑端点基线，提交前 `git diff --check`；本步为文档契约修正，无运行时代码变化，不新增镜像实现的单测。
