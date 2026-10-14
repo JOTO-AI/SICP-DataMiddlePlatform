@@ -1,6 +1,11 @@
 /* V5 Hub palette. Keep brand swatches exact; use dedicated text roles on tints. */
 :root {
   color-scheme: light;
+  --layer-dropdown: 10;
+  --layer-sticky: 20;
+  --layer-dialog: 100;
+  --layer-toast: 200;
+  --layer-tooltip: 300;
   --layout-topbar-height: 56px;
   --layout-sidebar-width: 216px;
   --layout-sidebar-collapsed-width: 64px;

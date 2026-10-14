@@ -206,3 +206,18 @@ dialog .actions { justify-content: flex-end; margin-top: 24px; }
 .loading-lines { display: grid; gap: 8px; max-width: 360px; margin: 0 auto 16px; }
 .loading-lines i { display: block; height: 10px; background: var(--line); border-radius: 3px; }
 .loading-lines i:last-child { width: 60%; }
+
+/* Native top-layer dialogs sit above the document; inner content owns scrolling. */
+.ui-dialog { width: min(640px, calc(100vw - 48px)); max-height: calc(100dvh - 48px); max-width: none; padding: 0; border-radius: var(--radius-panel); background: var(--white); z-index: var(--layer-dialog); }
+.ui-dialog[open] { display: flex; flex-direction: column; }
+.ui-dialog .dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.dialog-header h2 { margin: 4px 0; overflow-wrap: anywhere; }
+.dialog-header h2:focus { outline: none; }
+.ui-dialog .dialog-close { width: 36px; min-height: 36px; padding: 0; flex-shrink: 0; font-size: 24px; line-height: 1; }
+.ui-dialog .dialog-body { padding: 24px; overflow: auto; overscroll-behavior: contain; min-height: 0; }
+.ui-dialog .dialog-description { margin: 0 0 16px; }
+.ui-dialog .dialog-description:last-child { margin-bottom: 0; }
+.ui-dialog .dialog-footer { color: var(--ink); font-size: var(--font-body); display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0; padding: 16px 24px; border-top: 1px solid var(--line); flex-shrink: 0; }
+.ui-drawer { inset: 0; width: min(640px, 100vw); height: 100dvh; max-height: 100dvh; margin: 0 0 0 auto; border-radius: 0; border-top: 0; border-right: 0; border-bottom: 0; }
+.ui-drawer .dialog-body { flex: 1; }
+@media (max-width: 767px) { .ui-dialog { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); } .ui-drawer { inset: 0; width: 100vw; height: 100dvh; max-height: 100dvh; } .ui-dialog .dialog-header, .ui-dialog .dialog-body { padding: 16px; } .ui-dialog .dialog-footer { padding: 12px 16px; } }

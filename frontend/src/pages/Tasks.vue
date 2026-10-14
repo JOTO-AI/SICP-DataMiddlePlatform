@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AsyncActionDialog from '../components/AsyncActionDialog.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import PageHeader from '../components/PageHeader.vue'
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
@@ -73,7 +74,7 @@ async function refreshHistory() {
 function selectTask(id: string) { stop(); task.value = null; lookup.value = id; auto.value = true; void fetchTask() }
 const modeLabels: Record<string, string> = { initialize: '初始化', incremental: '增量同步', force_full: '强制全量' }
 const task = ref<Task | null>(null), busy = ref(false), loading = ref(false), error = ref(''), taskError = ref(''), receipt = ref(''), auto = ref(false)
-const dialog = ref<HTMLDialogElement | null>(null)
+const dialogOpen = ref(false)
 const selected = computed(() => actions.value.find(a => a.id === action.value)!)
 // Preserve the exact operation and key until a receipt is obtained or explicitly abandoned.
 const recoveryContext = { environment: window.location.origin + import.meta.env.BASE_URL, subject: session.operator }
@@ -89,7 +90,7 @@ const detailStatus = computed(() => task.value && ['initialize', 'force_full'].i
 const stages = computed(() => task.value ? [{ name: '已受理', at: task.value.accepted_at }, { name: '开始执行', at: task.value.started_at }, { name: '构建就绪', at: task.value.ready_at }, { name: '发布完成', at: task.value.published_at }, { name: '检查完成', at: task.value.checked_at }, { name: '任务结束', at: task.value.finished_at }] : [])
 function stop() { auto.value = false; detailRequests.cancel(); loading.value = false; clearTimeout(timer) }
 onActivated(() => { active = true; void refreshHistory(); if (lookup.value.trim() && !terminal.value) { auto.value = true; void fetchTask() } })
-function deactivate() { active = false; if (busy.value) error.value = '已停止等待，原操作与幂等键已保留；受理结果可能未知。'; submitRequests.cancel(); busy.value = false; dialog.value?.close(); stop(); historyRequests.cancel(); historyBusy.value = false; clearTimeout(historyTimer) }
+function deactivate() { active = false; if (busy.value) error.value = '已停止等待，原操作与幂等键已保留；受理结果可能未知。'; submitRequests.cancel(); busy.value = false; dialogOpen.value = false; stop(); historyRequests.cancel(); historyBusy.value = false; clearTimeout(historyTimer) }
 onDeactivated(deactivate)
 onUnmounted(deactivate)
 function confirm() {
@@ -110,7 +111,7 @@ function confirm() {
       description: action.value === 'table-full' ? `将完整重采 ${selectedTable.value}，其它表复用最近完成的数据。若初始化仍缺其它表，本表成功后会保留结果，等待补齐；完整数据校验通过后统一发布。` : retryInitial ? `将复用已完成的表并重采待补齐的表，保留原失败任务 ${retryInitial.task_id} 的记录。无需重启服务。` : selected.value.text,
     }
   }
-  dialog.value?.showModal()
+  dialogOpen.value = true
 }
 function forceFull() { action.value = 'force-full'; confirm() }
 function syncIncremental() { action.value = 'incremental'; confirm() }
@@ -122,7 +123,7 @@ async function submit() {
   const run = submitRequests.begin()
   const submission = { ...pending.value }
   recoveryAvailable.value = savePendingRecovery(recoveryContext, submission)
-  dialog.value?.close(); busy.value = true; error.value = ''; receipt.value = ''
+  dialogOpen.value = false; busy.value = true; error.value = ''; receipt.value = ''
   try {
     const response = await submitOperation<Task>(submission, run.signal)
     if (!run.current()) return
@@ -215,6 +216,6 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
         <div v-else class="empty" role="status"><span aria-hidden="true">↻</span><h3>{{ loading ? '正在读取任务' : '等待查看任务' }}</h3><p>提交更新后自动查看，也可输入已有任务号。</p></div>
       </div>
     </div>
-    <dialog ref="dialog" aria-labelledby="confirm-title"><h2 id="confirm-title">确认{{ pending?.title }}</h2><p>{{ pending?.description }}</p><p class="hint">幂等键：{{ pending?.key }}</p><div class="actions"><button autofocus @click="dialog?.close()">暂不提交</button><button class="primary" @click="submit">确认提交更新</button></div></dialog>
+    <AsyncActionDialog v-model:open="dialogOpen" :title="`确认${pending?.title ?? ''}`" :description="pending?.description" confirm-label="确认提交更新" :busy="busy" @confirm="submit"><p class="hint">幂等键：{{ pending?.key }}</p></AsyncActionDialog>
   </section>
 </template>

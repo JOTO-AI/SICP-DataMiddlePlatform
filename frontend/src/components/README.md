@@ -14,3 +14,10 @@
 `shared/display.ts` 的通用显示规则：0 保留“0”，false 为“否”，null/undefined/空字符串为“未提供”，空数组为“无”，对象提示查看详情。编号与大整数字符串原样显示；不使用 truthiness 把零归为缺失。领域明确规定的成绩“—”、组织有效性等标签仍由领域代码表达，不改变后端含义。
 
 组件验证入口只在 `e2e/components.html`，通过测试注入 Go 导出的学生记录；不写业务示例进 src，入口与测试数据不进入生产 dist。协议异常值与不透明游标仅验证组件边界，不作为业务数据或有效服务端游标。
+
+## 弹窗与抽屉（F02-04）
+
+- `Dialog`：原生 showModal + Teleport 到 body，标题/描述关联，首焦点在标题（或明确 autofocus），Tab 循环，Escape/遮罩/关闭直接退出；嵌套弹窗按栈恢复滚动锁和焦点，触发控件失效则回到主内容。停用和卸载释放资源。
+- `Drawer`：共享 Dialog 行为，右侧固定高度、内容内部滚动，小屏撑满视口。
+- `AsyncActionDialog`：确认按钮 busy 时禁用，关闭仅发出一次 close(reason)；父页面负责停止等待及保留未知受理状态，组件不会取消服务端任务、发 HTTP 或重试。已接入任务确认。
+- 层级由 tokens.css 统一命名；原生 modal 使用浏览器 top layer。抽屉不依赖局部 stacking context。
