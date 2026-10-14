@@ -70,3 +70,30 @@ test('provider Query metadata covers recorded sources without turning examples i
     expect(api.request.properties?.page_size?.limit).toBe('1..100')
   }
 })
+
+import { requestExamples, requestCommand } from '../src/app/requestExamples'
+test('request examples preserve backend minimal payloads and isolate documentation placeholders', () => {
+  for (const api of backendCatalog() as CatalogAPI[]) {
+    const examples = requestExamples(api)
+    const minimal = examples.find(item => item.id === 'minimal')!
+    if (api.kind === 'business') {
+      expect(minimal.body).toEqual(api.request_example)
+      expect(examples.some(item => item.id === 'next')).toBe(api.snapshot)
+      const next = examples.find(item => item.id === 'next')
+      if (next) expect(requestCommand(api, next)).toContain('X-Query-Snapshot: <SAME_QUERY_SNAPSHOT>')
+      expect(requestCommand(api, minimal)).toContain('X-API-Key: <QUERY_API_KEY>')
+    } else {
+      expect(minimal.body).toEqual({ ...(api.request_example as object), idempotency_key: '<NEW_IDEMPOTENCY_KEY>' })
+      expect(requestCommand(api, minimal)).toContain('access_token=<SOURCE_ACCESS_TOKEN>')
+      expect(requestCommand(api, minimal)).toContain('pageSize=10')
+      expect(requestCommand(api, minimal)).not.toContain('idempotency_key')
+    }
+    expect(examples.find(item => item.id === 'invalid')).toBeDefined()
+  }
+  const api = (backendCatalog() as CatalogAPI[]).find(item => item.id === 'organizations.query')!
+  expect(requestExamples(api).find(item => item.id === 'filters')?.body).toEqual({ is_active: false })
+  // Shell-escaping boundary only, not a normal business record.
+  const command = requestCommand(api, { id: 'quote', title: '', explanation: '', body: { name: "a'$(unsafe)" } })
+  expect(command).toContain("'\"'\"'")
+  expect(command).toContain('$(unsafe)')
+})

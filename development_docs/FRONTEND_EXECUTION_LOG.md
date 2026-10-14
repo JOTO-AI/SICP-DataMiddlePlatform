@@ -271,3 +271,11 @@
 - 实现：本地业务参数标记为 application/json Body；十四源提供方 Query 从 latest_api_docs 第三节生成静态说明，保留提供方类型、必填和未提供默认值，不导入样例值或凭据。单列受控测试 POST /admin/v1/api-tests 的 api_id/version/idempotency_key 与后端目录分页定义。
 - 契约 review：对照 internal/admin/api_catalog.go、operations/source_tests.go，标明 page→page、page_size→pageSize，提供方 1/15 为示例，本地受控默认 1/10、上限 100；不开放自定义 token/URL/源筛选，重试须保留原键与原载荷。请求案例明确属于受控作业 JSON，不冒充 GET Query。
 - 验证：44/44 单元检查、最终类型/构建通过；10/10 接口中心浏览器回归通过，修正样式变量后相关 2/2 复核通过（两 origin）。新增检查使用后端完整十四源目录与已核对文档元信息，无正常业务 mock 行、无上游调用。手机截图已查看，证据 artifacts/frontend-f05-04。
+
+## F05-05 请求案例与只填参草稿
+
+- 前一步：`0c4458c` 已成功 push。
+- 实现：最小案例读取当前后端 request_example；常见筛选使用已声明字段及明确的待填占位符，不声称实体存在；分页每页条数取后端默认值，续页命令保留同接口快照占位符。错误案例依据现有 transport/parse_test.go、phase2_parse_test.go 与 TestRequest.Normalize 的已确认边界。
+- 命令：直接业务服务与直接提供方 curl 分开，基址、X-API-Key、access_token、查询快照仅为占位符；POSIX shell 单引号正确转义，不读取会话凭据。受控错误分页不生成误导为上游限制的 GET 命令。
+- 草稿：使用此案例测试只打开当前接口草稿并填参，无提交或查询。弹窗复用已验证焦点/关闭机制；离页清空草稿，跨接口不混用。当前执行能力仍待 F06 按序接入，界面明确尚未开放执行。
+- Review/验证：45/45 单元检查与类型/生产构建通过。16 项浏览器检查中 14 项通过，新增用例两 origin 的标签定位超时；改为实际 combobox 角色后 2/2 重跑通过（包括零业务/源作业请求、凭据占位符、续页提示、焦点返回和跨接口草稿）。没有新增正常业务 mock 行或伪造查询结果。
