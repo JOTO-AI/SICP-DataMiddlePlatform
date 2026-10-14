@@ -2328,3 +2328,118 @@ test('F06 timetable missing-field boundary keeps unmapped lessons and separate t
   await expect(dialog.getByLabel('本次响应表格', { exact: true }).locator('tbody tr')).toHaveCount(4)
   expect(calls).toBe(1)
 })
+
+for (const operation of ['students.query', 'staff.query']) test(`F06 personnel details ${operation} preserve actual backend fields without extra requests`, async ({ page }, testInfo) => {
+  await setup(page)
+  const fixture = backendCapture(operation), api = operations.find(item => item.operation === operation)!
+  let calls = 0
+  await page.route(`**/console-api/query${api.path}`, route => { calls++; return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response }) })
+  await page.goto(`/console/apis/${operation}`)
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(fixture.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await dialog.getByRole('button', { name: '表格', exact: true }).click()
+  await dialog.getByRole('button', { name: '查看第 1 条字段详情', exact: true }).click()
+  const details = dialog.getByRole('region', { name: '人员字段详情', exact: true })
+  const row = (fixture.response.data as { items: Record<string, unknown>[] }).items[0]!
+  await expect(details).toContainText(row.name as string)
+  await expect(details).toContainText(row[operation === 'students.query' ? 'student_number' : 'staff_number'] as string)
+  await expect(details).toContainText('department.organization_code')
+  await expect(details).toContainText('source_updated_at')
+  expect(calls).toBe(1)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await details.scrollIntoViewIfNeeded()
+  expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('person-details-mobile.png') })
+  await details.getByRole('button', { name: '收起字段详情', exact: true }).click()
+  await expect(details).toHaveCount(0)
+})
+
+test('F06 complete organizations explicitly loads actual pages and clears collection on edited conditions', async ({ page }, testInfo) => {
+  await setup(page)
+  const first = paginationCapture('organizations.query', 1), calls: number[] = []
+  await page.route('**/console-api/query/api/v1/sicp/organizations/query', route => {
+    const body = route.request().postDataJSON(), fixture = paginationCapture('organizations.query', body.page)
+    expect(body).toEqual(fixture.request)
+    expect(route.request().headers()['x-query-snapshot'] ?? '').toBe(calls.length ? first.headers['X-Query-Snapshot'] : '')
+    calls.push(body.page)
+    return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response })
+  })
+  await page.goto('/console/apis/organizations.query')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog'), json = dialog.getByLabel('请求 JSON', { exact: true })
+  await json.fill(JSON.stringify(first.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  const scope = dialog.getByRole('region', { name: '组织范围完整性', exact: true })
+  await expect(scope).toContainText('尚未核验完整性'); expect(calls).toEqual([1])
+  await scope.getByRole('button', { name: '加载当前条件的完整组织', exact: true }).click()
+  await expect(scope.getByRole('status')).toContainText('当前筛选范围已完整加载')
+  await expect(scope).toContainText('集合内父子关系完整')
+  await expect(scope.locator('ol li')).toHaveCount(5); expect(calls).toEqual([1, 2, 3, 4, 5])
+  await page.screenshot({ path: testInfo.outputPath('organizations-complete-desktop.png') })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await scope.scrollIntoViewIfNeeded()
+  expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('organizations-complete-mobile.png') })
+  await scope.getByRole('button', { name: '已加载组织表格', exact: true }).click()
+  await expect(scope.getByLabel('已加载组织表格', { exact: true }).locator('tbody tr')).toHaveCount(5)
+  await scope.getByRole('button', { name: '逐页响应', exact: true }).click()
+  await scope.getByRole('combobox', { name: '已接纳页', exact: true }).selectOption('3')
+  await expect(scope.getByLabel('组织分页响应原文', { exact: true })).toHaveText(JSON.stringify(paginationCapture('organizations.query', 3).response))
+  expect(calls).toHaveLength(5)
+  await json.fill(JSON.stringify({ ...first.request, page_size: 10 }))
+  await expect(scope).toHaveCount(0)
+})
+
+for (const boundary of ['conflict', 'combination', 'limit'] as const) test(`F06 complete organizations ${boundary} never labels partial results complete`, async ({ page }) => {
+  await setup(page)
+  const first = paginationCapture('organizations.query', 1)
+  let calls = 0
+  await page.route('**/console-api/query/api/v1/sicp/organizations/query', route => {
+    calls++
+    const fixture = calls === 1 ? first : paginationCapture('organizations.query', boundary === 'conflict' ? 'snapshot_expired' : 2)
+    if (boundary === 'limit') (fixture.response.data as { total: number }).total = 1001
+    if (calls > 1 && boundary === 'combination') fixture.headers['X-SICP-Combination'] = 'C10'
+    return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response })
+  })
+  await page.goto('/console/apis/organizations.query')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(first.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  const scope = dialog.getByRole('region', { name: '组织范围完整性', exact: true }), load = scope.getByRole('button', { name: '加载当前条件的完整组织', exact: true })
+  if (boundary === 'limit') { await expect(load).toBeDisabled(); await expect(scope).toContainText('超过 50 页或 1000 条'); expect(calls).toBe(1) }
+  else { await load.click(); await expect(scope.getByRole('status')).toContainText('加载失败，尚未完整'); await expect(scope.locator('ol li')).toHaveCount(1); expect(calls).toBe(2) }
+  await expect(scope).not.toContainText('当前筛选范围已完整加载')
+})
+
+test('F06 complete organizations stop and close discard late pages and never start automatic collection', async ({ page }) => {
+  await setup(page)
+  const first = paginationCapture('organizations.query', 1)
+  let calls = 0, release: (() => void) | undefined
+  await page.route('**/console-api/query/api/v1/sicp/organizations/query', async route => {
+    calls++
+    const fixture = paginationCapture('organizations.query', route.request().postDataJSON().page)
+    if (calls === 2) await new Promise<void>(resolve => { release = resolve })
+    await route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response }).catch(() => {})
+  })
+  await page.goto('/console/apis/organizations.query')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(first.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  const scope = dialog.getByRole('region', { name: '组织范围完整性', exact: true })
+  await scope.getByRole('button', { name: '加载当前条件的完整组织', exact: true }).click()
+  await expect.poll(() => calls).toBe(2)
+  await expect(dialog.getByLabel('请求 JSON', { exact: true })).toBeDisabled()
+  await expect(dialog.getByRole('button', { name: '执行测试', exact: true })).toBeDisabled()
+  await expect(dialog.getByRole('button', { name: '下一页', exact: true })).toBeDisabled()
+  await scope.getByRole('button', { name: '停止加载组织', exact: true }).click()
+  await expect(scope.getByRole('status')).toContainText('已停止，尚未完整')
+  release!()
+  await expect(scope.locator('ol li')).toHaveCount(1)
+  await dialog.getByRole('button', { name: '关闭测试', exact: true }).click()
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  await expect(scope).toHaveCount(0); expect(calls).toBe(2)
+})

@@ -28,7 +28,7 @@ export const operations: QueryOperation[] = [
     fields: [field('staff_number', '工号', true), ...term(false), field('course_query', '课程检索')], advanced: ['teaching_class_number'] },
   { operation: 'organizations.query', title: '组织查询', path: '/api/v1/sicp/organizations/query', kind: 'organizations', paginated: true,
     fields: [field('organization_code', '组织编号'), field('organization_name', '组织名称'), field('parent_organization_code', '上级组织编号')], advanced: ['category_codes', 'is_active'],
-    columns: [{ key: 'organization_code', title: '组织编号' }, { key: 'organization_name', title: '组织名称' }, { key: 'parent_organization_code', title: '上级编号' }, { key: 'category_name', title: '组织类别' }, { key: 'is_active', title: '有效状态' }] },
+    columns: [{ key: 'organization_code', title: '组织编号' }, { key: 'organization_name', title: '组织名称' }, { key: 'parent_organization_code', title: '上级编号' }, { key: 'category_code', title: '组织类别代码' }, { key: 'category_name', title: '组织类别' }, { key: 'is_active', title: '有效状态' }] },
   { operation: 'students.query', title: '学生信息', path: '/api/v1/sicp/students/query', kind: 'students', paginated: true,
     fields: [field('student_number', '学号'), field('name', '姓名'), field('department_code', '单位编号'), field('class_code', '行政班编号')],
     advanced: ['department_name', 'campus_code', 'major_code', 'grade', 'status_codes', 'enrollment_status_codes', 'on_campus_flag', 'student_category_codes', 'study_years', 'admission_year', 'expected_graduation_year', 'counselor_staff_number'], columns: personColumns(true) },

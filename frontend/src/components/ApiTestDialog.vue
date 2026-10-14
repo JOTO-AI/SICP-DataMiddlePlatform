@@ -13,6 +13,7 @@ import { useRequestScope } from '../composables/useRequestScope'
 import { ApiError, describe } from '../api'
 import ResponseViewer from './ResponseViewer.vue'
 import ApiResponseViews from './ApiResponseViews.vue'
+import OrganizationCollection from './OrganizationCollection.vue'
 import ErrorState from './ErrorState.vue'
 import Timestamp from './Timestamp.vue'
 import { useSourceTest } from '../composables/useSourceTest'
@@ -31,7 +32,8 @@ const parameters = testParameters(api), examples = requestExamples(api), needsSn
 const source = reactive(useSourceTest(api))
 if (source.operation) { const saved = JSON.parse(source.operation.payload); text.value = JSON.stringify({ page: saved.page, page_size: saved.page_size }, null, 2) }
 const sourceContext = computed(() => source.operation ? JSON.parse(source.operation.payload) as { api_id: string; version: string; page: number; page_size: number } : null)
-const locked = computed(() => busy.value || source.locked)
+const orgBusy = ref(false)
+const locked = computed(() => busy.value || orgBusy.value || source.locked)
 const sourceStatus: Record<string, string> = { queued: '已受理，排队中', running: '执行中', succeeded: '作业执行成功', failed: '作业执行失败', interrupted: '执行中断', partial_failed: '部分失败' }
 async function executeSource() {
   if (closed || source.busy) return
@@ -77,14 +79,14 @@ async function performQuery(draft: string, previous?: QueryPageChain, page = 1) 
   } finally { if (run.current()) busy.value = false }
 }
 async function execute() {
-  if (busy.value || closed || api.kind !== 'business') return
+  if (busy.value || orgBusy.value || closed || api.kind !== 'business') return
   const draft = editor.value?.getRequestText()
   if (draft == null) return
   paging.value = null
   await performQuery(draft)
 }
 async function executePage(page: number) {
-  if (busy.value || closed || !paging.value) return
+  if (busy.value || orgBusy.value || closed || !paging.value) return
   const previous = paging.value
   try { const draft = nextPageRequest(api, previous, page); await performQuery(draft, previous, page) }
   catch (cause) { executionError.value = describe(cause) }
@@ -104,12 +106,13 @@ onDeactivated(close)
       <template v-else-if="api.kind === 'business' && result"><p class="hint">本次开始于 <Timestamp :value="result.startedAt" /> · 浏览器等待 {{ result.durationMs }} ms</p><ErrorState v-if="result.error" :message="describe(result.error)" />
         <p v-if="!response?.status" class="hint">未取得 HTTP 响应。</p>
         <ApiResponseViews v-if="response" :api="api" :request-text="result.requestText" :allow-records="!!result.response" :raw="response.responseText ?? '未取得响应正文。'" :headers="response.headers" :http-status="response.status || undefined" :code="responseCode" :request-id="response.requestID" :stale="resultStale" />
+        <OrganizationCollection v-if="api.id === 'organizations.query' && paging && result.response && !resultStale" :api="api" :chain="paging" :seed="result" @busy="orgBusy = $event" />
 
       </template>
       <section v-if="hasPaging && (paging || pagingNotice)" aria-label="本次分页" class="query-paging">
         <p class="hint">新查询从第一页开始；翻页仅修改页码，沿用已提交条件和本接口快照。编辑器用于下一次新查询，当前页以此处为准。</p>
         <p v-if="pagingNotice" class="warning">{{ pagingNotice }}</p>
-        <template v-if="paging"><p>第 {{ paging.page }} / {{ paging.total === null || paging.pageSize === null ? '未确认' : pageCount(paging) }} 页 · 每页 {{ paging.pageSize ?? '未提供' }} 条 · 总数 {{ paging.total ?? '未提供' }} · 组合 <code>{{ paging.combination || '未提供' }}</code></p><p v-if="paging.blocked" class="warning">{{ paging.blocked }}</p><div class="actions"><button type="button" :disabled="busy || !!paging.blocked || paging.page <= 1" @click="executePage(paging.page - 1)">上一页</button><button type="button" :disabled="busy || !!paging.blocked || paging.page >= pageCount(paging)" @click="executePage(paging.page + 1)">下一页</button></div></template>
+        <template v-if="paging"><p>第 {{ paging.page }} / {{ paging.total === null || paging.pageSize === null ? '未确认' : pageCount(paging) }} 页 · 每页 {{ paging.pageSize ?? '未提供' }} 条 · 总数 {{ paging.total ?? '未提供' }} · 组合 <code>{{ paging.combination || '未提供' }}</code></p><p v-if="paging.blocked" class="warning">{{ paging.blocked }}</p><div class="actions"><button type="button" :disabled="busy || orgBusy || !!paging.blocked || paging.page <= 1" @click="executePage(paging.page - 1)">上一页</button><button type="button" :disabled="busy || orgBusy || !!paging.blocked || paging.page >= pageCount(paging)" @click="executePage(paging.page + 1)">下一页</button></div></template>
       </section>
       <template v-if="api.kind === 'source'"><ErrorState v-if="source.error" :message="describe(source.error)" />
         <EmptyState v-if="!source.operation" title="尚未测试" description="点击执行源测试后提交一页读取作业；案例不是实际结果。" />
@@ -136,7 +139,7 @@ onDeactivated(close)
           <button v-if="source.terminal || source.rejected" type="button" :disabled="source.busy" @click="source.reset">结束本次，准备新测试</button>
         </template>
       </template></section>
-    <template #footer><button v-if="api.kind === 'business'" type="button" class="primary" :disabled="locked" @click="execute">{{ busy ? '等待响应…' : '执行测试' }}</button><button v-if="api.kind === 'source'" type="button" class="primary" :disabled="source.busy" @click="executeSource">{{ source.busy ? '等待作业…' : source.location ? '查询原作业' : source.operation ? '原键重试受理' : '执行源测试' }}</button><button type="button" @click="close">{{ busy || source.busy ? '停止等待并关闭' : '关闭测试' }}</button></template>
+    <template #footer><button v-if="api.kind === 'business'" type="button" class="primary" :disabled="locked" @click="execute">{{ busy ? '等待响应…' : '执行测试' }}</button><button v-if="api.kind === 'source'" type="button" class="primary" :disabled="source.busy" @click="executeSource">{{ source.busy ? '等待作业…' : source.location ? '查询原作业' : source.operation ? '原键重试受理' : '执行源测试' }}</button><button type="button" @click="close">{{ busy || orgBusy || source.busy ? '停止等待并关闭' : '关闭测试' }}</button></template>
   </Dialog>
 </template>
 <style scoped>
