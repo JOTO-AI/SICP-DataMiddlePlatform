@@ -1058,3 +1058,41 @@ test('F02 responsive shell uses three breakpoints and mobile navigation drawer w
   await expect(navigation).not.toBeVisible()
   expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe('')
 })
+
+test('F03 login distinguishes throttling and availability and returns to the original internal target', async ({ page }) => {
+  let authenticated = false, mode: 'limited' | 'proxy' | 'offline' | 'success' = 'limited', attempts = 0, queries = 0
+  const auth = { operator: 'admin', csrf: 'synthetic-csrf' }
+  await page.route('**/console-api/session', route => route.fulfill({ status: authenticated ? 200 : 401, json: { code: authenticated ? 'ok' : 'unauthenticated', data: authenticated ? auth : null } }))
+  await page.route('**/console-api/login', route => {
+    attempts++
+    if (mode === 'offline') return route.abort('failed')
+    if (mode === 'limited') return route.fulfill({ status: 429, headers: { 'Retry-After': '60' }, json: { code: 'rate_limited', data: null } })
+    if (mode === 'proxy') return route.fulfill({ status: 503, contentType: 'text/html', body: '<h1>Unavailable</h1>' })
+    authenticated = true
+    return route.fulfill({ json: { code: 'ok', data: auth } })
+  })
+  await page.route('**/console-api/query/api/**', route => { queries++; return route.abort() })
+  const target = '/console/queries?redirect=https%3A%2F%2Fexample.invalid'
+  await page.goto(target)
+  await expect(page.getByRole('heading', { name: '登录管理控制台' })).toBeVisible()
+  await page.getByLabel('管理员账号').fill('admin')
+  const password = page.getByLabel('密码', { exact: true })
+  const login = page.getByRole('button', { name: '登录', exact: true })
+  for (const entry of [ { mode: 'limited', text: '60 秒' }, { mode: 'proxy', text: 'HTTP 503' }, { mode: 'offline', text: '无法连接登录服务' } ] as const) {
+    mode = entry.mode
+    await password.fill('synthetic-password')
+    await login.click()
+    await expect(page.getByRole('alert')).toContainText(entry.text)
+    await expect(password).toHaveValue('')
+    await expect(password).toHaveAttribute('aria-invalid', 'false')
+  }
+  expect(attempts).toBe(3)
+  mode = 'success'
+  await password.fill('synthetic-password')
+  await login.click()
+  await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
+  expect(new URL(page.url()).pathname).toBe('/console/queries')
+  expect(new URL(page.url()).search).toBe('?redirect=https%3A%2F%2Fexample.invalid')
+  expect(attempts).toBe(4); expect(queries).toBe(0)
+  expect(await page.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0])
+})

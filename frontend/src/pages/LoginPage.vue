@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { session, login } from '../session'
-const username = ref(''), password = ref(''), busy = ref(false), error = ref('')
+import { session, login, AuthError } from '../session'
+const username = ref(''), password = ref(''), busy = ref(false), error = ref(''), invalidCredentials = ref(false)
 async function submit() {
   if (busy.value) return
-  busy.value = true; error.value = ''; session.notice = ''
+  busy.value = true; error.value = ''; invalidCredentials.value = false; session.notice = ''
   try { await login(username.value, password.value) }
-  catch (e) { error.value = e instanceof Error ? e.message : '无法连接服务，请稍后重试。' }
+  catch (e) { invalidCredentials.value = e instanceof AuthError && e.kind === 'invalid_credentials'; error.value = e instanceof Error ? e.message : '无法连接服务，请稍后重试。' }
   finally { password.value = ''; busy.value = false }
 }
 </script>
@@ -18,7 +18,7 @@ async function submit() {
       <form @submit.prevent="submit" :aria-busy="busy">
         <fieldset :disabled="busy">
           <label>管理员账号<input v-model="username" name="username" autocomplete="username" required maxlength="128" autofocus></label>
-          <label>密码<input v-model="password" name="password" type="password" autocomplete="current-password" required maxlength="1024" :aria-invalid="!!error" :aria-describedby="error ? 'login-error' : undefined"></label>
+          <label>密码<input v-model="password" name="password" type="password" autocomplete="current-password" required maxlength="1024" :aria-invalid="invalidCredentials" :aria-describedby="error ? 'login-error' : undefined"></label>
           <p v-if="error" id="login-error" class="error" role="alert">{{ error }}</p>
           <p v-else-if="session.notice" role="status">{{ session.notice }}</p>
           <button class="primary" :disabled="busy">{{ busy ? '正在登录…' : '登录' }}</button>

@@ -1,4 +1,4 @@
-﻿import { test, expect } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { createRequestScope } from '../src/app/requestScope'
 import { clearSession, session, login, logout, restoreSession } from '../src/session'
 import { request } from '../src/api'
@@ -57,7 +57,7 @@ test('logout aborts protected reads immediately and late data cannot escape', as
 
 test('failed logout clears local state without claiming server confirmation', async () => {
   globalThis.fetch = async () => { throw new TypeError('network failure') }
-  await expect(logout()).rejects.toThrow('network failure')
+  await expect(logout()).rejects.toThrow('无法连接登录服务')
   expect(session.operator).toBe('')
   expect(session.notice).toContain('退出尚未获得服务端确认')
 })
