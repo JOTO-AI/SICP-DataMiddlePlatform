@@ -1984,3 +1984,92 @@ test('F06 source polling is bounded after a refused request becomes accepted and
   await page.clock.runFor(10000)
   expect(gets).toBe(15); expect(posts).toBe(2); expect(payloads[0]).toBe(payloads[1])
 })
+
+test('F06 outcomes distinguish validation, backend empty pages, backend failures and proxy failures', async ({ page }) => {
+  await setup(page)
+  const normal = backendCapture('students.query'), empty = backendCapture('students.query', 'empty'), failed = backendCapture('students.query', 'snapshot_expired')
+  let mode = 'empty', calls = 0
+  await page.route('**/console-api/query/api/v1/sicp/students/query', route => {
+    calls++
+    if (mode === 'proxy') return route.fulfill({ status: 502, contentType: 'text/html', body: '<h1>Bad Gateway</h1>' })
+    const fixture = mode === 'empty' ? empty : mode === 'failed' ? failed : normal
+    return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response })
+  })
+  await page.goto('/console/apis/students.query')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog'), outcome = dialog.getByRole('status', { name: '测试状态', exact: true })
+  await expect(outcome).toHaveAttribute('data-state', 'idle')
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill('{broken')
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await expect(outcome).toHaveAttribute('data-state', 'invalid')
+  expect(calls).toBe(0)
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(normal.request))
+  for (const [nextMode, state] of [['empty', 'empty'], ['failed', 'business_failed'], ['proxy', 'proxy_failed'], ['success', 'success']]) {
+    mode = nextMode!
+    await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+    await expect(outcome).toHaveAttribute('data-state', state!)
+    if (mode === 'empty') {
+      await expect(outcome).toContainText('不表示全部数据为空')
+      await expect(dialog.getByLabel('响应原文', { exact: true })).toContainText('"total":12')
+    }
+    if (mode === 'proxy') {
+      await expect(dialog.getByLabel('响应原文', { exact: true })).toHaveText('<h1>Bad Gateway</h1>')
+      await expect(dialog.locator('h1')).toHaveCount(0)
+    }
+  }
+  expect(calls).toBe(4)
+})
+
+test('F06 outcomes show browser timeout without automatic retry or invented HTTP status', async ({ page }) => {
+  await setup(page)
+  await page.clock.install()
+  let calls = 0, release: (() => void) | undefined
+  const pending = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/console-api/query/api/v1/sicp/students/query', async route => { calls++; await pending; await route.abort().catch(() => {}) })
+  await page.goto('/console/apis/students.query')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog'), outcome = dialog.getByRole('status', { name: '测试状态', exact: true })
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await expect.poll(() => calls).toBe(1)
+  await expect(outcome).toHaveAttribute('data-state', 'waiting')
+  await page.clock.runFor(30001)
+  await expect(outcome).toHaveAttribute('data-state', 'timeout')
+  await expect(dialog).toContainText('未取得 HTTP 响应')
+  await expect(dialog.getByRole('region', { name: '响应内容', exact: true })).not.toContainText('HTTP 0')
+  expect(calls).toBe(1); release!()
+})
+
+for (const [status, available, scenario, expected] of [['succeeded', false, 'success', 'unavailable'], ['succeeded', true, 'empty', 'empty'], ['failed', false, 'success', 'source_failed']] as const) test(`F06 outcomes source ${status} ${scenario} available=${available}`, async ({ page }) => {
+  await setup(page)
+  const accepted = managementCapture('source_test'), fixture = sourceJobResult('dwd_bzkscjzlb', status, scenario, available)
+  let posts = 0
+  await page.route('**/admin/v1/api-tests', route => { posts++; return route.fulfill({ status: accepted.status, headers: { Location: fixture.path }, json: accepted.response }) })
+  await page.route(`**${fixture.path}`, route => route.fulfill({ status: fixture.status, body: fixture.raw }))
+  await page.goto('/console/apis/dwd_bzkscjzlb')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog'), outcome = dialog.getByRole('status', { name: '测试状态', exact: true })
+  await dialog.getByRole('button', { name: '执行源测试', exact: true }).click()
+  await expect(outcome).toHaveAttribute('data-state', expected)
+  await expect(dialog.getByLabel('管理作业响应原文', { exact: true })).toHaveText(fixture.raw)
+  expect(posts).toBe(1)
+})
+
+test('F06 outcomes reject changed business paths as protocol failures before any execution', async ({ page }, testInfo) => {
+  await setup(page)
+  const api = (backendCatalog() as { id: string; path: string }[]).find(api => api.id === 'students.query')!
+  // Only catalog routing metadata changes; all fields and records remain the backend fixture.
+  await page.route('**/admin/v1/apis/students.query', route => route.fulfill({ json: { code: 'ok', data: { ...api, path: '/admin/v1/api-tests' } } }))
+  let calls = 0
+  await page.route('**/admin/v1/api-tests', route => { calls++; return route.abort() })
+  await page.route('**/console-api/query/api/**', route => { calls++; return route.abort() })
+  await page.goto('/console/apis/students.query')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog'), outcome = dialog.getByRole('status', { name: '测试状态', exact: true })
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await expect(outcome).toHaveAttribute('data-state', 'protocol_failed')
+  expect(calls).toBe(0)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await outcome.scrollIntoViewIfNeeded()
+  expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('test-outcome-mobile.png') })
+})

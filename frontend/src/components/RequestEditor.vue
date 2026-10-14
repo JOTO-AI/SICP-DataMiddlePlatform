@@ -2,8 +2,9 @@
 import { ref, computed, watch, useId } from 'vue'
 import { parseRequestObject, parseEditableJSON, parameterError, jsonError, type ParameterDefinition } from '../shared/json'
 const props = withDefaults(defineProps<{ modelValue: string; parameters?: ParameterDefinition[]; disabled?: boolean; validateText?: (text: string) => Record<string, unknown> }>(), { parameters: () => [] })
-const emit = defineEmits<{ 'update:modelValue': [text: string]; edited: [] }>()
+const emit = defineEmits<{ 'update:modelValue': [text: string]; edited: []; 'validation-error': [message: string] }>()
 const mode = ref<'json' | 'parameters'>('json'), error = ref(''), rows = ref<{ name: string; text: string; error: string }[]>([])
+watch(error, value => emit('validation-error', value), { flush: 'sync' })
 const id = useId(), dirty = ref(false), showAdvanced = ref(false)
 const advanced = computed(() => new Set(props.parameters.filter(item => item.advanced).map(item => item.name)))
 watch(() => props.modelValue, () => { if (mode.value === 'parameters') { mode.value = 'json'; rows.value = []; dirty.value = false } error.value = '' })
