@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
-import { request, describe, time, type Envelope } from '../api'
+import { request, describe, time, ApiError, type Envelope } from '../api'
+import { pollingDelay } from '../app/polling'
+import { usePageVisibility } from '../composables/usePageVisibility'
 import { useRequestScope } from '../composables/useRequestScope'
 import type { RequestRun } from '../app/requestScope'
 import AcquisitionProgress from '../AcquisitionProgress.vue'
@@ -16,7 +18,9 @@ const elapsed = computed(() => {
   const minutes = Math.max(0, Math.floor((now.value - Date.parse(currentTask.value?.started_at || '')) / 60000))
   return minutes < 1 ? '不足 1 分钟' : `${minutes} 分钟`
 })
-let active = false
+let active = false, failures = 0, serverDelay = 0
+function recordRetryAfter(error: unknown) { if (error instanceof ApiError) serverDelay = Math.max(serverDelay, pollingDelay(10000, 0, error.headers['Retry-After'])) }
+const pageVisible = usePageVisibility(() => { requests.cancel(); busy.value = false; clearTimeout(timer) }, () => { if (active) void refresh() })
 const requests = useRequestScope()
 function current(run: RequestRun) { return active && run.current() }
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -32,27 +36,28 @@ async function refreshTask(run: RequestRun) {
     const detail = (await request<Envelope<Task>>('worker', `/admin/v1/tasks/${encodeURIComponent(task.task_id)}`, { signal: run.signal })).body.data
     if (!current(run)) return
     currentTask.value = ['accepted', 'running', 'published_pending_progress'].includes(detail.status) ? detail : null
-  } catch (e) { if (current(run)) { currentTask.value = null; taskError.value = `无法确认更新任务状态：${describe(e)}` } }
+  } catch (e) { if (current(run)) { recordRetryAfter(e); currentTask.value = null; taskError.value = `无法确认更新任务状态：${describe(e)}` } }
 }
 async function refresh() {
-  if (!active || busy.value) return
+  if (!active || !pageVisible.value || busy.value) return
   clearTimeout(timer)
   busy.value = true
-  const run = requests.begin()
+  const run = requests.begin(); serverDelay = 0
   await Promise.all([refreshTask(run), ...services.value.map(async s => {
     s.error = ''
     const responses = await Promise.allSettled([request<Record<string, boolean>>(s.id, '/livez', { health: true, signal: run.signal }), request<Record<string, boolean>>(s.id, '/readyz', { health: true, signal: run.signal })])
     if (!current(run)) return
     const [live, ready] = responses
     if (live.status === 'fulfilled') s.live = live.value.status === 200 && live.value.body.live === true
-    else { s.live = null; s.error = describe(live.reason) }
+    else { recordRetryAfter(live.reason); s.live = null; s.error = describe(live.reason) }
     if (ready.status === 'fulfilled') { s.ready = ready.value.status === 200 && ready.value.body.ready === true; s.details = ready.value.body }
-    else { s.ready = null; s.details = {}; s.error = describe(ready.reason) }
+    else { recordRetryAfter(ready.reason); s.ready = null; s.details = {}; s.error = describe(ready.reason) }
   })])
   if (!current(run)) return
   now.value = Date.now()
   checked.value = new Date().toLocaleTimeString('zh-CN', { hour12: false }); busy.value = false
-  if (active) timer = setTimeout(refresh, 10000)
+  failures = taskError.value || services.value.some(service => service.error) ? failures + 1 : 0
+  if (active && pageVisible.value) timer = setTimeout(refresh, Math.max(serverDelay, pollingDelay(10000, failures)))
 }
 onActivated(() => { active = true; void refresh() })
 function stop() { active = false; requests.cancel(); busy.value = false; clearTimeout(timer) }
@@ -61,7 +66,7 @@ onUnmounted(stop)
 </script>
 <template>
   <section>
-    <div class="page-heading"><div><h1>运行总览</h1><p>查看服务可用状态与后台更新进度，每 10 秒自动刷新。</p></div><button @click="refresh" :disabled="busy">{{ busy ? '检查中…' : '刷新状态' }}</button></div>
+    <div class="page-heading"><div><h1>运行总览</h1><p>查看服务可用状态与后台更新进度，正常每 10 秒刷新，后台暂停，连接失败时延长间隔。</p></div><button @click="refresh" :disabled="busy">{{ busy ? '检查中…' : '刷新状态' }}</button></div>
     <section v-if="currentTask" class="update-progress" aria-labelledby="update-progress-title">
       <div class="section-bar"><h2 id="update-progress-title" aria-live="polite">{{ activityTitle }}</h2><a href="#tasks">查看更新任务 →</a></div>
       <p>{{ currentTask.status === 'accepted' ? '任务已受理，等待后台开始执行。' : '任务正在后台执行，包括上游采集、构建与发布。完成后将自动刷新状态。' }}</p>

@@ -935,3 +935,45 @@ for (const outcome of ['retry', 'logout']) {
     expect(await page.evaluate(() => sessionStorage.getItem('sicp.pending-operations.v1'))).toBeNull()
   })
 }
+
+test('F01 read polling backs off, pauses when hidden and resumes without posting', async ({ page }) => {
+  await page.clock.install()
+  await setup(page)
+  await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+  let reads = 0, posts = 0, failing = true
+  page.on('request', request => { if (request.method() === 'POST') posts++ })
+  await page.route('**/admin/v1/tasks/', route => {
+    reads++
+    return route.fulfill(failing ? { status: 503, json: { code: 'unavailable', data: null } } : { json: { code: 'ok', data: { initialized: true, items: [] } } })
+  })
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('无法确认更新任务状态')
+  await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+  expect(reads).toBe(1)
+  await page.clock.runFor(19000)
+  expect(reads).toBe(1)
+  await page.clock.runFor(1500)
+  await expect.poll(() => reads).toBe(2)
+  await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+  await page.clock.runFor(38000)
+  expect(reads).toBe(2)
+  await page.clock.runFor(2500)
+  await expect.poll(() => reads).toBe(3)
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' })
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await page.clock.runFor(120000)
+  expect(reads).toBe(3)
+  failing = false
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' })
+    document.dispatchEvent(new Event('visibilitychange'))
+  })
+  await expect.poll(() => reads).toBe(4)
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+  await page.clock.runFor(10500)
+  await expect.poll(() => reads).toBe(5)
+  expect(posts).toBe(0)
+})

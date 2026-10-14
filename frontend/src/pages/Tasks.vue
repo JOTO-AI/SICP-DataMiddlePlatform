@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
-import { request, describe, time, type Envelope } from '../api'
+import { request, describe, time, ApiError, type Envelope } from '../api'
+import { pollingDelay } from '../app/polling'
+import { usePageVisibility } from '../composables/usePageVisibility'
 import { useRequestScope } from '../composables/useRequestScope'
 import { newIdempotencyKey } from '../idempotency'
 import { session } from '../session'
@@ -48,21 +50,23 @@ const failureDescriptions: Record<string, string> = {
   interrupted: '任务执行被中断。重启后系统会自动尝试恢复初始化。',
   acquisition_failed: '部分表采集未完成。已完成的表可以保留复用，可强制更新失败表；全部补齐并通过校验后才完成初始化。',
 }
+let historyFailures = 0, historyRetryAfter: string | undefined
+const pageVisible = usePageVisibility(() => { detailRequests.cancel(); loading.value = false; clearTimeout(timer); historyRequests.cancel(); historyBusy.value = false; clearTimeout(historyTimer) }, () => { if (active) { void refreshHistory(); if (auto.value && !terminal.value) void fetchTask() } })
 let historyTimer: ReturnType<typeof setTimeout> | undefined
 const historyRequests = useRequestScope(), detailRequests = useRequestScope(), submitRequests = useRequestScope()
 async function refreshHistory() {
-  if (!active || historyBusy.value) return
+  if (!active || !pageVisible.value || historyBusy.value) return
   clearTimeout(historyTimer); historyBusy.value = true; historyError.value = ''
   const run = historyRequests.begin()
   try {
     const result = (await request<Envelope<Overview>>('worker', '/admin/v1/tasks/', { signal: run.signal })).body.data
     if (!active || !run.current()) return
-    overview.value = result
+    overview.value = result; historyFailures = 0; historyRetryAfter = undefined
     const current = overview.value.items.find(item => ['accepted', 'running', 'published_pending_progress'].includes(item.status))
     if (active && !lookup.value && current) selectTask(current.task_id)
   }
-  catch (e) { if (active && run.current()) historyError.value = describe(e) }
-  finally { if (run.current()) { historyBusy.value = false; if (active) historyTimer = setTimeout(refreshHistory, 10000) } }
+  catch (e) { if (active && run.current()) { historyError.value = describe(e); historyFailures++; historyRetryAfter = e instanceof ApiError ? e.headers['Retry-After'] : undefined } }
+  finally { if (run.current()) { historyBusy.value = false; if (active && pageVisible.value) historyTimer = setTimeout(refreshHistory, pollingDelay(10000, historyFailures, historyRetryAfter)) } }
 }
 function selectTask(id: string) { stop(); task.value = null; lookup.value = id; auto.value = true; void fetchTask() }
 const modeLabels: Record<string, string> = { initialize: '初始化', incremental: '增量同步', force_full: '强制全量' }
@@ -131,7 +135,7 @@ async function submit() {
   finally { if (run.current()) busy.value = false }
 }
 async function fetchTask() {
-  if (!active || loading.value || !lookup.value.trim()) return
+  if (!active || !pageVisible.value || loading.value || !lookup.value.trim()) return
   clearTimeout(timer); loading.value = true; taskError.value = ''
   const run = detailRequests.begin(), id = lookup.value.trim()
   const current = () => active && run.current() && lookup.value.trim() === id
@@ -141,7 +145,7 @@ async function fetchTask() {
     task.value = response.body.data
     if (terminal.value) stop()
   } catch (e) { if (current()) { taskError.value = `${describe(e)} 自动刷新已停止。${task.value ? '显示的进度为上次成功读取的结果。' : ''}`; stop() } }
-  finally { if (run.current()) { loading.value = false; if (active && auto.value) timer = setTimeout(fetchTask, 5000) } }
+  finally { if (run.current()) { loading.value = false; if (active && pageVisible.value && auto.value) timer = setTimeout(fetchTask, 5000) } }
 }
 function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else stop() }
 </script>
@@ -158,7 +162,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
       <p v-if="overview?.initialized">下次计划时间：{{ time(overview.next_due_at) }}。执行中或恢复中会顺延。</p>
       <p v-if="overview?.cooldown_until">冷却截止时间：{{ time(overview.cooldown_until) }}</p>
     </div>
-    <div class="section-bar next-heading"><h2>最近任务</h2><span class="muted">最近 50 条，每 10 秒刷新</span></div>
+    <div class="section-bar next-heading"><h2>最近任务</h2><span class="muted">最近 50 条，正常每 10 秒刷新，后台暂停</span></div>
     <p v-if="historyError" class="error" role="alert">{{ historyError }}</p>
     <div class="link-list">
       <button v-for="item in overview?.items" :key="item.task_id" class="history-task" @click="selectTask(item.task_id)" :disabled="busy || loading">

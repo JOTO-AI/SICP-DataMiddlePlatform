@@ -1,3 +1,4 @@
+import { readLimiter, ReadQueueFullError } from './readLimiter'
 import { session, clearSession, sessionRequestSignal } from '../session'
 import { responseMetadata, type ResponseHeaders } from './metadata'
 
@@ -72,6 +73,7 @@ export async function request<T>(service: 'query' | 'worker', path: string, opti
   const domain = options.domain ?? domainFor(service, path)
   const mutation = service === 'worker' && method !== 'GET'
   const controller = new AbortController()
+  let releaseRead: (() => void) | undefined
   let cause: 'cancelled' | 'timeout' | undefined
   let status = 0, requestID = ''
   let responseHeaders: ResponseHeaders = Object.freeze({})
@@ -97,6 +99,11 @@ export async function request<T>(service: 'query' | 'worker', path: string, opti
   }
   try {
     assertCurrent()
+    if (method === 'GET') {
+      const permit = readLimiter.acquire(controller.signal)
+      releaseRead = typeof permit === 'function' ? permit : await permit
+      assertCurrent()
+    }
     const headers: Record<string, string> = { Accept: 'application/json', 'X-SICP-Request': 'console', 'X-SICP-CSRF': session.csrf }
     if (options.body !== undefined) headers['Content-Type'] = 'application/json'
     if (options.snapshot) headers['X-Query-Snapshot'] = options.snapshot
@@ -135,9 +142,11 @@ export async function request<T>(service: 'query' | 'worker', path: string, opti
     return { body: body as T, status, requestID, snapshot: responseHeaders['X-Query-Snapshot'] || '', headers: responseHeaders }
   } catch (error) {
     if (error instanceof ApiError) throw error
+    if (error instanceof ReadQueueFullError) throw new ApiError(error.message, 'request_queue_full')
     assertCurrent()
     throw new ApiError(mutation ? '连接失败，操作受理结果未知；请保留原幂等键查询或重试。' : '连接失败，请检查后端服务和代理配置。', 'network_error', requestID, status, responseHeaders)
   } finally {
+    releaseRead?.()
     clearTimeout(timeout)
     options.signal?.removeEventListener('abort', externalAbort)
     sessionSignal.removeEventListener('abort', externalAbort)
