@@ -31,3 +31,11 @@
 - 交付：[差异登记](FRONTEND_CONTRACT_GAPS.md)，覆盖原计划九类差异及 is_active、源 Query/测试载荷两项补充；修正 `OPERATIONS_API_EXAMPLES.md` 的本地业务 code 类型错误。
 - 文档自审：每项区分前端工作、后端缺口、关闭条件；“登记完成”不等同于依赖关闭。所有页面及实际验收项保持待办，未改正常 mock 或后端代码。
 - 验证：复跑端点基线，提交前 `git diff --check`；本步为文档契约修正，无运行时代码变化，不新增镜像实现的单测。
+
+## F00-04 后端来源测试数据 v1
+
+- 前一步：`437e2d3` 已成功 push，输出 `45b685c..437e2d3 HEAD -> feat/frontend-development`。
+- 交付：`frontend/fixtures/` 的后端导出响应、版本清单、只读加载器与用法；显式 Go 导出入口 `TestFrontendFixtureExport`，默认跳过。原始 mock 未修改；十四源响应直接引用现有文件，九业务经真实 HTTP Pipeline 导出。
+- 验证：Go 1.26.8、Node v24.15.0。专用导出命令连续两次通过，第二次产物哈希不变；`node frontend/scripts/check-fixtures.mjs` 通过（34 响应、9 业务、14 源成功/空响应、148 来源哈希及既有五类独立预期）。后端 T/OI 没有运行。
+- 前端验证：`npm.cmd run test:unit --prefix frontend` 2/2 通过，`npm.cmd run build --prefix frontend` 类型检查与生产构建通过；dist 未检出 mock 路径/示例学号/示例姓名。首次通过原 E2E 配置执行的 4 用例也最终退出成功，但 Windows 开发服务清理较慢，已清理该服务并为纯状态/协议测试采用不启动服务的独立配置。
+- 代码自审：实际响应保留 null/前导零/响应头；源返回原始文本避免大整数转换；每次返回独立副本；请求未知场景报错；显式更新 manifest 在校验通过后写入。未复制业务查询算法作为预期。全量业务语义和真实网关验收仍待后端/集成测试。
