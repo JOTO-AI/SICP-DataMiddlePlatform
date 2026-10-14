@@ -47,3 +47,15 @@ test('business failures retain backend evidence without retry and untrusted path
   expect(() => businessTestPath({ ...api, implemented: false })).toThrow()
   expect(requests).toBe(1)
 })
+
+test('both timetable executors reject pagination and snapshot tokens before sending', async () => {
+  for (const api of catalog.filter(api => api.id.includes('timetable.'))) {
+    const capture = backendCapture(api.id)
+    let calls = 0
+    globalThis.fetch = async (_url, init) => { calls++; expect(JSON.parse(init?.body as string)).toEqual(capture.request); expect(new Headers(init?.headers).has('X-Query-Snapshot')).toBe(false); return new Response(JSON.stringify(capture.response), { status: capture.status, headers: capture.headers }) }
+    await executeBusinessTest(api, JSON.stringify(capture.request), new AbortController().signal)
+    await expect(executeBusinessTest(api, JSON.stringify(capture.request), new AbortController().signal, '0'.repeat(64))).rejects.toMatchObject({ code: 'snapshot_required' })
+    await expect(executeBusinessTest(api, JSON.stringify({ ...capture.request, page: 1 }), new AbortController().signal)).rejects.toThrow('不接受此字段')
+    expect(calls).toBe(1)
+  }
+})

@@ -2266,3 +2266,65 @@ test('F06 pagination actual conflict stops continuation and closing discards the
   await expect(dialog.getByRole('status', { name: '测试状态', exact: true })).toContainText('缺少有效分页快照')
   expect(calls).toBe(2)
 })
+
+for (const operation of ['students.timetable.query', 'staff.timetable.query']) test(`F06 timetable weekly ${operation} uses real dates without paging or guessed teacher pairing`, async ({ page }, testInfo) => {
+  await setup(page)
+  const fixture = backendCapture(operation), api = operations.find(item => item.operation === operation)!
+  let calls = 0
+  await page.route(`**/console-api/query${api.path}`, route => {
+    calls++; expect(route.request().postDataJSON()).toEqual(fixture.request)
+    expect(route.request().headers()['x-query-snapshot']).toBeUndefined()
+    return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response })
+  })
+  await page.goto(`/console/apis/${operation}`)
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(fixture.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await dialog.getByRole('button', { name: '课表', exact: true }).click()
+  await dialog.getByRole('button', { name: '周课表', exact: true }).click()
+  const week = dialog.getByLabel('本次周课表，可横向滚动', { exact: true })
+  await expect(dialog.getByRole('combobox', { name: '自然周', exact: true })).toHaveValue('2026-09-07')
+  await expect(week.locator('tbody tr')).toHaveCount(2)
+  await expect(week.locator('article')).toHaveCount(4)
+  await week.getByText('排课详情', { exact: true }).first().click()
+  await expect(week.locator('article').first()).toContainText('教师姓名：')
+  await expect(week.locator('article').first()).toContainText('教师工号：')
+  await expect(dialog.getByRole('region', { name: '本次分页', exact: true })).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('timetable-week-desktop.png') })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await week.scrollIntoViewIfNeeded()
+  expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('timetable-week-mobile.png') })
+  await dialog.getByRole('button', { name: '按日期查看', exact: true }).click()
+  await expect(dialog.getByLabel('本次日期课表', { exact: true }).locator('article')).toHaveCount(4)
+  await dialog.getByRole('button', { name: '表格', exact: true }).click()
+  await expect(dialog.getByLabel('本次响应表格', { exact: true }).locator('tbody tr')).toHaveCount(4)
+  expect(calls).toBe(1)
+})
+
+test('F06 timetable missing-field boundary keeps unmapped lessons and separate teacher arrays', async ({ page }) => {
+  await setup(page)
+  const fixture = backendCapture('students.timetable.query')
+  const data = fixture.response.data as { items: Record<string, unknown>[] }
+  // Protocol omissions on existing backend records, never fabricated normal lesson data.
+  data.items[0]!.dates = null
+  data.items[1]!.course_name = null; data.items[1]!.course_code = ''; data.items[1]!.teacher_names = []
+  let calls = 0
+  await page.route('**/console-api/query/api/v1/sicp/students/timetable/query', route => { calls++; return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response }) })
+  await page.goto('/console/apis/students.timetable.query')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(fixture.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await dialog.getByRole('button', { name: '课表', exact: true }).click()
+  const timetable = dialog.getByRole('region', { name: '本次日期课表', exact: true })
+  await expect(timetable).toContainText('1 条记录无法映射')
+  await expect(timetable.locator('article')).toHaveCount(3)
+  await expect(timetable.locator('article').first()).toContainText('null（未提供） · 空字符串')
+  await expect(timetable.locator('article').first()).toContainText('教师姓名：[]')
+  await expect(timetable.locator('article').first()).toContainText('教师工号：["001","1001"]')
+  await timetable.getByRole('button', { name: '在表格查看所有记录', exact: true }).click()
+  await expect(dialog.getByLabel('本次响应表格', { exact: true }).locator('tbody tr')).toHaveCount(4)
+  expect(calls).toBe(1)
+})
