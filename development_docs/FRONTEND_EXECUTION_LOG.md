@@ -39,3 +39,11 @@
 - 验证：Go 1.26.8、Node v24.15.0。专用导出命令连续两次通过，第二次产物哈希不变；`node frontend/scripts/check-fixtures.mjs` 通过（34 响应、9 业务、14 源成功/空响应、148 来源哈希及既有五类独立预期）。后端 T/OI 没有运行。
 - 前端验证：`npm.cmd run test:unit --prefix frontend` 2/2 通过，`npm.cmd run build --prefix frontend` 类型检查与生产构建通过；dist 未检出 mock 路径/示例学号/示例姓名。首次通过原 E2E 配置执行的 4 用例也最终退出成功，但 Windows 开发服务清理较慢，已清理该服务并为纯状态/协议测试采用不启动服务的独立配置。
 - 代码自审：实际响应保留 null/前导零/响应头；源返回原始文本避免大整数转换；每次返回独立副本；请求未知场景报错；显式更新 manifest 在校验通过后写入。未复制业务查询算法作为预期。全量业务语义和真实网关验收仍待后端/集成测试。
+
+## F00-05 技术与依赖锁定
+
+- 前一步：`ba655d6` 已成功 push，输出 `437e2d3..ba655d6 HEAD -> feat/frontend-development`。
+- 交付：[技术基线](FRONTEND_TECH_BASELINE.md)，精确新增 vue-router 4.6.4 及其必要传递依赖，复用已有 Playwright 的独立单元配置；既有依赖无批量升级。
+- 兼容核对：npm 官方 registry 元数据和安装包 peerDependencies 均为 Vue ^3.5.0，当前锁定 Vue 3.5.43；npm ls 无冲突。
+- 验证：单元测试 2/2、vue-tsc 与 Vite 生产构建通过。代码自审核对 lockfile 仅新增 vue-router 和 @vue/devtools-api 两项，未改代理/部署/运行时代码。
+- F00 五项基线完成；后续 F01-01 开始应用结构和懒加载迁移，页面及真实网关验收仍未完成。

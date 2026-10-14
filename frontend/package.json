@@ -12,7 +12,10 @@
     "check:fixtures": "node scripts/check-fixtures.mjs",
     "test:unit": "playwright test --config playwright.unit.config.ts"
   },
-  "dependencies": { "vue": "^3.5.0" },
+  "dependencies": {
+    "vue": "^3.5.0",
+    "vue-router": "4.6.4"
+  },
   "devDependencies": {
     "@playwright/test": "^1.58.0",
     "@types/node": "^24.0.0",
