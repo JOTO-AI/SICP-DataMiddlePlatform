@@ -180,9 +180,6 @@ dialog .actions { justify-content: flex-end; margin-top: 24px; }
 .skip { position: fixed; top: -80px; left: 16px; padding: 10px; background: var(--white); z-index: 10; }
 .skip:focus { top: 12px; }
 
-@media (max-width: 1150px) { .form-grid { grid-template-columns: 1fr 1fr; } .task-layout { gap: 20px; } main { padding: 28px; } .topbar { padding-inline: 28px; } .form-footer, .pagination { align-items: flex-start; flex-direction: column; } }
-@media (max-width: 850px) { .sidebar { width: 185px; padding-inline: 12px; } .workspace { margin-left: 185px; } .health-grid, .task-layout { grid-template-columns: 1fr; } .topbar { align-items: flex-start; flex-direction: column; gap: 4px; } .task-detail { margin-top: 6px; } }
-@media (max-width: 600px) { .app-shell { display: block; } .sidebar { width: 100%; position: static; padding: 16px 16px 0; border-right: 0; border-bottom: 1px solid var(--line); } .brand { font-size: 21px; padding: 0; } .brand small { display: inline; margin-left: 8px; } .brand-mark { height: 32px; width: 32px; font-size: 21px; } .workspace-label, .sidebar-foot { display: none; } nav { flex-direction: row; gap: 0; justify-content: space-between; margin-top: 14px; } nav a { padding: 10px 6px; font-size: 13px; border-radius: 6px 6px 0 0; gap: 4px; } nav a > .nav-icon { display: none; } .workspace { margin-left: 0; } .topbar { padding: 10px 18px; min-height: 58px; } main { padding: 24px 18px 32px; } h1 { font-size: 23px; } .page-heading { align-items: flex-start; gap: 12px; margin-bottom: 24px; } .page-heading .tag { display: none; } .page-heading p { font-size: 13px; } .panel { padding: 18px; } .section-bar { gap: 8px; flex-wrap: wrap; } .form-grid { grid-template-columns: 1fr; } .tabs { gap: 20px; } .link-list a { padding: 18px 12px; gap: 14px; } .link-list p { font-size: 12px; } footer { margin-inline: 18px; } .timeline { font-size: 13px; } .timeline time { font-size: 11px; } .actions { flex-wrap: wrap; } .lookup .actions { flex-wrap: nowrap; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 .history-task { display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; gap: .35rem; border-radius: 0; border: 0; border-bottom: 1px solid var(--line); padding: 1rem; }
 .history-task code { overflow-wrap: anywhere; white-space: normal; }
@@ -245,3 +242,59 @@ dialog .actions { justify-content: flex-end; margin-top: 24px; }
 .field-error { color: var(--color-danger); font-size: 12px; }
 [aria-invalid="true"] { border-color: var(--color-danger); }
 @media (max-width: 767px) { .parameter-editor-rows { grid-template-columns: 1fr; } .json-toolbar .actions { flex-wrap: wrap; } }
+
+/* F02-07: desktop, compact sidebar, and mobile navigation. */
+.mobile-navigation-toggle { display: none; }
+.sidebar { overflow-y: auto; }
+.topbar-location { min-width: 0; }
+.table-wrap, .json-viewer { max-width: 100%; min-width: 0; }
+.parameter-table table { min-width: 640px; }
+@media (min-width: 768px) and (max-width: 1279px) {
+  .app-shell { --sidebar-width: var(--layout-sidebar-collapsed-width); }
+  .sidebar .brand { justify-content: center; }
+  .sidebar .brand-copy, .sidebar .nav-label, .sidebar .sidebar-foot { display: none; }
+  .sidebar nav a { padding: 10px 0; justify-content: center; }
+  .form-grid { grid-template-columns: 1fr 1fr; }
+  .task-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .form-footer, .pagination { align-items: flex-start; flex-direction: column; }
+}
+@media (max-width: 767px) {
+  .app-shell { display: block; }
+  .sidebar { display: none; }
+  .workspace { margin-left: 0; }
+  .mobile-navigation-toggle { display: inline-flex; justify-content: center; align-items: center; width: 44px; padding: 0; flex-shrink: 0; }
+  .mobile-navigation { flex-direction: column; margin: 0; gap: 8px; }
+  .mobile-navigation a { min-height: 44px; }
+  .topbar { padding: 6px 12px; min-height: 56px; gap: 8px; }
+  .topbar-location { gap: 8px; }
+  .topbar-location > span { font-size: 12px; overflow-wrap: anywhere; }
+  .account-actions { gap: 6px; }
+  .operator-name { display: none; }
+  main { padding: 24px 18px 32px; }
+  .health-grid, .task-layout, .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .task-layout { gap: 20px; }
+  .page-heading { align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+  .page-heading .tag { display: none; }
+  .page-heading p { font-size: 13px; }
+  .panel { padding: 18px; }
+  .section-bar { gap: 8px; flex-wrap: wrap; }
+  .form-footer, .pagination { align-items: flex-start; flex-direction: column; }
+  .tabs { gap: 20px; }
+  .link-list a { padding: 18px 12px; gap: 14px; }
+  .link-list p { font-size: 12px; }
+  footer { margin-inline: 18px; gap: 12px; flex-wrap: wrap; }
+  .timeline { font-size: 13px; }
+  .timeline time { font-size: 11px; }
+  .actions { flex-wrap: wrap; }
+  .lookup .actions { flex-wrap: nowrap; }
+  button, input:not([type=checkbox]):not([type=radio]), select, .copy-id button, .ui-dialog .dialog-close { min-height: 44px; }
+  button { white-space: normal; overflow-wrap: anywhere; }
+  .copy-id button, .ui-dialog .dialog-close { min-width: 44px; }
+  .check-row, .radio-row, summary { min-height: 44px; align-items: center; }
+  summary { padding-block: 10px; }
+  .ui-dialog .dialog-close { width: 44px; }
+}
+@media (pointer: coarse) {
+  button, input:not([type=checkbox]):not([type=radio]), select, .copy-id button, .ui-dialog .dialog-close, nav a, .check-row, .radio-row { min-height: 44px; }
+  .copy-id button, .ui-dialog .dialog-close { min-width: 44px; }
+}
