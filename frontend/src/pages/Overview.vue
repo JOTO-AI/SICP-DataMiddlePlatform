@@ -69,7 +69,7 @@ onUnmounted(stop)
   <section>
     <PageHeader title="运行总览" description="查看服务可用状态与后台更新进度，正常每 10 秒刷新，后台暂停，连接失败时延长间隔。"><button @click="refresh" :disabled="busy">{{ busy ? '检查中…' : '刷新状态' }}</button></PageHeader>
     <section v-if="currentTask" class="update-progress" aria-labelledby="update-progress-title">
-      <div class="section-bar"><h2 id="update-progress-title" aria-live="polite">{{ activityTitle }}</h2><a href="#tasks">查看更新任务 →</a></div>
+      <div class="section-bar"><h2 id="update-progress-title" aria-live="polite">{{ activityTitle }}</h2><RouterLink to="/updates">查看更新任务 →</RouterLink></div>
       <p>{{ currentTask.status === 'accepted' ? '任务已受理，等待后台开始执行。' : '任务正在后台执行，包括上游采集、构建与发布。完成后将自动刷新状态。' }}</p>
       <p v-if="currentTask.mode === 'initialize' && !services[0]!.ready">首次初始化完成前，业务数据暂不可查询。</p>
       <p v-else-if="services[0]!.ready">当前已发布数据仍可查询。</p>
@@ -90,7 +90,7 @@ onUnmounted(stop)
       </article>
     </div>
     <div class="section-bar next-heading"><h2>常用操作</h2><span class="muted">从数据核验到更新追踪</span></div>
-    <div class="link-list"><a href="#queries"><span class="link-icon" aria-hidden="true">⌕</span><div><h3>查询业务数据</h3><p>组织、人员、成绩、课表与教学班</p></div><span aria-hidden="true">→</span></a><a href="#tasks"><span class="link-icon" aria-hidden="true">↻</span><div><h3>管理数据更新</h3><p>自动更新记录、强制全量与失败任务重跑</p></div><span aria-hidden="true">→</span></a></div>
+    <div class="link-list"><RouterLink to="/apis"><span class="link-icon" aria-hidden="true">⌕</span><div><h3>查询业务数据</h3><p>组织、人员、成绩、课表与教学班</p></div><span aria-hidden="true">→</span></RouterLink><RouterLink to="/updates"><span class="link-icon" aria-hidden="true">↻</span><div><h3>管理数据更新</h3><p>自动更新记录、强制全量与失败任务重跑</p></div><span aria-hidden="true">→</span></RouterLink></div>
     <div class="section-note"><h2>首次使用</h2><p>系统会自动初始化全新环境，并持续进行增量同步。可在更新任务中查看进度；数据就绪后即可查询。</p></div>
   </section>
 </template>

@@ -26,6 +26,8 @@ export const router = createRouter({
     { path: '/logs/:source', name: 'log-source', meta: { navigation: 'logs' }, component: pending, props: { title: '日志中心' } },
     { path: '/settings/:section', name: 'settings-section', meta: { navigation: 'settings' }, component: pending, props: { title: '系统设置' } },
     { path: '/queries', redirect: to => ({ path: '/apis', query: to.query, hash: to.hash }) },
+    { path: '/sync/tasks/:taskId', redirect: to => ({ name: 'update-detail', params: { id: to.params.taskId }, query: to.query }) },
+    { path: '/tasks/:taskId', redirect: to => ({ name: 'update-detail', params: { id: to.params.taskId }, query: to.query }) },
     { path: '/tasks', redirect: to => ({ path: '/updates', query: to.query, hash: to.hash }) },
     { path: '/403', name: 'forbidden', component: () => import('../pages/RouteError.vue'), props: { status: 403 } },
     { path: '/404', name: 'not-found', component: () => import('../pages/RouteError.vue'), props: { status: 404 } },

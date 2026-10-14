@@ -1167,3 +1167,52 @@ test('F03 log detail keeps source and backend event ID while API tests have no s
     await expect(page.getByRole('heading', { name: '页面不存在', exact: true })).toBeVisible()
   }
 })
+
+test('F03 legacy hash and task links preserve destinations without queries or writes', async ({ page }) => {
+  await setup(page)
+  let writes = 0, queries = 0
+  await page.route('**/console-api/query/api/**', route => { queries++; return route.abort() })
+  page.on('request', request => { if (request.url().includes('/admin/') && request.method() !== 'GET') writes++ })
+  const examples = JSON.parse(readFileSync(new URL('../../development_docs/verification/operations_http_examples.json', import.meta.url), 'utf8')).examples
+  const taskId = examples.find((item: { name: string }) => item.name === 'task_detail').response.data.task_id
+  for (const [oldPath, expected] of [
+    ['/console/#overview', '/console/overview'], ['/console/#queries', '/console/apis'], ['/console/#tasks', '/console/updates'],
+    [`/console/sync/tasks/${taskId}`, `/console/updates/${taskId}`], [`/console/tasks/${taskId}`, `/console/updates/${taskId}`],
+  ]) {
+    await page.goto(oldPath!)
+    await expect.poll(() => new URL(page.url()).pathname).toBe(expected)
+    await expect(page.getByRole('heading').first()).toBeVisible()
+    expect(new URL(page.url()).hash).toBe('')
+  }
+  expect(queries).toBe(0); expect(writes).toBe(0)
+})
+
+test('F03 logout removes cached backend results and stops page polling', async ({ page }) => {
+  await page.clock.install()
+  await setup(page)
+  const fixture = backendCapture('students.query')
+  let queryCount = 0, protectedReads = 0
+  page.on('request', request => { if (request.url().includes('/admin/') || /\/console-api\/(query|worker)\//.test(request.url())) protectedReads++ })
+  await page.route('**/console-api/query/api/v1/sicp/students/query', route => { queryCount++; return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response }) })
+  await page.getByRole('link', { name: '接口中心', exact: true }).click()
+  await page.getByRole('button', { name: '学生信息', exact: true }).click()
+  await page.getByRole('button', { name: '查询数据', exact: true }).click()
+  await expect(page.getByRole('table')).toContainText('虚构学生001')
+  await page.getByRole('link', { name: '更新事件', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '退出登录', exact: true }).click()
+  await expect(page).toHaveURL(/\/console\/login$/)
+  await expect(page.getByRole('heading', { name: '登录管理控制台' })).toBeVisible()
+  expect(await page.locator('body').textContent()).not.toContain('虚构学生001')
+  const stopped = protectedReads
+  await page.clock.runFor(65000)
+  expect(protectedReads).toBe(stopped)
+  expect(await page.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0])
+  await page.getByLabel('管理员账号').fill('admin')
+  await page.getByLabel('密码', { exact: true }).fill('synthetic-password')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await page.getByRole('link', { name: '接口中心', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '等待查询', exact: true })).toBeVisible()
+  await expect(page.getByRole('table')).toHaveCount(0)
+  expect(queryCount).toBe(1)
+})

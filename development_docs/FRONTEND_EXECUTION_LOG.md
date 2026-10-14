@@ -184,3 +184,11 @@
 - 实现：日志详情固定 `/console/logs/:source/events/:eventId`，父级日志导航选中；路径构造器保留后端事件 ID，不哈希/替换原始关联 ID。按 internal/logquery/contract.go 和 Detail 限定 platform/upstream、小写 64 位 hex；非法地址进入 404。
 - Review：独立 `/api-tests`、`/apis/:apiId/test` 均不存在，不能通过 URL 自动测试；弹窗状态约定留在接口详情，具体实例绑定与请求实现在 F06，本步不冒充完成测试或日志功能。
 - 验证：类型/构建、diff 检查通过；6/6 浏览器检查通过（两 origin），日志路径使用已有 operations_http_examples.json 的 log_detail；验证原事件 ID、父导航、非法来源/ID、独立测试路径及登录路由回归。
+
+## F03-05 旧链接兼容与退出清理
+
+- 前一步：`a8976b5` 已成功 push。
+- 实现：保留三个旧 hash，增加设计基线的 /console/sync/tasks/:taskId 及 /console/tasks/:taskId → updates/:id；使用命名路由保留原 ID，不触发查询/动作。总览内部链接改为正式 RouterLink。README 修正旧地址和操作恢复存储说明。
+- Review：退出调用 session epoch/AbortController 并卸载整个 AppShell/KeepAlive，已有页面取消请求/轮询/计时器，待确认恢复记录清理；迟到请求不得恢复结果。未来 SSE 仍须接入该取消机制，F09 尚未验收。
+- 验证：类型/生产构建通过；16/16 针对性浏览器检查通过，随后完整 120/120 通过（两 origin，3.5 分钟）。新增场景使用后端已有 task_detail ID 与 Go 学生 fixture，旧链接不产生查询/写操作，退出 65 秒无保护请求，重新登录没有旧表格且未再次查询。
+- F03 五步均已实现并 review；F04 及后续业务模块、真实后端与静态网关验收仍保持未完成。
