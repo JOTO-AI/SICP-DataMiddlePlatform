@@ -14,12 +14,13 @@ import SourceRequestDocs from '../components/SourceRequestDocs.vue'
 import ApiRequestExamples from '../components/ApiRequestExamples.vue'
 import ApiCallRecords from '../components/ApiCallRecords.vue'
 import ResponseContract from '../components/ResponseContract.vue'
-import RequestEditor from '../components/RequestEditor.vue'
-import Dialog from '../components/Dialog.vue'
+import ApiTestDialog from '../components/ApiTestDialog.vue'
 import type { RequestExample } from '../app/requestExamples'
 import { operationRules, commonBusinessRules } from '../app/catalogSchema'
 import ExampleViewer from '../components/ExampleViewer.vue'
 const draftOpen = ref(false), draftText = ref(''), draftSnapshot = ref(false), draftKey = ref(0)
+function openTest() { draftText.value = '{}'; draftSnapshot.value = false; draftKey.value++; draftOpen.value = true }
+function closeTest() { draftOpen.value = false; draftText.value = ''; draftSnapshot.value = false }
 function loadExample(example: RequestExample) { draftText.value = JSON.stringify(example.body, null, 2); draftSnapshot.value = !!example.snapshot; draftKey.value++; draftOpen.value = true }
 const apiId = String(useRoute().params.apiId)
 const api = ref<CatalogAPI | null>(null), busy = ref(false), error = ref(''), readAt = ref('')
@@ -65,7 +66,7 @@ onUnmounted(stop)
 <template>
   <section class="api-detail">
     <RouterLink to="/apis">← 接口目录</RouterLink>
-    <PageHeader :title="api ? catalogName(api) : '接口详情'" :description="api?.purpose"><button :disabled="busy" @click="refresh">{{ busy ? '读取中…' : '刷新详情' }}</button></PageHeader>
+    <PageHeader :title="api ? catalogName(api) : '接口详情'" :description="api?.purpose"><button :disabled="busy" @click="refresh">{{ busy ? '读取中…' : '刷新详情' }}</button><button v-if="api" class="primary" :disabled="busy || !!error" @click="openTest">在线测试</button></PageHeader>
     <ErrorState v-if="error" :message="error" retryable :busy="busy" @retry="refresh" />
     <p v-if="error && api" class="warning">当前详情未确认，以下为上次成功读取的目录快照。</p>
     <template v-if="api">
@@ -86,7 +87,7 @@ onUnmounted(stop)
       </section>
     </template>
     <EmptyState v-else :loading="busy" title="暂未取得接口详情" description="请重新读取或返回接口目录选择接口。" />
-    <Dialog v-model:open="draftOpen" :title="`${api ? catalogName(api) : ''} · 测试参数草稿`" description="当前可编辑和复制参数，尚未开放执行。载入案例不会发送请求。"><p v-if="draftSnapshot" class="warning">续页案例需要同一接口首响应的查询快照，当前草稿未携带真实快照。</p><RequestEditor v-if="draftOpen" :key="draftKey" v-model="draftText" /></Dialog>
+    <ApiTestDialog v-if="draftOpen && api" :key="draftKey" :api="api" :initial-text="draftText" :needs-snapshot="draftSnapshot" @close="closeTest" />
   </section>
 </template>
 <style scoped>

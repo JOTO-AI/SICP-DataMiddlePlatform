@@ -1576,7 +1576,7 @@ test('F05 loading examples only fills the current API draft and uses credential 
   const sample = (backendCatalog() as { id: string; request_example: unknown }[]).find(api => api.id === 'students.grades.query')!
   await page.getByRole('button', { name: '使用此案例测试', exact: true }).click()
   const dialog = page.getByRole('dialog')
-  await expect(dialog).toContainText('学生成绩 · 测试参数草稿')
+  await expect(dialog).toContainText('学生成绩 · 在线测试')
   await expect(dialog.getByLabel('请求 JSON', { exact: true })).toHaveValue(JSON.stringify(sample.request_example, null, 2))
   await expect(dialog.getByRole('button', { name: '执行', exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
@@ -1680,4 +1680,64 @@ test('F05 management documentation only navigates to dedicated workflows and per
   await docs.getByRole('link', { name: '前往更新事件 →', exact: true }).click()
   await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
   expect(writes).toBe(0)
+})
+
+test('F06 test dialog binds to the selected backend API with fresh drafts and no execution', async ({ page }, testInfo) => {
+  await setup(page)
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.goto('/console/apis/students.query')
+  await expect(page.getByRole('button', { name: '在线测试', exact: true })).toBeEnabled()
+  let executions = 0
+  await page.route('**/console-api/query/api/**', route => { executions++; return route.abort() })
+  await page.route('**/admin/v1/api-tests', route => { executions++; return route.abort() })
+  const api = (backendCatalog() as { id: string; version: string; path: string }[]).find(api => api.id === 'students.query')!
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText(api.version)
+  await expect(dialog).toContainText(api.path)
+  await expect(dialog.getByRole('heading', { name: '尚未测试', exact: true })).toBeVisible()
+  await expect(dialog.getByLabel('请求 JSON', { exact: true })).toHaveValue('{}')
+  const box = await dialog.boundingBox()
+  expect(box!.width).toBe(960)
+  expect(box!.height).toBeLessThanOrEqual(900)
+  await dialog.getByRole('button', { name: '展开窗口', exact: true }).click()
+  expect((await dialog.boundingBox())!.width).toBe(1392)
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill('{ invalid draft')
+  await page.screenshot({ path: testInfo.outputPath('test-dialog-desktop.png') })
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: '在线测试', exact: true })).toBeFocused()
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  await expect(dialog.getByLabel('请求 JSON', { exact: true })).toHaveValue('{}')
+  await page.setViewportSize({ width: 390, height: 844 })
+  const mobile = await dialog.boundingBox()
+  expect(mobile).toMatchObject({ x: 0, y: 0, width: 390, height: 844 })
+  expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('test-dialog-mobile.png') })
+  await dialog.getByRole('button', { name: '关闭测试', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await page.goto('/console/apis/staff.query')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  await expect(dialog).toContainText('staff.query')
+  await expect(dialog).not.toContainText('students.query')
+  expect(executions).toBe(0)
+})
+
+test('F06 a changed catalog version closes the old test instance without sending', async ({ page }) => {
+  await setup(page)
+  await page.goto('/console/apis/students.query')
+  await page.getByRole('tab', { name: '请求案例', exact: true }).click()
+  const api = (backendCatalog() as { id: string; version: string }[]).find(api => api.id === 'students.query')!
+  let release: (() => void) | undefined
+  const pending = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/admin/v1/apis/students.query', async route => {
+    await pending
+    // Catalog-version protocol boundary; every field and example retains the backend fixture.
+    await route.fulfill({ json: { code: 'ok', data: { ...api, version: api.version + '-next' } } })
+  })
+  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await page.getByRole('button', { name: '使用此案例测试', exact: true }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  release!()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByRole('region', { name: '接口信息', exact: true })).toContainText(api.version + '-next')
 })

@@ -324,3 +324,12 @@ dialog .actions { justify-content: flex-end; margin-top: 24px; }
 .overview-metrics dd { text-align: left; }
 .initialization-note { margin-top: 20px; }
 .initialization-note > p, .initialization-note > a { display: block; margin-top: 12px; }
+
+/* API testing keeps controls and results in a single bounded modal. */
+.ui-dialog-wide { width: min(960px, calc(100vw - 48px)); max-height: 90dvh; }
+.ui-dialog-expanded { width: calc(100vw - 48px); height: 90dvh; }
+.ui-dialog-expanded .dialog-body { flex: 1; }
+@media (max-width: 767px) {
+  .ui-dialog-wide, .ui-dialog-expanded { inset: 0; width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; border: 0; }
+  .ui-dialog-wide .dialog-body { flex: 1; }
+}
