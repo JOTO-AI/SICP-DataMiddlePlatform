@@ -32,10 +32,11 @@ type PageRequest struct {
 }
 
 type Attempt struct {
-	Sent         bool
-	HTTPStatus   *int
-	BusinessCode *int64
-	Response     *diagnostic.Response
+	Authentication *diagnostic.Authentication
+	Sent           bool
+	HTTPStatus     *int
+	BusinessCode   *int64
+	Response       *diagnostic.Response
 }
 
 type Page struct {

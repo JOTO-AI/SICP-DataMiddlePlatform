@@ -282,6 +282,38 @@ func TestInvalidAuthenticationNeverFetchesDataOrLeaks(t *testing.T) {
 	}
 }
 
+func TestTokenFailureDiagnostics(t *testing.T) {
+	for _, tc := range []struct {
+		name, body, reason string
+		status             int
+	}{
+		{"gateway", "private upstream response", "http", 502},
+		{"business", `{"code":403,"message":"private"}`, "business", 200},
+		{"structure", "not JSON", "structure", 200},
+		{"token", `{"code":200,"data":{"access_token":""}}`, "invalid_token", 200},
+		{"limit", strings.Repeat("x", 65537), "response_limit", 200},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := authenticatedTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				if !strings.HasSuffix(r.URL.Path, "/oauth/token") {
+					t.Error("data page requested")
+				}
+				w.WriteHeader(tc.status)
+				io.WriteString(w, tc.body)
+			})
+			_, err := c.Fetch(t.Context(), tokenPageRequest())
+			var f *Failure
+			if !errors.As(err, &f) || f.Attempt.Authentication == nil {
+				t.Fatal("missing auth diagnostic", err)
+			}
+			a := f.Attempt.Authentication
+			if !a.Valid() || a.Reason != tc.reason || a.HTTPStatus != tc.status || f.Attempt.HTTPStatus != nil || f.Attempt.Sent {
+				t.Fatal("incorrect token failure classification")
+			}
+		})
+	}
+}
+
 func TestAuthenticationRedirectAndTimeout(t *testing.T) {
 	var unexpected atomic.Int32
 	other := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { unexpected.Add(1) }))
@@ -296,8 +328,10 @@ func TestAuthenticationRedirectAndTimeout(t *testing.T) {
 		<-r.Context().Done()
 	})
 	c.auth.timeout = 30 * time.Millisecond
-	if _, err := c.Fetch(t.Context(), tokenPageRequest()); err == nil {
-		t.Fatal("authentication body timeout ignored")
+	_, err := c.Fetch(t.Context(), tokenPageRequest())
+	var failure *Failure
+	if !errors.As(err, &failure) || failure.Attempt.Authentication == nil || failure.Attempt.Authentication.Reason != "timeout" || failure.Attempt.Authentication.HTTPStatus != 200 {
+		t.Fatal("authentication body timeout diagnostic missing")
 	}
 }
 
@@ -332,6 +366,9 @@ func TestFailedTokenRefreshPreservesSourceAttempt(t *testing.T) {
 	var f *Failure
 	if !errors.As(err, &f) || f.Kind != AuthenticationFailure || !f.Attempt.Sent || f.Attempt.HTTPStatus == nil || *f.Attempt.HTTPStatus != 401 {
 		t.Fatal("refresh failure lost the rejected page attempt", err)
+	}
+	if f.Attempt.Authentication == nil || f.Attempt.Authentication.HTTPStatus != 503 || f.Attempt.Authentication.Reason != "http" {
+		t.Fatal("refresh failure lost token endpoint evidence")
 	}
 }
 

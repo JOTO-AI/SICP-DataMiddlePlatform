@@ -18,6 +18,8 @@ X-SICP-Request: console
 
 管理 JSON 外壳固定 `code/message/data`；失败 `data:null`，成功集合为空时 `items:[]`。请求标识取 `X-Request-ID`；不要把日志中已脱敏的关联 ID 当原始控制 task ID。时间为 RFC3339，日志输入最多微秒、带时区，输出 UTC；未知时间为 `null`。日志 sequence/high_water/floor、revision 和标注为 string 的计数字段用十进制字符串，不能转 JS Number 后再回传。
 
+上游 Token 获取失败的 call/attempt 结束日志保留 `metadata.failure="authentication"`，并通过 `metadata.authentication` 显示安全诊断，例如 `{"endpoint":"/apizt/opentoken/oauth/token","reason":"http","http_status":502}`。任务失败尝试列表的 `authentication` 字段提供相同信息。认证状态与数据页的 `http_status` 分开：首次取 Token 失败时没有数据页 HTTP 状态；数据页 401 后刷新 Token 返回 502 时，两者分别保留。reason 区分 HTTP、网络、超时、响应结构、业务拒绝及无效 Token 等原因，不保存认证请求参数、凭据、Token 或认证响应正文；未收到 HTTP 响应时省略认证 `http_status`。旧版本漏写的结束日志无法补造。部署此修复时应同步更新 worker 与所有 query 副本，保证日志写入端和读取端都识别新诊断字段。
+
 | HTTP / code | 接入处理 |
 |---|---|
 | 400 `invalid_argument` | 修正字段、重复/未知 query 参数或损坏游标；不自动无限重试 |

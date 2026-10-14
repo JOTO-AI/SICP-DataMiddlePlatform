@@ -11,17 +11,18 @@ import (
 )
 
 type FailedAttempt struct {
-	EventID      string               `json:"event_id"`
-	LogSource    storage.LogSource    `json:"log_source"`
-	At           time.Time            `json:"at"`
-	Source       string               `json:"source"`
-	Page         int                  `json:"page"`
-	Attempt      int                  `json:"attempt"`
-	Failure      string               `json:"failure"`
-	HTTPStatus   *int                 `json:"http_status,omitempty"`
-	BusinessCode *int64               `json:"business_code,omitempty"`
-	DurationNS   *int64               `json:"duration_ns,omitempty"`
-	Response     *diagnostic.Response `json:"response,omitempty"`
+	Authentication *diagnostic.Authentication `json:"authentication,omitempty"`
+	EventID        string                     `json:"event_id"`
+	LogSource      storage.LogSource          `json:"log_source"`
+	At             time.Time                  `json:"at"`
+	Source         string                     `json:"source"`
+	Page           int                        `json:"page"`
+	Attempt        int                        `json:"attempt"`
+	Failure        string                     `json:"failure"`
+	HTTPStatus     *int                       `json:"http_status,omitempty"`
+	BusinessCode   *int64                     `json:"business_code,omitempty"`
+	DurationNS     *int64                     `json:"duration_ns,omitempty"`
+	Response       *diagnostic.Response       `json:"response,omitempty"`
 }
 
 type TaskDiagnostics struct {
@@ -168,7 +169,7 @@ func (d TaskDiagnostics) failedAttempts(ctx context.Context, taskID string, sour
 		if e.Identity.TaskID != id || e.Kind != events.Attempt || e.Phase != events.Finished || e.Outcome != events.Failed {
 			return nil, ErrPayload
 		}
-		out = append(out, FailedAttempt{EventID: e.ID, LogSource: source, At: e.OccurredAt, Source: e.Metadata.Source, Page: e.Metadata.Page, Attempt: e.Identity.AttemptNo, Failure: e.Metadata.Failure, HTTPStatus: e.HTTPStatus, BusinessCode: e.BusinessCode, DurationNS: e.DurationNS, Response: e.Response})
+		out = append(out, FailedAttempt{EventID: e.ID, LogSource: source, At: e.OccurredAt, Source: e.Metadata.Source, Page: e.Metadata.Page, Attempt: e.Identity.AttemptNo, Failure: e.Metadata.Failure, HTTPStatus: e.HTTPStatus, BusinessCode: e.BusinessCode, DurationNS: e.DurationNS, Response: e.Response, Authentication: e.Metadata.Authentication})
 	}
 	if rows.Err() != nil {
 		return nil, ErrDelivery

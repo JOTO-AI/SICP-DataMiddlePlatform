@@ -123,6 +123,9 @@ func (i Identity) valid() bool {
 	return validID(i.RequestID) && validID(i.TaskID) && validID(i.StepID) && validID(i.CallID) && validID(i.AttemptID) && (i.Instance == "" || i.Instance == "M" || i.Instance == "S") && i.AttemptNo >= 0 && i.validPurpose()
 }
 func (e Event) Validate() error {
+	if e.Metadata.Authentication != nil && (e.Phase != Finished || e.Outcome != Failed || (e.Kind != Attempt && e.Kind != Call)) {
+		return ErrEvent
+	}
 	if (e.Kind == Audit) != (e.Audit != nil) || e.Audit != nil && (!e.Audit.valid() || e.Phase != Finished) {
 		return ErrEvent
 	}
@@ -281,18 +284,21 @@ func (s *Span) FinishedAt() (time.Time, bool) {
 
 // Finish records business completion; Transport records client delivery separately.
 func (s *Span) Finish(ctx context.Context, outcome Outcome, status *int, code *int64) error {
-	return s.end(ctx, Finished, outcome, status, code, "", nil)
+	return s.end(ctx, Finished, outcome, status, code, "", nil, nil)
 }
 func (s *Span) FinishFailure(ctx context.Context, outcome Outcome, status *int, code *int64, failure string) error {
-	return s.end(ctx, Finished, outcome, status, code, failure, nil)
+	return s.end(ctx, Finished, outcome, status, code, failure, nil, nil)
 }
 func (s *Span) FinishResponse(ctx context.Context, outcome Outcome, status *int, code *int64, failure string, response *diagnostic.Response) error {
-	return s.end(ctx, Finished, outcome, status, code, failure, response)
+	return s.end(ctx, Finished, outcome, status, code, failure, response, nil)
+}
+func (s *Span) FinishSource(ctx context.Context, outcome Outcome, status *int, code *int64, failure string, response *diagnostic.Response, authentication *diagnostic.Authentication) error {
+	return s.end(ctx, Finished, outcome, status, code, failure, response, authentication)
 }
 func (s *Span) Transport(ctx context.Context, outcome Outcome, status *int) error {
-	return s.end(ctx, Transport, outcome, status, nil, "", nil)
+	return s.end(ctx, Transport, outcome, status, nil, "", nil, nil)
 }
-func (s *Span) end(ctx context.Context, phase Phase, outcome Outcome, status *int, code *int64, failure string, response *diagnostic.Response) error {
+func (s *Span) end(ctx context.Context, phase Phase, outcome Outcome, status *int, code *int64, failure string, response *diagnostic.Response, authentication *diagnostic.Authentication) error {
 	if s == nil {
 		return nil
 	}
@@ -308,7 +314,7 @@ func (s *Span) end(ctx context.Context, phase Phase, outcome Outcome, status *in
 	var e Event
 	if *pending != nil {
 		old := **pending
-		if old.Outcome != outcome || old.Metadata.Failure != failure || !sameValue(old.HTTPStatus, status) || !sameValue(old.BusinessCode, code) || !sameValue(old.Response, response) {
+		if old.Outcome != outcome || old.Metadata.Failure != failure || !sameValue(old.HTTPStatus, status) || !sameValue(old.BusinessCode, code) || !sameValue(old.Response, response) || !sameValue(old.Metadata.Authentication, authentication) {
 			return ErrEvent
 		}
 		e = old
@@ -324,6 +330,10 @@ func (s *Span) end(ctx context.Context, phase Phase, outcome Outcome, status *in
 		e.OccurredAt = now.UTC()
 		e.Outcome = outcome
 		e.Metadata.Failure = failure
+		if authentication != nil {
+			copy := *authentication
+			e.Metadata.Authentication = &copy
+		}
 		if response != nil {
 			copy := *response
 			e.Response = &copy

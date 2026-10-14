@@ -5,27 +5,32 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/diagnostic"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/query/contract"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/storage/source"
 )
 
 // Metadata is a typed allowlist, never a map of caller-controlled attributes.
 type Metadata struct {
-	Build     *BuildStage        `json:"build,omitempty"`
-	Source    string             `json:"source,omitempty"`
-	Path      string             `json:"path,omitempty"`
-	Mode      string             `json:"mode,omitempty"`
-	Page      int                `json:"page,omitempty"`
-	PageSize  int                `json:"page_size,omitempty"`
-	StartTime string             `json:"start_time,omitempty"`
-	EndTime   string             `json:"end_time,omitempty"`
-	Operation contract.Operation `json:"operation,omitempty"`
-	Failure   string             `json:"failure,omitempty"`
+	Authentication *diagnostic.Authentication `json:"authentication,omitempty"`
+	Build          *BuildStage                `json:"build,omitempty"`
+	Source         string                     `json:"source,omitempty"`
+	Path           string                     `json:"path,omitempty"`
+	Mode           string                     `json:"mode,omitempty"`
+	Page           int                        `json:"page,omitempty"`
+	PageSize       int                        `json:"page_size,omitempty"`
+	StartTime      string                     `json:"start_time,omitempty"`
+	EndTime        string                     `json:"end_time,omitempty"`
+	Operation      contract.Operation         `json:"operation,omitempty"`
+	Failure        string                     `json:"failure,omitempty"`
 }
 
 func (Metadata) String() string     { return "[event metadata redacted]" }
 func (m Metadata) GoString() string { return m.String() }
 func (m Metadata) valid() bool {
+	if m.Authentication != nil && (!m.Authentication.Valid() || (m.Failure != "authentication" && m.Failure != "cancelled" && m.Failure != "request_timeout" && m.Failure != "budget")) {
+		return false
+	}
 	if m.Build != nil && (!m.Build.valid() || m.Source != "" || m.Operation != "") {
 		return false
 	}
@@ -68,7 +73,7 @@ func (m Metadata) valid() bool {
 		}
 	}
 	switch m.Failure {
-	case "", "configuration", "transport", "http", "business", "structure", "response_limit", "cancelled", "record", "retry_wait", "observation", "budget", "request_timeout", "cooldown", "cooldown_storage":
+	case "", "authentication", "configuration", "transport", "http", "business", "structure", "response_limit", "cancelled", "record", "retry_wait", "observation", "budget", "request_timeout", "cooldown", "cooldown_storage":
 	default:
 		return false
 	}

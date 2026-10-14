@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/diagnostic"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 )
 
@@ -82,11 +83,13 @@ func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch
 			outcome = events.Failed
 		}
 		failureKind := ""
+		var authentication *diagnostic.Authentication
 		var failure *Failure
 		if errors.As(finalErr, &failure) {
 			failureKind = string(failure.Kind)
+			authentication = failure.Attempt.Authentication
 		}
-		if err := call.FinishFailure(ctx, outcome, nil, nil, failureKind); err != nil {
+		if err := call.FinishSource(ctx, outcome, nil, nil, failureKind, nil, authentication); err != nil {
 			result.ObservationError = err
 		}
 		if result.FinalFailure != nil {
@@ -134,7 +137,7 @@ func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch
 		if observedFailure != nil {
 			failureKind = string(observedFailure.Kind)
 		}
-		if recordErr := span.FinishResponse(ctx, outcome, meta.HTTPStatus, meta.BusinessCode, failureKind, meta.Response); recordErr != nil {
+		if recordErr := span.FinishSource(ctx, outcome, meta.HTTPStatus, meta.BusinessCode, failureKind, meta.Response, meta.Authentication); recordErr != nil {
 			result.ObservationError = recordErr
 		}
 		if err == nil {
