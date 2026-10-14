@@ -16,3 +16,11 @@
 - 验证：Node v24.15.0，`node frontend/scripts/check-visual-baseline.mjs` 通过，28 图的 SHA-256/尺寸/字节数一致，R01 至 R11 全覆盖，所有实施/验收编号存在。首次暂存检查发现原计划的 Markdown 双空格换行触发行尾空白告警，已改为等效反斜杠换行，提交前复查。
 - 代码复核：已修正课表/组织/人员/教学班的验收编号映射；校验器从脚本位置解析路径，拒绝缺图、重复图、哈希或版本变化、缺列和未知编号。当前复核无遗留问题；此为本次代码自审，最终人工验收项不勾选。
 - 提交与 push：本步骤提交后推送 `origin/feat/frontend-development`；成功后的 SHA 与结果在下一步记录中补登，失败则保留阻塞记录。
+
+## F00-02 逐端点接入核对
+
+- 前一步：`283dd68` 已成功 push 至 `origin/feat/frontend-development`；Git 返回 `[new branch] HEAD -> feat/frontend-development`。并行只读 ls-remote 曾超时，不影响 push 已返回的成功结果。
+- 基线：[端点接入表](FRONTEND_ENDPOINT_BASELINE.md)，覆盖认证/健康/旧任务、九业务、目录/运维/源测试、通知/维护及双源日志。
+- 验证：Node v24.15.0，`node frontend/scripts/check-endpoint-baseline.mjs` 通过：47 个方法/路径组合、九业务、十四源与既有管理 HTTP 样例均有登记。没有运行后端 T/OI，没有发送副作用请求。
+- 代码自审：逐项对照路由、DTO、解析器与接入包；修正本地业务 code 的字符串语义，区分业务 422/管理 429，明确 Organization 与 Department 的 is_active 可空性差异、根操作节点省略 parent 参数。路由校验包含集合双向比较，拒绝漏记或虚构端点。
+- 本步骤完成后勾选 F00-02，提交并 push；下一步 F00-03 处理差异关闭范围。真实接口可用性与页面验收均保持未勾选。
