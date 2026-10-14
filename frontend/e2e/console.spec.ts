@@ -226,7 +226,7 @@ test('partial initialization can force only one table while retaining successful
     posted = route.request().url()
     expect(route.request().postDataJSON()).toEqual({})
     expect(route.request().headers()['idempotency-key']).toBeTruthy()
-    return route.fulfill({ json: { code: 'accepted', data: { task_id: 'repair-one-table' } } })
+    return route.fulfill({ status: 202, headers: { Location: '/admin/v1/tasks/repair-one-table' }, json: { code: 'accepted', data: { task_id: 'repair-one-table' } } })
   })
   await page.route('**/admin/v1/tasks/repair-one-table', route => route.fulfill({ json: { code: 'ok', data: { ...task, task_id: 'repair-one-table', status: 'accepted', selected_table: 'dwd_bzkscjzlb' } } }))
   await page.getByRole('link', { name: '更新任务', exact: true }).click()

@@ -3,6 +3,7 @@ import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, type Envelope } from '../api'
 import { useRequestScope } from '../composables/useRequestScope'
 import { newIdempotencyKey } from '../idempotency'
+import { createTaskOperation, submitOperation, type PendingOperation } from '../api/operations'
 import AcquisitionProgress from '../AcquisitionProgress.vue'
 import WorkProgress from '../WorkProgress.vue'
 import type { WorkProgress as WorkProgressData } from '../workProgress'
@@ -13,6 +14,7 @@ const action = ref('force-full'), predecessor = ref(''), key = ref(newIdempotenc
 interface Overview { items: Task[]; initialized: boolean; next_due_at?: string; cooldown_until?: string; interval_seconds: number }
 const overview = ref<Overview | null>(null), historyError = ref(''), historyBusy = ref(false)
 const hasActiveTask = computed(() => overview.value?.items.some(item => !['failed', 'success_published', 'success_unchanged'].includes(item.status)) ?? false)
+const acceptedLocation = ref<{ id: string; path: string } | null>(null)
 const selectedTable = ref('dwd_bzkscjzlb')
 const tableUpdateAllowed = computed(() => !!overview.value && !historyBusy.value && !historyError.value && !hasActiveTask.value && !busy.value && !loading.value && !pending.value)
 const failedInitialization = computed(() => {
@@ -66,7 +68,7 @@ const task = ref<Task | null>(null), busy = ref(false), loading = ref(false), er
 const dialog = ref<HTMLDialogElement | null>(null)
 const selected = computed(() => actions.value.find(a => a.id === action.value)!)
 // Preserve the exact operation and key until a receipt is obtained or explicitly abandoned.
-const pending = ref<{ path: string; key: string; title: string; description: string } | null>(null)
+const pending = ref<(PendingOperation & { title: string; description: string }) | null>(null)
 let timer: ReturnType<typeof setTimeout> | undefined
 let active = true
 const terminal = computed(() => !!task.value?.finished_at || ['success_published', 'success_unchanged', 'failed'].includes(task.value?.status || ''))
@@ -89,9 +91,10 @@ function confirm() {
     if (!/^[\x21-\x7e]{1,128}$/.test(key.value) || key.value.includes(',')) { error.value = '幂等键须为 1–128 位可见 ASCII 字符，且不含逗号。'; return }
     const retryInitial = action.value === 'force-full' ? failedInitialization.value : null
     const rerunID = retryInitial?.task_id || (action.value === 'rerun' ? predecessor.value.trim() : '')
+    if (rerunID && !/^[A-Za-z0-9_-]+$/.test(rerunID)) { error.value = '原任务号格式无效。'; return }
     pending.value = {
-      path: action.value === 'table-full' ? `/admin/v1/tables/${encodeURIComponent(selectedTable.value)}/force-full` : rerunID ? `/admin/v1/tasks/${encodeURIComponent(rerunID)}/rerun` : `/admin/v1/tasks/${action.value}`,
-      key: key.value, title: selected.value.title,
+      ...createTaskOperation(action.value === 'table-full' ? `/admin/v1/tables/${encodeURIComponent(selectedTable.value)}/force-full` : rerunID ? `/admin/v1/tasks/${encodeURIComponent(rerunID)}/rerun` : `/admin/v1/tasks/${action.value}`, key.value),
+      title: selected.value.title,
       description: action.value === 'table-full' ? `将完整重采 ${selectedTable.value}，其它表复用最近完成的数据。若初始化仍缺其它表，本表成功后会保留结果，等待补齐；完整数据校验通过后统一发布。` : retryInitial ? `将复用已完成的表并重采待补齐的表，保留原失败任务 ${retryInitial.task_id} 的记录。无需重启服务。` : selected.value.text,
     }
   }
@@ -108,9 +111,10 @@ async function submit() {
   const submission = { ...pending.value }
   dialog.value?.close(); busy.value = true; error.value = ''; receipt.value = ''
   try {
-    const response = await request<Envelope<Task>>('worker', submission.path, { body: {}, key: submission.key, signal: run.signal })
+    const response = await submitOperation<Task>(submission, run.signal)
     if (!run.current()) return
     lookup.value = response.body.data.task_id
+    acceptedLocation.value = { id: lookup.value, path: response.location }
     receipt.value = `任务已受理：${lookup.value}。受理不代表执行完成。`
     pending.value = null; key.value = newIdempotencyKey()
     task.value = null; auto.value = true; await fetchTask()
@@ -124,7 +128,7 @@ async function fetchTask() {
   const run = detailRequests.begin(), id = lookup.value.trim()
   const current = () => active && run.current() && lookup.value.trim() === id
   try {
-    const response = await request<Envelope<Task>>('worker', `/admin/v1/tasks/${encodeURIComponent(id)}`, { signal: run.signal })
+    const response = await request<Envelope<Task>>('worker', acceptedLocation.value?.id === id ? acceptedLocation.value.path : `/admin/v1/tasks/${encodeURIComponent(id)}`, { signal: run.signal })
     if (!current()) return
     task.value = response.body.data
     if (terminal.value) stop()

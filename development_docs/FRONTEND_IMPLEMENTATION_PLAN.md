@@ -145,7 +145,7 @@ frontend/gateway-e2e/  真实网关与部署验证
 - [x] F01-02 演进 `api.ts`：支持 GET/POST/PUT、外部 AbortSignal、超时、响应头、非 JSON 错误与按领域解释错误码；管理设置冲突、日志游标过期和业务快照失效分别处理。
 - [x] F01-03 在统一请求结果中保留 `X-Request-ID`、`X-Query-Snapshot`、`X-SICP-Combination`、`Location`、`Retry-After` 等允许响应头；大整数标识、revision 和 sequence 保持字符串。
 - [x] F01-04 统一请求代次与会话代次隔离；切页、改条件、关闭弹窗、退出登录中止等待，迟到响应不得写回新页面或新会话。
-- [ ] F01-05 分开封装任务的 header `Idempotency-Key` 与新异步作业的 JSON `idempotency_key`；受理不明时保持原键和原载荷，按原作业位置查回。
+- [x] F01-05 分开封装任务的 header `Idempotency-Key` 与新异步作业的 JSON `idempotency_key`；受理不明时保持原键和原载荷，按原作业位置查回。
 - [ ] F01-06 仅对必要的待确认操作保存短期会话恢复信息，绑定环境/主体/动作并设置过期；不存密码、CSRF、人员结果或源响应，退出即清理。
 - [ ] F01-07 为只读轮询设定可见性、退避和在途请求上限；有副作用的请求不走通用自动重试。
 
