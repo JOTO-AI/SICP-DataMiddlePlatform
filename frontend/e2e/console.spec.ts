@@ -896,3 +896,42 @@ test('F01 leaving an in-flight submission preserves the original operation and k
     expect(keys[1]).toBe(keys[0])
   } finally { release() }
 })
+
+for (const outcome of ['retry', 'logout']) {
+  test(`F01 pending operation survives refresh and clears on ${outcome}`, async ({ page }) => {
+    await setup(page)
+    const examples = JSON.parse(readFileSync(new URL('../../development_docs/verification/operations_http_examples.json', import.meta.url), 'utf8')).examples
+    const receipt = examples.find((item: { name: string }) => item.name === 'full')
+    const detail = examples.find((item: { name: string }) => item.name === 'task_detail')
+    const keys: string[] = []
+    await page.route('**/admin/v1/tasks/force-full', route => {
+      keys.push(route.request().headers()['idempotency-key']!)
+      if (keys.length === 1) return route.abort()
+      return route.fulfill({ status: receipt.status, headers: { Location: detail.path }, json: receipt.response })
+    })
+    await page.route(`**${detail.path}`, route => route.fulfill({ status: detail.status, json: detail.response }))
+    await page.getByRole('link', { name: '更新任务', exact: true }).click()
+    await page.getByRole('button', { name: '强制全量更新', exact: true }).click()
+    await page.getByRole('button', { name: '确认提交更新' }).click()
+    await expect(page.getByRole('alert')).toContainText('原请求已保留')
+    const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem('sicp.pending-operations.v1')!))
+    expect(stored).toHaveLength(1)
+    expect(stored[0].operation).toEqual({ kind: 'task', path: receipt.path, key: keys[0], payload: '{}' })
+    expect(JSON.stringify(stored)).not.toMatch(/csrf|password|synthetic-csrf|synthetic-password/)
+    await page.reload()
+    await expect(page.getByRole('alert')).toContainText('已恢复待确认操作')
+    await expect(page.getByLabel('幂等键', { exact: true })).toHaveValue(keys[0]!)
+    expect(keys).toHaveLength(1)
+    if (outcome === 'retry') {
+      await page.getByRole('button', { name: '重试原请求' }).click()
+      await page.getByRole('button', { name: '确认提交更新' }).click()
+      await expect(page.locator('.success-text')).toContainText(receipt.response.data.task_id)
+      expect(keys).toHaveLength(2)
+      expect(keys[1]).toBe(keys[0])
+    } else {
+      await page.getByRole('button', { name: '退出登录' }).click()
+      await expect(page.getByRole('heading', { name: '登录管理控制台' })).toBeVisible()
+    }
+    expect(await page.evaluate(() => sessionStorage.getItem('sicp.pending-operations.v1'))).toBeNull()
+  })
+}

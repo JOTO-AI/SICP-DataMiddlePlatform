@@ -3,6 +3,8 @@ import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, type Envelope } from '../api'
 import { useRequestScope } from '../composables/useRequestScope'
 import { newIdempotencyKey } from '../idempotency'
+import { session } from '../session'
+import { loadPendingRecovery, savePendingRecovery, removePendingRecovery } from '../storage/pending'
 import { createTaskOperation, submitOperation, type PendingOperation } from '../api/operations'
 import AcquisitionProgress from '../AcquisitionProgress.vue'
 import WorkProgress from '../WorkProgress.vue'
@@ -68,7 +70,11 @@ const task = ref<Task | null>(null), busy = ref(false), loading = ref(false), er
 const dialog = ref<HTMLDialogElement | null>(null)
 const selected = computed(() => actions.value.find(a => a.id === action.value)!)
 // Preserve the exact operation and key until a receipt is obtained or explicitly abandoned.
-const pending = ref<(PendingOperation & { title: string; description: string }) | null>(null)
+const recoveryContext = { environment: window.location.origin + import.meta.env.BASE_URL, subject: session.operator }
+const recovered = loadPendingRecovery(recoveryContext).find(entry => entry.operation.kind === 'task')
+const recoveryAvailable = ref(true)
+const pending = ref<(PendingOperation & { title: string; description: string }) | null>(recovered ? { ...recovered.operation, title: '原更新操作', description: `恢复待确认请求：${recovered.operation.path}。将使用原操作与幂等键核对受理结果。` } : null)
+if (recovered) { key.value = recovered.operation.key; error.value = '已恢复待确认操作，请核对后重试原请求；尚未自动提交。' }
 let timer: ReturnType<typeof setTimeout> | undefined
 let active = true
 const terminal = computed(() => !!task.value?.finished_at || ['success_published', 'success_unchanged', 'failed'].includes(task.value?.status || ''))
@@ -104,11 +110,12 @@ function forceFull() { action.value = 'force-full'; confirm() }
 function syncIncremental() { action.value = 'incremental'; confirm() }
 function retryFull(id: string) { if (!tableUpdateAllowed.value) return; action.value = 'rerun'; predecessor.value = id; confirm() }
 function forceTable(table: string) { if (!tableUpdateAllowed.value) return; action.value = 'table-full'; selectedTable.value = table; confirm() }
-function abandon() { pending.value = null; key.value = newIdempotencyKey(); error.value = ''; receipt.value = '' }
+function abandon() { if (pending.value) removePendingRecovery(recoveryContext, pending.value); pending.value = null; key.value = newIdempotencyKey(); error.value = ''; receipt.value = '' }
 async function submit() {
   if (!active || busy.value || !pending.value) return
   const run = submitRequests.begin()
   const submission = { ...pending.value }
+  recoveryAvailable.value = savePendingRecovery(recoveryContext, submission)
   dialog.value?.close(); busy.value = true; error.value = ''; receipt.value = ''
   try {
     const response = await submitOperation<Task>(submission, run.signal)
@@ -116,6 +123,7 @@ async function submit() {
     lookup.value = response.body.data.task_id
     acceptedLocation.value = { id: lookup.value, path: response.location }
     receipt.value = `任务已受理：${lookup.value}。受理不代表执行完成。`
+    removePendingRecovery(recoveryContext, submission)
     pending.value = null; key.value = newIdempotencyKey()
     task.value = null; auto.value = true; await fetchTask()
     if (run.current()) await refreshHistory()
@@ -170,6 +178,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
         <label class="key-label">幂等键<input v-model="key" required maxlength="128" spellcheck="false"></label></fieldset>
         <p class="hint">响应丢失时用原键重试，可避免重复创建任务。</p>
         <p v-if="pending" class="hint">已锁定请求：{{ pending.title }}。修改操作前请先结束本次请求。</p>
+        <p v-if="pending && !recoveryAvailable" class="hint">当前浏览器无法保存恢复信息，刷新页面会丢失本次待确认请求。</p>
         <div class="actions"><button class="primary" :disabled="busy || loading || (!pending && ((action === 'incremental' && incrementalBlocked) || (action === 'force-full' && forceFullBlocked) || (action === 'table-full' && !tableUpdateAllowed)))">{{ busy ? '正在提交…' : pending ? '重试原请求' : '提交更新' }}</button><button v-if="pending" type="button" :disabled="busy" @click="abandon">结束本次请求</button></div>
         <p v-if="error" class="error" role="alert">{{ error }}</p><p v-if="receipt" class="success-text" role="status">{{ receipt }}</p>
       </form>

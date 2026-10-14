@@ -1,4 +1,5 @@
-﻿import { reactive } from 'vue'
+import { reactive } from 'vue'
+import { clearPendingRecovery } from './storage/pending'
 
 export const session = reactive({ operator: '', csrf: '', loading: true, notice: '', epoch: 0 })
 let protectedController = new AbortController()
@@ -11,7 +12,9 @@ function stopProtectedRequests() {
   previous.abort()
 }
 function stopAuthRequest() { authGeneration++; authController?.abort(); authController = undefined }
-export function clearSession(message = '') {
+export function clearSession(message = '') { resetSession(message, false) }
+function resetSession(message: string, preserveRecovery: boolean) {
+  if (!preserveRecovery) clearPendingRecovery()
   stopAuthRequest()
   session.operator = ''; session.csrf = ''; session.notice = message; session.epoch++; session.loading = false
   stopProtectedRequests()
@@ -43,9 +46,9 @@ async function authRequest(path: string, signal: AbortSignal, body?: unknown) {
     return result.data as { operator: string; csrf: string } | undefined
   } finally { clearTimeout(timer); signal.removeEventListener('abort', cancel) }
 }
-function applySession(data?: { operator: string; csrf: string }) {
+function applySession(data: { operator: string; csrf: string } | undefined, preserveRecovery = false) {
   if (!data || typeof data.operator !== 'string' || !data.operator || typeof data.csrf !== 'string' || !data.csrf) throw new Error('登录响应异常，请稍后重试。')
-  clearSession()
+  resetSession('', preserveRecovery)
   session.operator = data.operator; session.csrf = data.csrf
 }
 export async function restoreSession() {
@@ -53,7 +56,7 @@ export async function restoreSession() {
   try {
     const data = await authRequest('session', run.signal)
     if (!run.current()) return
-    if (data) applySession(data)
+    if (data) applySession(data, true)
     else clearSession()
   } catch { if (run.current()) clearSession('无法连接服务，请检查连接后重试。') }
   finally { if (run.current()) session.loading = false }
@@ -65,6 +68,7 @@ export async function login(username: string, password: string) {
   applySession(data)
 }
 export async function logout() {
+  clearPendingRecovery()
   const run = startAuth(true)
   stopProtectedRequests()
   try {

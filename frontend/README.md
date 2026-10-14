@@ -92,3 +92,9 @@ Playwright 测试拦截 HTTP 并使用合成响应，验证前端协议与交互
 当前地址为 `/console/overview`、`/console/queries`、`/console/tasks`；旧 `#overview/#queries/#tasks` 自动映射，导航不会自动执行业务查询或任务动作。七模块导航与完整详情路由在后续 F03/F05/F07 中接入，不能将本步骤标为最终导航交付。
 
 正常业务测试复用 [后端来源夹具](fixtures/README.md)。`npm.cmd run test:unit` 执行不依赖浏览器服务的协议/状态检查，`npm.cmd run check:fixtures` 核对来源与固定预期；`npm.cmd test` 继续执行两个 origin 的浏览器交互回归。可设 `SICP_TEST_BROWSER` 使用本地 Chromium/Chrome。完整逐步提交与复核见 [开发记录](../development_docs/FRONTEND_EXECUTION_LOG.md)。
+
+## 待确认操作恢复（F01-06）
+
+真正提交前，必要的操作元数据保存在当前标签页 sessionStorage：环境、登录主体、动作路径、原幂等键、白名单参数及可选回执位置。记录最多 8 条、有效期 15 分钟；不延长既有记录的到期时间，不挤掉未确认记录。密码、CSRF、人员查询结果和源响应不写入浏览器存储，也不使用 localStorage。
+
+刷新并成功恢复同一主体会话后可恢复待确认任务，由管理员再次确认同键重试；页面加载不会自动重新提交。得到受理回执、主动结束请求、退出或会话失效时清理对应记录。存储被禁用时仍可在当前页面重试，并提示刷新将丢失恢复信息。新作业页面可复用相同存储接口，尚未接入的页面不计为完成。
