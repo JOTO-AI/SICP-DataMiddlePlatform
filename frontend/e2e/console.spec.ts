@@ -2,9 +2,13 @@ import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { backendCapture, backendCatalog, managementCapture, paginationCapture } from '../fixtures/backend'
 import { sourceJobResult } from '../fixtures/sourceTests'
+import { recordedUpdateEvent } from '../fixtures/updateTests'
 import { operations, queryBody, cell } from '../src/queryOperations'
 
 test.beforeEach(async ({ page }) => {
+  const updates = managementCapture('updates'), update = managementCapture('update_detail')
+  await page.route('**/admin/v1/update-events?*', route => route.fulfill({ status: updates.status, json: updates.response }))
+  await page.route('**/admin/v1/update-events/*', route => new URL(route.request().url()).pathname === update.path ? route.fulfill({ status: update.status, json: update.response }) : route.abort())
   await page.route('**/admin/v1/logs/**', route => route.abort())
   const items = backendCatalog() as { id: string; version: string }[]
   await page.route('**/admin/v1/apis', route => route.fulfill({ json: { code: 'ok', message: '', data: { version: items[0]!.version, items } } }))
@@ -2630,4 +2634,113 @@ test('F06 recent source failed reread marks the previous unavailable result stal
   await expect(recent).toContainText('当前结果可获取性未确认')
   await expect(recent).toContainText('最近作业状态：成功')
   expect(posts).toBe(1); expect(gets).toBe(2)
+})
+test('F07 event history keeps stable batches through control polling and uses captured task identity for details', async ({ page }, testInfo) => {
+  await page.clock.install()
+  await setup(page)
+  const event = recordedUpdateEvent(), empty = managementCapture('updates')
+  let lists = 0, details = 0
+  await page.route('**/admin/v1/update-events?*', route => {
+    lists++; const params = new URL(route.request().url()).searchParams
+    if (params.has('cursor')) {
+      expect([...params.keys()]).toEqual(['cursor']); expect(params.get('cursor')).toBe('protocol-next')
+      return route.fulfill({ status: empty.status, json: empty.response })
+    }
+    expect([...params.entries()]).toEqual([['page_size', '50']])
+    // Existing task projected by the backend Event mapping; only cursor metadata is a protocol boundary.
+    return route.fulfill({ json: { code: 'ok', data: { items: [event], next_cursor: 'protocol-next' } } })
+  })
+  const captured = managementCapture('update_detail')
+  await page.route(`**${captured.path}`, route => { details++; return route.fulfill({ status: captured.status, json: captured.response }) })
+  await page.goto('/console/updates')
+  const history = page.getByRole('region', { name: '更新事件历史', exact: true })
+  await expect(history.getByLabel('更新事件表格', { exact: true }).locator('tbody tr')).toHaveCount(1)
+  await expect(history).toContainText(String(event.id))
+  await page.clock.runFor(31000)
+  expect(lists).toBe(1)
+  await history.getByRole('link', { name: '查看事件详情', exact: true }).click()
+  const facts = page.getByRole('region', { name: '更新事件事实', exact: true })
+  await expect(facts).toContainText(String(event.task_id)); expect(details).toBe(1)
+  await expect(facts).toContainText('尚未确认')
+  await expect(facts.getByRole('button', { name: '复制任务号', exact: true })).toBeVisible()
+  await page.getByText('实际任务响应', { exact: true }).click()
+  await expect(page.getByLabel('更新事件响应原文', { exact: true })).toHaveText(JSON.stringify(captured.response))
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('update-detail-mobile.png') })
+  await page.getByRole('link', { name: '← 返回更新事件', exact: true }).click()
+  await expect(history).toContainText('第 1 批'); expect(lists).toBe(1)
+  await history.getByRole('button', { name: '下一批事件', exact: true }).click()
+  await expect(history).toContainText('第 2 批')
+  await expect(history).toContainText('本批没有更新事件')
+  await expect(history.getByRole('button', { name: '下一批事件', exact: true })).toBeDisabled()
+  await history.getByRole('button', { name: '上一批事件', exact: true }).click()
+  await expect(history).toContainText('第 1 批'); expect(lists).toBe(2)
+  await history.scrollIntoViewIfNeeded()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('update-history-mobile.png') })
+})
+
+test('F07 event history rejects repeated cursor and preserves a successful batch after read failures', async ({ page }) => {
+  await setup(page)
+  const event = recordedUpdateEvent()
+  let calls = 0
+  await page.route('**/admin/v1/update-events?*', route => {
+    calls++
+    if (calls === 1) return route.fulfill({ json: { code: 'ok', data: { items: [event], next_cursor: 'protocol-next' } } })
+    if (calls === 2) return route.fulfill({ json: { code: 'ok', data: { items: [], next_cursor: 'protocol-next' } } })
+    return route.abort()
+  })
+  await page.goto('/console/updates')
+  const history = page.getByRole('region', { name: '更新事件历史', exact: true })
+  await expect(history).toContainText(String(event.id))
+  await history.getByRole('button', { name: '下一批事件', exact: true }).click()
+  await expect(history).toContainText('游标不符合当前分页链')
+  await expect(history).toContainText('第 1 批')
+  await history.getByRole('button', { name: '重新读取事件首批', exact: true }).click()
+  await expect(history).toContainText('保留上次成功读取的历史批次')
+  await expect(history.getByLabel('更新事件表格', { exact: true }).locator('tbody tr')).toHaveCount(1)
+  expect(calls).toBe(3)
+})
+
+test('F07 event detail rejects a mismatched task and retains only a previously confirmed response on failure', async ({ page }) => {
+  await setup(page)
+  const captured = managementCapture('update_detail'), task = captured.response.data as Record<string, unknown>
+  let calls = 0
+  await page.route(`**${captured.path}`, route => {
+    calls++
+    if (calls === 1) return route.fulfill({ json: { ...captured.response, data: { ...task, task_id: 'protocol-mismatch' } } })
+    if (calls === 2) return route.fulfill({ status: captured.status, json: captured.response })
+    return route.abort()
+  })
+  await page.goto(`/console/updates/${task.task_id}`)
+  const facts = page.getByRole('region', { name: '更新事件事实', exact: true })
+  await expect(page.getByRole('alert')).toContainText('当前事件标识或契约不一致')
+  await expect(facts).toHaveCount(0)
+  await page.getByRole('button', { name: '刷新事件详情', exact: true }).click()
+  await expect(facts).toContainText(String(task.task_id))
+  await page.getByRole('button', { name: '刷新事件详情', exact: true }).click()
+  await expect(page.getByText('当前读取失败，保留上次已确认详情，不代表最新状态。', { exact: true })).toBeVisible()
+  await expect(facts).toContainText(String(task.task_id))
+  expect(calls).toBe(3)
+})
+
+test('F07 event history ignores a deactivated late batch and reads a fresh batch on return', async ({ page }) => {
+  await setup(page)
+  const empty = managementCapture('updates')
+  let calls = 0, release: (() => void) | undefined, finished: (() => void) | undefined
+  const pending = new Promise<void>(resolve => { release = resolve }), done = new Promise<void>(resolve => { finished = resolve })
+  await page.route('**/admin/v1/update-events?*', async route => {
+    calls++; if (calls === 1) await pending
+    await route.fulfill({ status: empty.status, json: empty.response }).catch(() => {}); finished!()
+  })
+  await page.goto('/console/updates')
+  await expect.poll(() => calls).toBe(1)
+  await page.getByRole('link', { name: '运行总览', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '运行总览', exact: true })).toBeVisible()
+  release!(); await done
+  await expect(page.getByRole('region', { name: '更新事件历史', exact: true })).toHaveCount(0)
+  await page.getByRole('link', { name: '更新事件', exact: true }).click()
+  await expect(page.getByRole('region', { name: '更新事件历史', exact: true })).toContainText('本批没有更新事件')
+  expect(calls).toBe(2)
 })

@@ -2,6 +2,7 @@
 import AsyncActionDialog from '../components/AsyncActionDialog.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import PageHeader from '../components/PageHeader.vue'
+import UpdateHistory from '../components/updates/UpdateHistory.vue'
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, ApiError, type Envelope } from '../api'
 import { pollingDelay } from '../app/polling'
@@ -155,7 +156,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
 <template>
   <section>
     <PageHeader title="更新任务" description="初始化和日常同步由系统自动执行，此处查看记录与处理异常。"><div class="actions"><button @click="refreshHistory" :disabled="historyBusy">刷新记录</button><button class="primary" @click="syncIncremental" :disabled="incrementalBlocked || busy || loading || !!pending" aria-describedby="incremental-help">立即增量同步</button><button @click="forceFull" :disabled="forceFullBlocked || busy || loading || !!pending" aria-describedby="force-full-help">{{ primaryLabel }}</button></div></PageHeader>
-    <div class="section-note">
+    <UpdateHistory /><div class="section-note">
       <h2>自动更新</h2>
       <p v-if="overview">{{ overview.initialized ? '初始化已完成，系统按两小时间隔调度增量同步。' : '尚未完成初始化。全新环境自动开始，重启后系统会恢复未完成的初始化。' }}</p>
       <p v-else>正在读取自动更新状态。</p>
@@ -165,7 +166,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
       <p v-if="overview?.initialized">下次计划时间：{{ time(overview.next_due_at) }}。执行中或恢复中会顺延。</p>
       <p v-if="overview?.cooldown_until">冷却截止时间：{{ time(overview.cooldown_until) }}</p>
     </div>
-    <div class="section-bar next-heading"><h2>最近任务</h2><span class="muted">最近 50 条，正常每 10 秒刷新，后台暂停</span></div>
+    <div class="section-bar next-heading"><h2>调度状态中的最近任务</h2><span class="muted">操作前校验，正常每 10 秒刷新；历史阅读使用上方事件列表</span></div>
     <p v-if="historyError" class="error" role="alert">{{ historyError }}</p>
     <div class="link-list">
       <button v-for="item in overview?.items" :key="item.task_id" class="history-task" @click="selectTask(item.task_id)" :disabled="busy || loading">

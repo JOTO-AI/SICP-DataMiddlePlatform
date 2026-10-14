@@ -48,3 +48,7 @@ node frontend/scripts/check-fixtures.mjs --write
 ## 日志联动夹具（F06-12b）
 
 logTests.ts 复用 operations_http_examples.json 的 log_history 空页和 log_detail 既有事件，将详情的 EventItem 基础字段投影为列表项。查询范围、筛选回显、游标和高水位仅作为协议场景元数据调整；不新增日志业务记录、不声称这些调整是实测数据库响应。源日志使用已有空页，正常业务查询与源测试继续使用既有 captures。
+
+## 更新事件夹具（F07-01）
+
+updateTests.ts 按 operations.Repository.Events 的映射，将已有 update_detail 任务投影为更新事件（id 与 task_id 相同）。列表空页复用 updates，续页游标与非法身份只作为协议边界；不新增正常任务记录。
