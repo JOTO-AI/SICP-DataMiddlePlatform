@@ -1,8 +1,8 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, watch, useId } from 'vue'
 import { parseRequestObject, parseEditableJSON, parameterError, jsonError, type ParameterDefinition } from '../shared/json'
 const props = withDefaults(defineProps<{ modelValue: string; parameters?: ParameterDefinition[]; disabled?: boolean; validateText?: (text: string) => Record<string, unknown> }>(), { parameters: () => [] })
-const emit = defineEmits<{ 'update:modelValue': [text: string] }>()
+const emit = defineEmits<{ 'update:modelValue': [text: string]; edited: [] }>()
 const mode = ref<'json' | 'parameters'>('json'), error = ref(''), rows = ref<{ name: string; text: string; error: string }[]>([])
 const id = useId(), dirty = ref(false), showAdvanced = ref(false)
 const advanced = computed(() => new Set(props.parameters.filter(item => item.advanced).map(item => item.name)))
@@ -56,11 +56,11 @@ defineExpose({ getRequestText, loadText })
 <template><div class="request-editor" :aria-busy="disabled || undefined">
   <div class="tabs" aria-label="请求编辑方式"><button type="button" :disabled="disabled" :aria-pressed="mode === 'parameters'" :class="{ active: mode === 'parameters' }" @click="toParameters">参数编辑</button><button type="button" :disabled="disabled" :aria-pressed="mode === 'json'" :class="{ active: mode === 'json' }" @click="toJSON">JSON 编辑</button></div>
   <p v-if="error" :id="`${id}-error`" class="error" role="alert">{{ error }}</p>
-  <label v-if="mode === 'json'">请求 JSON<textarea :value="modelValue" :disabled="disabled" :aria-invalid="!!error" :aria-describedby="error ? `${id}-error` : undefined" rows="8" spellcheck="false" @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)" /></label>
+  <label v-if="mode === 'json'">请求 JSON<textarea :value="modelValue" :disabled="disabled" :aria-invalid="!!error" :aria-describedby="error ? `${id}-error` : undefined" rows="8" spellcheck="false" @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value); emit('edited')" /></label>
   <template v-else>
     <p class="hint">每项填写 JSON 值：字符串使用双引号，数组使用方括号；留空表示省略。编号按字符串原样保留。未修改参数时切回 JSON 保留原文。</p>
     <button v-if="advanced.size" type="button" :disabled="disabled" :aria-expanded="showAdvanced" @click="showAdvanced = !showAdvanced">{{ showAdvanced ? '收起高级参数' : `显示高级参数（${advanced.size}）` }}</button>
-    <div class="parameter-editor-rows"><label v-for="(row, index) in rows" v-show="showAdvanced || !advanced.has(row.name)" :key="row.name"><code>{{ row.name }}</code><span class="hint">{{ parameters.find(item => item.name === row.name)?.description }}{{ parameters.find(item => item.name === row.name)?.required ? ' · 必填' : '' }}</span><textarea v-model="row.text" :aria-label="row.name" :disabled="disabled" :aria-invalid="!!row.error" :aria-describedby="row.error ? `${id}-${index}` : undefined" rows="2" spellcheck="false" @input="dirty = true" /><span v-if="row.error" :id="`${id}-${index}`" class="field-error">{{ row.error }}</span></label></div>
+    <div class="parameter-editor-rows"><label v-for="(row, index) in rows" v-show="showAdvanced || !advanced.has(row.name)" :key="row.name"><code>{{ row.name }}</code><span class="hint">{{ parameters.find(item => item.name === row.name)?.description }}{{ parameters.find(item => item.name === row.name)?.required ? ' · 必填' : '' }}</span><textarea v-model="row.text" :aria-label="row.name" :disabled="disabled" :aria-invalid="!!row.error" :aria-describedby="row.error ? `${id}-${index}` : undefined" rows="2" spellcheck="false" @input="dirty = true; emit('edited')" /><span v-if="row.error" :id="`${id}-${index}`" class="field-error">{{ row.error }}</span></label></div>
     <p v-if="!rows.length" class="hint">没有已声明或已填写的参数，可切回 JSON 添加。</p>
   </template>
 </div></template>

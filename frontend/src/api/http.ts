@@ -3,7 +3,7 @@ import { session, clearSession, sessionRequestSignal } from '../session'
 import { responseMetadata, type ResponseHeaders } from './metadata'
 
 export interface Envelope<T> { code: string; message: string; request_id?: string; data: T }
-export interface Result<T> { body: T; status: number; requestID: string; snapshot: string; headers: ResponseHeaders }
+export interface Result<T> { body: T; status: number; requestID: string; snapshot: string; headers: ResponseHeaders; responseText?: string }
 export type ErrorDomain = 'query' | 'tasks' | 'settings' | 'logs' | 'operations'
 export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT'
@@ -11,12 +11,13 @@ export interface RequestOptions {
   snapshot?: string
   key?: string
   health?: boolean
+  captureResponse?: boolean
   signal?: AbortSignal
   timeoutMs?: number
   domain?: ErrorDomain
 }
 export class ApiError extends Error {
-  constructor(message: string, public code = '', public requestID = '', public status = 0, public headers: ResponseHeaders = Object.freeze({})) {
+  constructor(message: string, public code = '', public requestID = '', public status = 0, public headers: ResponseHeaders = Object.freeze({}), public responseText?: string) {
     super(message)
     this.name = 'ApiError'
   }
@@ -77,6 +78,7 @@ export async function request<T>(service: 'query' | 'worker', path: string, opti
   let cause: 'cancelled' | 'timeout' | undefined
   let status = 0, requestID = ''
   let responseHeaders: ResponseHeaders = Object.freeze({})
+  let responseText: string | undefined
   const abort = (reason: 'cancelled' | 'timeout') => {
     if (controller.signal.aborted) return
     cause = reason
@@ -89,12 +91,12 @@ export async function request<T>(service: 'query' | 'worker', path: string, opti
   if (options.signal?.aborted) externalAbort()
   const timeout = setTimeout(() => abort('timeout'), timeoutMs)
   function assertCurrent() {
-    if (epoch !== session.epoch) throw new ApiError('登录状态已变化，请重新操作。', 'session_changed', requestID, status, responseHeaders)
+    if (epoch !== session.epoch) throw new ApiError('登录状态已变化，请重新操作。', 'session_changed', requestID, status, responseHeaders, responseText)
     if (controller.signal.aborted) {
       const message = cause === 'timeout'
         ? mutation ? '请求超时；操作受理结果未知，请保留原幂等键查询或重试。' : '请求超时，请稍后重试。'
         : mutation ? '已停止等待响应，后台操作不会因此取消。' : '已停止等待响应。'
-      throw new ApiError(message, cause, requestID, status, responseHeaders)
+      throw new ApiError(message, cause, requestID, status, responseHeaders, responseText)
     }
   }
   try {
@@ -119,32 +121,32 @@ export async function request<T>(service: 'query' | 'worker', path: string, opti
     assertCurrent()
     if (status === 401) {
       clearSession('登录已过期，请重新登录。')
-      throw new ApiError('登录已过期，请重新登录。', 'unauthenticated', requestID, status, responseHeaders)
+      throw new ApiError('登录已过期，请重新登录。', 'unauthenticated', requestID, status, responseHeaders, responseText)
     }
     let body: Record<string, unknown>
     try {
-      const parsed: unknown = await response.json()
+      const parsed: unknown = options.captureResponse ? JSON.parse(responseText = await response.text()) : await response.json()
       assertCurrent()
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Expected an object')
       body = parsed as Record<string, unknown>
     } catch (error) {
       assertCurrent()
       if (error instanceof ApiError) throw error
-      throw new ApiError(`服务未返回有效 JSON 对象（HTTP ${status}），请检查代理与后端连接。`, 'invalid_response', requestID, status, responseHeaders)
+      throw new ApiError(`服务未返回有效 JSON 对象（HTTP ${status}），请检查代理与后端连接。`, 'invalid_response', requestID, status, responseHeaders, responseText)
     }
     if (!options.health) {
-      if (typeof body.code !== 'string') throw new ApiError('服务响应的 code 不符合当前接口协议。', 'invalid_response', requestID, status, responseHeaders)
+      if (typeof body.code !== 'string') throw new ApiError('服务响应的 code 不符合当前接口协议。', 'invalid_response', requestID, status, responseHeaders, responseText)
       if (!response.ok || !['ok', 'accepted'].includes(body.code)) {
         const message = domainMessages[domain][body.code] ?? common[body.code] ?? (typeof body.message === 'string' && body.message ? body.message : '请求失败。')
-        throw new ApiError(message, body.code, typeof body.request_id === 'string' && body.request_id ? body.request_id : requestID, status, responseHeaders)
+        throw new ApiError(message, body.code, typeof body.request_id === 'string' && body.request_id ? body.request_id : requestID, status, responseHeaders, responseText)
       }
     }
-    return { body: body as T, status, requestID, snapshot: responseHeaders['X-Query-Snapshot'] || '', headers: responseHeaders }
+    return { body: body as T, status, requestID, snapshot: responseHeaders['X-Query-Snapshot'] || '', headers: responseHeaders, ...(options.captureResponse ? { responseText } : {}) }
   } catch (error) {
     if (error instanceof ApiError) throw error
     if (error instanceof ReadQueueFullError) throw new ApiError(error.message, 'request_queue_full')
     assertCurrent()
-    throw new ApiError(mutation ? '连接失败，操作受理结果未知；请保留原幂等键查询或重试。' : '连接失败，请检查后端服务和代理配置。', 'network_error', requestID, status, responseHeaders)
+    throw new ApiError(mutation ? '连接失败，操作受理结果未知；请保留原幂等键查询或重试。' : '连接失败，请检查后端服务和代理配置。', 'network_error', requestID, status, responseHeaders, responseText)
   } finally {
     releaseRead?.()
     clearTimeout(timeout)

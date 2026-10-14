@@ -1786,3 +1786,63 @@ test('F06 editor validates real backend requests, preserves invalid drafts and s
   await page.screenshot({ path: testInfo.outputPath('test-parameters-mobile.png') })
   expect(executions).toBe(0)
 })
+
+for (const operation of operations) test(`F06 business execution ${operation.operation} replays the existing backend capture once`, async ({ page }, testInfo) => {
+  await setup(page)
+  const fixture = backendCapture(operation.operation), raw = JSON.stringify(fixture.response, null, 2) + '\n'
+  let queries = 0, jobs = 0
+  await page.route(`**/console-api/query${operation.path}`, route => {
+    queries++
+    expect(route.request().method()).toBe('POST')
+    expect(route.request().postDataJSON()).toEqual(fixture.request)
+    expect(route.request().headers()['x-query-snapshot']).toBeUndefined()
+    return route.fulfill({ status: fixture.status, headers: fixture.headers, body: raw })
+  })
+  await page.route('**/admin/v1/api-tests', route => { jobs++; return route.abort() })
+  await page.goto(`/console/apis/${operation.operation}`)
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(fixture.request))
+  expect(queries).toBe(0)
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await expect(dialog.getByRole('region', { name: '响应内容', exact: true })).toContainText(`HTTP ${fixture.status}`)
+  await expect(dialog.getByLabel('响应原文', { exact: true })).toHaveText(raw.slice(0, 4096))
+  await expect(dialog.getByRole('region', { name: '响应内容', exact: true })).toContainText(fixture.headers['X-Request-ID'] || fixture.response.request_id!)
+  await dialog.getByText('实际响应头', { exact: true }).click()
+  await expect(dialog.getByLabel('响应头', { exact: true })).toContainText('X-SICP-Combination')
+  expect(queries).toBe(1)
+  expect(jobs).toBe(0)
+  if (operation.operation === 'students.query') {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await dialog.getByRole('region', { name: '响应内容', exact: true }).scrollIntoViewIfNeeded()
+    expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath('business-response-mobile.png') })
+  }
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill('{}')
+  await expect(dialog.getByText('上次读取结果，当前请求尚未取得新响应。', { exact: true })).toBeVisible()
+})
+
+test('F06 double execution is guarded and closed instances ignore late actual responses', async ({ page }) => {
+  await setup(page)
+  const fixture = backendCapture('students.query')
+  let calls = 0, release: (() => void) | undefined, complete: (() => void) | undefined
+  const pending = new Promise<void>(resolve => { release = resolve }), completed = new Promise<void>(resolve => { complete = resolve })
+  await page.route('**/console-api/query/api/v1/sicp/students/query', async route => {
+    calls++
+    if (calls === 1) await pending
+    await route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response }).catch(() => {})
+    complete!()
+  })
+  await page.goto('/console/apis/students.query')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).evaluate(element => { (element as HTMLButtonElement).click(); (element as HTMLButtonElement).click() })
+  await expect.poll(() => calls).toBe(1)
+  await expect(dialog.getByRole('button', { name: '等待响应…', exact: true })).toBeDisabled()
+  await dialog.getByRole('button', { name: '停止等待并关闭', exact: true }).click()
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  release!(); await completed
+  await expect(dialog.getByRole('heading', { name: '尚未测试', exact: true })).toBeVisible()
+  await expect(dialog.getByRole('region', { name: '响应内容', exact: true })).toHaveCount(0)
+  expect(calls).toBe(1)
+})
