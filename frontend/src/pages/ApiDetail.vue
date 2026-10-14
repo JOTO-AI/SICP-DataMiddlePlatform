@@ -12,6 +12,8 @@ import Timestamp from '../components/Timestamp.vue'
 import CatalogSchema from '../components/CatalogSchema.vue'
 import SourceRequestDocs from '../components/SourceRequestDocs.vue'
 import ApiRequestExamples from '../components/ApiRequestExamples.vue'
+import ApiCallRecords from '../components/ApiCallRecords.vue'
+import ResponseContract from '../components/ResponseContract.vue'
 import RequestEditor from '../components/RequestEditor.vue'
 import Dialog from '../components/Dialog.vue'
 import type { RequestExample } from '../app/requestExamples'
@@ -79,8 +81,8 @@ onUnmounted(stop)
         <template v-if="tab === 0"><h2>概览</h2><dl class="facts"><div><dt>接口标识</dt><dd><code>{{ api.id }}</code></dd></div><div><dt>接口分组</dt><dd>{{ api.kind === 'business' ? '本地业务接口' : api.kind === 'source' ? '上游接口' : api.kind }}</dd></div><div><dt>查询快照</dt><dd>{{ api.snapshot === true ? '使用查询快照' : api.snapshot === false ? '不使用查询快照' : '后端未提供' }}</dd></div></dl><ul v-if="api.notes?.length"><li v-for="(note, index) in api.notes" :key="index">{{ note }}</li></ul><p v-else class="hint">后端目录未提供附加说明。</p></template>
         <template v-else-if="tab === 1"><h2>参数</h2><SourceRequestDocs v-if="api.kind === 'source'" :api="api" /><template v-else><h3>本地 POST · JSON Body</h3><p class="hint">字段通过 application/json 请求正文提交，不放入 Query。浏览器使用同源会话网关；业务服务密钥由服务端持有。</p><CatalogSchema :api="api" :schema="api.request" label="参数字段表" /><h3>组合规则</h3><ul><li v-for="rule in operationRules[api.id] ?? []" :key="rule">{{ rule }}</li></ul><details><summary>通用解析与分页规则</summary><ul><li v-for="rule in commonBusinessRules" :key="rule">{{ rule }}</li></ul></details></template></template>
         <ApiRequestExamples v-else-if="tab === 2" :api="api" @load="loadExample" />
-        <template v-else-if="tab === 3"><h2>响应字段</h2><p class="hint">{{ api.kind === 'source' ? '此 schema 描述 data.list 中的一条源记录。' : '此 schema 描述成功响应的 data 业务字段。' }}完整 HTTP 外壳见下方案例。</p><CatalogSchema :api="api" :schema="api.response" label="响应字段表" /><ExampleViewer :text="json(api.success_example)" title="成功响应案例" /><ExampleViewer :text="json(api.failure_example)" title="失败响应案例" /></template>
-        <template v-else><h2>调用记录</h2><EmptyState title="尚未加载调用记录" description="日志关联读取将在日志功能接入后开放。此处不将文档案例或本地空记录当作历史调用。" /></template>
+        <template v-else-if="tab === 3"><ResponseContract :api="api" /><h2>响应字段</h2><p class="hint">{{ api.kind === 'source' ? '此 schema 描述 data.list 中的一条源记录。' : '此 schema 描述成功响应的 data 业务字段。' }}完整 HTTP 外壳见下方案例。</p><CatalogSchema :api="api" :schema="api.response" label="响应字段表" /><ExampleViewer :text="json(api.success_example)" title="成功响应案例" /><ExampleViewer :text="json(api.failure_example)" title="失败响应案例" /></template>
+        <ApiCallRecords v-else :api="api" />
       </section>
     </template>
     <EmptyState v-else :loading="busy" title="暂未取得接口详情" description="请重新读取或返回接口目录选择接口。" />

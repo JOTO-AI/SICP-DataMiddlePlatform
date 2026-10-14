@@ -4,6 +4,7 @@ import { backendCapture, backendCatalog, managementCapture } from '../fixtures/b
 import { operations, queryBody, cell } from '../src/queryOperations'
 
 test.beforeEach(async ({ page }) => {
+  await page.route('**/admin/v1/logs/**', route => route.abort())
   const items = backendCatalog() as { id: string; version: string }[]
   await page.route('**/admin/v1/apis', route => route.fulfill({ json: { code: 'ok', message: '', data: { version: items[0]!.version, items } } }))
   await page.route('**/admin/v1/apis/*', route => {
@@ -1594,4 +1595,62 @@ test('F05 loading examples only fills the current API draft and uses credential 
   await expect(dialog.getByLabel('请求 JSON', { exact: true })).toHaveValue(/<NEW_IDEMPOTENCY_KEY>/)
   await expect(dialog.getByLabel('请求 JSON', { exact: true })).not.toHaveValue(/student_number/)
   expect(executions).toBe(0)
+})
+
+test('F05 call records use operation and cursor contracts and retain failed-read context', async ({ page }) => {
+  await setup(page)
+  const history = managementCapture('log_history').response.data as Record<string, any>
+  const queries: URLSearchParams[] = []
+  const opaqueCursor = (managementCapture('log_live').response.data as { stream_cursor: string }).stream_cursor // Opaque forwarding boundary; no invented event rows.
+  await page.route('**/admin/v1/logs/platform/events?*', route => {
+    const params = new URL(route.request().url()).searchParams; queries.push(params)
+    return route.fulfill({ json: { code: 'ok', data: { ...history, source: 'platform', filter: { ...history.filter, operation: 'students.query' }, next_cursor: queries.length === 1 ? opaqueCursor : null } } })
+  })
+  await page.goto('/console/apis/students.query')
+  await page.getByRole('tab', { name: '响应案例', exact: true }).click()
+  await expect(page.getByRole('region', { name: '完整 HTTP 响应契约' })).toContainText('code 是字符串')
+  expect(queries).toHaveLength(0)
+  await page.getByRole('tab', { name: '调用记录', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '此时间范围内没有匹配的日志事件' })).toBeVisible()
+  expect(queries).toHaveLength(1)
+  expect(queries[0]!.get('operation')).toBe('students.query')
+  expect(queries[0]!.get('mode')).toBe('history')
+  await page.getByRole('button', { name: '读取下一批', exact: true }).click()
+  await expect.poll(() => queries.length).toBe(2)
+  expect([...queries[1]!.keys()]).toEqual(['cursor'])
+  expect(queries[1]!.get('cursor')).toBe(opaqueCursor)
+  await expect(page.getByText('已到本次日志范围末批。')).toBeVisible()
+  await page.route('**/admin/v1/logs/platform/events?*', route => route.fulfill({ status: 503, json: { code: 'unavailable', data: null } }))
+  await page.getByRole('button', { name: '重新读取首批', exact: true }).click()
+  await expect(page.getByText('当前读取失败，以下保留上次成功读取的批次', { exact: false })).toBeVisible()
+  await expect(page.getByRole('alert')).toBeVisible()
+})
+
+test('F05 source calls require a real job identifier and never invent a source-operation filter', async ({ page }) => {
+  await setup(page)
+  const job = managementCapture('source_test').response.data as { id: string }
+  let reads = 0
+  await page.route('**/admin/v1/logs/upstream/events?*', route => {
+    reads++
+    const params = new URL(route.request().url()).searchParams
+    expect(params.get('test_run_id')).toBe(job.id)
+    expect(params.get('id_format')).toBe('raw')
+    expect(params.has('operation')).toBe(false)
+    expect(params.has('api_id')).toBe(false)
+    return route.fulfill({ status: 503, json: { code: 'unavailable', data: null } })
+  })
+  await page.goto('/console/apis/dwd_bzkscjzlb')
+  await page.getByRole('tab', { name: '响应案例', exact: true }).click()
+  await expect(page.getByRole('region', { name: '完整 HTTP 响应契约' })).toContainText('result 是受控采集结果的 total/list')
+  await page.getByRole('tab', { name: '调用记录', exact: true }).click()
+  await expect(page.getByRole('button', { name: '查询关联记录' })).toBeDisabled()
+  expect(reads).toBe(0)
+  await page.getByLabel('测试作业 ID', { exact: true }).fill(job.id)
+  await page.getByRole('button', { name: '查询关联记录' }).click()
+  await expect(page.getByRole('alert')).toBeVisible()
+  expect(reads).toBe(1)
+  expect(page.url()).not.toContain(job.id)
+  await page.getByRole('tab', { name: '概览', exact: true }).click()
+  await page.getByRole('tab', { name: '调用记录', exact: true }).click()
+  await expect(page.getByLabel('测试作业 ID', { exact: true })).toHaveValue('')
 })

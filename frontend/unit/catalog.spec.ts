@@ -97,3 +97,25 @@ test('request examples preserve backend minimal payloads and isolate documentati
   expect(command).toContain("'\"'\"'")
   expect(command).toContain('$(unsafe)')
 })
+
+import { apiCallsPath, readCallPage } from '../src/app/apiCalls'
+import { managementCapture } from '../fixtures/backend'
+test('API log queries use supported operation or explicit ID format and preserve existing event facts', () => {
+  const apis = backendCatalog() as CatalogAPI[]
+  const business = apis.find(api => api.id === 'students.query')!, source = apis.find(api => api.kind === 'source')!
+  const path = apiCallsPath(business)
+  expect(path).toContain('/platform/events?')
+  expect(path).toContain('operation=students.query')
+  const id = (managementCapture('source_test').response.data as { id: string }).id
+  expect(apiCallsPath(source, id)).toContain(`test_run_id=${id}&id_format=raw`)
+  expect(() => apiCallsPath(source)).toThrow()
+  expect(apiCallsPath(source, '', 'raw', 'opaque-cursor')).toBe('/admin/v1/logs/upstream/events?cursor=opaque-cursor')
+  const history = managementCapture('log_history').response.data as Record<string, any>
+  const detail = managementCapture('log_detail').response.data as Record<string, any>
+  // Existing empty history + protocol filter echo; no invented log/business rows.
+  const page = { ...history, source: 'platform', filter: { ...history.filter, operation: business.id } }
+  expect(readCallPage(page, business)?.items).toEqual([])
+  expect(readCallPage(history, business)).toBeNull()
+  expect(readCallPage({ ...page, items: [detail] }, business)?.items[0]).toMatchObject({ duration_ns: null, http_status: null, sequence: detail.sequence })
+  expect(readCallPage({ ...page, next_cursor: 2 }, business)).toBeNull()
+})
