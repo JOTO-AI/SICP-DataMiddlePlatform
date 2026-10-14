@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, type Envelope } from '../api'
+import { useRequestScope } from '../composables/useRequestScope'
 import { newIdempotencyKey } from '../idempotency'
 import AcquisitionProgress from '../AcquisitionProgress.vue'
 import WorkProgress from '../WorkProgress.vue'
@@ -44,20 +45,20 @@ const failureDescriptions: Record<string, string> = {
   acquisition_failed: '部分表采集未完成。已完成的表可以保留复用，可强制更新失败表；全部补齐并通过校验后才完成初始化。',
 }
 let historyTimer: ReturnType<typeof setTimeout> | undefined
-let historyGeneration = 0, detailGeneration = 0
+const historyRequests = useRequestScope(), detailRequests = useRequestScope(), submitRequests = useRequestScope()
 async function refreshHistory() {
   if (!active || historyBusy.value) return
   clearTimeout(historyTimer); historyBusy.value = true; historyError.value = ''
-  const run = ++historyGeneration
+  const run = historyRequests.begin()
   try {
-    const result = (await request<Envelope<Overview>>('worker', '/admin/v1/tasks/')).body.data
-    if (!active || run !== historyGeneration) return
+    const result = (await request<Envelope<Overview>>('worker', '/admin/v1/tasks/', { signal: run.signal })).body.data
+    if (!active || !run.current()) return
     overview.value = result
     const current = overview.value.items.find(item => ['accepted', 'running', 'published_pending_progress'].includes(item.status))
     if (active && !lookup.value && current) selectTask(current.task_id)
   }
-  catch (e) { if (active && run === historyGeneration) historyError.value = describe(e) }
-  finally { if (run === historyGeneration) { historyBusy.value = false; if (active) historyTimer = setTimeout(refreshHistory, 10000) } }
+  catch (e) { if (active && run.current()) historyError.value = describe(e) }
+  finally { if (run.current()) { historyBusy.value = false; if (active) historyTimer = setTimeout(refreshHistory, 10000) } }
 }
 function selectTask(id: string) { stop(); task.value = null; lookup.value = id; auto.value = true; void fetchTask() }
 const modeLabels: Record<string, string> = { initialize: '初始化', incremental: '增量同步', force_full: '强制全量' }
@@ -72,9 +73,9 @@ const terminal = computed(() => !!task.value?.finished_at || ['success_published
 const statusLabels: Record<string, string> = { accepted: '已受理', running: '执行中', published_pending_progress: '已发布，正在确认进度', success_published: '发布成功', success_unchanged: '检查完成，无变化', failed: '执行失败' }
 const detailStatus = computed(() => task.value && ['initialize', 'force_full'].includes(task.value.mode) && task.value.status === 'failed' && task.value.acquisition?.tables.some(table => table.status === 'collected') && task.value.acquisition.tables.some(table => table.status !== 'collected') ? '部分完成，待补齐' : statusLabels[task.value?.status || ''] || task.value?.status)
 const stages = computed(() => task.value ? [{ name: '已受理', at: task.value.accepted_at }, { name: '开始执行', at: task.value.started_at }, { name: '构建就绪', at: task.value.ready_at }, { name: '发布完成', at: task.value.published_at }, { name: '检查完成', at: task.value.checked_at }, { name: '任务结束', at: task.value.finished_at }] : [])
-function stop() { auto.value = false; detailGeneration++; loading.value = false; clearTimeout(timer) }
+function stop() { auto.value = false; detailRequests.cancel(); loading.value = false; clearTimeout(timer) }
 onActivated(() => { active = true; void refreshHistory(); if (lookup.value.trim() && !terminal.value) { auto.value = true; void fetchTask() } })
-function deactivate() { active = false; stop(); historyGeneration++; historyBusy.value = false; clearTimeout(historyTimer) }
+function deactivate() { active = false; if (busy.value) error.value = '已停止等待，原操作与幂等键已保留；受理结果可能未知。'; submitRequests.cancel(); busy.value = false; dialog.value?.close(); stop(); historyRequests.cancel(); historyBusy.value = false; clearTimeout(historyTimer) }
 onDeactivated(deactivate)
 onUnmounted(deactivate)
 function confirm() {
@@ -102,30 +103,33 @@ function retryFull(id: string) { if (!tableUpdateAllowed.value) return; action.v
 function forceTable(table: string) { if (!tableUpdateAllowed.value) return; action.value = 'table-full'; selectedTable.value = table; confirm() }
 function abandon() { pending.value = null; key.value = newIdempotencyKey(); error.value = ''; receipt.value = '' }
 async function submit() {
-  if (!pending.value) return
+  if (!active || busy.value || !pending.value) return
+  const run = submitRequests.begin()
+  const submission = { ...pending.value }
   dialog.value?.close(); busy.value = true; error.value = ''; receipt.value = ''
   try {
-    const response = await request<Envelope<Task>>('worker', pending.value.path, { body: {}, key: pending.value.key })
+    const response = await request<Envelope<Task>>('worker', submission.path, { body: {}, key: submission.key, signal: run.signal })
+    if (!run.current()) return
     lookup.value = response.body.data.task_id
     receipt.value = `任务已受理：${lookup.value}。受理不代表执行完成。`
     pending.value = null; key.value = newIdempotencyKey()
     task.value = null; auto.value = true; await fetchTask()
-    await refreshHistory()
-  } catch (e) { error.value = `${describe(e)} 原请求已保留；再次提交将使用相同操作与幂等键。` }
-  finally { busy.value = false }
+    if (run.current()) await refreshHistory()
+  } catch (e) { if (!run.current()) return; error.value = `${describe(e)} 原请求已保留；再次提交将使用相同操作与幂等键。` }
+  finally { if (run.current()) busy.value = false }
 }
 async function fetchTask() {
   if (!active || loading.value || !lookup.value.trim()) return
   clearTimeout(timer); loading.value = true; taskError.value = ''
-  const run = ++detailGeneration, id = lookup.value.trim()
-  const current = () => active && run === detailGeneration && lookup.value.trim() === id
+  const run = detailRequests.begin(), id = lookup.value.trim()
+  const current = () => active && run.current() && lookup.value.trim() === id
   try {
-    const response = await request<Envelope<Task>>('worker', `/admin/v1/tasks/${encodeURIComponent(id)}`)
+    const response = await request<Envelope<Task>>('worker', `/admin/v1/tasks/${encodeURIComponent(id)}`, { signal: run.signal })
     if (!current()) return
     task.value = response.body.data
     if (terminal.value) stop()
   } catch (e) { if (current()) { taskError.value = `${describe(e)} 自动刷新已停止。${task.value ? '显示的进度为上次成功读取的结果。' : ''}`; stop() } }
-  finally { if (run === detailGeneration) { loading.value = false; if (active && auto.value) timer = setTimeout(fetchTask, 5000) } }
+  finally { if (run.current()) { loading.value = false; if (active && auto.value) timer = setTimeout(fetchTask, 5000) } }
 }
 function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else stop() }
 </script>

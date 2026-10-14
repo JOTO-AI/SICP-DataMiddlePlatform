@@ -1,4 +1,4 @@
-import { session, clearSession } from '../session'
+import { session, clearSession, sessionRequestSignal } from '../session'
 import { responseMetadata, type ResponseHeaders } from './metadata'
 
 export interface Envelope<T> { code: string; message: string; request_id?: string; data: T }
@@ -80,7 +80,9 @@ export async function request<T>(service: 'query' | 'worker', path: string, opti
     cause = reason
     controller.abort()
   }
+  const sessionSignal = sessionRequestSignal()
   const externalAbort = () => abort('cancelled')
+  sessionSignal.addEventListener('abort', externalAbort, { once: true })
   options.signal?.addEventListener('abort', externalAbort, { once: true })
   if (options.signal?.aborted) externalAbort()
   const timeout = setTimeout(() => abort('timeout'), timeoutMs)
@@ -138,5 +140,6 @@ export async function request<T>(service: 'query' | 'worker', path: string, opti
   } finally {
     clearTimeout(timeout)
     options.signal?.removeEventListener('abort', externalAbort)
+    sessionSignal.removeEventListener('abort', externalAbort)
   }
 }

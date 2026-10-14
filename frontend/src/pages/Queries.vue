@@ -1,26 +1,27 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, type Envelope } from '../api'
+import { useRequestScope } from '../composables/useRequestScope'
 import { operations, queryBody, cell } from '../queryOperations'
 const index = ref(0)
 const op = computed(() => operations[index.value]!)
 const form = reactive({ values: Object.fromEntries(operations[0]!.fields.map(field => [field.key, ''])) as Record<string, string>, size: 20, advanced: '{}' })
 const busy = ref(false), error = ref(''), snapshot = ref(''), page = ref(1), requestID = ref('')
 const result = ref<Envelope<{ items: any[]; total?: number; synced_at: string }> | null>(null)
-let active = false, generation = 0
+const requests = useRequestScope()
+let active = false
 onActivated(() => { active = true })
-function deactivate() { active = false; generation++; busy.value = false }
+function deactivate() { active = false; requests.cancel(); busy.value = false }
 onDeactivated(deactivate)
 onUnmounted(deactivate)
 let submitted: Record<string, unknown> = {}
 const maxPage = computed(() => Math.max(1, Math.ceil((result.value?.data.total || 0) / Number(submitted.page_size || 20))))
 const advancedKeys = computed(() => op.value.advanced)
-function reset() { result.value = null; snapshot.value = ''; error.value = ''; requestID.value = ''; page.value = 1 }
+function reset() { requests.cancel(); busy.value = false; result.value = null; snapshot.value = ''; error.value = ''; requestID.value = ''; page.value = 1 }
 watch(index, () => { form.values = Object.fromEntries(op.value.fields.map(field => [field.key, ''])); form.advanced = '{}'; reset() })
 watch(form, reset)
 async function query(next?: number) {
   if (!active || busy.value) return
-  const run = ++generation
   const fresh = next === undefined
   next ??= 1
   error.value = ''
@@ -30,13 +31,14 @@ async function query(next?: number) {
       submitted = queryBody(op.value, form.values, form.advanced, Number(form.size))
     } catch { error.value = '请填写必填条件；高级筛选须为 JSON 对象，且只能包含下方列出的字段。'; return }
   }
+  const run = requests.begin()
   busy.value = true
   try {
-    const response = await request<NonNullable<typeof result.value>>('query', op.value.path, { body: { ...submitted, ...(op.value.paginated ? { page: next } : {}) }, snapshot: fresh ? '' : snapshot.value })
-    if (!active || run !== generation) return
+    const response = await request<NonNullable<typeof result.value>>('query', op.value.path, { body: { ...submitted, ...(op.value.paginated ? { page: next } : {}) }, snapshot: fresh ? '' : snapshot.value, signal: run.signal })
+    if (!active || !run.current()) return
     result.value = response.body; snapshot.value = response.snapshot; requestID.value = response.requestID || response.body.request_id || ''; page.value = next
-  } catch (e) { if (!active || run !== generation) return; result.value = null; snapshot.value = ''; requestID.value = ''; error.value = describe(e) }
-  finally { if (run === generation) busy.value = false }
+  } catch (e) { if (!active || !run.current()) return; result.value = null; snapshot.value = ''; requestID.value = ''; error.value = describe(e) }
+  finally { if (run.current()) busy.value = false }
 }
 </script>
 <template>

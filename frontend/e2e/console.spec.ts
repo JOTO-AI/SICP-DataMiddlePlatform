@@ -296,7 +296,7 @@ test('table page progress auto-opens, refreshes and preserves the last counts on
   await expect(page.getByRole('alert')).toContainText('自动刷新已停止')
   await expect(bar).toHaveAttribute('value', '1080')
   unavailable = false; failed = true
-  await page.getByRole('checkbox').check()
+  await page.getByRole('checkbox').click()
   await expect(page.getByText('采集已停止', { exact: true })).toBeVisible()
   await expect(page.getByRole('checkbox')).toBeDisabled()
   const afterFailure = reads
@@ -655,13 +655,13 @@ for (const returnBeforeResponse of [false, true]) {
   test(`overview ignores a late response after leaving (returned=${returnBeforeResponse})`, async ({ page }) => {
     await setup(page)
     await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
-    let release!: () => void, entered!: () => void
+    let release!: () => void, entered!: () => void, pendingRequest: import('@playwright/test').Request
     const gate = new Promise<void>(resolve => { release = resolve })
     const seen = new Promise<void>(resolve => { entered = resolve })
     let lists = 0, obsoleteDetails = 0
     await page.route('**/admin/v1/tasks/', async route => {
       const first = ++lists === 1
-      if (first) { entered(); await gate }
+      if (first) { pendingRequest = route.request(); entered(); await gate }
       await route.fulfill({ json: { code: 'ok', data: { initialized: true, items: first ? [{ task_id: 'obsolete-overview', mode: 'initialize', status: 'running' }] : [] } } })
     })
     await page.route('**/admin/v1/tasks/obsolete-overview', route => {
@@ -678,9 +678,8 @@ for (const returnBeforeResponse of [false, true]) {
         await expect.poll(() => lists).toBe(2)
         await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
       }
-      const response = page.waitForResponse(r => r.url().endsWith('/admin/v1/tasks/'))
       release()
-      await (await response).finished()
+      await expect.poll(() => pendingRequest.failure()).not.toBeNull()
       await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
       expect(obsoleteDetails).toBe(0)
       if (!returnBeforeResponse) await page.getByRole('link', { name: '运行总览', exact: true }).click()
@@ -695,12 +694,12 @@ test('task page resumes while an old detail request is still pending', async ({ 
   await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
   const tasks = ['slow-old-task', 'selected-new-task'].map(task_id => ({ task_id, mode: 'incremental', status: 'success_published', accepted_at: '2026-10-08T00:00:00Z' }))
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, interval_seconds: 7200, items: tasks } } }))
-  let release!: () => void, entered!: () => void
+  let release!: () => void, entered!: () => void, pendingRequest: import('@playwright/test').Request
   const gate = new Promise<void>(resolve => { release = resolve })
   const seen = new Promise<void>(resolve => { entered = resolve })
   let oldCalls = 0
   await page.route('**/admin/v1/tasks/slow-old-task', async route => {
-    if (++oldCalls === 1) { entered(); await gate }
+    if (++oldCalls === 1) { pendingRequest = route.request(); entered(); await gate }
     await route.fulfill({ json: { code: 'ok', data: tasks[0] } })
   })
   await page.route('**/admin/v1/tasks/selected-new-task', route => route.fulfill({ json: { code: 'ok', data: tasks[1] } }))
@@ -713,9 +712,8 @@ test('task page resumes while an old detail request is still pending', async ({ 
     await page.getByRole('link', { name: '更新任务', exact: true }).click()
     await page.getByRole('button', { name: /selected-new-task/ }).click()
     await expect(page.locator('.task-detail .task-id')).toHaveText('selected-new-task')
-    const response = page.waitForResponse(r => r.url().endsWith('/admin/v1/tasks/slow-old-task'))
     release()
-    await (await response).finished()
+    await expect.poll(() => pendingRequest.failure()).not.toBeNull()
     await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
     await expect(page.locator('.task-detail .task-id')).toHaveText('selected-new-task')
     await expect(page.getByLabel('查找任务')).toHaveValue('selected-new-task')
@@ -838,13 +836,13 @@ test('F01 lazy routes preserve deep links, history and old hashes without execut
 test('F01 a deactivated query ignores late original-mock results and can query again', async ({ page }) => {
   await setup(page)
   const fixture = backendCapture('students.query')
-  let release!: () => void, entered!: () => void
+  let release!: () => void, entered!: () => void, pendingRequest: import('@playwright/test').Request
   const gate = new Promise<void>(resolve => { release = resolve })
   const seen = new Promise<void>(resolve => { entered = resolve })
   let calls = 0
   await page.route('**/console-api/query/api/v1/sicp/students/query', async route => {
     expect(route.request().postDataJSON()).toEqual({ ...fixture.request, page: 1, page_size: 20 })
-    if (++calls === 1) { entered(); await gate }
+    if (++calls === 1) { pendingRequest = route.request(); entered(); await gate }
     await route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response })
   })
   try {
@@ -853,14 +851,48 @@ test('F01 a deactivated query ignores late original-mock results and can query a
     await page.getByRole('button', { name: '查询数据', exact: true }).click()
     await seen
     await page.getByRole('link', { name: '运行总览', exact: true }).click()
-    const response = page.waitForResponse(r => r.url().endsWith('/sicp/students/query'))
     release()
-    await (await response).finished()
+    await expect.poll(() => pendingRequest.failure()).not.toBeNull()
     await page.getByRole('link', { name: '业务查询', exact: true }).click()
     await expect(page.getByRole('table')).toHaveCount(0)
     await page.getByRole('button', { name: '查询数据', exact: true }).click()
     await expect(page.getByRole('table')).toContainText('00202600001')
     await expect(page.getByRole('table')).toContainText('虚构学生001')
     await expect(page.getByRole('row')).toHaveCount(13)
+  } finally { release() }
+})
+
+test('F01 leaving an in-flight submission preserves the original operation and key', async ({ page }) => {
+  await setup(page)
+  const examples = JSON.parse(readFileSync(new URL('../../development_docs/verification/operations_http_examples.json', import.meta.url), 'utf8')).examples
+  const receipt = examples.find((item: { name: string }) => item.name === 'full')
+  const detail = examples.find((item: { name: string }) => item.name === 'task_detail')
+  let entered!: () => void, release!: () => void, pendingRequest: import('@playwright/test').Request
+  const seen = new Promise<void>(resolve => { entered = resolve })
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const keys: string[] = []
+  await page.route('**/admin/v1/tasks/force-full', async route => {
+    keys.push(route.request().headers()['idempotency-key']!)
+    expect(route.request().postDataJSON()).toEqual(receipt.request)
+    if (keys.length === 1) { pendingRequest = route.request(); entered(); await gate }
+    await route.fulfill({ status: receipt.status, json: receipt.response })
+  })
+  await page.route(`**${detail.path}`, route => route.fulfill({ status: detail.status, json: detail.response }))
+  try {
+    await page.getByRole('link', { name: '更新任务', exact: true }).click()
+    await page.getByRole('button', { name: '强制全量更新', exact: true }).click()
+    await page.getByRole('button', { name: '确认提交更新' }).click()
+    await seen
+    await page.getByRole('link', { name: '业务查询', exact: true }).click()
+    await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
+    release()
+    await expect.poll(() => pendingRequest.failure()).not.toBeNull()
+    await page.getByRole('link', { name: '更新任务', exact: true }).click()
+    await expect(page.getByRole('alert')).toContainText('受理结果可能未知')
+    await page.getByRole('button', { name: '重试原请求' }).click()
+    await page.getByRole('button', { name: '确认提交更新' }).click()
+    await expect(page.locator('.success-text')).toContainText(receipt.response.data.task_id)
+    expect(keys).toHaveLength(2)
+    expect(keys[1]).toBe(keys[0])
   } finally { release() }
 })

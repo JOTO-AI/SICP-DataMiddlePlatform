@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, type Envelope } from '../api'
+import { useRequestScope } from '../composables/useRequestScope'
+import type { RequestRun } from '../app/requestScope'
 import AcquisitionProgress from '../AcquisitionProgress.vue'
 import WorkProgress from '../WorkProgress.vue'
 import type { WorkProgress as WorkProgressData } from '../workProgress'
@@ -15,19 +17,19 @@ const elapsed = computed(() => {
   return minutes < 1 ? '不足 1 分钟' : `${minutes} 分钟`
 })
 let active = false
-let generation = 0
-function current(run: number) { return active && run === generation }
+const requests = useRequestScope()
+function current(run: RequestRun) { return active && run.current() }
 let timer: ReturnType<typeof setTimeout> | undefined
 const services = ref([{ id: 'query' as const, title: '业务查询服务', subtitle: '九类业务查询', live: null as boolean | null, ready: null as boolean | null, details: {} as Record<string, boolean>, error: '' }, { id: 'worker' as const, title: '数据更新服务', subtitle: '采集、构建与发布', live: null as boolean | null, ready: null as boolean | null, details: {} as Record<string, boolean>, error: '' }])
 const workerExecuting = computed(() => !!currentTask.value && services.value[1]!.live === true && !services.value[1]!.error && services.value[1]!.details.dependencies_ready !== false)
-async function refreshTask(run: number) {
+async function refreshTask(run: RequestRun) {
   taskError.value = ''
   try {
-    const overview = (await request<Envelope<{ items: Task[] }>>('worker', '/admin/v1/tasks/')).body.data
+    const overview = (await request<Envelope<{ items: Task[] }>>('worker', '/admin/v1/tasks/', { signal: run.signal })).body.data
     if (!current(run)) return
     const task = overview.items.find(item => ['accepted', 'running', 'published_pending_progress'].includes(item.status))
     if (!task) { currentTask.value = null; return }
-    const detail = (await request<Envelope<Task>>('worker', `/admin/v1/tasks/${encodeURIComponent(task.task_id)}`)).body.data
+    const detail = (await request<Envelope<Task>>('worker', `/admin/v1/tasks/${encodeURIComponent(task.task_id)}`, { signal: run.signal })).body.data
     if (!current(run)) return
     currentTask.value = ['accepted', 'running', 'published_pending_progress'].includes(detail.status) ? detail : null
   } catch (e) { if (current(run)) { currentTask.value = null; taskError.value = `无法确认更新任务状态：${describe(e)}` } }
@@ -36,10 +38,10 @@ async function refresh() {
   if (!active || busy.value) return
   clearTimeout(timer)
   busy.value = true
-  const run = ++generation
+  const run = requests.begin()
   await Promise.all([refreshTask(run), ...services.value.map(async s => {
     s.error = ''
-    const responses = await Promise.allSettled([request<Record<string, boolean>>(s.id, '/livez', { health: true }), request<Record<string, boolean>>(s.id, '/readyz', { health: true })])
+    const responses = await Promise.allSettled([request<Record<string, boolean>>(s.id, '/livez', { health: true, signal: run.signal }), request<Record<string, boolean>>(s.id, '/readyz', { health: true, signal: run.signal })])
     if (!current(run)) return
     const [live, ready] = responses
     if (live.status === 'fulfilled') s.live = live.value.status === 200 && live.value.body.live === true
@@ -53,7 +55,7 @@ async function refresh() {
   if (active) timer = setTimeout(refresh, 10000)
 }
 onActivated(() => { active = true; void refresh() })
-function stop() { active = false; generation++; busy.value = false; clearTimeout(timer) }
+function stop() { active = false; requests.cancel(); busy.value = false; clearTimeout(timer) }
 onDeactivated(stop)
 onUnmounted(stop)
 </script>
