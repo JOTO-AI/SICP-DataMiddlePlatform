@@ -1117,7 +1117,7 @@ test('F03 primary navigation has seven modules with no fabricated module results
   await expect(nav.getByRole('link', { name: '业务查询', exact: true })).toHaveCount(0)
   let requests = 0
   await page.route('**/admin/v1/**', route => { requests++; return route.abort() })
-  for (const title of titles.slice(3)) {
+  for (const title of titles.slice(4)) {
     await nav.getByRole('link', { name: title, exact: true }).click()
     await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: '暂未开放', exact: true })).toBeVisible()
@@ -1291,4 +1291,78 @@ test('F04 compact overview uses recorded source rows and separates missing event
   const sources = page.getByRole('region', { name: '数据源状态', exact: true })
   await expect(sources).toContainText('沿用旧快照，当前状态未确认')
   await expect(table).toContainText(source.id)
+})
+
+test('F04 sources filter only recorded rows and keep stale details with keyboard return', async ({ page }, testInfo) => {
+  await setup(page)
+  await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+  const fixture = managementCapture('sources')
+  const source = (fixture.response.data as { items: { id: string; primary_key: string }[] }).items[0]!
+  const calls: string[] = []
+  let fail = false
+  await page.route('**/admin/v1/sources', route => {
+    calls.push(route.request().url())
+    return fail ? route.abort() : route.fulfill({ json: fixture.response })
+  })
+  await page.getByRole('link', { name: '数据源', exact: true }).click()
+  const table = page.getByRole('region', { name: '数据源表格，可横向滚动' })
+  await expect(table.getByRole('row')).toHaveCount(2)
+  await expect(table.getByRole('cell', { name: source.primary_key, exact: true })).toBeVisible()
+  const count = calls.length
+  await page.getByLabel('源名称或标识').fill(source.id.toUpperCase())
+  await page.getByLabel('已获取的失败状态').selectOption('none')
+  await expect(table.getByRole('row')).toHaveCount(2)
+  await page.getByLabel('源名称或标识').fill('no matching source')
+  await expect(page.getByRole('heading', { name: '没有符合本地筛选的源' })).toBeVisible()
+  await page.getByRole('button', { name: '清除筛选', exact: true }).click()
+  const opener = page.getByRole('button', { name: `查看 ${source.id} 详情` })
+  await opener.click()
+  const drawer = page.getByRole('dialog')
+  await expect(drawer).toContainText('后端未提供当前窗口')
+  await expect(drawer).toContainText('后端未提供失败记录')
+  await expect(drawer.locator('.success')).toHaveCount(0)
+  expect(calls.length).toBe(count)
+  expect(calls.every(url => new URL(url).search === '')).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('sources-drawer-desktop.png'), fullPage: true })
+  await page.keyboard.press('Escape')
+  await expect(opener).toBeFocused()
+  fail = true
+  await page.getByRole('button', { name: '刷新源状态' }).click()
+  await expect(page.getByText('以下为上次成功读取的快照', { exact: false })).toBeVisible()
+  await opener.click()
+  await expect(drawer).toContainText('旧快照，当前状态未确认')
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('sources-drawer-mobile.png'), fullPage: true })
+})
+
+test('F04 source polling stops off-page and logout removes its drawer', async ({ page }) => {
+  await page.clock.install()
+  await setup(page)
+  await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+  const fixture = managementCapture('sources')
+  let calls = 0
+  await page.route('**/admin/v1/sources', route => { calls++; return route.fulfill({ json: fixture.response }) })
+  await page.getByRole('link', { name: '数据源', exact: true }).click()
+  await expect(page.getByRole('button', { name: '刷新源状态' })).toBeEnabled()
+  const first = calls
+  await page.clock.runFor(15100)
+  await expect.poll(() => calls).toBeGreaterThan(first)
+  await expect(page.getByRole('button', { name: '刷新源状态' })).toBeEnabled()
+  await page.getByRole('link', { name: '通知中心', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '通知中心', exact: true })).toBeVisible()
+  const paused = calls
+  await page.clock.runFor(61000)
+  expect(calls).toBe(paused)
+  await page.getByRole('link', { name: '数据源', exact: true }).click()
+  await expect.poll(() => calls).toBeGreaterThan(paused)
+  await page.getByRole('button', { name: /查看 .* 详情/ }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: '退出登录' }).click()
+  await expect(page.getByRole('heading', { name: '登录管理控制台' })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  const exited = calls
+  await page.clock.runFor(61000)
+  expect(calls).toBe(exited)
 })

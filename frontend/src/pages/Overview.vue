@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { sourceItems, sourceFailureLabels, type SourceState } from '../app/sources'
 import StatusBadge from '../components/StatusBadge.vue'
 import { displayEnum } from '../shared/display'
 import Timestamp from '../components/Timestamp.vue'
-import { latestTaskTime, taskModeLabels, sourceFailureLabels, type SourceState, observationLabel, type OverviewSnapshot, type SystemSnapshot } from '../app/overview'
+import { latestTaskTime, taskModeLabels, observationLabel, type OverviewSnapshot, type SystemSnapshot } from '../app/overview'
 import PageHeader from '../components/PageHeader.vue'
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, ApiError, type Envelope } from '../api'
@@ -37,8 +38,9 @@ async function refreshSources(run: RequestRun) {
   try {
     const result = await request<Envelope<{ items: SourceState[] }>>('worker', '/admin/v1/sources', { signal: run.signal })
     if (!current(run)) return
-    if (!Array.isArray(result.body.data?.items)) throw new ApiError('数据源响应格式异常。', 'invalid_response')
-    sources.value = result.body.data.items; sourcesError.value = ''; sourcesReadAt.value = new Date().toISOString()
+    const items = sourceItems(result.body.data)
+    if (!items) throw new ApiError('数据源响应格式异常。', 'invalid_response')
+    sources.value = items; sourcesError.value = ''; sourcesReadAt.value = new Date().toISOString()
   } catch (error) { if (current(run)) { recordRetryAfter(error); sourcesError.value = describe(error) } }
 }
 const logSources = [{ id: 'platform' as const, title: '平台日志' }, { id: 'upstream' as const, title: '上游日志' }]
