@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from '../components/PageHeader.vue'
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, ApiError, type Envelope } from '../api'
 import { pollingDelay } from '../app/polling'
@@ -66,7 +67,7 @@ onUnmounted(stop)
 </script>
 <template>
   <section>
-    <div class="page-heading"><div><h1>运行总览</h1><p>查看服务可用状态与后台更新进度，正常每 10 秒刷新，后台暂停，连接失败时延长间隔。</p></div><button @click="refresh" :disabled="busy">{{ busy ? '检查中…' : '刷新状态' }}</button></div>
+    <PageHeader title="运行总览" description="查看服务可用状态与后台更新进度，正常每 10 秒刷新，后台暂停，连接失败时延长间隔。"><button @click="refresh" :disabled="busy">{{ busy ? '检查中…' : '刷新状态' }}</button></PageHeader>
     <section v-if="currentTask" class="update-progress" aria-labelledby="update-progress-title">
       <div class="section-bar"><h2 id="update-progress-title" aria-live="polite">{{ activityTitle }}</h2><a href="#tasks">查看更新任务 →</a></div>
       <p>{{ currentTask.status === 'accepted' ? '任务已受理，等待后台开始执行。' : '任务正在后台执行，包括上游采集、构建与发布。完成后将自动刷新状态。' }}</p>

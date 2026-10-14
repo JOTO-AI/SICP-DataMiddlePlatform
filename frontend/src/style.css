@@ -197,3 +197,12 @@ dialog .actions { justify-content: flex-end; margin-top: 24px; }
   .sidebar-collapsed .brand-copy, .sidebar-collapsed .nav-label, .sidebar-collapsed .sidebar-foot { display: none; }
   .sidebar-collapsed nav a { padding: 10px 0; justify-content: center; }
 }
+.tag.danger { color: var(--color-danger); background: var(--color-danger-soft); }
+.copy-id, .connection-status { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: 100%; }
+.copy-id code { min-width: 0; }
+.copy-id button { min-height: 30px; padding: 2px 8px; font-size: 12px; }
+.copy-id input { font-family: ui-monospace, Consolas, monospace; }
+.error > button, .error > .copy-id { margin-top: 8px; }
+.loading-lines { display: grid; gap: 8px; max-width: 360px; margin: 0 auto 16px; }
+.loading-lines i { display: block; height: 10px; background: var(--line); border-radius: 3px; }
+.loading-lines i:last-child { width: 60%; }

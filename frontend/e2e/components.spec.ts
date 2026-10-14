@@ -1,0 +1,42 @@
+import { test, expect } from '@playwright/test'
+import { backendCapture } from '../fixtures/backend'
+
+test('F02 shared components preserve backend rows, cursor events, errors and copy fallback', async ({ page }, testInfo) => {
+  const fixture = backendCapture('students.query')
+  const data = fixture.response.data as { items: Record<string, unknown>[]; synced_at: string }
+  await page.addInitScript(value => {
+    window.componentFixture = value
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('permission denied') } } })
+  }, { rows: data.items, syncedAt: data.synced_at, requestId: fixture.response.request_id! })
+  await page.goto('/console/e2e/components.html')
+  await expect(page.getByRole('table')).toContainText('00202600001')
+  await expect(page.getByRole('row')).toHaveCount(data.items.length + 1)
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('common-table-mobile.png'), fullPage: true })
+  await expect(page.getByText('未知状态（future_protocol_state）')).toHaveClass(/neutral/)
+  await expect(page.getByText('连接中断', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '下一页', exact: true }).click()
+  expect(await page.evaluate(() => window.componentEvents)).toEqual(['opaque-protocol-cursor'])
+  await page.getByRole('button', { name: '复制请求号', exact: true }).click()
+  const input = page.getByRole('textbox', { name: '手动复制请求号', exact: true })
+  await expect(input).toHaveValue(fixture.response.request_id!)
+  await expect(input).toBeFocused()
+  await page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value: string) => { window.componentEvents.push(value) } } }) })
+  await page.getByRole('button', { name: '复制请求号', exact: true }).click()
+  await expect(page.getByText('已复制', { exact: true })).toBeVisible()
+  await expect(input).toHaveCount(0)
+  await page.getByRole('button', { name: '切换等待' }).click()
+  await expect(page.getByRole('button', { name: '下一页', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '上一页', exact: true })).toBeDisabled()
+  await page.getByRole('button', { name: '切换等待' }).click()
+  await page.getByRole('button', { name: '显示游标错误' }).click()
+  await expect(page.getByRole('alert')).toContainText('日志游标已过期')
+  await expect(page.getByRole('button', { name: '下一页', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '上一页', exact: true })).toBeDisabled()
+  await page.getByRole('button', { name: '重新读取' }).click()
+  expect(await page.evaluate(() => window.componentEvents)).toEqual(['opaque-protocol-cursor', fixture.response.request_id, 'retry'])
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('common-components-mobile.png'), fullPage: true })
+})

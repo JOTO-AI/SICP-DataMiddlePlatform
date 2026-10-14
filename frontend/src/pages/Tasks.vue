@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import StatusBadge from '../components/StatusBadge.vue'
+import PageHeader from '../components/PageHeader.vue'
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, ApiError, type Envelope } from '../api'
 import { pollingDelay } from '../app/polling'
@@ -151,7 +153,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
 </script>
 <template>
   <section>
-    <div class="page-heading"><div><h1>更新任务</h1><p>初始化和日常同步由系统自动执行，此处查看记录与处理异常。</p></div><div class="actions"><button @click="refreshHistory" :disabled="historyBusy">刷新记录</button><button class="primary" @click="syncIncremental" :disabled="incrementalBlocked || busy || loading || !!pending" aria-describedby="incremental-help">立即增量同步</button><button @click="forceFull" :disabled="forceFullBlocked || busy || loading || !!pending" aria-describedby="force-full-help">{{ primaryLabel }}</button></div></div>
+    <PageHeader title="更新任务" description="初始化和日常同步由系统自动执行，此处查看记录与处理异常。"><div class="actions"><button @click="refreshHistory" :disabled="historyBusy">刷新记录</button><button class="primary" @click="syncIncremental" :disabled="incrementalBlocked || busy || loading || !!pending" aria-describedby="incremental-help">立即增量同步</button><button @click="forceFull" :disabled="forceFullBlocked || busy || loading || !!pending" aria-describedby="force-full-help">{{ primaryLabel }}</button></div></PageHeader>
     <div class="section-note">
       <h2>自动更新</h2>
       <p v-if="overview">{{ overview.initialized ? '初始化已完成，系统按两小时间隔调度增量同步。' : '尚未完成初始化。全新环境自动开始，重启后系统会恢复未完成的初始化。' }}</p>
@@ -191,7 +193,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
         <p class="hint">点击最近任务查看详情，也可输入历史任务号。</p>
         <p v-if="taskError" class="error" role="alert">{{ taskError }}</p>
         <template v-if="task">
-          <div class="section-bar"><h2>执行详情</h2><span class="tag" :class="{ warning: task.status === 'failed', success: task.status.startsWith('success_') }">{{ detailStatus }}</span></div>
+          <div class="section-bar"><h2>执行详情</h2><StatusBadge :value="task.status" :label="statusLabels[task.status] ? detailStatus || undefined : undefined" /></div>
           <p class="task-id">{{ task.task_id }}</p>
           <label class="check-row"><input type="checkbox" v-model="auto" :disabled="terminal || busy || loading" @change="toggleAuto">每 5 秒刷新，任务结束或查询失败后停止</label>
           <p v-if="task.selected_table" class="hint">本次强制更新表：{{ task.selected_table }}</p>
