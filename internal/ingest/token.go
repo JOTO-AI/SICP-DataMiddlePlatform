@@ -155,6 +155,7 @@ func (c *Client) acquireToken(parent context.Context) error {
 	u.Path, u.RawPath = diagnostic.TokenEndpoint, ""
 	u.RawQuery = url.Values{"appId": {a.appID}, "secret": {a.secret}}.Encode()
 	status := 0
+	var summary diagnostic.Response
 	fail := func(reason string) error {
 		kind := AuthenticationFailure
 		var cause error
@@ -166,7 +167,7 @@ func (c *Client) acquireToken(parent context.Context) error {
 		} else if ctx.Err() != nil {
 			reason = "timeout"
 		}
-		return &Failure{Kind: kind, Cause: cause, Attempt: Attempt{Authentication: &diagnostic.Authentication{Endpoint: diagnostic.TokenEndpoint, Reason: reason, HTTPStatus: status}}}
+		return &Failure{Kind: kind, Cause: cause, Attempt: Attempt{Authentication: &diagnostic.Authentication{Endpoint: diagnostic.TokenEndpoint, Reason: reason, HTTPStatus: status, Response: summary}}}
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
@@ -188,6 +189,10 @@ func (c *Client) acquireToken(parent context.Context) error {
 		return fail("transport")
 	}
 	if resp.StatusCode != http.StatusOK {
+		if resp.Body != nil {
+			body, readErr := io.ReadAll(io.LimitReader(resp.Body, diagnostic.CaptureBytes+1))
+			summary = *c.errorResponse(resp.Header, body, readErr != nil, "")
+		}
 		return fail("http")
 	}
 	if resp.Body == nil {
@@ -210,6 +215,7 @@ func (c *Client) acquireToken(parent context.Context) error {
 		return fail("structure")
 	}
 	if code != 200 {
+		summary = *c.errorResponse(resp.Header, body, false, "")
 		return fail("business")
 	}
 	data, err := objectFields(envelope["data"])

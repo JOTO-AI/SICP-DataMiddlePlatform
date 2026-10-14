@@ -263,6 +263,33 @@ test('failed task shows upstream evidence as text and can refresh delayed logs',
   await expect(page.getByText('失败原因：acquisition_failed', { exact: true })).toBeVisible()
 })
 
+test('authentication failure shows token endpoint and redacted response separately from data page', async ({ page }, testInfo) => {
+  await setup(page)
+  const task = { task_id: 'auth-diagnostic-task', mode: 'incremental', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-10-14T10:12:32Z' }
+  let legacy = false
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, items: [task] } } }))
+  await page.route('**/admin/v1/tasks/auth-diagnostic-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, failed_attempts: [{ at: task.accepted_at, source: 'dwd_bzksbjsjzlb', page: 1, attempt: 1, failure: 'authentication', http_status: 401, response: { body: 'data token rejected' }, authentication: { endpoint: '/apizt/opentoken/oauth/token', reason: 'http', http_status: 502, response: legacy ? undefined : { body: '内部错误，请联系管理员 <img src=x onerror="window.injected=true">', request_id: 'auth-trace', truncated: true, read_error: true } } }] } } }))
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await page.getByRole('button', { name: /auth-diagnostic-task/ }).click()
+  const evidence = page.getByRole('region', { name: '采集失败记录' })
+  await expect(evidence).toContainText('获取上游 Token 失败 · HTTP 502')
+  await expect(evidence).toContainText('/apizt/opentoken/oauth/token')
+  await expect(evidence).toContainText('数据接口 HTTP 状态401')
+  const auth = evidence.getByRole('region', { name: '认证错误摘要' })
+  await expect(auth).toContainText('内部错误，请联系管理员')
+  await expect(auth).not.toContainText('data token rejected')
+  await expect(evidence).toContainText('数据接口错误摘要')
+  await expect(evidence).toContainText('auth-trace')
+  await expect(evidence.locator('img')).toHaveCount(0)
+  await expect(auth).toContainText('认证响应正文未完整读取')
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+  await page.screenshot({ path: testInfo.outputPath('authentication-error-mobile.png'), fullPage: true })
+  legacy = true
+  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await expect(auth).toContainText('本条记录未保存认证错误正文')
+})
+
 test('table page progress auto-opens, refreshes and preserves the last counts on failure', async ({ page }, testInfo) => {
   await page.clock.install()
   await setup(page)

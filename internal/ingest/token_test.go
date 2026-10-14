@@ -314,6 +314,40 @@ func TestTokenFailureDiagnostics(t *testing.T) {
 	}
 }
 
+func TestTokenErrorSummariesAreBoundedAndExcludeSuccessData(t *testing.T) {
+	for _, tc := range []struct {
+		name, body, summary string
+		status              int
+		truncated           bool
+	}{
+		{"html", "<style>private-css</style><script>private-script</script><!-- private-comment --><h1>内部错误，请联系管理员</h1>test-secret-@:/?#%$", "内部错误，请联系管理员", 502, false},
+		{"business", `{"code":403,"message":"app rejected test-secret-@:/?#%$","data":{"access_token":"private-issued-token"}}`, "app rejected", 200, false},
+		{"oversize", strings.Repeat("gateway unavailable ", 2000), "gateway unavailable", 502, true},
+		{"invalid_success", `{"code":200,"message":"private-issued-token","data":{"access_token":""}}`, "", 200, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := authenticatedTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tc.status)
+				io.WriteString(w, tc.body)
+			})
+			_, err := c.Fetch(t.Context(), tokenPageRequest())
+			var f *Failure
+			if !errors.As(err, &f) || f.Attempt.Authentication == nil {
+				t.Fatal("missing failure", err)
+			}
+			r := f.Attempt.Authentication.Response
+			if !r.Valid() || r.Truncated != tc.truncated || tc.summary != "" && !strings.Contains(r.Body, tc.summary) || tc.summary == "" && r.Body != "" {
+				t.Fatal("incorrect safe authentication summary")
+			}
+			for _, secret := range []string{"test-secret-@:/?#%$", "test-app-id", "private-issued-token", "private-css", "private-script", "private-comment"} {
+				if strings.Contains(r.Body, secret) {
+					t.Fatal("authentication data leaked")
+				}
+			}
+		})
+	}
+}
+
 func TestAuthenticationRedirectAndTimeout(t *testing.T) {
 	var unexpected atomic.Int32
 	other := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { unexpected.Add(1) }))

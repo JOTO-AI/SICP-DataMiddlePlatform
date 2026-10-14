@@ -195,6 +195,11 @@ func (s *Sanitizer) Sanitize(e events.Event, d Details) (SafeEvent, error) {
 		copy := e.Response.Sanitize(s.secrets...)
 		e.Response = &copy
 	}
+	if e.Metadata.Authentication != nil {
+		copy := *e.Metadata.Authentication
+		copy.Response = copy.Response.Sanitize(s.secrets...)
+		e.Metadata.Authentication = &copy
+	}
 	env := envelope{e, detailSummary{Redacted: size > 0, OriginalBytes: size, FieldCount: len(d.Fields), Truncated: size > int64(s.detailBytes)}}
 	body, err := json.Marshal(env)
 	if err != nil {

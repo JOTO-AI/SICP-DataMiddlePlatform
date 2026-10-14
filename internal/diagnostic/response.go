@@ -28,6 +28,7 @@ func (Response) String() string     { return "[upstream diagnostic redacted]" }
 func (r Response) GoString() string { return r.String() }
 
 var tags = regexp.MustCompile(`<[^>]*>`)
+var htmlNoise = regexp.MustCompile(`(?is)<!--.*?-->|<script\b[^>]*>.*?</script\s*>|<style\b[^>]*>.*?</style\s*>`)
 var credentials = regexp.MustCompile(`(?i)(?:bearer\s+|(?:access[_-]?token|refresh[_-]?token|authorization|password|passwd|secret|api[_-]?key|cookie|姓名|学号|手机号|身份证|\bXM|\bXH|\bYDDH|\bDZXX)["']?\s*[=:：]\s*)(?:"[^"]*"|'[^']*'|[^\s&,;<>]+)`)
 var email = regexp.MustCompile(`[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}`)
 var numbers = regexp.MustCompile(`\b[0-9]{7,}[0-9Xx]?\b`)
@@ -133,7 +134,7 @@ func Capture(h http.Header, body []byte, readError bool, secrets ...string) *Res
 				s = "[response exceeds capture limit]"
 			}
 		}
-		s = html.UnescapeString(tags.ReplaceAllString(s, " "))
+		s = html.UnescapeString(tags.ReplaceAllString(htmlNoise.ReplaceAllString(s, " "), " "))
 	}
 	var clipped bool
 	r.Body, clipped = clip(Redact(s, secrets...), PreviewBytes)

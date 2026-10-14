@@ -39,7 +39,7 @@ func TestAuthenticationFailureSurvivesPersistenceAndTaskLookup(t *testing.T) {
 			}
 			authCalls, pageCalls := 0, 0
 			c, err := ingest.NewAuthenticatedClient("https://synthetic.invalid", "private-app-id", "private-secret", authTransport(func(req *http.Request) (*http.Response, error) {
-				status, body := 502, "private-secret private-app-id private-token"
+				status, body := 502, "<html><body>内部错误，请联系管理员 private-secret private-app-id access_token=private-token</body></html>"
 				if req.URL.Path == diagnostic.TokenEndpoint {
 					authCalls++
 					if refresh && authCalls == 1 {
@@ -49,7 +49,7 @@ func TestAuthenticationFailureSurvivesPersistenceAndTaskLookup(t *testing.T) {
 					pageCalls++
 					status, body = 401, "unauthorized"
 				}
-				return &http.Response{StatusCode: status, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body))}, nil
+				return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": {"text/html"}, "X-Request-Id": {"auth-trace"}}, Body: io.NopCloser(strings.NewReader(body))}, nil
 			}), 1<<20, time.Second)
 			if err != nil {
 				t.Fatal(err)
@@ -76,6 +76,10 @@ func TestAuthenticationFailureSurvivesPersistenceAndTaskLookup(t *testing.T) {
 			}
 			row := rows[0]
 			want := diagnostic.Authentication{Endpoint: diagnostic.TokenEndpoint, Reason: "http", HTTPStatus: 502}
+			if row.Authentication == nil || !strings.Contains(row.Authentication.Response.Body, "内部错误，请联系管理员") || row.Authentication.Response.RequestID != "auth-trace" || strings.Contains(row.Authentication.Response.Body, "<html>") {
+				t.Fatal("redacted authentication error summary missing")
+			}
+			want.Response = row.Authentication.Response
 			if row.Failure != "authentication" || row.Authentication == nil || *row.Authentication != want {
 				t.Fatal("token endpoint/HTTP failure missing from task diagnostics")
 			}
