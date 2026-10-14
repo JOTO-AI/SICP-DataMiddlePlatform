@@ -6,15 +6,15 @@ import { responseRecords, responseColumns, recordCell, organizationNodes, datedL
 import ResponseViewer from './ResponseViewer.vue'
 import JsonText from './JsonText.vue'
 import GradeResultContext from './GradeResultContext.vue'
-const props = defineProps<{ api: CatalogAPI; requestText?: string; raw: string; headers: ResponseHeaders; httpStatus?: number; code?: string; requestId?: string; stale?: boolean; sourceResultText?: string | null }>()
+const props = defineProps<{ api: CatalogAPI; allowRecords?: boolean; requestText?: string; raw: string; headers: ResponseHeaders; httpStatus?: number; code?: string; requestId?: string; stale?: boolean; sourceResultText?: string | null }>()
 const view = ref('json'), date = ref('')
 const records = computed(() => responseRecords(props.raw, props.api.kind)), columns = computed(() => responseColumns(props.api, records.value))
 const tree = computed(() => organizationNodes(records.value.objects)), lessons = computed(() => datedLessons(records.value.objects))
-const tabs = computed(() => [ { id: 'json', label: 'JSON' }, { id: 'table', label: '表格' }, ...(props.api.id.includes('timetable.') ? [{ id: 'schedule', label: '课表' }] : []), ...(props.api.id === 'organizations.query' ? [{ id: 'tree', label: '组织树' }] : []), { id: 'headers', label: '响应头' } ])
+const tabs = computed(() => [ { id: 'json', label: 'JSON' }, ...(props.allowRecords === false ? [] : [{ id: 'table', label: '表格' }]), ...(props.allowRecords !== false && props.api.id.includes('timetable.') ? [{ id: 'schedule', label: '课表' }] : []), ...(props.allowRecords !== false && props.api.id === 'organizations.query' ? [{ id: 'tree', label: '组织树' }] : []), { id: 'headers', label: '响应头' } ])
 const dateEntries = computed(() => lessons.value.groups.find(([day]) => day === date.value)?.[1] ?? [])
 watch(() => props.raw, () => { view.value = 'json'; date.value = lessons.value.groups[0]?.[0] ?? '' }, { immediate: true })
 </script>
-<template><div class="response-views"><GradeResultContext v-if="api.id.startsWith('students.grades.') && !records.error" :api-id="api.id" :request-text="requestText" :raw="raw" :count="records.rows.length" />
+<template><div class="response-views"><GradeResultContext v-if="allowRecords !== false && api.id.startsWith('students.grades.') && !records.error" :api-id="api.id" :request-text="requestText" :raw="raw" :count="records.rows.length" />
   <div class="tabs" aria-label="响应视图"><button v-for="tab in tabs" :key="tab.id" type="button" :aria-pressed="view === tab.id" :class="{ active: view === tab.id }" @click="view = tab.id">{{ tab.label }}</button></div>
   <p v-if="stale && view !== 'json'" class="warning">上次读取结果，当前请求尚未取得新响应。</p>
   <template v-if="view === 'json'"><ResponseViewer :text="raw" :http-status="httpStatus" :code="code" :request-id="requestId" :stale="stale" :label="api.kind === 'source' ? '管理作业响应原文' : '响应原文'" />
@@ -22,7 +22,7 @@ watch(() => props.raw, () => { view.value = 'json'; date.value = lessons.value.g
     <details><summary>{{ api.kind === 'source' ? '管理响应头' : '实际响应头' }}</summary><JsonText :text="JSON.stringify(headers, null, 2)" :label="api.kind === 'source' ? '管理响应头 JSON' : '响应头'" /></details>
   </template>
   <div v-else-if="view === 'headers'"><p class="hint">本次响应允许展示的诊断头；未返回的字段不补造。切换视图不重新请求。</p><JsonText :text="JSON.stringify(headers, null, 2)" label="本次响应头 JSON" /></div>
-  <template v-else>
+  <template v-else-if="allowRecords !== false">
     <p v-if="records.error" class="warning">{{ records.error }}</p>
     <template v-else><p class="hint">仅展示本次响应的 {{ records.rows.length }} 条记录。表格保留原始数字；最多 1000 行、24 个源字段，长单元格请查看 JSON。{{ records.truncated ? '记录超出显示上限。' : '' }}</p>
       <p v-if="!records.rows.length" class="empty">本次响应没有记录。</p>

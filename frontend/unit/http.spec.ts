@@ -41,7 +41,7 @@ test('HTTP PUT uses the existing retention example without converting revision',
 
 test('HTTP distinguishes backend snapshot, setting revision and log cursor errors', async () => {
   globalThis.fetch = async () => responseFor('students.query', 'snapshot_expired')
-  await expect(request('query', '/api/v1/sicp/students/query', { body: {} })).rejects.toMatchObject({ status: 409, code: 'conflict', message: '查询快照已失效，请重新查询。' })
+  await expect(request('query', '/api/v1/sicp/students/query', { body: {} })).rejects.toMatchObject({ status: 409, code: 'conflict', message: '查询冲突：可能是快照失效、条件不匹配或教学班跨学期歧义，请核对后重新查询。' })
   // Protocol errors from admin/operations.go and logquery/contract.go, no business rows.
   for (const [path, code, message] of [
     ['/admin/v1/settings/notifications', 'revision_conflict', '设置版本已变化'],

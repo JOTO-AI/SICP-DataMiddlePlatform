@@ -25,3 +25,21 @@ node frontend/scripts/check-fixtures.mjs --write
 导出器默认跳过，只在显式指定输出时运行；使用既有内存 I/O 适配器和固定时钟，不连接数据库、Redis、上游或邮箱。此命令只执行前端夹具导出入口，不恢复暂停的 T/OI 套件，也不等同真实网关/部署验收。Go 版本按根目录 go.mod；当前本地可使用 `artifacts/toolchain/go/bin/go.exe`，缓存位于 artifacts，均不提交。
 
 现有 console.spec.ts 的手写协议/边界场景保留，后续页面迁移时正常路径改用本目录；不得通过删掉有效旧测试回避回归。
+
+## 分页链样本（F06-08）
+
+`v1/pagination.json` 另存七个分页接口的真实同快照链，共 82 条（68 页正常结果、7 条改页大小冲突、7 条原组合不可读后的快照冲突）。使用 `paginationCapture(operation, page)` 或场景名 `snapshot_conflict` / `snapshot_expired` 读取。所有正常页都由现有内存后端管线从原始 mock 生成，每页 1 条；校验器核对合并结果与原 34 条基线中的成功响应逐行一致，原基线与原始 mock 未改写。
+
+新增入口只导出此分页文件，不重新生成已有 `business.json`：
+
+```powershell
+$env:GOCACHE = Join-Path $PWD 'artifacts/gocache'
+$env:GOMODCACHE = Join-Path $PWD 'artifacts/gomodcache'
+$env:GOTOOLCHAIN = 'local'
+$env:GOPROXY = 'off'
+$env:SICP_FRONTEND_PAGINATION_OUTPUT = Join-Path $PWD 'frontend/fixtures/v1'
+& './artifacts/toolchain/go/bin/go.exe' test ./internal/query/handlers -run '^TestFrontendPaginationFixtureExport$' -count=1
+node frontend/scripts/check-fixtures.mjs --write
+```
+
+仅执行这个显式导出入口，不运行暂停的 T/OI 套件、不连接外部服务。新增分页样本/导出器变更须复核后才更新 149 项来源哈希；普通测试运行使用不带 `--write` 的校验命令。

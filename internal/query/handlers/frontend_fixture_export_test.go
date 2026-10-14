@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/operations"
@@ -145,6 +146,122 @@ func TestFrontendFixtureExport(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.Rename(name, filepath.Join(output, "business.json")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestFrontendPaginationFixtureExport records actual same-snapshot page chains.
+// The existing baseline provides requests; normal rows still come from querymock.
+func TestFrontendPaginationFixtureExport(t *testing.T) {
+	output := os.Getenv("SICP_FRONTEND_PAGINATION_OUTPUT")
+	if output == "" {
+		t.Skip("set SICP_FRONTEND_PAGINATION_OUTPUT to export pagination fixtures")
+	}
+	type capture struct {
+		Operation       contract.Operation `json:"operation"`
+		Scenario        string             `json:"scenario"`
+		Request         json.RawMessage    `json:"request"`
+		RequestSnapshot string             `json:"request_snapshot,omitempty"`
+		Status          int                `json:"status"`
+		Headers         map[string]string  `json:"headers"`
+		Response        json.RawMessage    `json:"response"`
+	}
+	var baseline struct {
+		Captures []capture `json:"captures"`
+	}
+	raw, err := os.ReadFile(filepath.Join(output, "business.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &baseline); err != nil {
+		t.Fatal(err)
+	}
+	var captures []capture
+	for _, sample := range baseline.Captures {
+		if sample.Scenario != "success" || !contract.SupportsSnapshot(sample.Operation) {
+			continue
+		}
+		t.Run(string(sample.Operation), func(t *testing.T) {
+			world := newWorld()
+			world.tables = make(map[string][]source.SourceRow)
+			for table, rows := range querymock.Load(t, "../../..") {
+				for _, raw := range rows {
+					var row source.SourceRow
+					if err := json.Unmarshal(raw, &row); err != nil {
+						t.Fatal(err)
+					}
+					world.tables[table] = append(world.tables[table], row)
+				}
+			}
+			handler, _ := pipelineSetup(t, world)
+			var body map[string]any
+			if err := json.Unmarshal(sample.Request, &body); err != nil {
+				t.Fatal(err)
+			}
+			body["page"], body["page_size"] = 1, 1
+			run := func(scenario, token string, status int) (string, int) {
+				payload, err := json.Marshal(body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				response := pipelineRequest(t.Context(), handler, sample.Operation, string(payload), "synthetic-key", token)
+				if response.Code != status {
+					t.Fatalf("%s: HTTP %d: %s", scenario, response.Code, response.Body.String())
+				}
+				var envelope struct {
+					Data struct {
+						Total int               `json:"total"`
+						Items []json.RawMessage `json:"items"`
+					} `json:"data"`
+				}
+				if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil {
+					t.Fatal(err)
+				}
+				if status == 200 && len(envelope.Data.Items) != 1 {
+					t.Fatalf("%s: expected one actual record", scenario)
+				}
+				headers := map[string]string{}
+				for _, key := range []string{"X-Request-ID", "X-Query-Snapshot", "X-SICP-Combination", "Content-Type"} {
+					if value := response.Header().Get(key); value != "" {
+						headers[key] = value
+					}
+				}
+				captures = append(captures, capture{sample.Operation, scenario, payload, token, response.Code, headers, append(json.RawMessage(nil), response.Body.Bytes()...)})
+				return response.Header().Get(snapshot.Header), envelope.Data.Total
+			}
+			token, total := run("page_1", "", 200)
+			if total < 2 || total > 1000 || token == "" {
+				t.Fatalf("unexpected fixture page count or token: %d", total)
+			}
+			for page := 2; page <= total; page++ {
+				body["page"] = page
+				next, _ := run("page_"+strconv.Itoa(page), token, 200)
+				if next != token {
+					t.Fatal("snapshot changed while paging")
+				}
+			}
+			body["page"], body["page_size"] = 2, 2
+			run("snapshot_conflict", token, 409)
+			body["page_size"] = 1
+			world.mu.Lock()
+			world.readable[world.active] = false
+			world.mu.Unlock()
+			run("snapshot_expired", token, 409)
+		})
+	}
+	if t.Failed() {
+		return
+	}
+	document := struct {
+		Version  int       `json:"version"`
+		Source   string    `json:"source"`
+		Captures []capture `json:"captures"`
+	}{1, "existing business requests and mock_data/snapshots/initial; real in-memory backend pipeline", captures}
+	raw, err = json.MarshalIndent(document, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(output, "pagination.json"), append(raw, '\n'), 0644); err != nil {
 		t.Fatal(err)
 	}
 }

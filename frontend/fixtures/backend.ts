@@ -35,3 +35,12 @@ export function managementCapture(name: string) {
   if (!example) throw new Error(`No recorded management example: ${name}`)
   return structuredClone(example)
 }
+
+type PaginationCapture = Omit<Capture, 'scenario'> & { scenario: string }
+const pagination = JSON.parse(readFileSync(new URL('pagination.json', fixtureRoot), 'utf8')) as { captures: PaginationCapture[] }
+export function paginationCapture(operation: string, page: number | 'snapshot_conflict' | 'snapshot_expired'): PaginationCapture {
+  const scenario = typeof page === 'number' ? `page_${page}` : page
+  const captured = pagination.captures.find(item => item.operation === operation && item.scenario === scenario)
+  if (!captured) throw new Error(`No recorded pagination fixture: ${operation}/${scenario}`)
+  return structuredClone(captured)
+}

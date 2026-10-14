@@ -63,6 +63,7 @@
   "files": {
     "development_docs/verification/operations_http_examples.json": "2eb06f9cc60de2bc6267969cfb0b160271f8d7eaaa0f9b8a57f9758b194f2d47",
     "frontend/fixtures/v1/business.json": "32a56a6035feddf68d6c666c83f43ddb7a8bc30aa70d2f7dc336fa97a53e9657",
+    "frontend/fixtures/v1/pagination.json": "dfd6c1187d7e1494c4cc8f2e10da59c01f18af3cf4360e673d04defaaaba563d",
     "go.mod": "ae1f2626ae425452a9db1b82a03048dee539e1ba0b0c2cbcd327202bb1680450",
     "go.sum": "3c2d156768335855b8bab3bfc58aa7a998360a8e987594c700b748d3e721eb21",
     "internal/operations/catalog.go": "c543f1b7fe9b8277186837314dcc8e100e3362b47c9f14a623b0756cd3d2a626",
@@ -103,7 +104,7 @@
     "internal/query/grades/scope.go": "ef1b7a153ca9cfda5270082fbf90b6b6158a1fd87a5fff27bc97efb5d55d8929",
     "internal/query/grades/select.go": "835882710c132bda5bb09ff048ad63a6c7362e72c4b6a185ed50a5cd5e9793d9",
     "internal/query/grades/service.go": "3cef962dabdbda20c1e5d47309be22f483f2d349b025027b4bdc5de2ff99782f",
-    "internal/query/handlers/frontend_fixture_export_test.go": "04e607750307f6aaaf7f9cdf66dfa3d6f6d97649f818f1010f8dd5b3e1a5bc1f",
+    "internal/query/handlers/frontend_fixture_export_test.go": "81fbcd6a2e38671968911470c17169b8d9cb864d164f23186f73692efe80938f",
     "internal/query/handlers/grades.go": "14d579bb2bc06ddb83d5b41253f314e09c3ae1e79c194150ce1f79a15cc227c2",
     "internal/query/handlers/grades_test.go": "bffb4f7c01663e6866d1d97c23e4087adc506a61b8b90ea04da5fc70c0c9aacc",
     "internal/query/handlers/organizations.go": "93680e547ac5346c44a72f259598757bc467b589989d4c0f68a4cae13ac592f7",

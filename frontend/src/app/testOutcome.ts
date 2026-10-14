@@ -8,6 +8,8 @@ export function errorOutcome(error: ApiError): TestOutcome {
   if (['timeout', 'deadline_exceeded'].includes(error.code)) return state('timeout', '请求超时', '本次等待未取得完成确认，不自动重试；源作业请保留原编号或幂等键查询。', 'warning')
   if (error.code === 'network_error') return state('connection_failed', '连接失败', '未取得有效服务响应；源操作可能已被受理，不代表后台已取消。', 'danger')
   if (error.code === 'proxy_unavailable' || error.code === 'invalid_response' && [502, 503, 504].includes(error.status)) return state('proxy_failed', '代理响应异常', '网关或代理未提供有效接口响应，无法据此判断业务执行结果。', 'danger')
+  if (error.code === 'snapshot_required') return state('invalid', '缺少有效分页快照', '本次未发送续页请求，请从第一页查询并使用该接口自己的快照。', 'warning')
+  if (error.code === 'snapshot_mismatch') return state('protocol_failed', '续页未接纳', '快照或数据组合不一致，本页只保留诊断原文，不合并记录。请显式重新查询第一页。', 'danger')
   if (error.code === 'invalid_catalog') return state('protocol_failed', '目录契约异常', '目录路径与已核对的查询契约不一致，本次未发送请求。请刷新目录或核对服务版本。', 'danger')
   if (error.code === 'invalid_response') return state('protocol_failed', '响应协议异常', '响应不能按当前接口契约解释；保留原文，不推断为成功或空结果。', 'danger')
   if (['unauthenticated', 'forbidden', 'session_changed'].includes(error.code)) return state('access_failed', '身份或权限异常', '请核对登录身份与权限，服务端仍负责最终授权。', 'danger')

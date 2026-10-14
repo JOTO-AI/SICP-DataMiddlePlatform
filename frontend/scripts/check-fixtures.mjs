@@ -11,7 +11,7 @@ const sources = Object.fromEntries(requests.filter(r => r.snapshot === 'initial'
   success: `mock_data/${r.response}`,
   empty: `mock_data/${requests.find(other => other.table === r.table && other.snapshot === 'initial' && other.mode === 'full' && other.expected_primary_keys.length === 0).response}`,
 }]))
-const files = new Set(['frontend/fixtures/v1/business.json', 'mock_data/manifest.json', 'mock_data/requests.json', 'mock_data/expected/scenarios.json', 'development_docs/verification/operations_http_examples.json', 'go.mod', 'go.sum'])
+const files = new Set(['frontend/fixtures/v1/business.json', 'frontend/fixtures/v1/pagination.json', 'mock_data/manifest.json', 'mock_data/requests.json', 'mock_data/expected/scenarios.json', 'development_docs/verification/operations_http_examples.json', 'go.mod', 'go.sum'])
 for (const [name, paths] of Object.entries(sources)) {
   files.add(`mock_data/snapshots/initial/${name}.json`)
   Object.values(paths).forEach(path => files.add(path))
@@ -58,6 +58,24 @@ for (const api of catalog.filter(api => api.kind === 'business')) {
   }
 }
 const items = operation => captures.find(c => c.operation === operation && c.scenario === 'success').response.data.items
+const pages = json('frontend/fixtures/v1/pagination.json').captures
+assert.equal(pages.length, 82)
+for (const api of catalog.filter(api => api.kind === 'business' && api.snapshot)) {
+  const sequence = pages.filter(c => c.operation === api.id && /^page_\d+$/.test(c.scenario))
+  const first = sequence[0], token = first.headers['X-Query-Snapshot'], combination = first.headers['X-SICP-Combination']
+  assert.equal(sequence.length, first.response.data.total)
+  assert.deepEqual(sequence.flatMap(c => c.response.data.items), items(api.id), 'Pagination must return the same unmodified normal rows')
+  sequence.forEach((page, index) => {
+    assert.equal(page.status, 200); assert.equal(page.response.code, 'ok'); assert.equal(page.request.page, index + 1)
+    assert.equal(page.request.page_size, 1); assert.equal(page.headers['X-Query-Snapshot'], token)
+    assert.equal(page.headers['X-SICP-Combination'], combination); assert.equal(page.request_snapshot || '', index === 0 ? '' : token)
+    assert.deepEqual({ ...page.request, page: 1 }, first.request)
+  })
+  for (const scenario of ['snapshot_conflict', 'snapshot_expired']) {
+    const failure = pages.find(c => c.operation === api.id && c.scenario === scenario)
+    assert.equal(failure.status, 409); assert.equal(failure.response.code, 'conflict'); assert.equal(failure.request_snapshot, token)
+  }
+}
 // These independent expected constants predate the exporter. Read, never eval.
 for (const [file, constant, operation, identity] of [
   ['baseline', 'studentOne', 'students.query', 'student_number'],
@@ -78,4 +96,4 @@ for (const paths of Object.values(sources)) {
 }
 assert(captures.some(c => JSON.stringify(c.response.data).includes(':null')), 'Missing actual null coverage')
 if (updating) writeFileSync(new URL(manifestPath, root), JSON.stringify(expected, null, 2) + '\n')
-console.log(`F00-04 PASS: 34 backend captures, 9 operations, 14 original source response pairs, independent expected rows and ${files.size} provenance hashes. No production I/O.`)
+console.log(`F00-04 PASS: 34 baseline + 82 pagination backend captures, 9 operations, 14 original source response pairs, independent expected rows and ${files.size} provenance hashes. No production I/O.`)

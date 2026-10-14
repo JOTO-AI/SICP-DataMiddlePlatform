@@ -35,7 +35,7 @@ const common: Record<string, string> = {
 const domainMessages: Record<ErrorDomain, Record<string, string>> = {
   query: {
     not_ready: '服务尚未就绪，请查看运行状态和自动初始化进度。',
-    conflict: '查询快照已失效，请重新查询。',
+    conflict: '查询冲突：可能是快照失效、条件不匹配或教学班跨学期歧义，请核对后重新查询。',
     resource_exhausted: '查询超过资源限制，请缩小查询范围。',
     dependency_failure: '查询依赖暂不可用，请查看服务状态。',
     deadline_exceeded: '查询超时，请缩小范围后重试。',

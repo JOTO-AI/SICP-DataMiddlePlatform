@@ -1,0 +1,4225 @@
+{
+  "version": 1,
+  "source": "existing business requests and mock_data/snapshots/initial; real in-memory backend pipeline",
+  "captures": [
+    {
+      "operation": "students.grades.query",
+      "scenario": "page_1",
+      "request": {
+        "academic_year": "all",
+        "page": 1,
+        "page_size": 1,
+        "student_number": "00202600001"
+      },
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "02020202020202020202020202020202",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "02020202020202020202020202020202",
+        "data": {
+          "total": 4,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000001",
+              "student": {
+                "student_number": "00202600001",
+                "name": "虚构学生001",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2025-2026",
+              "semester": "2",
+              "course": {
+                "course_code": "000C0001",
+                "course_name": "虚构课程001",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 95,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.query",
+      "scenario": "page_2",
+      "request": {
+        "academic_year": "all",
+        "page": 2,
+        "page_size": 1,
+        "student_number": "00202600001"
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
+        "data": {
+          "total": 4,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000002",
+              "student": {
+                "student_number": "00202600001",
+                "name": "虚构学生001",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0001",
+                "course_name": "虚构课程001",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 70.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.query",
+      "scenario": "page_3",
+      "request": {
+        "academic_year": "all",
+        "page": 3,
+        "page_size": 1,
+        "student_number": "00202600001"
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "15151515151515151515151515151515",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "15151515151515151515151515151515",
+        "data": {
+          "total": 4,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000013",
+              "student": {
+                "student_number": "00202600001",
+                "name": "虚构学生001",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0005",
+                "course_name": "虚构课程005",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 80,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.query",
+      "scenario": "page_4",
+      "request": {
+        "academic_year": "all",
+        "page": 4,
+        "page_size": 1,
+        "student_number": "00202600001"
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e",
+        "data": {
+          "total": 4,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000025",
+              "student": {
+                "student_number": "00202600001",
+                "name": "虚构学生001",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0001",
+                "course_name": "虚构课程001",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 63,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.query",
+      "scenario": "snapshot_conflict",
+      "request": {
+        "academic_year": "all",
+        "page": 2,
+        "page_size": 2,
+        "student_number": "00202600001"
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "27272727272727272727272727272727"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "27272727272727272727272727272727",
+        "data": null
+      }
+    },
+    {
+      "operation": "students.grades.query",
+      "scenario": "snapshot_expired",
+      "request": {
+        "academic_year": "all",
+        "page": 2,
+        "page_size": 1,
+        "student_number": "00202600001"
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "28282828282828282828282828282828"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "28282828282828282828282828282828",
+        "data": null
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_1",
+      "request": {
+        "academic_year": "all",
+        "page": 1,
+        "page_size": 1
+      },
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "02020202020202020202020202020202",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "02020202020202020202020202020202",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000001",
+              "student": {
+                "student_number": "00202600001",
+                "name": "虚构学生001",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2025-2026",
+              "semester": "2",
+              "course": {
+                "course_code": "000C0001",
+                "course_name": "虚构课程001",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 95,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_2",
+      "request": {
+        "academic_year": "all",
+        "page": 2,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000002",
+              "student": {
+                "student_number": "00202600001",
+                "name": "虚构学生001",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0001",
+                "course_name": "虚构课程001",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 70.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_3",
+      "request": {
+        "academic_year": "all",
+        "page": 3,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "55555555555555555555555555555555",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "55555555555555555555555555555555",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000013",
+              "student": {
+                "student_number": "00202600001",
+                "name": "虚构学生001",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0005",
+                "course_name": "虚构课程005",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 80,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_4",
+      "request": {
+        "academic_year": "all",
+        "page": 4,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000025",
+              "student": {
+                "student_number": "00202600001",
+                "name": "虚构学生001",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0001",
+                "course_name": "虚构课程001",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 63,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_5",
+      "request": {
+        "academic_year": "all",
+        "page": 5,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000014",
+              "student": {
+                "student_number": "00202600002",
+                "name": "虚构学生002",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B02",
+                "class_name": "虚构班级2"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0006",
+                "course_name": "虚构课程006",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 70.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_6",
+      "request": {
+        "academic_year": "all",
+        "page": 6,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000026",
+              "student": {
+                "student_number": "00202600002",
+                "name": "虚构学生002",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B02",
+                "class_name": "虚构班级2"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0002",
+                "course_name": "虚构课程002",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 66.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_7",
+      "request": {
+        "academic_year": "all",
+        "page": 7,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000003",
+              "student": {
+                "student_number": "00202600003",
+                "name": "虚构学生003",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B03",
+                "class_name": "虚构班级3"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0003",
+                "course_name": "虚构课程003",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 87,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_8",
+      "request": {
+        "academic_year": "all",
+        "page": 8,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "22222222222222222222222222222222",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "22222222222222222222222222222222",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000015",
+              "student": {
+                "student_number": "00202600003",
+                "name": "虚构学生003",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B03",
+                "class_name": "虚构班级3"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0007",
+                "course_name": "虚构课程007",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 81,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_9",
+      "request": {
+        "academic_year": "all",
+        "page": 9,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000027",
+              "student": {
+                "student_number": "00202600003",
+                "name": "虚构学生003",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B03",
+                "class_name": "虚构班级3"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0003",
+                "course_name": "虚构课程003",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 66,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_10",
+      "request": {
+        "academic_year": "all",
+        "page": 10,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "74747474747474747474747474747474",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "74747474747474747474747474747474",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000004",
+              "student": {
+                "student_number": "00202600004",
+                "name": "虚构学生004",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B04",
+                "class_name": "虚构班级4"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0004",
+                "course_name": "虚构课程004",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 64.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_11",
+      "request": {
+        "academic_year": "all",
+        "page": 11,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000016",
+              "student": {
+                "student_number": "00202600004",
+                "name": "虚构学生004",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B04",
+                "class_name": "虚构班级4"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0008",
+                "course_name": "虚构课程008",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 65.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_12",
+      "request": {
+        "academic_year": "all",
+        "page": 12,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "c6c6c6c6c6c6c6c6c6c6c6c6c6c6c6c6",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "c6c6c6c6c6c6c6c6c6c6c6c6c6c6c6c6",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000028",
+              "student": {
+                "student_number": "00202600004",
+                "name": "虚构学生004",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B04",
+                "class_name": "虚构班级4"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0004",
+                "course_name": "虚构课程004",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 87.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_13",
+      "request": {
+        "academic_year": "all",
+        "page": 13,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "efefefefefefefefefefefefefefefef",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "efefefefefefefefefefefefefefefef",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000005",
+              "student": {
+                "student_number": "00202600005",
+                "name": "虚构学生005",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0005",
+                "course_name": "虚构课程005",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 79,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_14",
+      "request": {
+        "academic_year": "all",
+        "page": 14,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "18181818181818181818181818181818",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "18181818181818181818181818181818",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000017",
+              "student": {
+                "student_number": "00202600005",
+                "name": "虚构学生005",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0001",
+                "course_name": "虚构课程001",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 71,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_15",
+      "request": {
+        "academic_year": "all",
+        "page": 15,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "41414141414141414141414141414141",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "41414141414141414141414141414141",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000029",
+              "student": {
+                "student_number": "00202600005",
+                "name": "虚构学生005",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0005",
+                "course_name": "虚构课程005",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 61,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_16",
+      "request": {
+        "academic_year": "all",
+        "page": 16,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000006",
+              "student": {
+                "student_number": "00202600006",
+                "name": "虚构学生006",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B02",
+                "class_name": "虚构班级2"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0006",
+                "course_name": "虚构课程006",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 61.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_17",
+      "request": {
+        "academic_year": "all",
+        "page": 17,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "93939393939393939393939393939393",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "93939393939393939393939393939393",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000018",
+              "student": {
+                "student_number": "00202600006",
+                "name": "虚构学生006",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B02",
+                "class_name": "虚构班级2"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0002",
+                "course_name": "虚构课程002",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 86.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_18",
+      "request": {
+        "academic_year": "all",
+        "page": 18,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000030",
+              "student": {
+                "student_number": "00202600006",
+                "name": "虚构学生006",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B02",
+                "class_name": "虚构班级2"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0006",
+                "course_name": "虚构课程006",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 70.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_19",
+      "request": {
+        "academic_year": "all",
+        "page": 19,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000007",
+              "student": {
+                "student_number": "00202600007",
+                "name": "虚构学生007",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B03",
+                "class_name": "虚构班级3"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0007",
+                "course_name": "虚构课程007",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 79,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_20",
+      "request": {
+        "academic_year": "all",
+        "page": 20,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000019",
+              "student": {
+                "student_number": "00202600007",
+                "name": "虚构学生007",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B03",
+                "class_name": "虚构班级3"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0003",
+                "course_name": "虚构课程003",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 83,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_21",
+      "request": {
+        "academic_year": "all",
+        "page": 21,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "37373737373737373737373737373737",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "37373737373737373737373737373737",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000031",
+              "student": {
+                "student_number": "00202600007",
+                "name": "虚构学生007",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B03",
+                "class_name": "虚构班级3"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0007",
+                "course_name": "虚构课程007",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 86,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_22",
+      "request": {
+        "academic_year": "all",
+        "page": 22,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "60606060606060606060606060606060",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "60606060606060606060606060606060",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000008",
+              "student": {
+                "student_number": "00202600008",
+                "name": "虚构学生008",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B04",
+                "class_name": "虚构班级4"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0008",
+                "course_name": "虚构课程008",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 89.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_23",
+      "request": {
+        "academic_year": "all",
+        "page": 23,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "89898989898989898989898989898989",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "89898989898989898989898989898989",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000020",
+              "student": {
+                "student_number": "00202600008",
+                "name": "虚构学生008",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B04",
+                "class_name": "虚构班级4"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0004",
+                "course_name": "虚构课程004",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 63.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_24",
+      "request": {
+        "academic_year": "all",
+        "page": 24,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000032",
+              "student": {
+                "student_number": "00202600008",
+                "name": "虚构学生008",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B04",
+                "class_name": "虚构班级4"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0008",
+                "course_name": "虚构课程008",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 65.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_25",
+      "request": {
+        "academic_year": "all",
+        "page": 25,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "dbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdb",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "dbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdb",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000009",
+              "student": {
+                "student_number": "00202600009",
+                "name": "虚构学生009",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0001",
+                "course_name": "虚构课程001",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 73,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_26",
+      "request": {
+        "academic_year": "all",
+        "page": 26,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "04040404040404040404040404040404",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "04040404040404040404040404040404",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000021",
+              "student": {
+                "student_number": "00202600009",
+                "name": "虚构学生009",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0005",
+                "course_name": "虚构课程005",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 77,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_27",
+      "request": {
+        "academic_year": "all",
+        "page": 27,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000033",
+              "student": {
+                "student_number": "00202600009",
+                "name": "虚构学生009",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B01",
+                "class_name": "虚构班级1"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0001",
+                "course_name": "虚构课程001",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 81,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_28",
+      "request": {
+        "academic_year": "all",
+        "page": 28,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "56565656565656565656565656565656",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "56565656565656565656565656565656",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000010",
+              "student": {
+                "student_number": "00202600010",
+                "name": "虚构学生010",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B02",
+                "class_name": "虚构班级2"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0002",
+                "course_name": "虚构课程002",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 71.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_29",
+      "request": {
+        "academic_year": "all",
+        "page": 29,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000022",
+              "student": {
+                "student_number": "00202600010",
+                "name": "虚构学生010",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B02",
+                "class_name": "虚构班级2"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0006",
+                "course_name": "虚构课程006",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 78.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_30",
+      "request": {
+        "academic_year": "all",
+        "page": 30,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000034",
+              "student": {
+                "student_number": "00202600010",
+                "name": "虚构学生010",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B02",
+                "class_name": "虚构班级2"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0002",
+                "course_name": "虚构课程002",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 87.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_31",
+      "request": {
+        "academic_year": "all",
+        "page": 31,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000011",
+              "student": {
+                "student_number": "00202600011",
+                "name": "虚构学生011",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B03",
+                "class_name": "虚构班级3"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0003",
+                "course_name": "虚构课程003",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 86,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_32",
+      "request": {
+        "academic_year": "all",
+        "page": 32,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "fafafafafafafafafafafafafafafafa",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "fafafafafafafafafafafafafafafafa",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000023",
+              "student": {
+                "student_number": "00202600011",
+                "name": "虚构学生011",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B03",
+                "class_name": "虚构班级3"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0007",
+                "course_name": "虚构课程007",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 71,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_33",
+      "request": {
+        "academic_year": "all",
+        "page": 33,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "23232323232323232323232323232323",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "23232323232323232323232323232323",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000035",
+              "student": {
+                "student_number": "00202600011",
+                "name": "虚构学生011",
+                "department_code": "00D1",
+                "department_name": "虚构单位1",
+                "class_code": "00B03",
+                "class_name": "虚构班级3"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0003",
+                "course_name": "虚构课程003",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D1",
+                  "organization_name": "虚构单位1"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 79,
+              "grade_point": 3,
+              "credits": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_34",
+      "request": {
+        "academic_year": "all",
+        "page": 34,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c4c",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000012",
+              "student": {
+                "student_number": "00202600012",
+                "name": "虚构学生012",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B04",
+                "class_name": "虚构班级4"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0004",
+                "course_name": "虚构课程004",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 85.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_35",
+      "request": {
+        "academic_year": "all",
+        "page": 35,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "75757575757575757575757575757575",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "75757575757575757575757575757575",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000024",
+              "student": {
+                "student_number": "00202600012",
+                "name": "虚构学生012",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B04",
+                "class_name": "虚构班级4"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0008",
+                "course_name": "虚构课程008",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 63.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "page_36",
+      "request": {
+        "academic_year": "all",
+        "page": 36,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e",
+        "data": {
+          "total": 36,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "grade_id": "G000036",
+              "student": {
+                "student_number": "00202600012",
+                "name": "虚构学生012",
+                "department_code": "00D2",
+                "department_name": "虚构单位2",
+                "class_code": "00B04",
+                "class_name": "虚构班级4"
+              },
+              "academic_year": "2026-2027",
+              "semester": "1",
+              "course": {
+                "course_code": "000C0004",
+                "course_name": "虚构课程004",
+                "attribute_code": "1",
+                "attribute_name": null,
+                "nature_code": "1",
+                "nature_name": null,
+                "type_code": "3",
+                "type_name": null,
+                "department": {
+                  "organization_code": "00D2",
+                  "organization_name": "虚构单位2"
+                },
+                "total_hours": 48,
+                "retake_flag": "1",
+                "retake_course_code": "000C0001",
+                "retake_course_name": "虚构课程001"
+              },
+              "score": 69.5,
+              "grade_point": 3.5,
+              "credits": 2.5,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "snapshot_conflict",
+      "request": {
+        "academic_year": "all",
+        "page": 2,
+        "page_size": 2
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7",
+        "data": null
+      }
+    },
+    {
+      "operation": "students.grades.batch-query",
+      "scenario": "snapshot_expired",
+      "request": {
+        "academic_year": "all",
+        "page": 2,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8c8",
+        "data": null
+      }
+    },
+    {
+      "operation": "organizations.query",
+      "scenario": "page_1",
+      "request": {
+        "page": 1,
+        "page_size": 1
+      },
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "02020202020202020202020202020202",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "02020202020202020202020202020202",
+        "data": {
+          "total": 5,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "organization_code": "00D1",
+              "organization_name": "虚构单位1",
+              "parent_organization_code": "10001",
+              "category_code": "1",
+              "category_name": "教学院系",
+              "is_active": true,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "organizations.query",
+      "scenario": "page_2",
+      "request": {
+        "page": 2,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "06060606060606060606060606060606",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "06060606060606060606060606060606",
+        "data": {
+          "total": 5,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "organization_code": "00D2",
+              "organization_name": "虚构单位2",
+              "parent_organization_code": "10001",
+              "category_code": "5",
+              "category_name": "行政机构",
+              "is_active": true,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "organizations.query",
+      "scenario": "page_3",
+      "request": {
+        "page": 3,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "09090909090909090909090909090909",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "09090909090909090909090909090909",
+        "data": {
+          "total": 5,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "organization_code": "00D3",
+              "organization_name": "虚构单位3",
+              "parent_organization_code": "00D1",
+              "category_code": "1",
+              "category_name": "教学院系",
+              "is_active": true,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "organizations.query",
+      "scenario": "page_4",
+      "request": {
+        "page": 4,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
+        "data": {
+          "total": 5,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "organization_code": "00D4",
+              "organization_name": "虚构单位4",
+              "parent_organization_code": "00D2",
+              "category_code": "5",
+              "category_name": "行政机构",
+              "is_active": false,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "organizations.query",
+      "scenario": "page_5",
+      "request": {
+        "page": 5,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f",
+        "data": {
+          "total": 5,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "organization_code": "10001",
+              "organization_name": "虚构测试学院",
+              "parent_organization_code": null,
+              "category_code": "1",
+              "category_name": "教学院系",
+              "is_active": true,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "organizations.query",
+      "scenario": "snapshot_conflict",
+      "request": {
+        "page": 2,
+        "page_size": 2
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "12121212121212121212121212121212"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "12121212121212121212121212121212",
+        "data": null
+      }
+    },
+    {
+      "operation": "organizations.query",
+      "scenario": "snapshot_expired",
+      "request": {
+        "page": 2,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "13131313131313131313131313131313"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "13131313131313131313131313131313",
+        "data": null
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "page_1",
+      "request": {
+        "page": 1,
+        "page_size": 1
+      },
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "02020202020202020202020202020202",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "02020202020202020202020202020202",
+        "data": {
+          "total": 12,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600001",
+              "name": "虚构学生001",
+              "status_code": "01",
+              "enrollment_status_code": "1",
+              "on_campus_flag": "1",
+              "department": {
+                "organization_code": "00D1",
+                "organization_name": "虚构单位1",
+                "parent_organization_code": "10001",
+                "category_code": "1",
+                "category_name": "教学院系",
+                "is_active": true
+              },
+              "campus_code": "01",
+              "campus_name": "虚构校区1",
+              "major_code": "00M1",
+              "major_name": "虚构专业1",
+              "grade": "2026",
+              "class_code": "00B01",
+              "class_name": "虚构班级1",
+              "student_category_code": "41",
+              "student_category_name": "专科生",
+              "study_years": 3,
+              "admission_month": "2026-09",
+              "expected_graduation_date": "2029-06-30",
+              "counselor": {
+                "staff_number": "001",
+                "name": "虚构教师001"
+              },
+              "email": " student001@campus.example ",
+              "mobile": "00000000001",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "page_2",
+      "request": {
+        "page": 2,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d",
+        "data": {
+          "total": 12,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600002",
+              "name": "虚构学生002",
+              "status_code": "01",
+              "enrollment_status_code": "1",
+              "on_campus_flag": "1",
+              "department": {
+                "organization_code": "00D2",
+                "organization_name": "虚构单位2",
+                "parent_organization_code": "10001",
+                "category_code": "5",
+                "category_name": "行政机构",
+                "is_active": true
+              },
+              "campus_code": "02",
+              "campus_name": "虚构校区2",
+              "major_code": "00M2",
+              "major_name": "虚构专业2",
+              "grade": "2026",
+              "class_code": "00B02",
+              "class_name": "虚构班级2",
+              "student_category_code": "41",
+              "student_category_name": "专科生",
+              "study_years": 3,
+              "admission_month": "2026-09",
+              "expected_graduation_date": "2029-06-30",
+              "counselor": {
+                "staff_number": "1001",
+                "name": "虚构教师002"
+              },
+              "email": " student002@campus.example ",
+              "mobile": "00000000002",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "page_3",
+      "request": {
+        "page": 3,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "17171717171717171717171717171717",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "17171717171717171717171717171717",
+        "data": {
+          "total": 12,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600003",
+              "name": "虚构学生003",
+              "status_code": "01",
+              "enrollment_status_code": "1",
+              "on_campus_flag": "1",
+              "department": {
+                "organization_code": "00D1",
+                "organization_name": "虚构单位1",
+                "parent_organization_code": "10001",
+                "category_code": "1",
+                "category_name": "教学院系",
+                "is_active": true
+              },
+              "campus_code": "01",
+              "campus_name": "虚构校区1",
+              "major_code": "00M1",
+              "major_name": "虚构专业1",
+              "grade": "2026",
+              "class_code": "00B03",
+              "class_name": "虚构班级3",
+              "student_category_code": "41",
+              "student_category_name": "专科生",
+              "study_years": 3,
+              "admission_month": "2026-09",
+              "expected_graduation_date": "2029-06-30",
+              "counselor": {
+                "staff_number": "T00003",
+                "name": "虚构教师003"
+              },
+              "email": " student003@campus.example ",
+              "mobile": "00000000003",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "page_4",
+      "request": {
+        "page": 4,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "21212121212121212121212121212121",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "21212121212121212121212121212121",
+        "data": {
+          "total": 12,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600004",
+              "name": "虚构学生004",
+              "status_code": "01",
+              "enrollment_status_code": "1",
+              "on_campus_flag": "1",
+              "department": {
+                "organization_code": "00D2",
+                "organization_name": "虚构单位2",
+                "parent_organization_code": "10001",
+                "category_code": "5",
+                "category_name": "行政机构",
+                "is_active": true
+              },
+              "campus_code": "02",
+              "campus_name": "虚构校区2",
+              "major_code": "00M2",
+              "major_name": "虚构专业2",
+              "grade": "2026",
+              "class_code": "00B04",
+              "class_name": "虚构班级4",
+              "student_category_code": "41",
+              "student_category_name": "专科生",
+              "study_years": 3,
+              "admission_month": "2026-09",
+              "expected_graduation_date": "2029-06-30",
+              "counselor": {
+                "staff_number": "T00004",
+                "name": "虚构教师004"
+              },
+              "email": " student004@campus.example ",
+              "mobile": "00000000004",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "page_5",
+      "request": {
+        "page": 5,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b",
+        "data": {
+          "total": 12,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600005",
+              "name": "虚构学生005",
+              "status_code": "01",
+              "enrollment_status_code": "1",
+              "on_campus_flag": "1",
+              "department": {
+                "organization_code": "00D1",
+                "organization_name": "虚构单位1",
+                "parent_organization_code": "10001",
+                "category_code": "1",
+                "category_name": "教学院系",
+                "is_active": true
+              },
+              "campus_code": "01",
+              "campus_name": "虚构校区1",
+              "major_code": "00M1",
+              "major_name": "虚构专业1",
+              "grade": "2026",
+              "class_code": "00B01",
+              "class_name": "虚构班级1",
+              "student_category_code": "41",
+              "student_category_name": "专科生",
+              "study_years": 3,
+              "admission_month": "2026-09",
+              "expected_graduation_date": "2029-06-30",
+              "counselor": {
+                "staff_number": "001",
+                "name": "虚构教师001"
+              },
+              "email": " student005@campus.example ",
+              "mobile": "00000000005",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "page_6",
+      "request": {
+        "page": 6,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "35353535353535353535353535353535",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "35353535353535353535353535353535",
+        "data": {
+          "total": 12,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600006",
+              "name": "虚构学生006",
+              "status_code": "01",
+              "enrollment_status_code": "1",
+              "on_campus_flag": "1",
+              "department": {
+                "organization_code": "00D2",
+                "organization_name": "虚构单位2",
+                "parent_organization_code": "10001",
+                "category_code": "5",
+                "category_name": "行政机构",
+                "is_active": true
+              },
+              "campus_code": "02",
+              "campus_name": "虚构校区2",
+              "major_code": "00M2",
+              "major_name": "虚构专业2",
+              "grade": "2026",
+              "class_code": "00B02",
+              "class_name": "虚构班级2",
+              "student_category_code": "41",
+              "student_category_name": "专科生",
+              "study_years": 3,
+              "admission_month": "2026-09",
+              "expected_graduation_date": "2029-06-30",
+              "counselor": {
+                "staff_number": "1001",
+                "name": "虚构教师002"
+              },
+              "email": " student006@campus.example ",
+              "mobile": "00000000006",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "page_7",
+      "request": {
+        "page": 7,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+        "data": {
+          "total": 12,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600007",
+              "name": "虚构学生007",
+              "status_code": "01",
+              "enrollment_status_code": "1",
+              "on_campus_flag": "1",
+              "department": {
+                "organization_code": "00D1",
+                "organization_name": "虚构单位1",
+                "parent_organization_code": "10001",
+                "category_code": "1",
+                "category_name": "教学院系",
+                "is_active": true
+              },
+              "campus_code": "01",
+              "campus_name": "虚构校区1",
+              "major_code": "00M1",
+              "major_name": "虚构专业1",
+              "grade": "2026",
+              "class_code": "00B03",
+              "class_name": "虚构班级3",
+              "student_category_code": "41",
+              "student_category_name": "专科生",
+              "study_years": 3,
+              "admission_month": "2026-09",
+              "expected_graduation_date": "2029-06-30",
+              "counselor": {
+                "staff_number": "T00003",
+                "name": "虚构教师003"
+              },
+              "email": " student007@campus.example ",
+              "mobile": "00000000007",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "page_8",
+      "request": {
+        "page": 8,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "49494949494949494949494949494949",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "49494949494949494949494949494949",
+        "data": {
+          "total": 12,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600008",
+              "name": "虚构学生008",
+              "status_code": "01",
+              "enrollment_status_code": "1",
+              "on_campus_flag": "1",
+              "department": {
+                "organization_code": "00D2",
+                "organization_name": "虚构单位2",
+                "parent_organization_code": "10001",
+                "category_code": "5",
+                "category_name": "行政机构",
+                "is_active": true
+              },
+              "campus_code": "02",
+              "campus_name": "虚构校区2",
+              "major_code": "00M2",
+              "major_name": "虚构专业2",
+              "grade": "2026",
+              "class_code": "00B04",
+              "class_name": "虚构班级4",
+              "student_category_code": "41",
+              "student_category_name": "专科生",
+              "study_years": 3,
+              "admission_month": "2026-09",
+              "expected_graduation_date": "2029-06-30",
+              "counselor": {
+                "staff_number": "T00004",
+                "name": "虚构教师004"
+              },
+              "email": " student008@campus.example ",
+              "mobile": "00000000008",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "page_9",
+      "request": {
+        "page": 9,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "53535353535353535353535353535353",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "53535353535353535353535353535353",
+        "data": {
+          "total": 12,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600009",
+              "name": "虚构学生009",
+              "status_code": "01",
+              "enrollment_status_code": "1",
+              "on_campus_flag": "1",
+              "department": {
+                "organization_code": "00D1",
+                "organization_name": "虚构单位1",
+                "parent_organization_code": "10001",
+                "category_code": "1",
+                "category_name": "教学院系",
+                "is_active": true
+              },
+              "campus_code": "01",
+              "campus_name": "虚构校区1",
+              "major_code": "00M1",
+              "major_name": "虚构专业1",
+              "grade": "2026",
+              "class_code": "00B01",
+              "class_name": "虚构班级1",
+              "student_category_code": "41",
+              "student_category_name": "专科生",
+              "study_years": 3,
+              "admission_month": "2026-09",
+              "expected_graduation_date": "2029-06-30",
+              "counselor": {
+                "staff_number": "001",
+                "name": "虚构教师001"
+              },
+              "email": " student009@campus.example ",
+              "mobile": "00000000009",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "page_10",
+      "request": {
+        "page": 10,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d",
+        "data": {
+          "total": 12,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600010",
+              "name": "虚构学生010",
+              "status_code": "01",
+              "enrollment_status_code": "1",
+              "on_campus_flag": "1",
+              "department": {
+                "organization_code": "00D2",
+                "organization_name": "虚构单位2",
+                "parent_organization_code": "10001",
+                "category_code": "5",
+                "category_name": "行政机构",
+                "is_active": true
+              },
+              "campus_code": "02",
+              "campus_name": "虚构校区2",
+              "major_code": "00M2",
+              "major_name": "虚构专业2",
+              "grade": "2026",
+              "class_code": "00B02",
+              "class_name": "虚构班级2",
+              "student_category_code": "41",
+              "student_category_name": "专科生",
+              "study_years": 3,
+              "admission_month": "2026-09",
+              "expected_graduation_date": "2029-06-30",
+              "counselor": {
+                "staff_number": "1001",
+                "name": "虚构教师002"
+              },
+              "email": " student010@campus.example ",
+              "mobile": "00000000010",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "page_11",
+      "request": {
+        "page": 11,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "67676767676767676767676767676767",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "67676767676767676767676767676767",
+        "data": {
+          "total": 12,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600011",
+              "name": "虚构学生011",
+              "status_code": "01",
+              "enrollment_status_code": "1",
+              "on_campus_flag": "1",
+              "department": {
+                "organization_code": "00D1",
+                "organization_name": "虚构单位1",
+                "parent_organization_code": "10001",
+                "category_code": "1",
+                "category_name": "教学院系",
+                "is_active": true
+              },
+              "campus_code": "01",
+              "campus_name": "虚构校区1",
+              "major_code": "00M1",
+              "major_name": "虚构专业1",
+              "grade": "2026",
+              "class_code": "00B03",
+              "class_name": "虚构班级3",
+              "student_category_code": "41",
+              "student_category_name": "专科生",
+              "study_years": 3,
+              "admission_month": "2026-09",
+              "expected_graduation_date": "2029-06-30",
+              "counselor": {
+                "staff_number": "T00003",
+                "name": "虚构教师003"
+              },
+              "email": " student011@campus.example ",
+              "mobile": "00000000011",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "page_12",
+      "request": {
+        "page": 12,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "71717171717171717171717171717171",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "71717171717171717171717171717171",
+        "data": {
+          "total": 12,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600012",
+              "name": "虚构学生012",
+              "status_code": "01",
+              "enrollment_status_code": "1",
+              "on_campus_flag": "1",
+              "department": {
+                "organization_code": "00D2",
+                "organization_name": "虚构单位2",
+                "parent_organization_code": "10001",
+                "category_code": "5",
+                "category_name": "行政机构",
+                "is_active": true
+              },
+              "campus_code": "02",
+              "campus_name": "虚构校区2",
+              "major_code": "00M2",
+              "major_name": "虚构专业2",
+              "grade": "2026",
+              "class_code": "00B04",
+              "class_name": "虚构班级4",
+              "student_category_code": "41",
+              "student_category_name": "专科生",
+              "study_years": 3,
+              "admission_month": "2026-09",
+              "expected_graduation_date": "2029-06-30",
+              "counselor": {
+                "staff_number": "T00004",
+                "name": "虚构教师004"
+              },
+              "email": " student012@campus.example ",
+              "mobile": "00000000012",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "snapshot_conflict",
+      "request": {
+        "page": 2,
+        "page_size": 2
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b",
+        "data": null
+      }
+    },
+    {
+      "operation": "students.query",
+      "scenario": "snapshot_expired",
+      "request": {
+        "page": 2,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c",
+        "data": null
+      }
+    },
+    {
+      "operation": "staff.query",
+      "scenario": "page_1",
+      "request": {
+        "page": 1,
+        "page_size": 1
+      },
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "02020202020202020202020202020202",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "02020202020202020202020202020202",
+        "data": {
+          "total": 6,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "staff_number": "001",
+              "name": "虚构教师001",
+              "status_code": "11",
+              "department": {
+                "organization_code": "00D1",
+                "organization_name": "虚构单位1",
+                "parent_organization_code": "10001",
+                "category_code": "1",
+                "category_name": "教学院系",
+                "is_active": true
+              },
+              "email": "teacher001@campus.example",
+              "mobile": "00090000001",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "staff.query",
+      "scenario": "page_2",
+      "request": {
+        "page": 2,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "08080808080808080808080808080808",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "08080808080808080808080808080808",
+        "data": {
+          "total": 6,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "staff_number": "1001",
+              "name": "虚构教师002",
+              "status_code": "11",
+              "department": {
+                "organization_code": "00D2",
+                "organization_name": "虚构单位2",
+                "parent_organization_code": "10001",
+                "category_code": "5",
+                "category_name": "行政机构",
+                "is_active": true
+              },
+              "email": " teacher002@campus.example ",
+              "mobile": "00090000001",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "staff.query",
+      "scenario": "page_3",
+      "request": {
+        "page": 3,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d",
+        "data": {
+          "total": 6,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "staff_number": "T00003",
+              "name": "虚构教师003",
+              "status_code": "11",
+              "department": {
+                "organization_code": "00D1",
+                "organization_name": "虚构单位1",
+                "parent_organization_code": "10001",
+                "category_code": "1",
+                "category_name": "教学院系",
+                "is_active": true
+              },
+              "email": "teacher003@campus.example",
+              "mobile": "00090000003",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "staff.query",
+      "scenario": "page_4",
+      "request": {
+        "page": 4,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "12121212121212121212121212121212",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "12121212121212121212121212121212",
+        "data": {
+          "total": 6,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "staff_number": "T00004",
+              "name": "虚构教师004",
+              "status_code": "11",
+              "department": {
+                "organization_code": "00D2",
+                "organization_name": "虚构单位2",
+                "parent_organization_code": "10001",
+                "category_code": "5",
+                "category_name": "行政机构",
+                "is_active": true
+              },
+              "email": "teacher004@campus.example",
+              "mobile": "00090000004",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "staff.query",
+      "scenario": "page_5",
+      "request": {
+        "page": 5,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "17171717171717171717171717171717",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "17171717171717171717171717171717",
+        "data": {
+          "total": 6,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "staff_number": "T00005",
+              "name": "虚构教师005",
+              "status_code": "11",
+              "department": {
+                "organization_code": "00D1",
+                "organization_name": "虚构单位1",
+                "parent_organization_code": "10001",
+                "category_code": "1",
+                "category_name": "教学院系",
+                "is_active": true
+              },
+              "email": "teacher005@campus.example",
+              "mobile": "00090000005",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "staff.query",
+      "scenario": "page_6",
+      "request": {
+        "page": 6,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c",
+        "data": {
+          "total": 6,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "staff_number": "T00006",
+              "name": "虚构教师006",
+              "status_code": "11",
+              "department": {
+                "organization_code": "00D2",
+                "organization_name": "虚构单位2",
+                "parent_organization_code": "10001",
+                "category_code": "5",
+                "category_name": "行政机构",
+                "is_active": true
+              },
+              "email": "teacher006@campus.example",
+              "mobile": "00090000006",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "staff.query",
+      "scenario": "snapshot_conflict",
+      "request": {
+        "page": 2,
+        "page_size": 2
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "21212121212121212121212121212121"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "21212121212121212121212121212121",
+        "data": null
+      }
+    },
+    {
+      "operation": "staff.query",
+      "scenario": "snapshot_expired",
+      "request": {
+        "page": 2,
+        "page_size": 1
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "22222222222222222222222222222222"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "22222222222222222222222222222222",
+        "data": null
+      }
+    },
+    {
+      "operation": "staff.teaching-classes.query",
+      "scenario": "page_1",
+      "request": {
+        "academic_year": "2026-2027",
+        "page": 1,
+        "page_size": 1,
+        "semester": "1",
+        "staff_number": "001"
+      },
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "02020202020202020202020202020202",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "02020202020202020202020202020202",
+        "data": {
+          "staff_number": "001",
+          "academic_year": "2026-2027",
+          "semester": "1",
+          "total": 2,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "teaching_class_number": "J2026-0001",
+              "teaching_class_name": "虚构教学班1",
+              "planned_course_code": "000C0001",
+              "course_code": "000C0001",
+              "course_name": "虚构课程001",
+              "teachers": [
+                {
+                  "staff_number": "001",
+                  "name": "虚构教师001"
+                },
+                {
+                  "staff_number": "1001",
+                  "name": "虚构教师002"
+                }
+              ],
+              "student_count": 3,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "staff.teaching-classes.query",
+      "scenario": "page_2",
+      "request": {
+        "academic_year": "2026-2027",
+        "page": 2,
+        "page_size": 1,
+        "semester": "1",
+        "staff_number": "001"
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
+        "data": {
+          "staff_number": "001",
+          "academic_year": "2026-2027",
+          "semester": "1",
+          "total": 2,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "teaching_class_number": "J2026-0007",
+              "teaching_class_name": "虚构教学班7",
+              "planned_course_code": "000C0007",
+              "course_code": "000C0007",
+              "course_name": "虚构课程007",
+              "teachers": [
+                {
+                  "staff_number": "001",
+                  "name": "虚构教师001"
+                }
+              ],
+              "student_count": 2,
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "staff.teaching-classes.query",
+      "scenario": "snapshot_conflict",
+      "request": {
+        "academic_year": "2026-2027",
+        "page": 2,
+        "page_size": 2,
+        "semester": "1",
+        "staff_number": "001"
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "11111111111111111111111111111111"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "11111111111111111111111111111111",
+        "data": null
+      }
+    },
+    {
+      "operation": "staff.teaching-classes.query",
+      "scenario": "snapshot_expired",
+      "request": {
+        "academic_year": "2026-2027",
+        "page": 2,
+        "page_size": 1,
+        "semester": "1",
+        "staff_number": "001"
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "12121212121212121212121212121212"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "12121212121212121212121212121212",
+        "data": null
+      }
+    },
+    {
+      "operation": "teaching-classes.students.query",
+      "scenario": "page_1",
+      "request": {
+        "academic_year": "2026-2027",
+        "page": 1,
+        "page_size": 1,
+        "planned_course_code": "000C0001",
+        "semester": "1",
+        "teaching_class_number": "J2026-0001"
+      },
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "02020202020202020202020202020202",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "02020202020202020202020202020202",
+        "data": {
+          "teaching_class_number": "J2026-0001",
+          "planned_course_code": "000C0001",
+          "academic_year": "2026-2027",
+          "semester": "1",
+          "total": 3,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600001",
+              "name": "虚构学生001",
+              "department_code": "00D1",
+              "department_name": "虚构单位1",
+              "class_code": "00B01",
+              "class_name": "虚构班级1",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "teaching-classes.students.query",
+      "scenario": "page_2",
+      "request": {
+        "academic_year": "2026-2027",
+        "page": 2,
+        "page_size": 1,
+        "planned_course_code": "000C0001",
+        "semester": "1",
+        "teaching_class_number": "J2026-0001"
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
+        "data": {
+          "teaching_class_number": "J2026-0001",
+          "planned_course_code": "000C0001",
+          "academic_year": "2026-2027",
+          "semester": "1",
+          "total": 3,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600008",
+              "name": "虚构学生008",
+              "department_code": "00D2",
+              "department_name": "虚构单位2",
+              "class_code": "00B04",
+              "class_name": "虚构班级4",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "teaching-classes.students.query",
+      "scenario": "page_3",
+      "request": {
+        "academic_year": "2026-2027",
+        "page": 3,
+        "page_size": 1,
+        "planned_course_code": "000C0001",
+        "semester": "1",
+        "teaching_class_number": "J2026-0001"
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Query-Snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+        "X-Request-ID": "13131313131313131313131313131313",
+        "X-SICP-Combination": "C09"
+      },
+      "response": {
+        "code": "ok",
+        "message": "OK",
+        "request_id": "13131313131313131313131313131313",
+        "data": {
+          "teaching_class_number": "J2026-0001",
+          "planned_course_code": "000C0001",
+          "academic_year": "2026-2027",
+          "semester": "1",
+          "total": 3,
+          "synced_at": "2026-09-18T09:00:00+08:00",
+          "items": [
+            {
+              "student_number": "00202600009",
+              "name": "虚构学生009",
+              "department_code": "00D1",
+              "department_name": "虚构单位1",
+              "class_code": "00B01",
+              "class_name": "虚构班级1",
+              "source_updated_at": "2026-08-05T07:50:00+08:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "operation": "teaching-classes.students.query",
+      "scenario": "snapshot_conflict",
+      "request": {
+        "academic_year": "2026-2027",
+        "page": 2,
+        "page_size": 2,
+        "planned_course_code": "000C0001",
+        "semester": "1",
+        "teaching_class_number": "J2026-0001"
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b",
+        "data": null
+      }
+    },
+    {
+      "operation": "teaching-classes.students.query",
+      "scenario": "snapshot_expired",
+      "request": {
+        "academic_year": "2026-2027",
+        "page": 2,
+        "page_size": 1,
+        "planned_course_code": "000C0001",
+        "semester": "1",
+        "teaching_class_number": "J2026-0001"
+      },
+      "request_snapshot": "0303030303030303030303030303030303030303030303030303030303030303",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "X-Request-ID": "1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c"
+      },
+      "response": {
+        "code": "conflict",
+        "message": "Snapshot conflict",
+        "request_id": "1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c",
+        "data": null
+      }
+    }
+  ]
+}

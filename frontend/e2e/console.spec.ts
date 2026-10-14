@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
-import { backendCapture, backendCatalog, managementCapture } from '../fixtures/backend'
+import { backendCapture, backendCatalog, managementCapture, paginationCapture } from '../fixtures/backend'
 import { sourceJobResult } from '../fixtures/sourceTests'
 import { operations, queryBody, cell } from '../src/queryOperations'
 
@@ -2168,4 +2168,101 @@ for (const operation of ['students.grades.query', 'students.grades.batch-query']
   await scope.scrollIntoViewIfNeeded()
   expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('grade-context-mobile.png') })
+})
+
+for (const api of operations.filter(api => api.paginated)) test(`F06 pagination ${api.operation} uses captured pages and clears on edited page size`, async ({ page }, testInfo) => {
+  await setup(page)
+  const first = paginationCapture(api.operation, 1), second = paginationCapture(api.operation, 2), baseline = backendCapture(api.operation)
+  const calls: { body: Record<string, unknown>; token?: string }[] = []
+  await page.route(`**/console-api/query${api.path}`, route => {
+    const body = route.request().postDataJSON(), token = route.request().headers()['x-query-snapshot']
+    calls.push({ body, token })
+    const fixture = body.page_size === 1 ? body.page === 2 ? second : first : baseline
+    expect(body).toEqual(fixture.request)
+    expect(token ?? '').toBe(body.page_size === 1 && calls.length > 1 ? first.headers['X-Query-Snapshot'] : fixture.request_snapshot ?? '')
+    return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response })
+  })
+  await page.goto(`/console/apis/${api.operation}`)
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog'), json = dialog.getByLabel('请求 JSON', { exact: true })
+  await json.fill(JSON.stringify(first.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  const paging = dialog.getByRole('region', { name: '本次分页', exact: true })
+  await expect(paging).toContainText(`第 1 / ${(first.response.data as { total: number }).total} 页`)
+  await paging.getByRole('button', { name: '下一页', exact: true }).click()
+  await expect(paging).toContainText('第 2 /')
+  await expect(dialog.getByLabel('响应原文', { exact: true })).toHaveText(JSON.stringify(second.response))
+  expect(calls).toHaveLength(2)
+  if (api.operation === 'students.query') {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await paging.scrollIntoViewIfNeeded()
+    expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath('pagination-mobile.png') })
+  }
+  await paging.getByRole('button', { name: '上一页', exact: true }).click()
+  await expect(paging).toContainText('第 1 /')
+  expect(calls).toHaveLength(3)
+  await json.fill(JSON.stringify({ ...first.request, page_size: 2 }))
+  await expect(paging).toContainText('原快照已清除')
+  await expect(paging.getByRole('button', { name: '下一页', exact: true })).toHaveCount(0)
+  expect(calls).toHaveLength(3)
+  await json.fill(JSON.stringify(baseline.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await expect(dialog.getByLabel('响应原文', { exact: true })).toHaveText(JSON.stringify(baseline.response).slice(0, 4096))
+  expect(calls).toHaveLength(4); expect(calls[3]!.token).toBeUndefined()
+})
+
+test('F06 pagination rejects missing metadata and changed combination without accepting another page', async ({ page }) => {
+  await setup(page)
+  const first = paginationCapture('students.query', 1), second = paginationCapture('students.query', 2)
+  let missing = true, calls = 0
+  await page.route('**/console-api/query/api/v1/sicp/students/query', route => {
+    calls++; const next = route.request().postDataJSON().page === 2, fixture = next ? second : first
+    const headers = { ...fixture.headers }
+    if (missing) delete headers['X-Query-Snapshot']
+    if (next) headers['X-SICP-Combination'] = 'C10' // Metadata boundary; rows remain the actual second page.
+    return route.fulfill({ status: fixture.status, headers, json: fixture.response })
+  })
+  await page.goto('/console/apis/students.query')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog'), paging = dialog.getByRole('region', { name: '本次分页', exact: true })
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(first.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await expect(paging).toContainText('未提供有效快照')
+  await expect(paging.getByRole('button', { name: '下一页', exact: true })).toBeDisabled()
+  expect(calls).toBe(1)
+  missing = false
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await paging.getByRole('button', { name: '下一页', exact: true }).click()
+  await expect(dialog.getByRole('status', { name: '测试状态', exact: true })).toContainText('续页未接纳')
+  await expect(dialog.getByRole('button', { name: '表格', exact: true })).toHaveCount(0)
+  await expect(paging.getByRole('button', { name: '下一页', exact: true })).toBeDisabled()
+  expect(calls).toBe(3)
+})
+
+test('F06 pagination actual conflict stops continuation and closing discards the interface snapshot', async ({ page }) => {
+  await setup(page)
+  const first = paginationCapture('students.query', 1), expired = paginationCapture('students.query', 'snapshot_expired')
+  let calls = 0
+  await page.route('**/console-api/query/api/v1/sicp/students/query', route => {
+    calls++; const next = route.request().postDataJSON().page === 2, fixture = next ? expired : first
+    expect(route.request().headers()['x-query-snapshot'] ?? '').toBe(next ? first.headers['X-Query-Snapshot'] : '')
+    return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response })
+  })
+  await page.goto('/console/apis/students.query')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog'), paging = dialog.getByRole('region', { name: '本次分页', exact: true })
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(first.request))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await paging.getByRole('button', { name: '下一页', exact: true }).click()
+  await expect(paging).toContainText('不会自动重试')
+  await expect(paging.getByRole('button', { name: '下一页', exact: true })).toBeDisabled()
+  expect(calls).toBe(2)
+  await dialog.getByRole('button', { name: '关闭测试', exact: true }).click()
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  await expect(paging).toHaveCount(0)
+  await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify({ ...first.request, page: 2 }))
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await expect(dialog.getByRole('status', { name: '测试状态', exact: true })).toContainText('缺少有效分页快照')
+  expect(calls).toBe(2)
 })
