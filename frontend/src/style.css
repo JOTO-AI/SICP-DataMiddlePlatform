@@ -298,3 +298,5 @@ dialog .actions { justify-content: flex-end; margin-top: 24px; }
   button, input:not([type=checkbox]):not([type=radio]), select, .copy-id button, .ui-dialog .dialog-close, nav a, .check-row, .radio-row { min-height: 44px; }
   .copy-id button, .ui-dialog .dialog-close { min-width: 44px; }
 }
+.overview-facts { margin-top: 20px; }
+.overview-facts > p { margin-top: 10px; }

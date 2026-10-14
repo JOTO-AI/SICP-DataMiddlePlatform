@@ -27,3 +27,11 @@ export function sourceResponse(table: string, scenario: 'success' | 'empty' = 's
   if (!path) throw new Error(`No recorded source fixture: ${table}/${scenario}`)
   return readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')
 }
+
+// Existing backend management examples; selected-field samples keep omissions as unknown.
+const management = JSON.parse(readFileSync(new URL('../../development_docs/verification/operations_http_examples.json', import.meta.url), 'utf8')) as { examples: { name: string; path: string; status: number; response: { code: string; message?: string; data: unknown } }[] }
+export function managementCapture(name: string) {
+  const example = management.examples.find(item => item.name === name)
+  if (!example) throw new Error(`No recorded management example: ${name}`)
+  return structuredClone(example)
+}

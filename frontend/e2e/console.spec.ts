@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
-import { backendCapture } from '../fixtures/backend'
+import { backendCapture, managementCapture } from '../fixtures/backend'
 import { operations, queryBody, cell } from '../src/queryOperations'
 
 test('BT09 real work, unknown totals, stalls and final timers', async ({ page }) => {
@@ -360,6 +360,10 @@ test('expired session returns to login and removes protected pages', async ({ pa
 })
 
 async function setup(page: Page) {
+  for (const name of ['overview', 'system']) {
+    const fixture = managementCapture(name)
+    await page.route(`**${fixture.path}`, route => route.fulfill({ status: fixture.status, json: fixture.response }))
+  }
   await mockAuth(page)
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { items: [], initialized: true, interval_seconds: 7200 } } }))
   await page.route('**/console-api/**/livez', route => route.fulfill({ json: { live: true } }))
@@ -1215,4 +1219,38 @@ test('F03 logout removes cached backend results and stops page polling', async (
   await expect(page.getByRole('heading', { name: '等待查询', exact: true })).toBeVisible()
   await expect(page.getByRole('table')).toHaveCount(0)
   expect(queryCount).toBe(1)
+})
+
+test('F04 overview retains timestamped backend observations on failure without inventing log readiness', async ({ page }, testInfo) => {
+  await setup(page)
+  const fixture = managementCapture('overview')
+  const observedAt = (fixture.response.data as { observed_at: string }).observed_at
+  const snapshot = page.getByRole('region', { name: '运行快照', exact: true })
+  const logs = page.getByRole('region', { name: '日志状态', exact: true })
+  await expect(snapshot.locator('time')).toHaveAttribute('datetime', observedAt)
+  await expect(logs).toContainText('平台日志')
+  await expect(logs).toContainText('上游日志')
+  await expect(logs).toContainText('未观测')
+  await expect(logs.locator('.success')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+  const query = page.getByRole('article').filter({ hasText: '业务查询服务' })
+  await page.route('**/console-api/query/readyz', route => route.fulfill({ json: { ready: true } }))
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(query.locator('.tag')).toHaveText('✓ 已就绪')
+  await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+  await page.route('**/admin/v1/overview', route => route.fulfill({ status: 503, json: { code: 'unavailable', data: null } }))
+  await page.route('**/admin/v1/system/status', route => route.abort())
+  await page.route('**/console-api/query/readyz', route => route.abort())
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(snapshot).toContainText('显示上次成功读取')
+  await expect(snapshot.locator('time')).toHaveAttribute('datetime', observedAt)
+  await expect(logs).toContainText('显示上次成功读取')
+  await expect(query.locator('.tag')).toHaveText('当前状态未确认')
+  await expect(query.locator('.success')).toHaveCount(0)
+  await expect(query).toContainText('就绪状态与依赖沿用上次快照')
+  await expect(query.getByText('可用', { exact: true })).toBeVisible()
+  await expect(query.locator('time')).toHaveCount(1)
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('overview-stale-mobile.png'), fullPage: true })
 })
