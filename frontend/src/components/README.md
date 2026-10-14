@@ -21,3 +21,12 @@
 - `Drawer`：共享 Dialog 行为，右侧固定高度、内容内部滚动，小屏撑满视口。
 - `AsyncActionDialog`：确认按钮 busy 时禁用，关闭仅发出一次 close(reason)；父页面负责停止等待及保留未知受理状态，组件不会取消服务端任务、发 HTTP 或重试。已接入任务确认。
 - 层级由 tokens.css 统一命名；原生 modal 使用浏览器 top layer。抽屉不依赖局部 stacking context。
+
+## 接口编辑与响应（F02-05）
+
+- `ParameterTable` 接收后端契约映射出的 ParameterDefinition，展示名称、类型、必填、可空、原文默认值与说明；不推断领域默认值。
+- `RequestEditor` 用 modelValue 保存 JSON 原文；参数模式逐项编辑 JSON 值，空白表示省略。无修改切换保留原始空格/换行，转换失败保留当前模式与文本，未声明的高级字段保留。单次转换最多 262144 字符、100 项；不精确整数拒绝转换。发送前父页面必须调用 `getRequestText()`，null 表示不能发送；`loadText(text)` 显式替换草稿，即使示例与原始 modelValue 相同也能重置未应用的字段编辑。组件不发送请求，领域组合校验仍由接口适配层完成。
+- `ExampleViewer` 明确标注文档示例，仅通过 load(text) 载入；不冒充测试结果。
+- `ResponseViewer` 区分 HTTP / 业务 code / request_id，旧结果和服务端截断可明确标注；原始文本可包含非 JSON，不插入 HTML。查询页的完整响应已接入。
+- 公用 `JsonText` 默认显示 4096 字符、展开最多 65536 字符，说明截断与复制范围；复制仅包含当前显示文本，失败提供只读选中文本。切换内容/离开页面后忽略旧复制结果。上游内容在进入组件前仍须由调用方遵守后端脱敏策略。
+- e2e/json.html 为测试专用入口，例子和结果均在测试中注入 Go fixture，不进入生产产物。

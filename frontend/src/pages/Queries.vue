@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ResponseViewer from '../components/ResponseViewer.vue'
 import FilterBar from '../components/FilterBar.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ErrorState from '../components/ErrorState.vue'
@@ -75,7 +76,7 @@ async function query(next?: number) {
         <table v-else><thead><tr><th v-for="column in op.columns" :key="column.key">{{ column.title }}</th></tr></thead><tbody><tr v-for="(row, i) in result.data.items" :key="i"><td v-for="column in op.columns" :key="column.key">{{ cell(row, column.key) }}</td></tr></tbody></table>
       </div>
       <div v-if="op.paginated" class="pagination"><span class="hint">{{ op.kind === 'grades' ? '“—” 表示未提供数值，可能为文字成绩。' : '缺失资料显示“未提供”，不会移除对应编号。' }}翻页沿用本次快照。</span><div class="actions"><button :disabled="busy || page <= 1 || !snapshot" @click="query(page - 1)">上一页</button><span>{{ page }} / {{ maxPage }}</span><button :disabled="busy || page >= maxPage || !snapshot" @click="query(page + 1)">下一页</button></div></div>
-      <details class="raw"><summary>查看完整 JSON 响应</summary><pre>{{ JSON.stringify(result, null, 2) }}</pre></details>
+      <details class="raw"><summary>查看完整 JSON 响应</summary><ResponseViewer :text="JSON.stringify(result, null, 2)" /></details>
     </template>
   </section>
 </template>
