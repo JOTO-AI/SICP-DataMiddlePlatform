@@ -1,4 +1,4 @@
-﻿import { test, expect } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { request, ApiError } from '../src/api'
 import { session, clearSession } from '../src/session'
@@ -94,4 +94,33 @@ test('HTTP retains unauthenticated metadata and distinguishes invalid request op
   Object.assign(session, { operator: 'synthetic-admin', csrf: 'synthetic-csrf' })
   await expect(request('worker', '/admin/v1/overview', { method: 'GET', body: {} })).rejects.toBeInstanceOf(ApiError)
   await expect(request('worker', '/admin/v1/overview', { timeoutMs: 0 })).rejects.toMatchObject({ code: 'invalid_argument' })
+})
+
+test('HTTP exposes only allowed response headers on success and failure', async () => {
+  const fixture = backendCapture('students.query')
+  const headers = { ...fixture.headers, Location: '/admin/v1/api-tests/synthetic-job', 'Retry-After': '60', 'Cache-Control': 'no-store', 'Set-Cookie': 'must-not-be-exposed', 'X-Internal-Token': 'must-not-be-exposed' }
+  globalThis.fetch = async () => new Response(JSON.stringify(fixture.response), { status: 200, headers })
+  const result = await request('query', '/api/v1/sicp/students/query', { body: fixture.request })
+  expect(result.headers).toEqual({ ...fixture.headers, Location: headers.Location, 'Retry-After': '60', 'Cache-Control': 'no-store' })
+  expect(Object.isFrozen(result.headers)).toBe(true)
+  globalThis.fetch = async () => new Response('gateway error', { status: 502, headers })
+  await expect(request('worker', '/admin/v1/overview')).rejects.toMatchObject({ status: 502, headers: result.headers })
+})
+
+test('HTTP preserves backend decimal string boundaries in both response and PUT payload', async () => {
+  // Same boundary as internal/logquery/protocol_test.go; not invented business data.
+  const boundary = '9007199254740993'
+  const retention = examples.find((item: { pattern: string }) => item.pattern === 'PUT /admin/v1/settings/retention')
+  const payload = { ...retention.request, revision: boundary }
+  globalThis.fetch = async (_url, init) => {
+    expect(JSON.parse(init?.body as string).revision).toBe(boundary)
+    return new Response(JSON.stringify({ ...retention.response, data: { ...retention.response.data, revision: '9007199254740994' } }))
+  }
+  const result = await request<{ data: { revision: string } }>('worker', '/admin/v1/settings/retention', { method: 'PUT', body: payload })
+  expect(result.body.data.revision).toBe('9007199254740994')
+  const detail = examples.find((item: { pattern: string }) => item.pattern === 'GET /admin/v1/logs/{source}/events/{event_id}')
+  expect(typeof detail.response.data.sequence).toBe('string')
+  globalThis.fetch = async () => new Response(JSON.stringify({ ...detail.response, data: { ...detail.response.data, sequence: boundary } }))
+  const event = await request<{ data: { sequence: string } }>('worker', detail.path)
+  expect(event.body.data.sequence).toBe(boundary)
 })
