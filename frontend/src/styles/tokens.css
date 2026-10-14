@@ -1,0 +1,44 @@
+/* V5 Hub palette. Keep brand swatches exact; use dedicated text roles on tints. */
+:root {
+  color-scheme: light;
+  --color-primary: #195BFF;
+  --color-primary-hover: #0F48D8;
+  --color-primary-text: #1D4ED8;
+  --color-primary-soft: #E2ECFF;
+  --color-focus: #2563EB;
+  --color-app-bg: #F7F8FA;
+  --color-panel: #FFFFFF;
+  --color-surface-muted: #F3F5F8;
+  --color-sidebar-bg: #F6F7F9;
+  --color-text-strong: #111827;
+  --color-text: #1A1C19;
+  --color-text-muted: #667085;
+  --color-text-on-tint: #475467;
+  --color-placeholder: #667085;
+  --color-border: #D6DBE4;
+  --color-divider: #E3E7EF;
+  --color-control-border: #7E8798;
+  --color-success: #16823C;
+  --color-success-text: #126E33;
+  --color-success-soft: #EAF7EF;
+  --color-danger: #D92D20;
+  --color-danger-hover: #B42318;
+  --color-danger-soft: #FFF7F6;
+  --color-danger-border: #EFA69F;
+  --color-warning: #B54708;
+  --color-warning-soft: #FFF4E5;
+  --color-backdrop: rgb(17 24 39 / 40%);
+  /* Existing components consume these aliases during the staged migration. */
+  --white: var(--color-panel);
+  --surface: var(--color-surface-muted);
+  --ink: var(--color-text);
+  --muted: var(--color-text-muted);
+  --brand: var(--color-primary);
+  --hover: var(--color-primary-hover);
+  --selected: var(--color-primary-soft);
+  --line: var(--color-border);
+  --control: var(--color-control-border);
+  --green: var(--color-success-text);
+  --red: var(--color-danger);
+  --warning: var(--color-warning);
+}

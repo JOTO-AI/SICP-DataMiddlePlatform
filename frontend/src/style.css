@@ -1,10 +1,6 @@
 :root {
   font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
-  color: var(--ink); background: var(--surface); font-size: 14px; line-height: 1.6;
-  --white: oklch(1 0 0); --surface: oklch(.97 0 0); --ink: oklch(.23 .012 77);
-  --muted: oklch(.46 .012 77); --brand: oklch(.45 .09 77); --hover: oklch(.40 .08 77);
-  --selected: oklch(.96 .02 77); --line: oklch(.90 0 0); --control: oklch(.62 0 0);
-  --green: oklch(.43 .10 150); --red: oklch(.46 .16 25); --warning: oklch(.43 .10 55);
+  color: var(--ink); background: var(--color-app-bg); font-size: 14px; line-height: 1.6;
 }
 * { box-sizing: border-box; }
 body { margin: 0; }
@@ -29,8 +25,8 @@ button:hover:not(:disabled) { background: var(--surface); border-color: var(--br
 button.primary { color: var(--white); background: var(--brand); border-color: var(--brand); }
 button.primary:hover:not(:disabled) { background: var(--hover); }
 button:disabled, fieldset:disabled { opacity: .55; cursor: not-allowed; }
-::placeholder { color: var(--muted); opacity: 1; }
-:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+::placeholder { color: var(--color-placeholder); opacity: 1; }
+:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
 fieldset { padding: 0; border: 0; margin: 0; min-width: 0; }
 legend { margin-bottom: 8px; font-weight: 600; }
 label { display: flex; flex-direction: column; gap: 6px; font-weight: 550; }
@@ -53,7 +49,7 @@ nav { display: flex; flex-direction: column; gap: 6px; }
 nav a { display: flex; align-items: center; gap: 12px; padding: 10px 14px; color: var(--muted); text-decoration: none; border-radius: 6px; font-weight: 550; }
 nav a > span { font-size: 21px; width: 22px; text-align: center; line-height: 1; }
 nav a:hover { background: var(--surface); }
-nav a.selected { background: var(--selected); color: var(--brand); }
+nav a.selected { background: var(--selected); color: var(--color-primary-text); }
 .sidebar-foot { margin-top: auto; padding: 20px 12px 0; color: var(--muted); font-size: 12px; }
 .sidebar-foot small { margin-top: 4px; }
 .phase-dot { display: inline-block; width: 6px; height: 6px; background: var(--brand); border-radius: 50%; margin-right: 5px; }
@@ -74,10 +70,10 @@ main { padding: 36px 38px 48px; width: 100%; max-width: 1510px; margin: 0 auto; 
 .health-panel .section-bar { margin-bottom: 3px; }
 .health-panel > p { font-size: 13px; }
 .tag { display: inline-flex; align-items: center; padding: 3px 9px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); border-radius: 5px; font-size: 12px; white-space: nowrap; }
-.tag.success { color: var(--green); background: oklch(.96 .025 150); }
-.tag.warning { color: var(--warning); background: oklch(.96 .025 55); }
-.tag.progress { color: var(--brand); background: var(--selected); }
-.update-progress { border-left: 3px solid var(--brand); background: var(--selected); padding: 20px 24px; margin-bottom: 28px; }
+.tag.success { color: var(--green); background: var(--color-success-soft); }
+.tag.warning { color: var(--warning); background: var(--color-warning-soft); }
+.tag.progress { color: var(--color-primary-text); background: var(--selected); }
+.update-progress { --muted: var(--color-text-on-tint); border: 1px solid var(--line); border-radius: 8px; background: var(--selected); padding: 20px 24px; margin-bottom: 28px; }
 .update-progress .section-bar { margin-bottom: 8px; }
 .update-progress p { margin-top: 4px; }
 .update-progress .result-meta { margin: 12px 0 0; }
@@ -103,7 +99,7 @@ summary { cursor: pointer; color: var(--brand); width: fit-content; }
 .link-list { background: var(--white); border-block: 1px solid var(--line); }
 .link-list a { display: flex; align-items: center; gap: 20px; padding: 20px 24px; text-decoration: none; color: var(--ink); }
 .link-list a + a { border-top: 1px solid var(--line); }
-.link-list a:hover { background: var(--selected); }
+.link-list a:hover { --muted: var(--color-text-on-tint); background: var(--selected); color: var(--color-primary-text); }
 .link-list p { color: var(--muted); font-size: 13px; margin-top: 3px; }
 .link-list a > span:last-child { margin-left: auto; color: var(--brand); }
 .link-icon { font-size: 28px; color: var(--brand); width: 30px; text-align: center; }
@@ -131,7 +127,7 @@ footer { border-top: 1px solid var(--line); margin: 0 38px; padding: 16px 0; col
 .empty > span { display: block; font-size: 30px; margin-bottom: 8px; color: var(--brand); }
 .empty h3 { color: var(--ink); margin-bottom: 6px; }
 .empty p { font-size: 13px; }
-.error { color: var(--red); padding: 12px; background: oklch(.97 .012 25); border: 1px solid oklch(.84 .055 25); border-radius: 6px; margin-top: 16px; overflow-wrap: anywhere; font-size: 13px; }
+.error { color: var(--red); padding: 12px; background: var(--color-danger-soft); border: 1px solid var(--color-danger-border); border-radius: 6px; margin-top: 16px; overflow-wrap: anywhere; font-size: 13px; }
 .success-text { color: var(--green); font-size: 13px; margin-top: 16px; overflow-wrap: anywhere; }
 .result-meta { display: flex; flex-wrap: wrap; gap: 8px 24px; color: var(--muted); font-size: 12px; margin-bottom: 12px; }
 .table-wrap { overflow-x: auto; background: var(--white); border: 1px solid var(--line); border-radius: 6px; }
@@ -164,7 +160,7 @@ pre { background: var(--white); border: 1px solid var(--line); padding: 16px; bo
 .timeline .done { color: var(--ink); }
 .done .timeline-dot { background: var(--green); border-color: var(--green); }
 dialog { border: 1px solid var(--line); border-radius: 10px; padding: 28px; width: min(480px, calc(100vw - 32px)); color: var(--ink); }
-dialog::backdrop { background: oklch(.2 0 0 / .4); }
+dialog::backdrop { background: var(--color-backdrop); }
 dialog p { margin-top: 14px; overflow-wrap: anywhere; }
 dialog .actions { justify-content: flex-end; margin-top: 24px; }
 .skip { position: fixed; top: -80px; left: 16px; padding: 10px; background: var(--white); z-index: 10; }
@@ -184,3 +180,6 @@ dialog .actions { justify-content: flex-end; margin-top: 24px; }
 
 /* Keep all nine query choices visible without horizontal tab hunting. */
 .query-tabs { flex-wrap: wrap; row-gap: 0; }
+
+.update-progress .result-meta { color: var(--color-text-on-tint); }
+.update-progress a, .update-progress summary { color: var(--color-primary-text); }

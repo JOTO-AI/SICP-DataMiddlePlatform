@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "playwright test",
     "check:visual-baseline": "node scripts/check-visual-baseline.mjs",
+    "check:theme": "node scripts/check-theme.mjs",
     "check:fixtures": "node scripts/check-fixtures.mjs",
     "test:unit": "playwright test --config playwright.unit.config.ts"
   },
