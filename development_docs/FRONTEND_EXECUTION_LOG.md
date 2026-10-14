@@ -396,3 +396,10 @@
 - 缓存：核对 internal/operations/source_tests.go 与 internal/admin/api_catalog.go，作业事实与实例内缓存分离。说明尚未写入、过期、淘汰、重启、跨实例等可能性；后端仅返回 result_unavailable，前端不推断具体原因或保证保存时间。显式查询原作业只 GET；重新测试须结束本次再提交。后续读取失败时旧不可获取提示标为过时，摘要可获取性转未确认，最近成功作业状态不改成失败。
 - Review 修复：全量回归发现 ApiResponseViews 可选 Boolean 属性在 Vue 中默认转 false，导致源响应隐藏表格。显式默认 allowRecords=true，保留业务错误响应显式 false 的保护；复测证明源表格可用，错误/不匹配响应仍不能进入记录视图。近期页面截图等待补齐路由/标题就绪，消除对已移除旧 DOM 的滚动。
 - 验证：78/78 单元检查、最终类型/生产构建、149 项 fixture 来源校验通过。全量 264 项浏览器先通过 262 项，两个 origin 均暴露上述同一源表格问题；修复后 48/48 相关检查通过，包含两项原失败用例、源生命周期、错误状态保护、组织集合和近期摘要。没有将首次全量失败记为全通过；其余用例未改。移动截图已查看，无页面横溢；证据 artifacts/frontend-f06-12（保留 full 失败上下文与 review 结果）。已有 localhost 健康代理拒绝现象仍有出现，未影响最终相关断言，未进行真实上游/邮件或暂停中的 T/OI 验收。
+
+## D06 需求澄清：复用既有持久调用日志
+
+- 用户确认：在日志页查询已有调用记录，按需筛选并逐批获取即可；不要求另建统一测试历史列表。此前 F06-12a 记录中的“D06 仍待后端”结论由本条更正。
+- 核对：internal/observability/routing.go 已区分 platform 请求/任务/审计与 upstream 调用/尝试；internal/logquery/contract.go 和 repository.go 已提供时间、类型、阶段、结果、operation、task_id、request_id、test_run_id 筛选与游标读取；源测试通过真实作业 ID 写入 test_run_id。现有 ApiCallRecords 已接入按业务 operation 或源测试标识读取。
+- 修正：D06 撤销新增统一测试历史的后端依赖，F06-12b 改为随 F08 验收现有日志查询和关联入口。保留 F06-12/F06-12b/F08 未完成勾选状态，源表全历史筛选 D12 等实际缺项不受影响。
+- Review：仅修正文档与验收范围，核对筛选字段与后端代码一致，未将内存摘要视为持久日志，未将未完成的日志页面标为完成；不改运行代码或测试数据。
