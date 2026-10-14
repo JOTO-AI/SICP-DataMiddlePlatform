@@ -177,7 +177,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
     </div>
     <div class="section-bar next-heading"><h2>维护与详情</h2><span class="muted">日常运行无需手动操作</span></div>
     <div class="task-layout">
-      <form class="panel" @submit.prevent="confirm">
+      <form class="panel" :aria-busy="busy" @submit.prevent="confirm">
         <h2>人工维护</h2><p class="muted">仅在需要完整重建或排除故障后使用。</p>
         <fieldset :disabled="busy || !!pending"><legend>更新方式</legend><label v-for="item in actions" :key="item.id" class="radio-row"><input v-model="action" type="radio" :value="item.id" name="action"><span><strong>{{ item.title }}</strong><small>{{ item.text }}</small></span></label>
         <label v-if="action === 'rerun'">原失败任务号 *<input v-model="predecessor" required placeholder="输入失败任务号"></label>
@@ -190,7 +190,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
         <p v-if="error" class="error" role="alert">{{ error }}</p><p v-if="receipt" class="success-text" role="status">{{ receipt }}</p>
       </form>
       <div class="task-detail">
-        <form class="lookup" @submit.prevent="selectTask(lookup.trim())"><label for="task-id">查找任务</label><div class="actions"><input id="task-id" v-model="lookup" required :disabled="loading || busy" placeholder="输入完整任务号" @input="stop(); task = null; taskError = ''"><button :disabled="loading || busy">{{ loading ? '查询中…' : '查看任务' }}</button></div></form>
+        <form class="lookup" :aria-busy="loading" @submit.prevent="selectTask(lookup.trim())"><label for="task-id">查找任务</label><div class="actions"><input id="task-id" v-model="lookup" required :disabled="loading || busy" placeholder="输入完整任务号" @input="stop(); task = null; taskError = ''"><button :disabled="loading || busy">{{ loading ? '查询中…' : '查看任务' }}</button></div></form>
         <p class="hint">点击最近任务查看详情，也可输入历史任务号。</p>
         <p v-if="taskError" class="error" role="alert">{{ taskError }}</p>
         <template v-if="task">

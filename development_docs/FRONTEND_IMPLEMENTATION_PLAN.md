@@ -158,7 +158,7 @@ frontend/gateway-e2e/  真实网关与部署验证
 - [x] F02-03 实现 AppShell、PageHeader、FilterBar、StatusBadge、Timestamp、CopyId、CursorTable、EmptyState、ErrorState、ConnectionStatus；统一 0/null/空数组/未知枚举显示规则。
 - [x] F02-04 实现可访问的 Dialog、Drawer、AsyncActionDialog：焦点限制与返回、Escape、标题关联、内部滚动、Teleport 及统一层级；普通关闭不增加确认。
 - [x] F02-05 实现 ParameterTable、ExampleViewer、RequestEditor、ResponseViewer；参数/JSON 切换不丢文本，JSON 按文本显示并支持有界展开、复制和截断说明。
-- [ ] F02-06 建立所有控件的默认、悬停、焦点、禁用、加载、错误状态；弱文字和占位符按实际背景校验，不机械照搬对比度不足的色值。
+- [x] F02-06 建立所有控件的默认、悬停、焦点、禁用、加载、错误状态；弱文字和占位符按实际背景校验，不机械照搬对比度不足的色值。
 - [ ] F02-07 定义三档响应式：1280px 及以上完整侧栏；768 至 1279px 折叠侧栏；小于 768px 导航抽屉、单列表单、全屏详情。宽表仅内部横向滚动，触控目标约 44px。
 
 ### 2.4 F03 登录与导航

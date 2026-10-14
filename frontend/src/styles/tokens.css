@@ -29,6 +29,8 @@
   --color-text: #1A1C19;
   --color-text-muted: #667085;
   --color-text-on-tint: #475467;
+  --color-disabled-text: #667085;
+  --color-disabled-bg: #F3F5F8;
   --color-placeholder: #667085;
   --color-border: #D6DBE4;
   --color-divider: #E3E7EF;

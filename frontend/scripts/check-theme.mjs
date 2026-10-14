@@ -1,4 +1,4 @@
-﻿import { readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 const css = readFileSync(new URL('../src/styles/tokens.css', import.meta.url), 'utf8')
 const colors = Object.fromEntries([...css.matchAll(/--(color-[\w-]+):\s*(#[\da-f]{6});/gi)].map(match => [match[1], match[2]]))
 const luminance = hex => {
@@ -11,6 +11,8 @@ const pairs = [
   ['color-placeholder', 'color-panel', 4.5], ['color-panel', 'color-primary', 4.5], ['color-panel', 'color-primary-hover', 4.5],
   ['color-primary', 'color-panel', 4.5], ['color-primary-text', 'color-primary-soft', 4.5], ['color-text-on-tint', 'color-primary-soft', 4.5],
   ['color-success-text', 'color-success-soft', 4.5], ['color-danger', 'color-danger-soft', 4.5], ['color-warning', 'color-warning-soft', 4.5],
+  ['color-disabled-text', 'color-disabled-bg', 4.5], ['color-placeholder', 'color-surface-muted', 4.5],
+  ['color-control-border', 'color-disabled-bg', 3], ['color-danger', 'color-panel', 3],
   ['color-control-border', 'color-panel', 3], ['color-focus', 'color-app-bg', 3],
 ]
 for (const [foreground, background, required] of pairs) {
@@ -18,4 +20,4 @@ for (const [foreground, background, required] of pairs) {
   if (ratio < required) throw new Error(`${foreground} / ${background}: ${ratio.toFixed(2)} < ${required}`)
   console.log(`${foreground} / ${background}: ${ratio.toFixed(2)}:1`)
 }
-console.log(`F02-01 PASS: ${pairs.length} semantic color pairs meet text/control thresholds.`)
+console.log(`F02 theme PASS: ${pairs.length} semantic color pairs meet text/control thresholds.`)

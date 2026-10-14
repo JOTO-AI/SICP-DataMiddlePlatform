@@ -20,11 +20,25 @@ button, input, select, textarea { border: 1px solid var(--control); border-radiu
 input, select, textarea { padding: 8px 10px; max-width: 100%; min-width: 0; }
 input:not([type=radio]):not([type=checkbox]), textarea { width: 100%; }
 input[type=radio], input[type=checkbox] { accent-color: var(--brand); width: 17px; height: 17px; min-height: 17px; flex-shrink: 0; }
-button { padding: 7px 14px; font-weight: 550; cursor: pointer; white-space: nowrap; transition: background .16s, color .16s; }
+button { padding: 7px 14px; font-weight: 550; cursor: pointer; white-space: nowrap; }
 button:hover:not(:disabled) { background: var(--surface); border-color: var(--brand); }
 button.primary { color: var(--white); background: var(--brand); border-color: var(--brand); }
 button.primary:hover:not(:disabled) { background: var(--hover); }
-button:disabled, fieldset:disabled { opacity: .55; cursor: not-allowed; }
+/* Keep disabled labels readable; native :disabled also matches fieldset descendants. */
+fieldset:disabled { opacity: 1; }
+button:disabled, input:disabled, select:disabled, textarea:disabled { opacity: 1; cursor: not-allowed; color: var(--color-disabled-text); background: var(--color-disabled-bg); border-color: var(--control); }
+button.primary:disabled { color: var(--color-disabled-text); background: var(--color-disabled-bg); border-color: var(--control); }
+input:disabled::placeholder, textarea:disabled::placeholder { color: var(--color-disabled-text); }
+input:not(:disabled):not([readonly]):hover, select:not(:disabled):hover, textarea:not(:disabled):not([readonly]):hover { border-color: var(--brand); }
+input[readonly], textarea[readonly] { background: var(--surface); }
+input:focus-visible, select:focus-visible, textarea:focus-visible { border-color: var(--brand); }
+:is(input, select, textarea):is([aria-invalid="true"], :user-invalid):not(:disabled):hover, input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"], input:user-invalid, select:user-invalid, textarea:user-invalid { border-color: var(--red); }
+button:active:not(:disabled) { background: var(--selected); }
+button.primary:active:not(:disabled) { background: var(--hover); }
+[aria-busy="true"] button:disabled { cursor: progress; }
+a:hover, summary:hover { text-decoration: underline; }
+.tabs button:focus-visible { outline-offset: -3px; }
+.warning { color: var(--warning); background: var(--color-warning-soft); padding: 12px; border-radius: var(--radius-control); overflow-wrap: anywhere; }
 ::placeholder { color: var(--color-placeholder); opacity: 1; }
 :focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
 fieldset { padding: 0; border: 0; margin: 0; min-width: 0; }
