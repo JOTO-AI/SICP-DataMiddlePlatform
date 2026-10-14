@@ -1,4 +1,5 @@
-﻿export interface ParameterDefinition { name: string; type: string; required?: boolean; nullable?: boolean; description?: string; defaultText?: string }
+import { objectTokens } from './jsonObject'
+export interface ParameterDefinition { name: string; type: string; required?: boolean; nullable?: boolean; description?: string; defaultText?: string; advanced?: boolean }
 export const MAX_EDITOR_CHARACTERS = 262144
 export const MAX_EDITOR_FIELDS = 100
 export function parseEditableJSON(text: string): unknown {
@@ -12,6 +13,7 @@ export function parseRequestObject(text: string): Record<string, unknown> {
   const value = parseEditableJSON(text)
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('请求须为 JSON 对象。')
   if (Object.keys(value).length > MAX_EDITOR_FIELDS) throw new Error('参数超过 100 项，请保留 JSON 原文。')
+  objectTokens(text)
   return value as Record<string, unknown>
 }
 export function jsonError(error: unknown): string { return error instanceof SyntaxError ? 'JSON 格式错误，请检查引号、逗号与括号；原文已保留。' : error instanceof Error ? error.message : '无法转换，原文已保留。' }
