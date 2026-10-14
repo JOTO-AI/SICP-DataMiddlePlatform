@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/diagnostic"
 )
 
 const AuthenticationFailure FailureKind = "authentication"
@@ -59,6 +62,7 @@ func (c *Client) fetchAuthenticated(ctx context.Context, input PageRequest) (Pag
 		if err != nil {
 			var f *Failure
 			if errors.As(err, &f) {
+				previous.Authentication = f.Attempt.Authentication
 				f.Attempt = previous
 			}
 			return Page{}, err
@@ -148,47 +152,73 @@ func (c *Client) acquireToken(parent context.Context) error {
 	// Count validity from before the request, not from response arrival.
 	started := a.now()
 	u := c.origin
-	u.Path, u.RawPath = "/apizt/opentoken/oauth/token", ""
+	u.Path, u.RawPath = diagnostic.TokenEndpoint, ""
 	u.RawQuery = url.Values{"appId": {a.appID}, "secret": {a.secret}}.Encode()
-	fail := func() error {
+	status := 0
+	fail := func(reason string) error {
+		kind := AuthenticationFailure
+		var cause error
 		if parent.Err() != nil {
-			return &Failure{Kind: CancelledFailure, Cause: parent.Err()}
+			kind, cause, reason = CancelledFailure, parent.Err(), "cancelled"
+			if errors.Is(parent.Err(), context.DeadlineExceeded) {
+				reason = "timeout"
+			}
+		} else if ctx.Err() != nil {
+			reason = "timeout"
 		}
-		// Do not retain auth response data, status metadata or URL-bearing errors
-		// as a source-page attempt. No data page was sent.
-		return &Failure{Kind: AuthenticationFailure}
+		return &Failure{Kind: kind, Cause: cause, Attempt: Attempt{Authentication: &diagnostic.Authentication{Endpoint: diagnostic.TokenEndpoint, Reason: reason, HTTPStatus: status}}}
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return fail()
+		return fail("configuration")
 	}
 	req.Header.Set("Accept", "application/json")
 	resp, err := c.http.Do(req)
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
 	}
-	if err != nil || resp == nil || resp.StatusCode != http.StatusOK || resp.Body == nil {
-		return fail()
+	if resp != nil {
+		status = resp.StatusCode
+	}
+	if err != nil || resp == nil {
+		var network net.Error
+		if errors.As(err, &network) && network.Timeout() {
+			return fail("timeout")
+		}
+		return fail("transport")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fail("http")
+	}
+	if resp.Body == nil {
+		return fail("read")
 	}
 	const limit = 64 << 10
 	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
-	if err != nil || len(body) > limit || ctx.Err() != nil {
-		return fail()
+	if err != nil || ctx.Err() != nil {
+		return fail("read")
+	}
+	if len(body) > limit {
+		return fail("response_limit")
 	}
 	envelope, err := objectFields(body)
 	if err != nil {
-		return fail()
+		return fail("structure")
 	}
-	if code, ok := integer(envelope["code"]); !ok || code != 200 {
-		return fail()
+	code, ok := integer(envelope["code"])
+	if !ok {
+		return fail("structure")
+	}
+	if code != 200 {
+		return fail("business")
 	}
 	data, err := objectFields(envelope["data"])
 	if err != nil {
-		return fail()
+		return fail("structure")
 	}
 	var token string
 	if json.Unmarshal(data["access_token"], &token) != nil || strings.TrimSpace(token) == "" || len(token) > 16384 {
-		return fail()
+		return fail("invalid_token")
 	}
 	// The captured contract does not specify a lifetime. Recognize an optional
 	// expires_in in seconds. Without a usable expiry, reuse the in-memory token
@@ -199,7 +229,7 @@ func (c *Client) acquireToken(parent context.Context) error {
 		lead := min(ttl/10, 30*time.Second)
 		a.validUntil = started.Add(ttl - lead)
 		if !a.now().Before(a.validUntil) {
-			return fail()
+			return fail("expired_token")
 		}
 	}
 	a.token = token

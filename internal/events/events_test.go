@@ -48,6 +48,57 @@ func TestResponseEvidenceIsFrozenAcrossLogAcknowledgementFailure(t *testing.T) {
 	}
 }
 
+func TestAuthenticationEvidenceIsValidatedAndFrozenOnReplay(t *testing.T) {
+	var saved []events.Event
+	r, err := events.New(testkit.FakeClock{Time: time.Now()}, testkit.FixedRandom(1), events.SinkFunc(func(_ context.Context, e events.Event) error {
+		if e.Phase == events.Finished {
+			saved = append(saved, e)
+			if len(saved) == 1 {
+				return errors.New("lost acknowledgement")
+			}
+		}
+		return nil
+	}), time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, span, err := r.Begin(t.Context(), events.Attempt, events.Identity{TaskID: "task", CallID: "call"}, "", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth := &diagnostic.Authentication{Endpoint: diagnostic.TokenEndpoint, Reason: "http", HTTPStatus: 502}
+	if err := span.FinishSource(ctx, events.Failed, nil, nil, "authentication", nil, auth); err != events.ErrRecord {
+		t.Fatal(err)
+	}
+	auth.HTTPStatus = 503
+	if err := span.FinishSource(ctx, events.Failed, nil, nil, "authentication", nil, auth); err != events.ErrEvent {
+		t.Fatal("replay changed auth status")
+	}
+	auth.HTTPStatus = 502
+	if err := span.FinishSource(ctx, events.Failed, nil, nil, "authentication", nil, auth); err != nil {
+		t.Fatal(err)
+	}
+	if len(saved) != 2 || !reflect.DeepEqual(saved[0], saved[1]) {
+		t.Fatal("auth evidence was not frozen")
+	}
+	for _, mutation := range []func(*events.Event){
+		func(e *events.Event) { e.Metadata.Authentication.Endpoint += "?secret=private" },
+		func(e *events.Event) { e.Metadata.Authentication.Reason = "private response" },
+		func(e *events.Event) { e.Metadata.Authentication.HTTPStatus = 999 },
+		func(e *events.Event) { e.Outcome = events.Succeeded },
+		func(e *events.Event) { e.Kind = events.Request },
+		func(e *events.Event) { e.Metadata.Failure = "http" },
+	} {
+		e := saved[0]
+		copy := *e.Metadata.Authentication
+		e.Metadata.Authentication = &copy
+		mutation(&e)
+		if e.Validate() == nil {
+			t.Fatal("invalid authentication evidence accepted")
+		}
+	}
+}
+
 func recorder(t *testing.T) (*events.Recorder, *[]events.Event, *testkit.FakeClock) {
 	t.Helper()
 	all := []events.Event{}
