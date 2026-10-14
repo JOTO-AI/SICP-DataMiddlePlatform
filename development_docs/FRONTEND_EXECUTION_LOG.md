@@ -56,3 +56,11 @@
 - 验证：Node v24.15.0，本机 Chrome；受影响 22 项复测通过后，最终 `node node_modules/@playwright/test/cli.js test --reporter=line` 在 frontend 下执行，84/84 通过（2.3 分钟，loopback 与 intranet-http 各 42）。`npm.cmd run test:unit --prefix frontend` 2/2 通过，`npm.cmd run build --prefix frontend` 类型与构建通过；图稿/端点/夹具三个基线校验通过。
 - 新增业务交互场景直接使用 F00-04 后端学生样例，验证 12 条原始 mock 学生与前导零 ID；没有新增手写正常查询数据。
 - 截图证据：`frontend/test-results/console-session-survives-r-63901-d-logout-clears-the-console-loopback/overview-desktop.png` 及各进度/九接口 mobile 截图。已查看桌面截图，结构迁移未改变既有视觉；Hub 主题尚待 F02。真实静态网关没有运行，不勾选 FT09-08。
+
+## F01-02 公共 HTTP 客户端
+
+- 前一步：`1ddc142` 已成功 push，输出 `fe3c2ff..1ddc142 HEAD -> feat/frontend-development`。
+- 实现：抽取 `api/http.ts`，保留 api.ts 兼容出口；支持显式 GET/POST/PUT、外部 AbortSignal、可配置超时、非 JSON 错误及按 query/tasks/settings/logs/operations 解释错误码。保留已有 request ID/snapshot 元数据，更多允许响应头由下一步补齐。
+- 代码自审：取消与超时分开；监听器和超时均 finally 清理；读取响应体前后核对会话代次；过期 401 保留 HTTP 状态与请求号；有副作用请求没有自动重试。未改运行页面的数据来源。
+- 验证：8/8 单元检查通过（正常业务读取导出学生响应，PUT 读取既有 retention 样例；边界协议错误对照后端错误映射，不编造业务记录）；类型与生产构建通过。Chrome 完整回归 84/84 通过（2.1 分钟）。首个浏览器命令的自动权限审查超时未执行，允许的一次重试成功获批并完成；不是测试失败或安全判定。
+- 范围：真实网关/后端 T/OI 未运行。F01-04 的主动取消全部会话请求及页面统一代次仍待实现。
