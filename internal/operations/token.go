@@ -19,6 +19,7 @@ var ErrLimit = errors.New("management budget exceeded")
 var ErrForbidden = errors.New("management scope forbidden")
 
 type Token struct {
+	Events                   *EventFilter `json:"events,omitempty"`
 	Scope, Subject, Position string
 	Size                     int
 	At, Expires              time.Time

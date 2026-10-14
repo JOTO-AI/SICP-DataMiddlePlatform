@@ -62,13 +62,22 @@ type Event struct {
 	FinishedAt  *time.Time `json:"finished_at"`
 }
 type EventPage struct {
-	Items      []Event `json:"items"`
-	NextCursor *string `json:"next_cursor"`
+	Filter     *EventFilter `json:"filter,omitempty"`
+	Items      []Event      `json:"items"`
+	NextCursor *string      `json:"next_cursor"`
 }
 
-func (r Repository) Events(ctx context.Context, before time.Time, id string, limit int) ([]Event, error) {
+func (r Repository) Events(ctx context.Context, before time.Time, id string, limit int, filters ...EventFilter) ([]Event, error) {
 	if limit < 1 || limit > 201 || before.IsZero() {
 		return nil, ErrArgument
+	}
+	if len(filters) > 1 {
+		return nil, ErrArgument
+	}
+	if len(filters) == 1 {
+		if err := filters[0].Validate(); err != nil {
+			return nil, err
+		}
 	}
 	out := []Event{}
 	err := r.transaction(ctx, true, func(ctx context.Context, tx storage.Transaction) error {
@@ -76,7 +85,14 @@ func (r Repository) Events(ctx context.Context, before time.Time, id string, lim
 		if !ok {
 			return ErrUnavailable
 		}
-		rows, e := q.Query(ctx, `SELECT id,mode,status,predecessor_id,accepted_at,started_at,ready_at,published_at,checked_at,finished_at FROM control.tasks WHERE accepted_at<=$1 AND ($2='' OR (accepted_at,id)<($1,$2)) ORDER BY accepted_at DESC,id DESC LIMIT $3`, before, id, limit)
+		where := "accepted_at<=$1 AND ($2='' OR (accepted_at,id)<($1,$2))"
+		args := []any{before, id, limit}
+		if len(filters) == 1 {
+			f := filters[0]
+			where += " AND accepted_at>=$4 AND accepted_at<$5 AND ($6='' OR mode=$6) AND ($7='' OR status=$7) AND ($8='' OR id=$8)"
+			args = append(args, f.From, f.To, f.Mode, f.Status, f.TaskID)
+		}
+		rows, e := q.Query(ctx, "SELECT id,mode,status,predecessor_id,accepted_at,started_at,ready_at,published_at,checked_at,finished_at FROM control.tasks WHERE "+where+" ORDER BY accepted_at DESC,id DESC LIMIT $3", args...)
 		if e != nil {
 			return ErrUnavailable
 		}

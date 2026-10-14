@@ -60,11 +60,11 @@
 
 ## 运维、目录和源测试
 
-以下均为错误域 O（日志另见下节），身份仍遵守 A。游标列表默认 50、最大 200、有效期 24 小时，无总页数；续页绑定主体、范围和页大小。除列明的 cursor/page_size/parent_operation_id 外不增加查询参数。响应完整定义位于 `internal/operations/`。
+以下均为错误域 O（日志另见下节），身份仍遵守 A。游标列表默认 50、最大 200、有效期 24 小时，无总页数；续页绑定主体、范围和页大小。仅发送各行明确列出的参数；更新列表已在 F07-02 增补服务端筛选。响应完整定义位于 `internal/operations/`。
 
 | 方法 | 路径 | 请求 | 响应/分页 | 可用条件 |
 | --- | --- | --- | --- | --- |
-| GET | /admin/v1/update-events | cursor,page_size | EventPage：items,next_cursor | 控制数据库可读 |
+| GET | /admin/v1/update-events | cursor,page_size,from,to,mode,status,task_id | EventPage：items,next_cursor,filter | 控制数据库可读；按 accepted_at 筛选，默认最近 24 小时，自定义最多 7 天，左闭右开；续页继承签名游标条件，禁止改条件；旧无筛选游标需重查 |
 | GET | /admin/v1/update-events/{id} | 无 | TaskView | 原始事件/任务 ID 有效 |
 | GET | /admin/v1/update-events/{id}/operations | cursor,page_size,parent_operation_id | items,next_cursor,parent_operation_id | 根节点省略 parent 参数，续页保留原 parent |
 | GET | /admin/v1/sources | 无 | items：十四源主键、检查/确认时间、window、last_failure、failure_state、关联 ID | 控制数据库可读 |

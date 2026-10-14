@@ -131,3 +131,9 @@ data: {"code":"connection_expired","retryable":true,"rebuild_required":false}
 标准配置仍使用根 `.env.example`/`compose.yaml`，同一 db-log 实例内 logs/upstream_logs 两个逻辑库；沿用独立 writer 密码，管理读写自动复用 query/worker 服务身份与现有 SNAPSHOT_KEY。完整停写、登记、迁移、排空和恢复边界见 [升级与回退手册](OPERATIONS_UPGRADE_RUNBOOK.md)。
 
 冻结容量在 [operations_capacity_baseline.json](verification/operations_capacity_baseline.json)，32 项场景在 [OI_CASE_MAP](verification/OI_CASE_MAP.md)。测试执行仍暂停；没有实测通过数。恢复执行前须同 SHA 完成 T27—T35，通过后在 Linux Actions 调用验收运行器，报告模板见 [验收报告](PHASE2_OPERATIONS_ACCEPTANCE.md)。后端开发完成不代表整个 Phase 2 完成，前端重构与页面验收仍单独待办。
+
+## F07-02 更新事件筛选增补
+
+`GET /admin/v1/update-events` 支持 `from/to/mode/status/task_id`，按受理时间 accepted_at 的左闭右开范围筛选；默认服务端最近 24 小时，自定义最多 7 天，时间格式为带时区的 RFC3339（最多微秒）。mode 为 initialize/incremental/force_full；status 为最多 64 位小写状态码，task_id 使用既有任务 ID 规则。所有谓词在数据库执行，参数绑定，不是当前批次本地过滤。
+
+响应 filter 回显有效范围和条件。next_cursor 签名绑定主体、起始查询时刻、页大小和全部条件，续页只传 cursor 即可；重复传条件必须相同。发布前签发的不含筛选上下文的更新游标返回 409 revision_conflict，须显式重新查询首批。此变更不影响操作树/通知等其他游标。任务状态仍为读取时控制区事实，不声称跨批次数据库状态快照。

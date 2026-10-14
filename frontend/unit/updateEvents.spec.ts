@@ -34,3 +34,16 @@ test('update readers reject conflicting IDs, duplicate pages and malformed metad
   const unknown = readUpdateDetail({ ...captured, status: 'future_status' }, String(event.id))!
   expect(unknown.status).toBe('future_status')
 })
+test('update filters use server predicates and only the bound cursor on continuation', () => {
+  const e = recordedUpdateEvent()
+  const f = { from: '2026-10-12T00:00:00Z', to: '2026-10-14T00:00:00Z', mode: String(e.mode), status: String(e.status), task_id: String(e.task_id) }
+  const q = new URL(updateListPath('', f), 'https://console.invalid').searchParams
+  expect(readUpdatePage({ items: [e], next_cursor: null, filter: f })).not.toBeNull()
+  expect(readUpdatePage({ items: [e], next_cursor: null, filter: { ...f, status: 'failed' } })).toBeNull()
+  expect(q.get('task_id')).toBe(e.task_id); expect(q.get('mode')).toBe(e.mode); expect(q.get('status')).toBe(e.status)
+  expect(q.get('from')).toBe('2026-10-12T00:00:00.000Z')
+  expect(updateListPath('bound-cursor', f)).toBe('/admin/v1/update-events?cursor=bound-cursor')
+  expect(() => updateListPath('', { ...f, task_id: '../task' })).toThrow()
+  expect(() => updateListPath('', { ...f, to: '' })).toThrow()
+  expect(() => updateListPath('', { ...f, from: '2026-10-01T00:00:00Z' })).toThrow()
+})

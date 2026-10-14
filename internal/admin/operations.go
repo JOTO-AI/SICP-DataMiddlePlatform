@@ -91,7 +91,12 @@ func (v OperationsViews) Mount(mux *http.ServeMux, auth *Sessions, detail Status
 	}
 	routes := map[string]http.Handler{
 		"GET /admin/v1/update-events": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			p, _, e := pageInput(r, v.Tokens, "update-events")
+			p, values, e := pageInput(r, v.Tokens, "update-events", "from", "to", "mode", "status", "task_id")
+			if e != nil {
+				operationError(w, e)
+				return
+			}
+			filter, e := operations.BindEventFilter(&p, values)
 			if e != nil {
 				operationError(w, e)
 				return
@@ -110,12 +115,12 @@ func (v OperationsViews) Mount(mux *http.ServeMux, auth *Sessions, detail Status
 				}
 				id = key
 			}
-			items, e := v.Repository.Events(r.Context(), before, id, p.Size+1)
+			items, e := v.Repository.Events(r.Context(), before, id, p.Size+1, filter)
 			if e != nil {
 				operationError(w, e)
 				return
 			}
-			out := operations.EventPage{Items: items}
+			out := operations.EventPage{Items: items, Filter: &filter}
 			if len(items) > p.Size {
 				out.Items = items[:p.Size]
 				last := out.Items[p.Size-1]
