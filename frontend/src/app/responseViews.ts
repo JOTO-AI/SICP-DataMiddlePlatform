@@ -1,7 +1,8 @@
-﻿import { arrayTokens, objectTokens } from '../shared/jsonObject'
+import { arrayTokens, objectTokens } from '../shared/jsonObject'
 import { operations } from '../queryOperations'
 import type { CatalogAPI } from './catalog'
 import { fieldDescription } from './catalogSchema'
+import { gradeColumns } from './grades'
 export interface ResponseRecords { rows: Map<string, string>[]; objects: Record<string, unknown>[]; truncated: boolean; error: string }
 export function responseRecords(raw: string, kind: string): ResponseRecords {
   const empty = { rows: [], objects: [], truncated: false }
@@ -37,8 +38,8 @@ export function recordCell(row: Map<string, string>, path: string): string {
 }
 export function responseColumns(api: CatalogAPI, records: ResponseRecords) {
   const operation = operations.find(op => op.operation === api.id)
-  const paths = operation?.kind === 'grades' ? ['grade_id', 'student.student_number', 'student.name', 'course.course_name', 'academic_year', 'semester', 'score', 'grade_point', 'credits']
-    : operation?.kind === 'timetable' ? ['course_code', 'course_name', 'teaching_class_number', 'teacher_names', 'teacher_staff_numbers', 'dates', 'weeks', 'sections', 'location']
+  if (operation?.kind === 'grades') return gradeColumns
+  const paths = operation?.kind === 'timetable' ? ['course_code', 'course_name', 'teaching_class_number', 'teacher_names', 'teacher_staff_numbers', 'dates', 'weeks', 'sections', 'location']
     : operation?.columns?.map(column => column.key) ?? [...new Set(records.rows.flatMap(row => [...row.keys()]))].slice(0, 24)
   return paths.map(key => ({ key, title: operation?.columns?.find(column => column.key === key)?.title ?? fieldDescription(api, key.split('.').at(-1)!) }))
 }

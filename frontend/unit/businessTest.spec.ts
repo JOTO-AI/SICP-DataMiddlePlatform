@@ -1,4 +1,4 @@
-﻿import { test, expect } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { backendCapture, backendCatalog } from '../fixtures/backend'
 import type { CatalogAPI } from '../src/app/catalog'
 import { businessTestPath, executeBusinessTest } from '../src/app/businessTest'
@@ -24,6 +24,7 @@ test('nine business tests use exact query proxy contracts and keep actual text a
     const result = await executeBusinessTest(api, JSON.stringify(captured.request), new AbortController().signal)
     expect(requests).toBe(1)
     expect(result.error).toBeUndefined()
+    expect(result.requestText).toBe(JSON.stringify(captured.request))
     expect(result.response?.responseText).toBe(raw)
     expect(result.response?.body).toEqual(captured.response)
     expect(result.response?.requestID).toBe(captured.headers['X-Request-ID'] || captured.response.request_id)

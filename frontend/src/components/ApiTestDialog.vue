@@ -74,7 +74,7 @@ onDeactivated(close)
       <EmptyState v-if="api.kind === 'business' && !result" :loading="busy" title="尚未测试" :description="busy ? '等待本次实际查询响应，不会自动重试。' : '这里将展示本次实际请求的响应；文档案例不会作为测试结果。'" />
       <template v-else-if="api.kind === 'business' && result"><p class="hint">本次开始于 <Timestamp :value="result.startedAt" /> · 浏览器等待 {{ result.durationMs }} ms</p><ErrorState v-if="result.error" :message="describe(result.error)" />
         <p v-if="!response?.status" class="hint">未取得 HTTP 响应。</p>
-        <ApiResponseViews v-if="response" :api="api" :raw="response.responseText ?? '未取得响应正文。'" :headers="response.headers" :http-status="response.status || undefined" :code="responseCode" :request-id="response.requestID" :stale="resultStale" />
+        <ApiResponseViews v-if="response" :api="api" :request-text="result.requestText" :raw="response.responseText ?? '未取得响应正文。'" :headers="response.headers" :http-status="response.status || undefined" :code="responseCode" :request-id="response.requestID" :stale="resultStale" />
 
       </template>
       <template v-if="api.kind === 'source'"><ErrorState v-if="source.error" :message="describe(source.error)" />

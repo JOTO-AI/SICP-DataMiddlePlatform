@@ -5,7 +5,8 @@ import type { ResponseHeaders } from '../api'
 import { responseRecords, responseColumns, recordCell, organizationNodes, datedLessons } from '../app/responseViews'
 import ResponseViewer from './ResponseViewer.vue'
 import JsonText from './JsonText.vue'
-const props = defineProps<{ api: CatalogAPI; raw: string; headers: ResponseHeaders; httpStatus?: number; code?: string; requestId?: string; stale?: boolean; sourceResultText?: string | null }>()
+import GradeResultContext from './GradeResultContext.vue'
+const props = defineProps<{ api: CatalogAPI; requestText?: string; raw: string; headers: ResponseHeaders; httpStatus?: number; code?: string; requestId?: string; stale?: boolean; sourceResultText?: string | null }>()
 const view = ref('json'), date = ref('')
 const records = computed(() => responseRecords(props.raw, props.api.kind)), columns = computed(() => responseColumns(props.api, records.value))
 const tree = computed(() => organizationNodes(records.value.objects)), lessons = computed(() => datedLessons(records.value.objects))
@@ -13,7 +14,7 @@ const tabs = computed(() => [ { id: 'json', label: 'JSON' }, { id: 'table', labe
 const dateEntries = computed(() => lessons.value.groups.find(([day]) => day === date.value)?.[1] ?? [])
 watch(() => props.raw, () => { view.value = 'json'; date.value = lessons.value.groups[0]?.[0] ?? '' }, { immediate: true })
 </script>
-<template><div class="response-views">
+<template><div class="response-views"><GradeResultContext v-if="api.id.startsWith('students.grades.') && !records.error" :api-id="api.id" :request-text="requestText" :raw="raw" :count="records.rows.length" />
   <div class="tabs" aria-label="响应视图"><button v-for="tab in tabs" :key="tab.id" type="button" :aria-pressed="view === tab.id" :class="{ active: view === tab.id }" @click="view = tab.id">{{ tab.label }}</button></div>
   <p v-if="stale && view !== 'json'" class="warning">上次读取结果，当前请求尚未取得新响应。</p>
   <template v-if="view === 'json'"><ResponseViewer :text="raw" :http-status="httpStatus" :code="code" :request-id="requestId" :stale="stale" :label="api.kind === 'source' ? '管理作业响应原文' : '响应原文'" />
