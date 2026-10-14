@@ -1,0 +1,82 @@
+{
+  "revision": "api-center-merge-V5",
+  "tool": "built-in image_gen",
+  "date": "2026-10-10",
+  "images": [
+    {
+      "id": "02-overview",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.\nIn 常用操作 replace the two separate entries 查询业务数据 and 查看接口文档 with ONE entry 接口中心, subtitle 查看 Endpoint、参数、Response 与在线测试. Retain 查看更新记录 below it.",
+      "source": "C:\\Users\\41058\\.codex\\generated_images\\01a1247f-34fc-7c92-aebf-212aa822ab8b\\exec-992784b9-f39f-4c01-9c4f-6b32ac751e6f.png"
+    },
+    {
+      "id": "15-updates",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.",
+      "source": "C:\\Users\\41058\\.codex\\generated_images\\01a1247f-34fc-7c92-aebf-212aa822ab8b\\exec-53d85945-6257-41bc-bdbf-1872b3f01ba6.png"
+    },
+    {
+      "id": "16-update-detail",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.",
+      "source": "C:\\Users\\41058\\.codex\\generated_images\\01a1247f-34fc-7c92-aebf-212aa822ab8b\\exec-ae78aeec-475f-4108-ade1-d6f9dfc6a54c.png"
+    },
+    {
+      "id": "17-sources",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.",
+      "source": "C:\\Users\\41058\\.codex\\generated_images\\01a1247f-34fc-7c92-aebf-212aa822ab8b\\exec-bb62329e-8ffc-4641-9131-d3d6bdc0d0b7.png"
+    },
+    {
+      "id": "18-platform-logs",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.",
+      "source": "C:/Users/41058/.codex/generated_images/01a1247f-34fc-7c92-aebf-212aa822ab8b/exec-0ebc03b4-99fe-4664-b28d-044dd53d89cb.png"
+    },
+    {
+      "id": "19-upstream-logs",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.",
+      "source": "C:/Users/41058/.codex/generated_images/01a1247f-34fc-7c92-aebf-212aa822ab8b/exec-d57a7992-7a35-49c7-b2a5-9cc1f3d193e5.png"
+    },
+    {
+      "id": "20-log-detail",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.",
+      "source": "C:/Users/41058/.codex/generated_images/01a1247f-34fc-7c92-aebf-212aa822ab8b/exec-cb03870d-5988-4a65-8c76-93eebc3b150c.png"
+    },
+    {
+      "id": "21-audit",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.",
+      "source": "C:\\Users\\41058\\.codex\\generated_images\\01a1247f-34fc-7c92-aebf-212aa822ab8b\\exec-6ebc78c1-c92e-4cde-9581-1edfeeedb251.png"
+    },
+    {
+      "id": "22-notifications",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.",
+      "source": "C:\\Users\\41058\\.codex\\generated_images\\01a1247f-34fc-7c92-aebf-212aa822ab8b\\exec-61becfc4-b7a6-4a5e-977c-40f2421e8089.png"
+    },
+    {
+      "id": "23-email-settings",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.",
+      "source": "C:\\Users\\41058\\.codex\\generated_images\\01a1247f-34fc-7c92-aebf-212aa822ab8b\\exec-2ad3ae5c-aa46-48de-9edf-36d93b1b1d4d.png"
+    },
+    {
+      "id": "24-system",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.",
+      "source": "C:\\Users\\41058\\.codex\\generated_images\\01a1247f-34fc-7c92-aebf-212aa822ab8b\\exec-5decc201-d553-4b78-8017-25c7135ee0fe.png"
+    },
+    {
+      "id": "25-operation-confirm",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.",
+      "source": "C:\\Users\\41058\\.codex\\generated_images\\01a1247f-34fc-7c92-aebf-212aa822ab8b\\exec-dbe80351-c5eb-4a2f-ba52-1344932ece75.png"
+    },
+    {
+      "id": "26-ui-states",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.\nThese are states of online testing inside 接口中心. Replace 查询场景 dropdowns in panels 2 and 4 with fixed text 当前接口：学生成绩 (not switchers). Change 查询数据 buttons to 测试, 重新查询 button to 重新测试, 开始测试 to 测试, 上次查询结果 to 上次测试结果. Preserve all six state panels and their meanings.",
+      "source": "C:\\Users\\41058\\.codex\\generated_images\\01a1247f-34fc-7c92-aebf-212aa822ab8b\\exec-0e2ecb19-7d21-46d6-817b-2b8b3990480e.png"
+    },
+    {
+      "id": "27-responsive",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.\nException: this board has no desktop sidebar; preserve all three mobile panels. In the middle mobile screen add breadcrumb 接口中心 / 学生成绩 above title 在线测试. Below title add POST and /api/v1/sicp/students/grades/query wrapped neatly if needed. Explain 关闭后返回接口详情. Keep upper parameters then test then lower response; preserve result JSON. Fit without clipping.",
+      "source": "C:\\Users\\41058\\.codex\\generated_images\\01a1247f-34fc-7c92-aebf-212aa822ab8b\\exec-50168f8a-d0a1-4b5e-8963-8e8e97c6c8ad.png"
+    },
+    {
+      "id": "28-upstream-api",
+      "prompt": "Use case: precise-object-edit, UI screenshot. Edit the attached screenshot, preserving exact dimensions, Chinese typography, AI Hub light blue theme, all main content, tables, numbers, semantic states, and layout. Unify navigation: remove the entire first-level 业务查询 row (icon and text), move subsequent rows upward by one normal row spacing. The sidebar must have exactly seven entries in this order: 运行总览, 接口中心, 更新事件, 数据源, 日志中心, 通知中心, 系统设置. Keep the current page's selected item selected. Do NOT rename 业务查询 to another duplicate 接口中心 row; there must be exactly one 接口中心. Change sidebar footer 设计稿 V1 to 设计稿 V5. Preserve every other detail unless explicitly specified below. All visible Chinese must be legible. No new actions, no new data, no new panels.\nLabel read-only address as Endpoint with same 地址由服务端配置. Label right section Response 原始字段示例. Preserve GET, page and pageSize parameters, server-injected credentials and controlled testing boundaries.",
+      "source": "C:\\Users\\41058\\.codex\\generated_images\\01a1247f-34fc-7c92-aebf-212aa822ab8b\\exec-7d8b55ab-975e-4873-a4a7-4c0690767be6.png"
+    }
+  ]
+}
