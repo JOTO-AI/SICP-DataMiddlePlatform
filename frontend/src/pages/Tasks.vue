@@ -84,7 +84,7 @@ async function refreshHistory() {
     if (active && !lookup.value && current) selectTask(current.task_id)
   }
   catch (e) { if (active && run.current()) { historyError.value = describe(e); historyFailures++; historyRetryAfter = e instanceof ApiError ? e.headers['Retry-After'] : undefined } }
-  finally { if (run.current()) { historyBusy.value = false; if (active && pageVisible.value) historyTimer = setTimeout(refreshHistory, pollingDelay(10000, historyFailures, historyRetryAfter)) } }
+  finally { if (run.current()) { historyBusy.value = false; if (active && pageVisible.value) historyTimer = setTimeout(refreshHistory, pollingDelay(15000, historyFailures, historyRetryAfter)) } }
 }
 function selectTask(id: string) { stop(); task.value = null; lookup.value = id; auto.value = true; void fetchTask() }
 const modeLabels: Record<string, string> = { initialize: '初始化', incremental: '增量同步', force_full: '强制全量' }
@@ -193,7 +193,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
       <p v-if="overview?.initialized">下次计划时间：{{ time(overview.next_due_at) }}。执行中或恢复中会顺延。</p>
       <p v-if="overview?.cooldown_until">冷却截止时间：{{ time(overview.cooldown_until) }}</p>
     </div>
-    <div class="section-bar next-heading"><h2>调度状态中的最近任务</h2><span class="muted">操作前校验，正常每 10 秒刷新；历史阅读使用上方事件列表</span></div>
+    <div class="section-bar next-heading"><h2>调度状态中的最近任务</h2><span class="muted">操作前校验，正常每 15 秒刷新；历史阅读使用上方事件列表</span></div>
     <p v-if="historyError" class="error" role="alert">{{ historyError }}</p>
     <div class="link-list">
       <button v-for="item in overview?.items" :key="item.task_id" class="history-task" @click="selectTask(item.task_id)" :disabled="busy || loading">

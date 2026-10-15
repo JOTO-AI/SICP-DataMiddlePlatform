@@ -70,7 +70,7 @@ const elapsed = computed(() => {
   return minutes < 1 ? '不足 1 分钟' : `${minutes} 分钟`
 })
 let active = false, failures = 0, serverDelay = 0
-function recordRetryAfter(error: unknown) { if (error instanceof ApiError) serverDelay = Math.max(serverDelay, pollingDelay(10000, 0, error.headers['Retry-After'])) }
+function recordRetryAfter(error: unknown) { if (error instanceof ApiError) serverDelay = Math.max(serverDelay, pollingDelay(15000, 0, error.headers['Retry-After'])) }
 const pageVisible = usePageVisibility(() => { requests.cancel(); busy.value = false; clearTimeout(timer) }, () => { if (active) void refresh() })
 const requests = useRequestScope()
 function current(run: RequestRun) { return active && run.current() }
@@ -81,12 +81,12 @@ async function refreshTask(run: RequestRun) {
   try {
     const overview = (await request<Envelope<{ items: Task[] }>>('worker', '/admin/v1/tasks/', { signal: run.signal })).body.data
     if (!current(run)) return
-    const task = overview.items.find(item => ['accepted', 'running', 'published_pending_progress'].includes(item.status))
+    const task = overview.items.find(item => ['accepted', 'queued', 'running', 'published_pending_progress'].includes(item.status))
     if (!task) { currentTask.value = null; taskError.value = ''; taskReadAt.value = new Date().toISOString(); return }
     const detail = (await request<Envelope<Task>>('worker', `/admin/v1/tasks/${encodeURIComponent(task.task_id)}`, { signal: run.signal })).body.data
     if (!current(run)) return
     taskError.value = ''; taskReadAt.value = new Date().toISOString()
-    currentTask.value = ['accepted', 'running', 'published_pending_progress'].includes(detail.status) ? detail : null
+    currentTask.value = ['accepted', 'queued', 'running', 'published_pending_progress'].includes(detail.status) ? detail : null
   } catch (e) { if (current(run)) { recordRetryAfter(e); taskError.value = `无法确认更新任务状态：${describe(e)}` } }
 }
 async function refresh() {
@@ -113,7 +113,7 @@ async function refresh() {
   now.value = Date.now()
   checked.value = new Date().toLocaleTimeString('zh-CN', { hour12: false }); busy.value = false
   failures = overviewError.value || systemError.value || sourcesError.value || taskError.value || services.value.some(service => service.error) ? failures + 1 : 0
-  if (active && pageVisible.value) timer = setTimeout(refresh, Math.max(serverDelay, pollingDelay(10000, failures)))
+  if (active && pageVisible.value) timer = setTimeout(refresh, Math.max(serverDelay, pollingDelay(15000, failures)))
 }
 onActivated(() => { active = true; void refresh() })
 function stop() { active = false; requests.cancel(); busy.value = false; clearTimeout(timer) }
@@ -122,7 +122,7 @@ onUnmounted(stop)
 </script>
 <template>
   <section>
-    <PageHeader title="运行总览" description="查看服务可用状态与后台更新进度，正常每 10 秒刷新，后台暂停，连接失败时延长间隔。"><button @click="refresh" :disabled="busy">{{ busy ? '检查中…' : '刷新状态' }}</button></PageHeader>
+    <PageHeader title="运行总览" description="查看服务可用状态与后台更新进度，正常每 15 秒刷新，后台暂停，连接失败时延长间隔。"><button @click="refresh" :disabled="busy">{{ busy ? '检查中…' : '刷新状态' }}</button></PageHeader>
     <div class="overview-summary panel">
       <dl class="overview-metrics">
         <div><dt>当前组合事件</dt><dd><code>{{ overviewSnapshot?.active?.event_id ?? (overviewSnapshot?.active_state === 'empty' ? '尚未发布' : '未观测') }}</code><small v-if="overviewError">旧快照 · 当前未确认</small></dd></div>

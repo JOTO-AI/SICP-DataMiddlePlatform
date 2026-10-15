@@ -414,6 +414,9 @@ test('F09 rate limits honor retry delay and expired position requires explicit g
   await expect.poll(() => queries).toBe(2)
   await expect(page.getByText('已请求新的实时起点；前后范围之间可能存在缺口，请按时间补查历史。', { exact: true })).toBeVisible()
   await expect.poll(() => streams).toBe(3)
+  await expect(stream).toContainText('服务端停止本次连接')
+  for (const state of ['hidden', 'visible']) await page.evaluate(value => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => value }); document.dispatchEvent(new Event('visibilitychange')) }, state)
+  await page.clock.runFor(30000); expect(streams).toBe(3)
 })
 test('F09 changing source aborts old stream and ignores its late event', async ({ page }) => {
   await setup(page)
@@ -488,4 +491,28 @@ test('F09 summary budget includes history and pending rows without moving the re
   await stream.getByRole('button', { name: '转到历史补查', exact: true }).click()
   await expect(page.getByRole('combobox', { name: '查询模式', exact: true })).toHaveValue('history')
   await expect(stream).toHaveCount(0)
+})
+test('F09 hidden page suspends stream retry and resumes the last checkpoint without bypassing rate limit', async ({ page }) => {
+  await page.clock.install(); await setup(page)
+  const initial = recordedLogPage(); initial.data.filter.mode = 'live'; initial.data.filter.to = null; initial.data.stream_cursor = 'visibility-start'
+  await page.route('**/admin/v1/logs/platform/events?*', route => route.fulfill({ json: initial }))
+  const cursors: string[] = []
+  await page.route('**/admin/v1/logs/platform/stream?*', route => {
+    cursors.push(new URL(route.request().url()).searchParams.get('cursor')!)
+    if (cursors.length === 2) return route.fulfill({ status: 429, headers: { 'Retry-After': '10' }, json: { code: 'resource_exhausted' } })
+    return route.fulfill({ contentType: 'text/event-stream', body: 'id: visibility-checkpoint\nevent: checkpoint\ndata: {"sequence":"21"}\n\n' })
+  })
+  const visibility = async (state: string) => page.evaluate(value => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => value }); document.dispatchEvent(new Event('visibilitychange')) }, state)
+  await page.goto('/console/logs')
+  await page.getByRole('combobox', { name: '查询模式', exact: true }).selectOption('live')
+  await page.getByRole('button', { name: '查询日志首批', exact: true }).click()
+  const stream = page.getByRole('region', { name: '实时日志接收' })
+  await expect(stream).toContainText('1 秒后')
+  await visibility('hidden'); await page.clock.runFor(60000); expect(cursors).toHaveLength(1)
+  await visibility('visible'); await expect(stream).toContainText('10 秒后')
+  expect(cursors).toEqual(['visibility-start', 'visibility-checkpoint'])
+  await visibility('hidden'); await page.clock.runFor(2000); await visibility('visible')
+  await page.clock.runFor(7000); expect(cursors).toHaveLength(2)
+  await page.clock.runFor(1500); await expect.poll(() => cursors.length).toBe(3)
+  expect(cursors[2]).toBe('visibility-checkpoint')
 })
