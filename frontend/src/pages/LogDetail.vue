@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
-import PageHeader from '../components/PageHeader.vue'
+import { computed, ref } from 'vue'
+import { useRoute, onBeforeRouteUpdate, type LocationQuery } from 'vue-router'
 import LogEventDetail from '../components/logs/LogEventDetail.vue'
 import type { LogSource } from '../app/logHistory'
-const route = useRoute(), source = String(route.params.source) as LogSource, eventId = String(route.params.eventId)
+const route = useRoute(), detailPath = route.path, source = String(route.params.source) as LogSource, eventId = String(route.params.eventId)
+// Snapshot the detail query: cached pages must not react to another route and start hidden reads.
+const query = ref<LocationQuery>({ ...route.query })
+onBeforeRouteUpdate(to => { if (to.path === detailPath) query.value = { ...to.query } })
+const epoch = computed(() => typeof query.value.epoch === 'string' ? query.value.epoch : undefined)
+const sequence = computed(() => typeof query.value.sequence === 'string' ? query.value.sequence : undefined)
+const back = computed(() => typeof query.value.from === 'string' && ['/logs', '/logs/platform', '/logs/upstream'].includes(query.value.from) ? query.value.from : '/logs/' + (source === 'upstream' ? 'upstream' : 'platform'))
 </script>
-<template><section><RouterLink :to="{ name: 'log-source', params: { source } }">← 返回此源日志</RouterLink><PageHeader title="日志详情" description="按日志源和事件号读取后端脱敏证据，发生时间与入库时间分别展示。" /><section class="panel"><LogEventDetail :source="source" :event-id="eventId" /></section></section></template>
-<style scoped>.page-heading { margin-top: 16px; } .panel { overflow-wrap: anywhere; }</style>
+<template><section class="log-detail-page"><RouterLink class="back-link" :to="back">← 返回此源日志</RouterLink><LogEventDetail :key="epoch + '/' + sequence" :source="source" :event-id="eventId" :epoch="epoch" :sequence="sequence" /></section></template>
+<style scoped>.log-detail-page { min-width: 0; overflow-wrap: anywhere; } .back-link { display: inline-block; font-size: 12px; margin-bottom: 16px; }</style>

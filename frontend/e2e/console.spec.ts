@@ -366,7 +366,8 @@ test('backend diagnostic captures render on task and linked log details', async 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
   await page.screenshot({ path: testInfo.outputPath('diagnostics-task-mobile.png'), fullPage: true })
   await link.click()
-  await expect(page.getByRole('heading', { name: '事件内容' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '调用日志详情' })).toBeVisible()
+  await page.getByText('错误诊断（展开查看上游响应）', { exact: true }).click()
   await expect(page.getByRole('region', { name: '认证错误摘要' })).toContainText('获取上游 Token 失败 · HTTP 502')
   await expect(page.getByRole('region', { name: '数据接口错误摘要' })).toContainText('数据接口 HTTP 状态401')
   await expect(page.locator('.request-diagnostics img')).toHaveCount(0)
@@ -1327,7 +1328,7 @@ test('F03 log detail keeps source and backend event ID while API tests have no s
   expect(logDetailPath('unknown', record.event_id)).toBeNull()
   await setup(page)
   await page.goto(`/console${path}`)
-  await expect(page.getByRole('heading', { name: '日志详情', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '调用日志详情', exact: true })).toBeVisible()
   await expect(page.getByRole('navigation').getByRole('link', { name: '日志中心', exact: true })).toHaveAttribute('aria-current', 'page')
   expect(new URL(page.url()).pathname).toBe(`/console${path}`)
   for (const target of ['/apis/students.query/test', '/api-tests', `/logs/unknown/events/${record.event_id}`, '/logs/platform/events/raw-request-id']) {

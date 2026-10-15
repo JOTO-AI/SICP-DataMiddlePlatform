@@ -24,4 +24,4 @@ async function copy() {
   } finally { if (current()) copying.value = false }
 }
 </script>
-<template><span class="copy-id"><code>{{ value || '未提供' }}</code><button type="button" :disabled="!value || copying" :aria-label="`复制${label}`" @click="copy">{{ copying ? '复制中…' : '复制' }}</button><span class="hint" role="status">{{ message }}</span><input v-if="manual" ref="input" :aria-label="`手动复制${label}`" :value="value" readonly @focus="($event.target as HTMLInputElement).select()"></span></template>
+<template><span class="copy-id"><code :title="value ?? undefined">{{ value || '未提供' }}</code><button type="button" :disabled="!value || copying" :aria-label="`复制${label}`" @click="copy">{{ copying ? '复制中…' : '复制' }}</button><span class="hint" role="status">{{ message }}</span><input v-if="manual" ref="input" :aria-label="`手动复制${label}`" :value="value" readonly @focus="($event.target as HTMLInputElement).select()"></span></template>

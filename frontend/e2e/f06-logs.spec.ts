@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { backendCapture, backendCatalog, managementCapture } from '../fixtures/backend'
 import { recordedLogPage } from '../fixtures/logTests'
+import { diagnosticCapture } from '../fixtures/diagnostics'
 import { sourceJobResult } from '../fixtures/sourceTests'
 async function setup(page: Page) {
   const session = managementCapture('session')
@@ -38,8 +39,8 @@ test('F06 log handoff from business response supports stable batches and existin
     if (url.searchParams.has('cursor')) { response.data.items = []; response.data.next_cursor = null }
     return route.fulfill({ json: response })
   })
-  const d = managementCapture('log_detail')
-  await page.route(`**${d.path}`, route => route.fulfill({ status: d.status, json: d.response }))
+  const d = managementCapture('log_detail'); let detailReads = 0
+  await page.route(`**${d.path}`, route => { detailReads++; return route.fulfill({ status: d.status, json: d.response }) })
   const fixture = await business(page)
   await page.getByRole('dialog').getByRole('button', { name: '查看本次调用日志' }).click()
   await expect(page).toHaveURL(/\/console\/logs\/platform$/)
@@ -49,7 +50,9 @@ test('F06 log handoff from business response supports stable batches and existin
   expect(urls[0]!.searchParams.get('test_run_id')).toBeNull()
   expect(urls[0]!.searchParams.get('id_format')).toBe('raw')
   await page.getByRole('button', { name: '查看日志详情' }).click()
-  await expect(page.getByRole('region', { name: '所选日志详情' })).toContainText(/"redacted":\s*true/)
+  await expect(page.getByRole('heading', { name: '调用日志详情', exact: true })).toBeVisible()
+  await expect(page.getByLabel('日志脱敏详情', { exact: true })).toContainText(/"redacted":\s*true/)
+  await page.getByRole('link', { name: '← 返回此源日志', exact: true }).click()
   await page.getByRole('button', { name: '下一批日志' }).click()
   await expect(page.getByText('本批没有匹配的日志事件', { exact: true })).toBeVisible()
   expect([...urls[1]!.searchParams.keys()]).toEqual(['cursor'])
@@ -57,6 +60,7 @@ test('F06 log handoff from business response supports stable batches and existin
   await page.getByRole('button', { name: '上一批日志' }).click()
   await expect(page.getByRole('region', { name: '持久调用日志表格' })).toBeVisible()
   expect(urls).toHaveLength(2)
+  expect(detailReads).toBe(1)
   expect(await page.evaluate(() => JSON.stringify([Object.entries(localStorage), Object.entries(sessionStorage)]))).not.toContain(fixture.headers['X-Request-ID'])
   await page.screenshot({ path: info.outputPath('logs-desktop.png'), fullPage: true })
   await page.setViewportSize({ width: 390, height: 844 })
@@ -217,7 +221,7 @@ test('F08 direct log detail shows captured facts and exact sanitized tokens and 
   const f = managementCapture('log_detail'), d = f.response.data as any; let wrong = false
   await page.route(`**${f.path}`, route => route.fulfill({ status: f.status, json: wrong ? { ...f.response, data: { ...d, sequence: '22' } } : f.response }))
   await page.goto(`/console/logs/${d.source}/events/${d.event_id}`)
-  await expect(page.getByRole('heading', { name: '日志详情', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '调用日志详情', exact: true })).toBeVisible()
   await expect(page.getByText('当前事件未记录结果', { exact: true })).toBeVisible()
   await expect(page.getByLabel('日志脱敏详情', { exact: true })).toHaveText(JSON.stringify(d))
   await expect(page.getByText('当前事件没有结束边界', { exact: false })).toBeVisible()
@@ -299,6 +303,7 @@ test('F08 update task opens source logs using raw ID without a task write or URL
     return route.fulfill({ json: envelope })
   })
   await page.goto(`/console/updates/${id}`)
+  await page.getByRole('tab', { name: '关联日志', exact: true }).click()
   await page.getByRole('button', { name: '查看上游采集日志', exact: true }).click()
   await expect(page).toHaveURL(/\/console\/logs\/upstream$/)
   await expect(page.getByText('本批没有匹配的日志事件', { exact: true })).toBeVisible()
@@ -332,6 +337,7 @@ test('F08 sanitized log text remains inert and bounded and copy equals only visi
   d.redaction.truncated = true
   await page.route(`**${fixture.path}`, route => route.fulfill({ json: fixture.response }))
   await page.goto(`/console/logs/platform/events/${d.event_id}`)
+  await page.getByRole('tab', { name: '脱敏详情', exact: true }).click()
   const text = page.getByLabel('日志脱敏详情', { exact: true })
   await expect(text).toContainText('Authorization: [REDACTED]')
   expect((await text.textContent())!.length).toBe(4096)
@@ -521,4 +527,122 @@ test('F09 hidden page suspends stream retry and resumes the last checkpoint with
   await page.clock.runFor(7000); expect(cursors).toHaveLength(2)
   await page.clock.runFor(1500); await expect.poll(() => cursors.length).toBe(3)
   expect(cursors[2]).toBe('visibility-checkpoint')
+})
+test('V05 figure20 matches the detail layout and reads only captured correlated events', async ({ page }, info) => {
+  await setup(page)
+  const fixture = managementCapture('log_detail'), d = fixture.response.data as any
+  let scans = 0, writes = 0, corruptEpoch = false
+  page.on('request', r => { if (['POST', 'PUT', 'DELETE'].includes(r.method())) writes++ })
+  await page.route('**' + fixture.path, route => route.fulfill({ json: fixture.response }))
+  await page.route('**/admin/v1/logs/platform/events?*', route => {
+    scans++
+    const url = new URL(route.request().url()), response = recordedLogPage()
+    // Only the filter echo is adapted; the event remains the backend captured DTO.
+    response.data.filter = { ...response.data.filter, ...Object.fromEntries(url.searchParams), page_size: 50 }
+    response.data.next_cursor = null
+    if (corruptEpoch) response.data.epoch = 'wrong-epoch'
+    return route.fulfill({ json: response })
+  })
+  await page.goto('/console/logs/platform/events/' + d.event_id)
+  await expect(page.getByRole('heading', { name: '调用日志详情', exact: true })).toBeVisible()
+  await expect(page.getByRole('tab')).toHaveText(['概览', '脱敏详情', '关联记录'])
+  await expect(page.getByRole('region', { name: '执行时序', exact: true }).locator('li')).toHaveCount(1)
+  expect(scans).toBe(0)
+  await page.getByRole('button', { name: '读取关联时序', exact: true }).click()
+  await expect(page.getByRole('region', { name: '执行时序', exact: true })).toContainText('已读 1 批')
+  await expect(page.getByRole('region', { name: '执行时序', exact: true }).locator('li')).toHaveCount(1)
+  expect(scans).toBe(1)
+  await expect(page.getByText('待查询关联记录', { exact: true })).toHaveCount(2)
+  for (const width of [1440, 1280, 1024, 768, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (width === 1440) {
+      const left = await page.getByRole('region', { name: '执行时序', exact: true }).boundingBox()
+      const right = await page.getByRole('region', { name: '基本信息', exact: true }).boundingBox()
+      expect(left!.x + left!.width).toBeLessThanOrEqual(right!.x)
+    }
+    await page.screenshot({ path: info.outputPath('figure20-' + width + '.png'), fullPage: true })
+  }
+  corruptEpoch = true
+  await page.getByRole('button', { name: '重新读取关联时序', exact: true }).click()
+  await expect(page.getByRole('region', { name: '执行时序', exact: true })).toContainText('保留已确认的部分记录')
+  await page.getByRole('tab', { name: '概览', exact: true }).focus()
+  await page.keyboard.press('End')
+  await expect(page.getByRole('tab', { name: '关联记录', exact: true })).toBeFocused()
+  await expect(page.getByRole('tabpanel', { name: '关联记录', exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: '脱敏详情', exact: true }).click()
+  await expect(page.getByLabel('日志脱敏详情', { exact: true })).toBeVisible()
+  expect(writes).toBe(0)
+})
+
+test('V05 detail entry keeps source epoch and sequence binding from the selected row', async ({ page }) => {
+  await setup(page)
+  const fixture = managementCapture('log_detail'), d = fixture.response.data as any
+  await page.route('**/admin/v1/logs/platform/events?*', route => route.fulfill({ json: recordedLogPage() }))
+  // Simulate retention/epoch rotation after list selection; never accept another generation.
+  await page.route('**' + fixture.path, route => route.fulfill({ json: { ...fixture.response, data: { ...d, epoch: 'rotated-epoch' } } }))
+  await page.goto('/console/logs')
+  await page.getByRole('button', { name: '查询日志首批', exact: true }).click()
+  await page.getByRole('button', { name: '查看日志详情', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('日志详情与所选事件、世代或字段契约不一致')
+  await expect(page.getByLabel('日志脱敏详情', { exact: true })).toHaveCount(0)
+  expect(new URL(page.url()).searchParams.get('epoch')).toBe(d.epoch)
+  expect(new URL(page.url()).searchParams.get('sequence')).toBe(d.sequence)
+  await page.getByRole('link', { name: '← 返回此源日志', exact: true }).click()
+  await expect(page).toHaveURL(/\/console\/logs$/)
+  await expect(page.getByRole('region', { name: '持久调用日志表格' })).toBeVisible()
+})
+
+test('V05 failure layout keeps backend diagnostic evidence reachable without invented stages', async ({ page }, info) => {
+  await setup(page)
+  const d = diagnosticCapture('page_401_then_token_502').log_detail
+  await page.route('**/admin/v1/logs/' + d.source + '/events/' + d.event_id, route => route.fulfill({ json: { code: 'ok', data: d } }))
+  await page.goto('/console/logs/' + d.source + '/events/' + d.event_id)
+  await expect(page.locator('.failure-banner')).toContainText('失败')
+  await expect(page.getByRole('region', { name: '执行时序', exact: true }).locator('li')).toHaveCount(1)
+  await expect(page.locator('.summary-line')).toContainText('ms')
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: info.outputPath('figure20-failure-' + width + '.png'), fullPage: true })
+  }
+  await page.getByText('错误诊断（展开查看上游响应）', { exact: true }).click()
+  await expect(page.getByRole('region', { name: '认证错误摘要' })).toContainText('502')
+  await expect(page.getByRole('region', { name: '数据接口错误摘要' })).toContainText('401')
+  await page.getByRole('tab', { name: '脱敏详情', exact: true }).click()
+  await expect(page.getByLabel('日志脱敏详情', { exact: true })).toHaveText(JSON.stringify(d))
+})
+
+test('V05 timeline continuation validates cursor scope and retains confirmed events on rejection', async ({ page }) => {
+  await setup(page)
+  const fixture = managementCapture('log_detail'), d = fixture.response.data as any
+  await page.route('**' + fixture.path, route => route.fulfill({ json: fixture.response }))
+  const urls: URL[] = []; let first: any, repeatCursor = true
+  await page.route('**/admin/v1/logs/platform/events?*', route => {
+    const url = new URL(route.request().url()); urls.push(url)
+    if (!first) {
+      first = recordedLogPage()
+      first.data.filter = { ...first.data.filter, ...Object.fromEntries(url.searchParams), page_size: 50 }
+      first.data.next_cursor = 'timeline-next'
+      return route.fulfill({ json: first })
+    }
+    const response = structuredClone(first); response.data.items = []
+    response.data.next_cursor = repeatCursor ? 'timeline-next' : null
+    return route.fulfill({ json: response })
+  })
+  await page.goto('/console/logs/platform/events/' + d.event_id)
+  const timeline = page.getByRole('region', { name: '执行时序', exact: true })
+  await timeline.getByRole('button', { name: '读取关联时序', exact: true }).click()
+  await expect(timeline).toContainText('已读 1 批')
+  expect(urls[0]!.searchParams.get('request_id')).toBe(d.request_id)
+  expect(urls[0]!.searchParams.get('id_format')).toBe('correlation')
+  await timeline.getByRole('button', { name: '继续读取时序', exact: true }).click()
+  await expect(timeline).toContainText('保留已确认的部分记录')
+  await expect(timeline.locator('li')).toHaveCount(1)
+  expect([...urls[1]!.searchParams.keys()]).toEqual(['cursor'])
+  repeatCursor = false
+  await timeline.getByRole('button', { name: '继续读取时序', exact: true }).click()
+  await expect(timeline).toContainText('已读 2 批')
+  await expect(timeline).toContainText('不能据此确认完整执行链')
+  await expect(timeline.getByRole('button', { name: '继续读取时序', exact: true })).toHaveCount(0)
 })

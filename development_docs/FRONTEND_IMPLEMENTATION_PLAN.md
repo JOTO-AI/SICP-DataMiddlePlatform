@@ -426,3 +426,5 @@ V01/V02 的取舍、截图范围与回归证据见 [界面细节复核](verifica
 - [x] V03 更新事件页删除自动更新、当前任务与内嵌执行详情，维护/查找保留；按 15 图调整筛选和表格，详情轮询归独立页，完成 80 项相关回归、视觉复核和 code review。见 [更新事件页复核](verification/FRONTEND_UPDATE_PAGE_REVIEW.md)。
 
 - [x] V04 按图 16 实现更新详情头部、七阶段进度、四标签和左右操作树；58 项浏览器、122 项单元及构建检查通过，完成视觉与 code review。见 [图 16 复核](verification/FRONTEND_FIGURE16_REVIEW.md)。
+
+- [x] V05 按图 20 实现调用日志详情标题、三标签、错误摘要、执行时序/基本信息双栏、关联表与折叠 JSON；列表直接进入详情。172 项浏览器及 10 项补充复测、122 项单元和构建通过，完成视觉与 code review。见 [图 20 复核](verification/FRONTEND_FIGURE20_REVIEW.md)。

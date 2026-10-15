@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { milliseconds } from "../shared/duration"
 import { computed, reactive, ref, watch, onActivated, onDeactivated } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { request, ApiError, describe, type Envelope } from '../api'
 import { emptyLogFilters, logHistoryPath, readLogPage, type LogPage, type LogEvent } from '../app/logHistory'
 import { consumeTestLogs } from '../app/testLogNavigation'
@@ -14,10 +14,10 @@ import ErrorState from '../components/ErrorState.vue'
 import EmptyState from '../components/EmptyState.vue'
 import Timestamp from '../components/Timestamp.vue'
 import CopyId from '../components/CopyId.vue'
-import LogEventDetail from '../components/logs/LogEventDetail.vue'
 import LiveLogStream from '../components/logs/LiveLogStream.vue'
 import { logKinds, logPhases, logOutcomes } from '../app/logDetail'
-const routeSource = String(useRoute().params.source ?? 'platform')
+const route = useRoute(), router = useRouter(), listPath = route.path
+const routeSource = String(route.params.source ?? 'platform')
 const filters = reactive(emptyLogFilters(routeSource === 'upstream' ? 'upstream' : 'platform'))
 const validSource = ['platform', 'upstream'].includes(routeSource)
 const view = computed(() => selectedLogView(filters))
@@ -26,22 +26,22 @@ const pages = ref<LogPage[]>([]), index = ref(0), busy = ref(false), error = ref
 const liveBudget = computed(() => Math.max(0, 1000 - pages.value.reduce((sum, page) => sum + page.items.length, 0)))
 const current = computed(() => pages.value[index.value]), scope = useRequestScope()
 const liveRef = ref<InstanceType<typeof LiveLogStream> | null>(null)
-const detailItem = ref<LogEvent | null>(null), liveGeneration = ref(0), liveGap = ref(false)
-let active = false
-function clearDetail() { detailItem.value = null }
-function reset() { liveRef.value?.pause(); liveGeneration.value++; liveGap.value = false; scope.cancel(); pages.value = []; index.value = 0; busy.value = false; error.value = ''; expired.value = false; clearDetail() }
+const liveGeneration = ref(0), liveGap = ref(false)
+let active = false, keepBatch = false
+onBeforeRouteLeave(to => { keepBatch = to.name === 'log-detail' })
+function reset() { liveRef.value?.pause(); liveGeneration.value++; liveGap.value = false; scope.cancel(); pages.value = []; index.value = 0; busy.value = false; error.value = ''; expired.value = false }
 watch(filters, reset, { flush: 'sync' })
 watch(() => filters.mode, mode => { if (mode === 'live') filters.to = '' }, { flush: 'sync' })
 watch(() => filters.source, source => { filters.kind = ''; filters.phase = ''; filters.operation = ''; filters.identity = ''; filters.identityField = source === 'upstream' ? 'test_run_id' : 'request_id'; filters.format = 'raw' }, { flush: 'sync' })
 async function read(next = false) {
   if (!active || !validSource || busy.value || next && (!current.value?.next_cursor || expired.value)) return
-  if (next && index.value + 1 < pages.value.length) { liveRef.value?.pause(); liveRef.value?.clearRecords(); index.value++; clearDetail(); return }
+  if (next && index.value + 1 < pages.value.length) { liveRef.value?.pause(); liveRef.value?.clearRecords(); index.value++; return }
   if (next && pages.value.length >= 20) { error.value = '本次最多保留 20 批，请缩小时间范围后重新查询。'; return }
   let path: string
   const cursor = next ? current.value!.next_cursor! : '', previous = next ? current.value : undefined, submitted = { ...filters }
   try { path = logHistoryPath(submitted, cursor) } catch (cause) { error.value = cause instanceof Error ? cause.message : '日志筛选无效。'; return }
   liveRef.value?.pause()
-  const run = scope.begin(); busy.value = true; error.value = ''; clearDetail()
+  const run = scope.begin(); busy.value = true; error.value = ''
   try {
     const result = await request<Envelope<unknown>>('worker', path, { signal: run.signal, domain: 'logs' })
     if (!active || !run.current()) return
@@ -58,15 +58,17 @@ async function read(next = false) {
   } finally { if (run.current()) busy.value = false }
 }
 function rebuildLive() { liveGap.value = true; void read() }
-function previous() { if (!busy.value && index.value > 0) { index.value--; clearDetail() } }
-function showDetail(item: LogEvent) { detailItem.value = item }
+function previous() { if (!busy.value && index.value > 0) { index.value-- } }
+function showDetail(item: LogEvent) { void router.push({ name: 'log-detail', params: { source: item.source, eventId: item.event_id }, query: { epoch: item.epoch, sequence: item.sequence, from: listPath } }) }
 onActivated(() => {
   active = true
   const test = consumeTestLogs(), source = consumeSourceLogs()
   if (test && test.source === routeSource) { Object.assign(filters, test); void read() }
   else if (source && source.source === routeSource) { Object.assign(filters, emptyLogFilters('upstream'), { identity: source.task_id, identityField: 'task_id', format: source.id_format }); void read() }
 })
-onDeactivated(() => { active = false; reset(); Object.assign(filters, emptyLogFilters(routeSource === 'upstream' ? 'upstream' : 'platform')) })
+function discard() { reset(); Object.assign(filters, emptyLogFilters(routeSource === 'upstream' ? 'upstream' : 'platform')) }
+onDeactivated(() => { active = false; liveRef.value?.pause(); scope.cancel(); busy.value = false; if (!keepBatch) discard() })
+watch(() => route.path, path => { if (!active && path !== listPath && route.name !== 'log-detail') discard() })
 </script>
 <template><section class="log-history"><PageHeader title="日志中心" description="查询服务端持久调用日志，筛选在后端执行；开始、结束与逐次尝试可能各占一条事件。" /><template v-if="validSource">
 <nav class="log-view-tabs" aria-label="日志视图"><button v-for="item in logViews" :key="item.id" type="button" :class="{ active: view === item.id }" :aria-pressed="view === item.id" @click="chooseView(item.id)">{{ item.title }}</button></nav><p class="hint">当前视图：{{ logViews.find(item => item.id === view)?.title ?? '当前源全部事件' }} · 日志来源：{{ filters.source === 'platform' ? '本地日志库（platform）' : '上游日志库（upstream）' }}。选择视图后点击查询，切换会清除原筛选和已读批次。</p><form class="panel log-filters" aria-label="调用日志筛选" @submit.prevent="read()">
@@ -84,7 +86,6 @@ onDeactivated(() => { active = false; reset(); Object.assign(filters, emptyLogFi
 <EmptyState v-else title="本批没有匹配的日志事件" description="请核对时间与标识，也可能尚未入库或已过保留期。" />
 <div class="log-paging"><button :disabled="busy || index === 0" @click="previous">上一批日志</button><button :disabled="busy || expired || !current.next_cursor" @click="read(true)">下一批日志</button><span v-if="!current.next_cursor" class="hint">已到本次范围末批</span></div></section>
 <EmptyState v-else :loading="busy" title="尚未查询持久日志" description="选择条件后查询，支持按请求号或源测试作业号定位。" />
-<section v-if="detailItem" class="panel" aria-label="所选日志详情"><div class="section-bar"><h2>日志详情</h2><button @click="clearDetail">关闭日志详情</button></div><RouterLink :to="{ name: 'log-detail', params: { source: detailItem.source, eventId: detailItem.event_id } }">打开独立日志详情页</RouterLink><LogEventDetail :key="`${detailItem.source}/${detailItem.epoch}/${detailItem.event_id}`" :source="detailItem.source" :event-id="detailItem.event_id" :epoch="detailItem.epoch" :sequence="detailItem.sequence" /></section>
 </template><ErrorState v-else message="日志来源无效，仅支持 platform 或 upstream。" /></section></template>
 <style scoped>
 .log-view-tabs { display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; gap: 24px; margin-block: 18px 12px; border-bottom: 1px solid var(--line); }

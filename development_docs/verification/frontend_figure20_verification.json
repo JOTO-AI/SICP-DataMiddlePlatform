@@ -1,0 +1,65 @@
+{
+  "step": "V05",
+  "base": "5879288",
+  "reports": [
+    {
+      "path": "artifacts/frontend-figure20/recheck-report.json",
+      "sha256": "de9be4aab7c07ea8f5c5a9c42d315f23907c9d249c494ee14fec8d2f49bfdbbc",
+      "stats": {
+        "startTime": "2026-10-15T10:02:04.261Z",
+        "duration": 75336.832,
+        "expected": 46,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "path": "artifacts/frontend-figure20/final-report.json",
+      "sha256": "d87480657efc8264d1936617876703ba954ee9f8e16eaf5450d800e2fd557e82",
+      "stats": {
+        "startTime": "2026-10-15T10:05:31.992Z",
+        "duration": 425168.911,
+        "expected": 172,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "path": "artifacts/frontend-figure20/review-report.json",
+      "sha256": "2d2dd624fdb5454d6068c9f09601a90c0caa448f84116edc540ddea520ca7771",
+      "stats": {
+        "startTime": "2026-10-15T10:13:44.969Z",
+        "duration": 30650.275,
+        "expected": 10,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    }
+  ],
+  "unit": {
+    "passed": 122
+  },
+  "build": {
+    "typecheck": true,
+    "production": true,
+    "audit_files": 56
+  },
+  "fixtures": {
+    "provenance_hashes": 150,
+    "unchanged": true
+  },
+  "theme": {
+    "pairs": 20
+  },
+  "widths": [
+    1440,
+    1280,
+    1024,
+    768,
+    390
+  ],
+  "server_integration": "deferred_by_user"
+}
