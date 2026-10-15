@@ -23,10 +23,11 @@ const view = computed(() => selectedLogView(filters))
 function chooseView(id: string) { const next = logViewFilters(id); if (next) Object.assign(filters, next) }
 const pages = ref<LogPage[]>([]), index = ref(0), busy = ref(false), error = ref(''), expired = ref(false)
 const current = computed(() => pages.value[index.value]), scope = useRequestScope()
+const liveRef = ref<InstanceType<typeof LiveLogStream> | null>(null)
 const detailItem = ref<LogEvent | null>(null), liveGeneration = ref(0), liveGap = ref(false)
 let active = false
 function clearDetail() { detailItem.value = null }
-function reset() { liveGeneration.value++; liveGap.value = false; scope.cancel(); pages.value = []; index.value = 0; busy.value = false; error.value = ''; expired.value = false; clearDetail() }
+function reset() { liveRef.value?.pause(); liveGeneration.value++; liveGap.value = false; scope.cancel(); pages.value = []; index.value = 0; busy.value = false; error.value = ''; expired.value = false; clearDetail() }
 watch(filters, reset, { flush: 'sync' })
 watch(() => filters.mode, mode => { if (mode === 'live') filters.to = '' }, { flush: 'sync' })
 watch(() => filters.source, source => { filters.kind = ''; filters.phase = ''; filters.operation = ''; filters.identity = ''; filters.identityField = source === 'upstream' ? 'test_run_id' : 'request_id'; filters.format = 'raw' }, { flush: 'sync' })
@@ -37,6 +38,7 @@ async function read(next = false) {
   let path: string
   const cursor = next ? current.value!.next_cursor! : '', previous = next ? current.value : undefined, submitted = { ...filters }
   try { path = logHistoryPath(submitted, cursor) } catch (cause) { error.value = cause instanceof Error ? cause.message : '日志筛选无效。'; return }
+  liveRef.value?.pause()
   const run = scope.begin(); busy.value = true; error.value = ''; clearDetail()
   try {
     const result = await request<Envelope<unknown>>('worker', path, { signal: run.signal, domain: 'logs' })
@@ -75,7 +77,7 @@ onDeactivated(() => { active = false; reset(); Object.assign(filters, emptyLogFi
 <p class="hint filter-note">原始请求号、任务号或测试作业号选择“原始 ID”；从日志复制的关联号选择“日志关联 ID”。日志事件号用于详情定位，不作为任务号查询。</p><p class="hint filter-note">按事件发生时间筛选，入库时间单独展示。历史时间留空使用服务端最近 24 小时，手动范围最多 7 天；实时模式只设开始时间，留空由服务端确定起点。输入时间为当前浏览器时区。源测试使用作业号，源表全历史筛选尚未开放。筛选仅保留于当前页面内存。</p><button class="primary" type="submit" :disabled="busy">{{ busy ? '读取中…' : '查询日志首批' }}</button></form>
 <ErrorState v-if="error" :message="error" /><p v-if="error && current" class="warning">本次读取未成功，以下保留上次已确认批次。</p>
 <section v-if="current" class="panel" aria-label="持久调用日志"><h2>{{ current.source === 'platform' ? '本地日志库' : '上游日志库' }}</h2><p class="hint">范围 <Timestamp :value="String(current.filter.from)" /> 至 <Timestamp v-if="current.filter.to" :value="String(current.filter.to)" /><span v-else>实时（无固定结束时间）</span> · 第 {{ index + 1 }} 批 · 每批最多 50 条</p><p class="hint">后续新增记录不会改变本次历史翻批范围；日志有保留期限，空结果不证明从未调用。</p>
-<p v-if="liveGap" class="warning">已请求新的实时起点；前后范围之间可能存在缺口，请按时间补查历史。</p><LiveLogStream v-if="current.filter.mode === 'live' && index === 0" :key="liveGeneration" :initial="current" @rebuild="rebuildLive" /><div v-if="current.items.length" class="log-scroll" role="region" aria-label="持久调用日志表格" tabindex="0"><table><thead><tr><th>发生 / 入库时间</th><th>类型 / 阶段</th><th>结果 / HTTP</th><th>耗时（ns）</th><th>关联标识</th><th>事件详情</th></tr></thead><tbody><tr v-for="item in current.items" :key="item.event_id"><td><Timestamp :value="item.occurred_at" /><small>入库：<Timestamp :value="item.received_at" /></small></td><td>{{ logKinds[item.kind] || item.kind }} / {{ logPhases[item.phase] || item.phase }}</td><td>{{ item.outcome ? logOutcomes[item.outcome] || item.outcome : '尚未记录' }} / {{ item.http_status ?? '未记录' }}</td><td>{{ item.duration_ns ?? '未记录' }}</td><td><CopyId v-if="item.request_id" :value="item.request_id" label="日志请求关联号" /><CopyId v-if="item.test?.test_run_id" :value="item.test.test_run_id" label="日志测试关联号" /><CopyId v-if="item.task_id" :value="item.task_id" label="日志任务关联号" /></td><td><button type="button" @click="showDetail(item)">查看日志详情</button></td></tr></tbody></table></div>
+<p v-if="liveGap" class="warning">已请求新的实时起点；前后范围之间可能存在缺口，请按时间补查历史。</p><LiveLogStream ref="liveRef" :enabled="!busy" v-if="current.filter.mode === 'live' && index === 0" :key="liveGeneration" :initial="current" @rebuild="rebuildLive" /><div v-if="current.items.length" class="log-scroll" role="region" aria-label="持久调用日志表格" tabindex="0"><table><thead><tr><th>发生 / 入库时间</th><th>类型 / 阶段</th><th>结果 / HTTP</th><th>耗时（ns）</th><th>关联标识</th><th>事件详情</th></tr></thead><tbody><tr v-for="item in current.items" :key="item.event_id"><td><Timestamp :value="item.occurred_at" /><small>入库：<Timestamp :value="item.received_at" /></small></td><td>{{ logKinds[item.kind] || item.kind }} / {{ logPhases[item.phase] || item.phase }}</td><td>{{ item.outcome ? logOutcomes[item.outcome] || item.outcome : '尚未记录' }} / {{ item.http_status ?? '未记录' }}</td><td>{{ item.duration_ns ?? '未记录' }}</td><td><CopyId v-if="item.request_id" :value="item.request_id" label="日志请求关联号" /><CopyId v-if="item.test?.test_run_id" :value="item.test.test_run_id" label="日志测试关联号" /><CopyId v-if="item.task_id" :value="item.task_id" label="日志任务关联号" /></td><td><button type="button" @click="showDetail(item)">查看日志详情</button></td></tr></tbody></table></div>
 <EmptyState v-else title="本批没有匹配的日志事件" description="请核对时间与标识，也可能尚未入库或已过保留期。" />
 <div class="log-paging"><button :disabled="busy || index === 0" @click="previous">上一批日志</button><button :disabled="busy || expired || !current.next_cursor" @click="read(true)">下一批日志</button><span v-if="!current.next_cursor" class="hint">已到本次范围末批</span></div></section>
 <EmptyState v-else :loading="busy" title="尚未查询持久日志" description="选择条件后查询，支持按请求号或源测试作业号定位。" />

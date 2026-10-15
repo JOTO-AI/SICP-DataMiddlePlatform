@@ -413,3 +413,39 @@ test('F09 rate limits honor retry delay and expired position requires explicit g
   await expect(page.getByText('已请求新的实时起点；前后范围之间可能存在缺口，请按时间补查历史。', { exact: true })).toBeVisible()
   await expect.poll(() => streams).toBe(3)
 })
+test('F09 changing source aborts old stream and ignores its late event', async ({ page }) => {
+  await setup(page)
+  const initial = recordedLogPage(), item = initial.data.items[0]
+  initial.data.filter.mode = 'live'; initial.data.filter.to = null; initial.data.items = []; initial.data.high_water = '0'; initial.data.stream_cursor = 'old-source'
+  await page.route('**/admin/v1/logs/platform/events?*', route => route.fulfill({ json: initial }))
+  let release!: () => void, opened = false, aborted = 0
+  page.on('requestfailed', request => { if (request.url().includes('/logs/platform/stream')) aborted++ })
+  const gate = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/admin/v1/logs/platform/stream?*', async route => { opened = true; await gate; await route.fulfill({ contentType: 'text/event-stream', body: `id: late\nevent: event\ndata: ${JSON.stringify(item)}\n\n` }).catch(() => {}) })
+  await page.goto('/console/logs')
+  await page.getByRole('combobox', { name: '查询模式', exact: true }).selectOption('live')
+  await page.getByRole('button', { name: '查询日志首批', exact: true }).click()
+  await expect.poll(() => opened).toBe(true)
+  await page.getByRole('combobox', { name: '日志来源', exact: true }).selectOption('upstream')
+  release()
+  await expect.poll(() => aborted).toBe(1)
+  await expect(page.getByRole('region', { name: '实时日志接收' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: '查看新增事件详情' })).toHaveCount(0)
+  await expect(page.getByText('尚未查询持久日志', { exact: true })).toBeVisible()
+})
+
+test('F09 streaming session expiration clears logs and never reconnects', async ({ page }) => {
+  await page.clock.install(); await setup(page)
+  const initial = recordedLogPage(); initial.data.filter.mode = 'live'; initial.data.filter.to = null; initial.data.stream_cursor = 'expired-session'
+  await page.route('**/admin/v1/logs/platform/events?*', route => route.fulfill({ json: initial }))
+  let calls = 0
+  await page.route('**/admin/v1/logs/platform/stream?*', route => { calls++; return route.fulfill({ status: 401, json: { code: 'unauthenticated' } }) })
+  await page.goto('/console/logs')
+  await page.getByRole('combobox', { name: '查询模式', exact: true }).selectOption('live')
+  await page.getByRole('button', { name: '查询日志首批', exact: true }).click()
+  await expect(page.getByLabel('管理员账号', { exact: true })).toBeVisible()
+  await page.clock.runFor(60000)
+  expect(calls).toBe(1)
+  await expect(page.getByRole('region', { name: '实时日志接收' })).toHaveCount(0)
+  await expect(page.getByRole('region', { name: '持久调用日志表格' })).toHaveCount(0)
+})
