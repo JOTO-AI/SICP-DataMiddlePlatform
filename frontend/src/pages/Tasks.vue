@@ -3,6 +3,7 @@ import AsyncActionDialog from '../components/AsyncActionDialog.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import PageHeader from '../components/PageHeader.vue'
 import UpdateHistory from '../components/updates/UpdateHistory.vue'
+import { actionAllows, actionExplanation, readActionReasons } from '../app/updateActions'
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, ApiError, type Envelope } from '../api'
 import { pollingDelay } from '../app/polling'
@@ -22,21 +23,24 @@ const action = ref('force-full'), predecessor = ref(''), key = ref(newIdempotenc
 interface Overview { items: Task[]; initialized: boolean; next_due_at?: string; cooldown_until?: string; interval_seconds: number }
 const overview = ref<Overview | null>(null), historyError = ref(''), historyBusy = ref(false)
 const hasActiveTask = computed(() => overview.value?.items.some(item => !['failed', 'success_published', 'success_unchanged'].includes(item.status)) ?? false)
+const actionReasons = ref<Record<string, string> | null>(null), checking = ref(false)
+const rerunAllowed = computed(() => !checking.value && !busy.value && !loading.value && !pending.value && !!overview.value && !historyBusy.value && !historyError.value && !hasActiveTask.value && actionAllows(actionReasons.value, 'rerun'))
 const acceptedLocation = ref<{ id: string; path: string } | null>(null)
 const selectedTable = ref('dwd_bzkscjzlb')
-const tableUpdateAllowed = computed(() => !!overview.value && (overview.value.initialized || !!failedInitialization.value) && !historyBusy.value && !historyError.value && !hasActiveTask.value && !busy.value && !loading.value && !pending.value)
+const tableUpdateAllowed = computed(() => !checking.value && !!overview.value && (overview.value.initialized || !!failedInitialization.value) && !historyBusy.value && !historyError.value && !hasActiveTask.value && !busy.value && !loading.value && !pending.value && actionAllows(actionReasons.value, 'table_force_full'))
 const failedInitialization = computed(() => {
   const latest = overview.value?.items[0]
   return !overview.value?.initialized && latest?.mode === 'initialize' && latest.status === 'failed' ? latest : null
 })
 const primaryLabel = computed(() => failedInitialization.value ? '重新初始化' : '强制全量更新')
-const forceFullBlocked = computed(() => historyBusy.value || !overview.value || !!historyError.value || hasActiveTask.value || (!overview.value.initialized && !failedInitialization.value))
-const incrementalBlocked = computed(() => historyBusy.value || !overview.value || !!historyError.value || hasActiveTask.value || !overview.value.initialized)
+const forceFullBlocked = computed(() => checking.value || !actionAllows(actionReasons.value, failedInitialization.value ? 'rerun' : 'force_full') || historyBusy.value || !overview.value || !!historyError.value || hasActiveTask.value || (!overview.value.initialized && !failedInitialization.value))
+const incrementalBlocked = computed(() => checking.value || !actionAllows(actionReasons.value, 'incremental') || historyBusy.value || !overview.value || !!historyError.value || hasActiveTask.value || !overview.value.initialized)
 const incrementalHelp = computed(() => {
   if (historyBusy.value || !overview.value) return '正在读取初始化和任务状态。'
   if (historyError.value) return '无法确认当前任务状态，请先刷新记录。'
   if (!overview.value.initialized) return '初始化完成后可手动增量同步；当前可先补齐失败表。'
   if (hasActiveTask.value) return '已有任务正在执行或等待恢复，结束后可启动增量同步。'
+  if (!actionAllows(actionReasons.value, 'incremental')) return actionExplanation(actionReasons.value, 'incremental')
   return '从各表已确认进度立即采集增量；有变化且校验通过后自动发布，无变化则确认同步进度。'
 })
 const forceFullHelp = computed(() => {
@@ -44,8 +48,10 @@ const forceFullHelp = computed(() => {
   if (historyError.value) return '无法确认当前任务状态，请先刷新记录。'
   if (!overview.value) return '读取初始化状态后可判断是否允许强制更新。'
   if (hasActiveTask.value) return '已有更新任务正在执行或等待恢复，完成后才能再次启动。'
+  if (failedInitialization.value && !actionAllows(actionReasons.value, 'rerun')) return actionExplanation(actionReasons.value, 'rerun')
   if (failedInitialization.value) return '初始化未完成，可重新采集待补齐的表，或选择单表强制更新；已完成的表会保留复用，上游冷却期间任务会等待。'
   if (!overview.value.initialized) return '等待系统创建初始化任务；任务失败后可在此重新初始化。'
+  if (!actionAllows(actionReasons.value, 'force_full')) return actionExplanation(actionReasons.value, 'force_full')
   return '强制全量更新会立即请求重新采集、校验并发布完整数据。'
 })
 const actions = computed(() => [{ id: 'incremental', title: '增量同步', text: '立即同步所有表的增量。有变化且校验通过后自动发布，无变化则确认同步进度；失败时保留当前版本和原同步进度。' }, { id: 'force-full', title: failedInitialization.value ? '重新初始化' : '强制全量', text: failedInitialization.value ? '复用已经完整采集的表，重新采集待补齐的表。' : '维护操作：重新采集并构建完整数据，即使内容未变化。' }, { id: 'table-full', title: '单表强制更新', text: '只从上游完整采集所选表，其余表复用最近已完成的数据。初始化尚缺其他表时，保留本次结果，等待继续补齐。' }, { id: 'rerun', title: '失败重跑', text: '排除故障后，根据失败任务创建关联的新任务。' }])
@@ -57,15 +63,20 @@ const failureDescriptions: Record<string, string> = {
 let historyFailures = 0, historyRetryAfter: string | undefined
 const pageVisible = usePageVisibility(() => { detailRequests.cancel(); loading.value = false; clearTimeout(timer); historyRequests.cancel(); historyBusy.value = false; clearTimeout(historyTimer) }, () => { if (active) { void refreshHistory(); if (auto.value && !terminal.value) void fetchTask() } })
 let historyTimer: ReturnType<typeof setTimeout> | undefined
-const historyRequests = useRequestScope(), detailRequests = useRequestScope(), submitRequests = useRequestScope()
+const admissionRequests = useRequestScope(), historyRequests = useRequestScope(), detailRequests = useRequestScope(), submitRequests = useRequestScope()
 async function refreshHistory() {
   if (!active || !pageVisible.value || historyBusy.value) return
   clearTimeout(historyTimer); historyBusy.value = true; historyError.value = ''
   const run = historyRequests.begin()
   try {
-    const result = (await request<Envelope<Overview>>('worker', '/admin/v1/tasks/', { signal: run.signal })).body.data
+    const [tasksResponse, actionsResponse] = await Promise.all([
+      request<Envelope<Overview>>('worker', '/admin/v1/tasks/', { signal: run.signal }),
+      request<Envelope<unknown>>('worker', '/admin/v1/overview', { signal: run.signal }),
+    ])
+    const result = tasksResponse.body.data, reasons = readActionReasons(actionsResponse.body.data)
+    if (tasksResponse.status !== 200 || tasksResponse.body.code !== 'ok' || !result || !Array.isArray(result.items) || result.items.some(item => !item || typeof item.task_id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(item.task_id) || typeof item.mode !== 'string' || typeof item.status !== 'string') || typeof result.initialized !== 'boolean' || actionsResponse.status !== 200 || actionsResponse.body.code !== 'ok' || !reasons) throw new ApiError('无法确认任务及操作条件，请重新读取。', 'invalid_response')
     if (!active || !run.current()) return
-    overview.value = result; historyFailures = 0; historyRetryAfter = undefined
+    actionReasons.value = reasons; overview.value = result; historyFailures = 0; historyRetryAfter = undefined
     const current = overview.value.items.find(item => ['accepted', 'running', 'published_pending_progress'].includes(item.status))
     if (active && !lookup.value && current) selectTask(current.task_id)
   }
@@ -91,21 +102,34 @@ const detailStatus = computed(() => task.value && ['initialize', 'force_full'].i
 const stages = computed(() => task.value ? [{ name: '已受理', at: task.value.accepted_at }, { name: '开始执行', at: task.value.started_at }, { name: '构建就绪', at: task.value.ready_at }, { name: '发布完成', at: task.value.published_at }, { name: '检查完成', at: task.value.checked_at }, { name: '任务结束', at: task.value.finished_at }] : [])
 function stop() { auto.value = false; detailRequests.cancel(); loading.value = false; clearTimeout(timer) }
 onActivated(() => { active = true; void refreshHistory(); if (lookup.value.trim() && !terminal.value) { auto.value = true; void fetchTask() } })
-function deactivate() { active = false; if (busy.value) error.value = '已停止等待，原操作与幂等键已保留；受理结果可能未知。'; submitRequests.cancel(); busy.value = false; dialogOpen.value = false; stop(); historyRequests.cancel(); historyBusy.value = false; clearTimeout(historyTimer) }
+function deactivate() { active = false; admissionRequests.cancel(); checking.value = false; if (busy.value) error.value = '已停止等待，原操作与幂等键已保留；受理结果可能未知。'; submitRequests.cancel(); busy.value = false; dialogOpen.value = false; stop(); historyRequests.cancel(); historyBusy.value = false; clearTimeout(historyTimer) }
 onDeactivated(deactivate)
 onUnmounted(deactivate)
-function confirm() {
+async function confirm() {
+  if (checking.value || busy.value) return
   stop()
   error.value = ''
   if (!pending.value) {
     if (action.value === 'incremental' && incrementalBlocked.value) { error.value = incrementalHelp.value; return }
     if (action.value === 'force-full' && forceFullBlocked.value) { error.value = forceFullHelp.value; return }
     if (action.value === 'table-full' && (!tableUpdateAllowed.value || !sourceTables.includes(selectedTable.value))) { error.value = '请核对来源表与初始化状态，并等待当前任务结束。'; return }
+    if (action.value === 'rerun' && !rerunAllowed.value) { error.value = '当前任务或发布状态不允许失败重跑，请刷新记录并核对操作条件。'; return }
     if (action.value === 'rerun' && !predecessor.value.trim()) { error.value = '请输入原失败任务号。'; return }
     if (!/^[\x21-\x7e]{1,128}$/.test(key.value) || key.value.includes(',')) { error.value = '幂等键须为 1–128 位可见 ASCII 字符，且不含逗号。'; return }
     const retryInitial = action.value === 'force-full' ? failedInitialization.value : null
     const rerunID = retryInitial?.task_id || (action.value === 'rerun' ? predecessor.value.trim() : '')
     if (rerunID && !/^[A-Za-z0-9_-]+$/.test(rerunID)) { error.value = '原任务号格式无效。'; return }
+    if (rerunID && !overview.value?.items.some(item => item.task_id === rerunID && item.status === 'failed')) {
+      const run = admissionRequests.begin(), originalAction = action.value, originalKey = key.value
+      checking.value = true
+      try {
+        const response = await request<Envelope<Task>>('worker', `/admin/v1/tasks/${encodeURIComponent(rerunID)}`, { signal: run.signal })
+        if (!active || !run.current() || action.value !== originalAction || key.value !== originalKey || predecessor.value.trim() !== rerunID) return
+        if (response.status !== 200 || response.body.code !== 'ok' || response.body.data?.task_id !== rerunID || response.body.data.status !== 'failed') { error.value = '原任务尚未确认为失败，不能提交失败重跑。'; return }
+      } catch (cause) { if (active && run.current()) error.value = describe(cause); return }
+      finally { if (run.current()) checking.value = false }
+      if (!rerunAllowed.value) { error.value = '操作条件已变化，请刷新记录后重新确认。'; return }
+    }
     pending.value = {
       ...createTaskOperation(action.value === 'table-full' ? `/admin/v1/tables/${encodeURIComponent(selectedTable.value)}/force-full` : rerunID ? `/admin/v1/tasks/${encodeURIComponent(rerunID)}/rerun` : `/admin/v1/tasks/${action.value}`, key.value),
       title: selected.value.title,
@@ -116,7 +140,7 @@ function confirm() {
 }
 function forceFull() { action.value = 'force-full'; confirm() }
 function syncIncremental() { action.value = 'incremental'; confirm() }
-function retryFull(id: string) { if (!tableUpdateAllowed.value) return; action.value = 'rerun'; predecessor.value = id; confirm() }
+function retryFull(id: string) { if (!rerunAllowed.value) return; action.value = 'rerun'; predecessor.value = id; confirm() }
 function forceTable(table: string) { if (!tableUpdateAllowed.value) return; action.value = 'table-full'; selectedTable.value = table; confirm() }
 function abandon() { if (pending.value) removePendingRecovery(recoveryContext, pending.value); pending.value = null; key.value = newIdempotencyKey(); error.value = ''; receipt.value = '' }
 async function submit() {
@@ -179,15 +203,15 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
     <div class="section-bar next-heading"><h2>维护与详情</h2><span class="muted">日常运行无需手动操作</span></div>
     <div class="task-layout">
       <form class="panel" :aria-busy="busy" @submit.prevent="confirm">
-        <h2>人工维护</h2><p class="muted">仅在需要完整重建或排除故障后使用。</p>
-        <fieldset :disabled="busy || !!pending"><legend>更新方式</legend><label v-for="item in actions" :key="item.id" class="radio-row"><input v-model="action" type="radio" :value="item.id" name="action"><span><strong>{{ item.title }}</strong><small>{{ item.text }}</small></span></label>
+        <h2>人工维护</h2><p v-if="checking" role="status">正在核对原任务是否允许重跑…</p><p class="muted">仅在需要完整重建或排除故障后使用。</p>
+        <fieldset :disabled="checking || busy || !!pending"><legend>更新方式</legend><label v-for="item in actions" :key="item.id" class="radio-row"><input v-model="action" type="radio" :value="item.id" name="action"><span><strong>{{ item.title }}</strong><small>{{ item.text }}</small></span></label>
         <label v-if="action === 'rerun'">原失败任务号 *<input v-model="predecessor" required placeholder="输入失败任务号"></label>
         <label v-if="action === 'table-full'">来源表<select v-model="selectedTable"><option v-for="name in sourceTables" :key="name" :value="name">{{ name }}</option></select></label>
         <label class="key-label">幂等键<input v-model="key" required maxlength="128" spellcheck="false"></label></fieldset>
-        <p v-if="action === 'table-full' && !tableUpdateAllowed" class="hint">当前不可执行单表更新：请先确认初始化已完成，或存在允许补齐的失败初始化任务，并等待当前任务和请求结束。</p><p class="hint">响应丢失时用原键重试，可避免重复创建任务。</p>
+        <p class="hint" aria-label="后端操作条件">{{ actionExplanation(actionReasons, action === 'force-full' ? (failedInitialization ? 'rerun' : 'force_full') : action === 'table-full' ? 'table_force_full' : action === 'rerun' ? 'rerun' : 'incremental') }}</p><p v-if="action === 'table-full' && !tableUpdateAllowed" class="hint">当前不可执行单表更新：请先确认初始化已完成，或存在允许补齐的失败初始化任务，并等待当前任务和请求结束。</p><p class="hint">响应丢失时用原键重试，可避免重复创建任务。</p>
         <p v-if="pending" class="hint">已锁定请求：{{ pending.title }}。修改操作前请先结束本次请求。</p>
         <p v-if="pending && !recoveryAvailable" class="hint">当前浏览器无法保存恢复信息，刷新页面会丢失本次待确认请求。</p>
-        <div class="actions"><button class="primary" :disabled="busy || loading || (!pending && ((action === 'incremental' && incrementalBlocked) || (action === 'force-full' && forceFullBlocked) || (action === 'table-full' && !tableUpdateAllowed)))">{{ busy ? '正在提交…' : pending ? '重试原请求' : '提交更新' }}</button><button v-if="pending" type="button" :disabled="busy" @click="abandon">结束本次请求</button></div>
+        <div class="actions"><button class="primary" :disabled="checking || busy || loading || (!pending && ((action === 'incremental' && incrementalBlocked) || (action === 'force-full' && forceFullBlocked) || (action === 'table-full' && !tableUpdateAllowed) || (action === 'rerun' && !rerunAllowed)))">{{ busy ? '正在提交…' : pending ? '重试原请求' : '提交更新' }}</button><button v-if="pending" type="button" :disabled="busy" @click="abandon">结束本次请求</button></div>
         <p v-if="error" class="error" role="alert">{{ error }}</p><p v-if="receipt" class="success-text" role="status">{{ receipt }}</p>
       </form>
       <div class="task-detail">
@@ -206,7 +230,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
           <p v-if="task.failure && task.mode === 'initialize'" class="hint">{{ failureDescriptions[task.failure] }}</p>
           <template v-if="task.status === 'failed' && task.mode === 'force_full'">
             <p class="hint">已完成的表保留在本次任务中。可逐张强制更新失败表，或重试全部未完成表；补齐并校验通过后自动发布。若期间已完成其他同步，则使用当前版本重新采集。</p>
-            <button type="button" :disabled="!tableUpdateAllowed" @click="retryFull(task.task_id)">重试未完成的表</button>
+            <button type="button" :disabled="!rerunAllowed || checking" @click="retryFull(task.task_id)">重试未完成的表</button>
           </template>
           <button type="button" :disabled="loading || busy" @click="selectTask(task.task_id)">刷新详情</button>
           <FailedAttempts :attempts="task.failed_attempts" :unavailable="task.diagnostics_unavailable" :failed="task.failure === 'acquisition_failed'" />

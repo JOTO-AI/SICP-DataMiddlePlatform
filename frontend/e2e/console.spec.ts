@@ -2867,3 +2867,31 @@ test('F07 collapsing an operation branch cancels its late response', async ({ pa
   await expect(tree.getByRole('button', { name: '展开 路由与发布', exact: true })).toBeEnabled()
   await expect(tree.getByRole('button', { name: '加载更多 路由与发布', exact: true })).toHaveCount(0)
 })
+test('F07 server action restrictions override idle task preconditions and unavailable advice blocks new writes', async ({ page }) => {
+  await setup(page)
+  const overview = managementCapture('overview'); let unavailable = false, reason = 'active_unavailable'
+  await page.route('**/admin/v1/overview', route => unavailable ? route.fulfill({ status: 503, json: { code: 'unavailable', data: null } }) : route.fulfill({ json: { ...overview.response, data: { ...overview.response.data as object, actions: { incremental: reason, force_full: reason, table_force_full: reason, rerun: reason } } } }))
+  await page.getByRole('link', { name: '更新事件', exact: true }).click()
+  await expect(page.getByRole('button', { name: '立即增量同步', exact: true })).toBeDisabled()
+  await expect(page.getByLabel('后端操作条件', { exact: true })).toContainText('当前数据组合无法确认')
+  reason = 'available_recheck_on_submit'
+  await page.getByRole('button', { name: '刷新记录', exact: true }).click()
+  await expect(page.getByRole('button', { name: '立即增量同步', exact: true })).toBeEnabled()
+  unavailable = true
+  await page.getByRole('button', { name: '刷新记录', exact: true }).click()
+  await expect(page.getByRole('button', { name: '强制全量更新', exact: true })).toBeDisabled()
+  await expect(page.getByText('服务暂不可用，请检查服务状态。', { exact: false })).toBeVisible()
+})
+
+test('F07 rerun preflight rejects the recorded queued task without submitting', async ({ page }) => {
+  await setup(page)
+  const captured = managementCapture('update_detail'), task = recordedUpdateEvent(); let posts = 0
+  await page.route(`**/admin/v1/tasks/${task.task_id}`, route => route.fulfill({ status: captured.status, json: captured.response }))
+  await page.route('**/admin/v1/tasks/*/rerun', route => { posts++; return route.abort() })
+  await page.getByRole('link', { name: '更新事件', exact: true }).click()
+  await page.getByRole('radio', { name: /失败重跑/ }).check()
+  await page.getByLabel('原失败任务号 *', { exact: true }).fill(String(task.task_id))
+  await page.getByRole('button', { name: '提交更新', exact: true }).click()
+  await expect(page.getByText('原任务尚未确认为失败，不能提交失败重跑。', { exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0); expect(posts).toBe(0)
+})
