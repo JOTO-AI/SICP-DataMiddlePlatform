@@ -175,6 +175,9 @@ test('F08 four log views send backend source and kind and clear old batches with
   })
   await page.goto('/console/logs')
   const views = page.getByRole('navigation', { name: '日志视图', exact: true })
+  const positions = await views.getByRole('button').evaluateAll(buttons => buttons.map(button => button.getBoundingClientRect().top))
+  expect(Math.max(...positions) - Math.min(...positions)).toBeLessThan(2)
+  await page.screenshot({ path: info.outputPath('log-tabs-desktop.png'), fullPage: true })
   let count = 0
   for (const [name, source, kind] of [['接口调用', 'platform', 'request'], ['更新操作', 'platform', 'task'], ['原数据接口', 'upstream', ''], ['管理审计', 'platform', 'audit']]) {
     await views.getByRole('button', { name, exact: true }).click()

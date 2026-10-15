@@ -2,13 +2,13 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { session } from '../session'
 
 export const navigation = [
-  { id: 'overview', path: '/overview', title: '运行总览', icon: '◫' },
-  { id: 'queries', path: '/apis', title: '接口中心', icon: '⌕' },
-  { id: 'tasks', path: '/updates', title: '更新事件', icon: '↻' },
-  { id: 'sources', path: '/sources', title: '数据源', icon: '▤' },
-  { id: 'logs', path: '/logs', title: '日志中心', icon: '≡' },
-  { id: 'notifications', path: '/notifications', title: '通知中心', icon: '♧' },
-  { id: 'settings', path: '/settings', title: '系统设置', icon: '⚙' },
+  { id: 'overview', path: '/overview', title: '运行总览' },
+  { id: 'queries', path: '/apis', title: '接口中心' },
+  { id: 'tasks', path: '/updates', title: '更新事件' },
+  { id: 'sources', path: '/sources', title: '数据源' },
+  { id: 'logs', path: '/logs', title: '日志中心' },
+  { id: 'notifications', path: '/notifications', title: '通知中心' },
+  { id: 'settings', path: '/settings', title: '系统设置' },
 ] as const
 
 export const router = createRouter({

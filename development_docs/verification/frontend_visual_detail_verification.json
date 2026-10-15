@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-15",
+  "base": "613132e",
+  "unitPassed": 121,
+  "full": {
+    "path": "artifacts/frontend-visual-detail/final-report.json",
+    "sha256": "d20e0b1940d8f9d066047e38f4519300cf4d4378b6608e959f3d95c15574e054",
+    "stats": {
+      "startTime": "2026-10-15T08:25:49.233Z",
+      "duration": 792985.1170000001,
+      "expected": 366,
+      "skipped": 0,
+      "unexpected": 2,
+      "flaky": 0
+    }
+  },
+  "recheck": {
+    "path": "artifacts/frontend-visual-detail/recheck-report.json",
+    "sha256": "9377fbfa32916af67f6940c57e784ba675478a3d0dde3a266ee7a719047323d3",
+    "stats": {
+      "startTime": "2026-10-15T08:40:13.077Z",
+      "duration": 78569.382,
+      "expected": 42,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    }
+  },
+  "initialFailures": [
+    {
+      "key": "loopback / F03 primary navigation has seven modules with no fabricated module results",
+      "status": "unexpected"
+    },
+    {
+      "key": "intranet-http / F03 primary navigation has seven modules with no fabricated module results",
+      "status": "unexpected"
+    }
+  ],
+  "reason": "Navigation text assertions still included replaced Unicode glyphs; assertions updated for accessible names and seven SVG icons. Log category layout corrected from vertical buttons to horizontal tabs, then all affected scenarios rechecked.",
+  "coveredScenarios": 368,
+  "unresolved": [],
+  "checks": {
+    "build": true,
+    "productionFiles": 60,
+    "productionJSBytes": 513667,
+    "contrastPairs": 20,
+    "fixtureProvenanceHashes": 150,
+    "visualReferenceImages": 28
+  },
+  "limits": [
+    "No server integration or gateway acceptance; deferred by user",
+    "Not complete pixel-by-pixel acceptance of all 28 reference images"
+  ]
+}

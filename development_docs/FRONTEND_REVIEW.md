@@ -78,3 +78,7 @@ FT09-01/-10 与其余未勾选复合条件：完整视觉/真实环境验收和�
 - 人工查看 `artifacts/frontend-task-simplify/results/console-update-entry-expla-b6a8a-blocks-use-of-stale-history-loopback/` 下 `updates-current-task.png` 与 `updates-current-task-mobile.png`：重复列表消失，当前任务与维护区正常，小屏无整页横向溢出。
 - 重现：在 frontend 设置 `SICP_TEST_BROWSER` 为 Chrome 路径，运行 `npx playwright test console.spec.ts -g "BT09|post-acquisition|historical data|failed full|manual incremental|partial initialization|failed task|backend diagnostic|legacy and malformed|table page progress|task page|unknown admission|abandoning an unconfirmed|failed initialization|initialization retry|update entry|F01 leaving|F01 pending|F01 read polling|F07" --workers=2 --fully-parallel --reporter=line,json --output=../artifacts/frontend-task-simplify/results`。JSON 报告由 `PLAYWRIGHT_JSON_OUTPUT_NAME=../artifacts/frontend-task-simplify/report.json` 指定。
 - 报告 SHA-256：`d8cfd3f4df0855972cfad76037d40595f0430071d58c17a9547a8f8e6b590e0f`。本次为针对性前端回归，不代替服务器联调、完整视觉验收或既有后端验收。
+
+## 接口中心及共享细节补充（2026-10-15）
+
+按用户反馈修正英文元数据、根对象占位、必填排序、耗时单位，以及目录/详情布局、源中文名、导航图标、表格与日志分类。逐项 review、图稿取舍和最终验证见 [界面细节复核](verification/FRONTEND_VISUAL_DETAIL_REVIEW.md)。完整回归原报告 366/368；修正旧图标断言并完成相关 42/42 复测，未解决项为 0。未变更服务器联调或全部 28 图综合视觉验收状态。

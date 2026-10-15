@@ -70,3 +70,17 @@ export const commonBusinessRules = [
   '页码/每页条数接受正整数 JSON 数字，不接受字符串、小数或指数形式。分页快照只绑定当前接口与筛选条件，除 page 外参数不能改变；默认有效期 5 分钟（服务端可配置），翻页不续期。',
   'synced_at 表示当前组合所需源表的成功检查确认时间，不是请求时间；source_updated_at 来自参与记录的源 ETL 时间。',
 ]
+
+/** Keep primitive array elements in the parameter's own row, not as fake required parameters. */
+export function parameterSchemaRows(api: CatalogAPI) {
+  const result = schemaRows(api, api.request)
+  const byPath = new Map(result.rows.map(row => [row.path, row]))
+  const folded = new Set<string>()
+  const rows = result.rows.map(row => {
+    const element = byPath.get(row.path + '[]')
+    if (row.type !== 'array' || !element || !['string', 'number', 'integer', 'boolean', 'json'].includes(element.type)) return row
+    folded.add(element.path)
+    return { ...row, type: element.type + '[]', limit: row.limit + '；元素：' + element.limit + (element.nullable === '否' ? '，不允许 null' : element.nullable === '是' ? '，允许 null' : '，可空性未声明') }
+  }).filter(row => !folded.has(row.path))
+  return { ...result, rows }
+}

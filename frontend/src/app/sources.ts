@@ -1,3 +1,4 @@
+import { sourceName } from './sourceNames'
 export interface SourceState {
   id: string; primary_key: string; confirmed_until?: string | null; checked_at?: string | null
   task_id?: string | null; log_task_id?: string | null; window_task_id?: string | null
@@ -18,7 +19,7 @@ export function sourceItems(data: unknown): SourceState[] | null {
 }
 export function filterSources(items: SourceState[], name: string, state: string): SourceState[] {
   const term = name.trim().toLocaleLowerCase()
-  return items.filter(item => item.id.toLocaleLowerCase().includes(term) && (!state || (item.failure_state ?? '') === state))
+  return items.filter(item => [item.id, sourceName(item.id)].join(' ').toLocaleLowerCase().includes(term) && (!state || (item.failure_state ?? '') === state))
 }
 
 export function sourceFailureExplanation(state?: string): string {

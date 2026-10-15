@@ -48,3 +48,15 @@ test('captured request durations display milliseconds while preserving large and
   expect(milliseconds(Number.MAX_SAFE_INTEGER + 1)).toBe('数值无法精确显示')
   expect(milliseconds('1e6')).toBe('无效耗时')
 })
+
+import { parameterSchemaRows } from '../src/app/catalogSchema'
+import { sourceNames } from '../src/app/sourceNames'
+test('parameter array elements retain their constraints without becoming separate required fields', () => {
+  const api = (backendCatalog() as CatalogAPI[]).find(item => item.id === 'students.grades.batch-query')!
+  const rows = parameterSchemaRows(api).rows
+  expect(rows.some(row => row.path === 'student_numbers[]')).toBe(false)
+  expect(rows.find(row => row.path === 'student_numbers')).toMatchObject({ type: 'string[]', required: '否' })
+  expect(rows.find(row => row.path === 'student_numbers')?.limit).toContain('512')
+  expect(rows[0]?.path).toBe('academic_year')
+  expect(Object.keys(sourceNames).sort()).toEqual((backendCatalog() as CatalogAPI[]).filter(item => item.kind === 'source').map(item => item.id).sort())
+})

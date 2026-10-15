@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import NavigationIcon from '../components/NavigationIcon.vue'
 import Drawer from '../components/Drawer.vue'
 import { useRoute } from 'vue-router'
 import { session, logout } from '../session'
@@ -31,7 +32,7 @@ async function signOut() {
     <aside id="console-sidebar" class="sidebar">
       <RouterLink class="brand" to="/overview" aria-label="SICP 运行总览"><span class="brand-mark" aria-hidden="true">S</span><span class="brand-copy">SICP<small>本地数据中台</small></span></RouterLink>
 
-      <nav aria-label="主导航"><RouterLink v-for="item in navigation" :key="item.id" :to="item.path" :aria-label="item.title" :title="item.title" :class="{ selected: route.meta.navigation === item.id }" :aria-current="route.meta.navigation === item.id ? 'page' : undefined"><span class="nav-icon" aria-hidden="true">{{ item.icon }}</span><span class="nav-label">{{ item.title }}</span></RouterLink></nav>
+      <nav aria-label="主导航"><RouterLink v-for="item in navigation" :key="item.id" :to="item.path" :aria-label="item.title" :title="item.title" :class="{ selected: route.meta.navigation === item.id }" :aria-current="route.meta.navigation === item.id ? 'page' : undefined"><NavigationIcon :name="item.id" /><span class="nav-label">{{ item.title }}</span></RouterLink></nav>
       <div class="sidebar-foot"><span class="phase-dot"></span> 管理控制台<small>本地数据中台</small></div>
     </aside>
     <div class="workspace">
@@ -42,6 +43,6 @@ async function signOut() {
       </main>
       <footer>SICP 本地数据中台 <span>管理控制台</span></footer>
     </div>
-    <Drawer v-model:open="navigationOpen" title="主导航"><nav id="console-mobile-navigation" class="mobile-navigation" aria-label="主导航"><RouterLink v-for="item in navigation" :key="item.id" :to="item.path" :class="{ selected: route.meta.navigation === item.id }" :aria-current="route.meta.navigation === item.id ? 'page' : undefined" @click="route.path === item.path && closeNavigation()"><span class="nav-icon" aria-hidden="true">{{ item.icon }}</span>{{ item.title }}</RouterLink></nav></Drawer>
+    <Drawer v-model:open="navigationOpen" title="主导航"><nav id="console-mobile-navigation" class="mobile-navigation" aria-label="主导航"><RouterLink v-for="item in navigation" :key="item.id" :to="item.path" :class="{ selected: route.meta.navigation === item.id }" :aria-current="route.meta.navigation === item.id ? 'page' : undefined" @click="route.path === item.path && closeNavigation()"><NavigationIcon :name="item.id" />{{ item.title }}</RouterLink></nav></Drawer>
   </div>
 </template>

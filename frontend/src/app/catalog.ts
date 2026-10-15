@@ -1,3 +1,4 @@
+import { sourceNames } from './sourceNames'
 import { operationTitles } from '../queryOperations'
 export interface CatalogField { type: string; required: boolean; nullable: boolean; default: unknown; limit: string; properties?: Record<string, CatalogField>; items?: CatalogField }
 export interface CatalogAPI {
@@ -7,7 +8,7 @@ export interface CatalogAPI {
 }
 export interface Catalog { version: string; items: CatalogAPI[] }
 export const catalogGroups: Record<string, string> = { business: '业务接口', source: '上游接口' }
-export function catalogName(api: CatalogAPI): string { return operationTitles[api.id] || api.id }
+export function catalogName(api: CatalogAPI): string { return operationTitles[api.id] || sourceNames[api.id] || api.id }
 export function readCatalog(value: unknown): Catalog | null {
   if (!value || typeof value !== 'object' || !('version' in value) || typeof value.version !== 'string' || !value.version || !('items' in value) || !Array.isArray(value.items)) return null
   const ids = new Set<string>()

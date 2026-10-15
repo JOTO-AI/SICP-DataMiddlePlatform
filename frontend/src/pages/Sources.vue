@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { sourceName } from '../app/sourceNames'
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { router } from '../app/router'
 import { updateDetailPath, sourceLogContext } from '../app/links'
@@ -67,7 +68,7 @@ onUnmounted(stop)
     <section class="panel" aria-label="源列表" :aria-busy="busy">
       <EmptyState v-if="!items" :loading="busy" title="暂未读取到数据源" description="读取成功后显示后端返回的源记录。" />
       <EmptyState v-else-if="!visible.length" :title="items.length ? '没有符合本地筛选的源' : '后端返回空列表'" />
-      <div v-else class="table-wrap" role="region" aria-label="数据源表格，可横向滚动" tabindex="0"><table><thead><tr><th scope="col">数据源标识</th><th scope="col">主键</th><th scope="col">成功检查</th><th scope="col">已确认进度</th><th scope="col">失败记录</th><th scope="col">操作</th></tr></thead><tbody><tr v-for="item in visible" :key="item.id"><th scope="row"><code>{{ item.id }}</code></th><td><code>{{ item.primary_key || '未提供' }}</code></td><td><Timestamp :value="item.checked_at" /></td><td><Timestamp :value="item.confirmed_until" /></td><td><StatusBadge :value="item.failure_state" :labels="sourceFailureLabels" :tone="!error && item.failure_state === 'unresolved' ? 'danger' : 'neutral'" /></td><td><button :aria-label="`查看 ${item.id} 详情`" @click="openSource(item.id)">查看详情</button></td></tr></tbody></table></div>
+      <div v-else class="table-wrap" role="region" aria-label="数据源表格，可横向滚动" tabindex="0"><table><thead><tr><th scope="col">数据源标识</th><th scope="col">主键</th><th scope="col">成功检查</th><th scope="col">已确认进度</th><th scope="col">失败记录</th><th scope="col">操作</th></tr></thead><tbody><tr v-for="item in visible" :key="item.id"><th scope="row">{{ sourceName(item.id) }}<small><code>{{ item.id }}</code></small></th><td><code>{{ item.primary_key || '未提供' }}</code></td><td><Timestamp :value="item.checked_at" /></td><td><Timestamp :value="item.confirmed_until" /></td><td><StatusBadge :value="item.failure_state" :labels="sourceFailureLabels" :tone="!error && item.failure_state === 'unresolved' ? 'danger' : 'neutral'" /></td><td><button :aria-label="`查看 ${item.id} 详情`" @click="openSource(item.id)">查看详情</button></td></tr></tbody></table></div>
       <p v-if="items" class="hint source-read">显示 {{ visible.length }} / {{ items.length }} 个已获取的源</p>
     </section>
     <Drawer v-model:open="drawerOpen" :title="selectedId ? `${selectedId} · 源详情` : '源详情'">

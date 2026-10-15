@@ -3,6 +3,7 @@
   color: var(--ink); background: var(--color-app-bg); font-size: var(--font-body); line-height: 1.6;
 }
 * { box-sizing: border-box; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 body { margin: 0; }
 .login-page { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
 .login-panel { width: 100%; max-width: 420px; padding: 36px; background: var(--white); border: 1px solid var(--line); border-radius: 12px; }
@@ -72,7 +73,7 @@ nav a.selected { background: var(--selected); color: var(--color-primary-text); 
 .connection { font-size: 12px; color: var(--muted); text-decoration: none; }
 .connection span { color: var(--brand); margin-left: 8px; }
 main { padding: var(--layout-content-padding); width: 100%; max-width: none; margin: 0 auto; flex: 1; }
-.page-heading { display: flex; gap: 20px; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+.page-heading { display: flex; gap: 20px; align-items: center; justify-content: space-between; margin-bottom: 24px; }
 .page-heading > .actions { flex-wrap: wrap; justify-content: flex-end; }
 .page-heading p { color: var(--muted); margin-top: 8px; }
 .muted, .hint { color: var(--muted); }
@@ -146,10 +147,12 @@ footer { border-top: 1px solid var(--line); margin: 0 var(--layout-content-paddi
 .result-meta { display: flex; flex-wrap: wrap; gap: 8px 24px; color: var(--muted); font-size: 12px; margin-bottom: 12px; }
 .table-wrap { overflow-x: auto; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-control); }
 table { border-collapse: collapse; width: 100%; text-align: left; font-size: var(--font-body); }
-th { background: var(--surface); color: var(--muted); font-weight: 550; white-space: nowrap; }
+thead th { background: var(--surface); color: var(--muted); font-weight: 550; white-space: nowrap; }
+tbody th { background: var(--white); color: var(--ink); font-weight: 550; text-align: left; overflow-wrap: anywhere; }
+th + th, td + td, tbody th + td { border-inline-start: 1px solid var(--line); }
 th, td { height: var(--table-row-height); padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; min-width: 90px; }
 td { max-width: 340px; overflow-wrap: anywhere; }
-tr:last-child td { border-bottom: 0; }
+tbody tr:last-child td, tbody tr:last-child th { border-bottom: 0; }
 td small { margin-top: 3px; }
 .numeric { text-align: right; font-variant-numeric: tabular-nums; }
 .pagination { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-top: 16px; }

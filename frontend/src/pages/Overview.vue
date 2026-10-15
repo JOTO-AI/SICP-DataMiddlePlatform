@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { sourceName } from '../app/sourceNames'
 import { sourceItems, sourceFailureLabels, type SourceState } from '../app/sources'
 import StatusBadge from '../components/StatusBadge.vue'
 import { displayEnum } from '../shared/display'
@@ -172,7 +173,7 @@ onUnmounted(stop)
           <p class="hint">{{ sources ? `本次响应 ${sources.length} 个源` : '尚未取得数据源' }}；无失败记录不代表健康。</p>
           <p v-if="sourcesError" class="error" role="alert">数据源读取失败：{{ sourcesError }}</p>
           <p v-if="sourcesError && sources" class="warning">沿用旧快照，当前状态未确认。读取时间：<Timestamp :value="sourcesReadAt" /></p>
-          <div v-if="sources?.length" class="table-wrap" role="region" aria-label="数据源状态表" tabindex="0"><table><thead><tr><th scope="col">数据源</th><th scope="col">成功检查</th><th scope="col">已确认进度</th><th scope="col">失败记录</th></tr></thead><tbody><tr v-for="source in sources" :key="source.id"><th scope="row"><code>{{ source.id }}</code></th><td><Timestamp :value="source.checked_at" /></td><td><Timestamp :value="source.confirmed_until" /></td><td><StatusBadge :value="source.failure_state" :labels="sourceFailureLabels" :tone="!sourcesError && source.failure_state === 'unresolved' ? 'danger' : 'neutral'" /></td></tr></tbody></table></div>
+          <div v-if="sources?.length" class="table-wrap" role="region" aria-label="数据源状态表" tabindex="0"><table><thead><tr><th scope="col">数据源</th><th scope="col">成功检查</th><th scope="col">已确认进度</th><th scope="col">失败记录</th></tr></thead><tbody><tr v-for="source in sources" :key="source.id"><th scope="row">{{ sourceName(source.id) }}<small><code>{{ source.id }}</code></small></th><td><Timestamp :value="source.checked_at" /></td><td><Timestamp :value="source.confirmed_until" /></td><td><StatusBadge :value="source.failure_state" :labels="sourceFailureLabels" :tone="!sourcesError && source.failure_state === 'unresolved' ? 'danger' : 'neutral'" /></td></tr></tbody></table></div>
           <p v-else-if="sources" class="hint">后端返回空列表。</p>
         </section>
       </div>

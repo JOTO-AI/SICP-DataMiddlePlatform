@@ -7,6 +7,8 @@ import { request, describe, ApiError, type Envelope } from '../api'
 import { catalogPurpose, catalogNote } from '../app/catalogCopy'
 import { catalogName, readCatalogAPI, type CatalogAPI } from '../app/catalog'
 import { useRequestScope } from '../composables/useRequestScope'
+import ApiDirectory from '../components/ApiDirectory.vue'
+import CopyId from '../components/CopyId.vue'
 import PageHeader from '../components/PageHeader.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import ErrorState from '../components/ErrorState.vue'
@@ -78,13 +80,15 @@ onUnmounted(stop)
 </script>
 <template>
   <section class="api-detail">
-    <RouterLink to="/apis">← 接口目录</RouterLink>
+    <ApiDirectory :selected="apiId" />
+    <div class="api-document">
+    <RouterLink class="api-back" to="/apis">← 接口目录</RouterLink>
     <PageHeader :title="api ? catalogName(api) : '接口详情'" :description="api ? catalogPurpose(api) : undefined"><button :disabled="busy" @click="refresh">{{ busy ? '读取中…' : '刷新详情' }}</button><button v-if="api" class="primary" :disabled="busy || !!error" @click="openTest">在线测试</button></PageHeader>
     <ErrorState v-if="error" :message="error" retryable :busy="busy" @retry="refresh" />
     <p v-if="error && api" class="warning">当前详情未确认，以下为上次成功读取的目录快照。</p>
     <template v-if="api">
       <section class="panel api-identity" aria-label="接口信息">
-        <div class="endpoint"><span class="method">{{ api.method }}</span><code>{{ api.path }}</code></div>
+        <div class="endpoint"><span class="method">{{ api.method }}</span><CopyId :value="api.path" label="接口地址" /></div>
         <div class="api-states"><StatusBadge :label="api.implemented === true ? '已实现' : api.implemented === false ? '未实现' : '实现状态未知'" tone="neutral" /><span class="hint">目录就绪：{{ api.readiness === 'unknown' ? '未观测' : api.readiness || '未提供' }}</span><StatusBadge v-if="api.kind === 'business'" :label="error ? '当前就绪状态未确认' : healthLabel" :tone="!error && !healthError && ready === true ? 'success' : 'neutral'" /><StatusBadge v-else label="上游就绪未探测" tone="neutral" /></div>
         <p v-if="healthError" class="warning">查询健康读取失败：{{ healthError }}。上次读取 <Timestamp :value="healthReadAt" />，当前状态未确认。</p>
         <p class="hint">目录版本 <code>{{ api.version }}</code> · 读取时间 <Timestamp :value="readAt" /></p>
@@ -93,23 +97,45 @@ onUnmounted(stop)
       <div class="tabs api-tabs" role="tablist" aria-label="接口文档"><button v-for="(title, index) in tabs" :id="`api-tab-${index}`" :key="title" ref="tabButtons" role="tab" :aria-selected="tab === index" aria-controls="api-doc-panel" :tabindex="tab === index ? 0 : -1" :class="{ active: tab === index }" @click="tab = index" @keydown="keyTab">{{ title }}</button></div>
       <section id="api-doc-panel" class="panel api-tab-panel" role="tabpanel" :aria-labelledby="`api-tab-${tab}`" tabindex="0">
         <template v-if="tab === 0"><h2>概览</h2><dl class="facts"><div><dt>接口标识</dt><dd><code>{{ api.id }}</code></dd></div><div><dt>接口分组</dt><dd>{{ api.kind === 'business' ? '本地业务接口' : api.kind === 'source' ? '上游接口' : api.kind }}</dd></div><div><dt>查询快照</dt><dd>{{ api.snapshot === true ? '使用查询快照' : api.snapshot === false ? '不使用查询快照' : '后端未提供' }}</dd></div></dl><ul v-if="api.notes?.length"><li v-for="(note, index) in api.notes" :key="index">{{ catalogNote(note) }}</li></ul><p v-else class="hint">后端目录未提供附加说明。</p></template>
-        <template v-else-if="tab === 1"><h2>参数</h2><SourceRequestDocs v-if="api.kind === 'source'" :api="api" /><template v-else><h3>本地 POST · JSON Body</h3><p class="hint">字段通过 application/json 请求正文提交，不放入 Query。浏览器使用同源会话网关；业务服务密钥由服务端持有。</p><CatalogSchema :api="api" :schema="api.request" label="参数字段表" /><h3>组合规则</h3><ul><li v-for="rule in operationRules[api.id] ?? []" :key="rule">{{ rule }}</li></ul><details><summary>通用解析与分页规则</summary><ul><li v-for="rule in commonBusinessRules" :key="rule">{{ rule }}</li></ul></details></template></template>
+        <template v-else-if="tab === 1"><h2>参数</h2><SourceRequestDocs v-if="api.kind === 'source'" :api="api" @response="tab = 3" /><template v-else><h3>本地 POST · JSON Body</h3><p class="hint">字段通过 application/json 请求正文提交，不放入 Query。浏览器使用同源会话网关；业务服务密钥由服务端持有。</p><CatalogSchema :api="api" :schema="api.request" label="参数字段表" parameters /><div class="parameter-examples"><ExampleViewer :text="json(api.request_example)" title="请求示例" /><ExampleViewer :text="json(api.success_example)" title="响应示例" /></div><h3>组合规则</h3><ul><li v-for="rule in operationRules[api.id] ?? []" :key="rule">{{ rule }}</li></ul><details><summary>通用解析与分页规则</summary><ul><li v-for="rule in commonBusinessRules" :key="rule">{{ rule }}</li></ul></details></template></template>
         <ApiRequestExamples v-else-if="tab === 2" :api="api" @load="loadExample" />
         <template v-else-if="tab === 3"><ResponseContract :api="api" /><h2>响应字段</h2><p class="hint">{{ api.kind === 'source' ? '此 schema 描述 data.list 中的一条源记录。' : '此 schema 描述成功响应的 data 业务字段。' }}完整 HTTP 外壳见下方案例。</p><CatalogSchema :api="api" :schema="api.response" label="响应字段表" /><ExampleViewer :text="json(api.success_example)" title="成功响应案例" /><ExampleViewer :text="json(api.failure_example)" title="失败响应案例" /></template>
         <ApiCallRecords v-else :api="api" />
       </section>
     </template>
     <EmptyState v-else :loading="busy" title="暂未取得接口详情" description="请重新读取或返回接口目录选择接口。" />
+    </div>
     <ApiTestDialog v-if="draftOpen && api" :key="draftKey" :api="api" :initial-text="draftText" :needs-snapshot="draftSnapshot" :roster-context="draftRoster" @close="closeTest" @roster="openRoster" />
   </section>
 </template>
 <style scoped>
-.api-detail > .page-heading { margin-top: 16px; }
-.api-identity .endpoint { margin: 0 0 12px; }
-.api-states { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; }
+
+.api-detail { display: grid; grid-template-columns: 224px minmax(0, 1fr); gap: 20px; align-items: start; }
+.api-document { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--white); padding: 24px; }
+.api-back { display: inline-block; margin-bottom: 16px; font-size: 13px; }
+.api-document > :deep(.page-heading) { margin-bottom: 16px; align-items: start; gap: 16px; }
+.api-document > :deep(.page-heading p) { max-width: 65ch; font-size: 13px; }
+.api-document > :deep(.page-heading .actions) { flex-shrink: 0; }
+.api-identity { padding: 0; border: 0; background: transparent; }
+.api-identity .endpoint { padding: 12px 16px; margin: 0 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control); align-items: center; }
+.endpoint :deep(.copy-id) { flex: 1; min-width: 0; width: 100%; }
+.endpoint :deep(.copy-id code) { max-width: none; color: var(--color-primary-text); font-size: 13px; }
+.endpoint :deep(.copy-id button) { margin-left: auto; }
+.api-states { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
 .api-identity > p { margin-top: 8px; }
-.api-tabs { margin-top: 24px; overflow-x: auto; }
+.api-tabs { margin-top: 20px; overflow-x: auto; }
 .api-tabs button { flex-shrink: 0; }
-.api-tab-panel { margin-top: 16px; }
+.api-tab-panel { margin-top: 20px; padding: 0; border: 0; background: transparent; }
+.api-tab-panel h2 { margin-bottom: 16px; }
+.api-tab-panel h3 { margin: 16px 0 8px; }
 .api-tab-panel li { margin-bottom: 8px; overflow-wrap: anywhere; }
+.parameter-examples { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
+@media (max-width: 1100px) { .api-detail { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
+@media (max-width: 767px) {
+ .api-document { padding: 16px; }
+ .api-document > :deep(.page-heading) { flex-direction: column; }
+ .api-document > :deep(.page-heading .actions) { justify-content: start; width: 100%; }
+ .parameter-examples { grid-template-columns: minmax(0, 1fr); }
+ .api-identity .endpoint { padding: 10px; }
+}
 </style>
