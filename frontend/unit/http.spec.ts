@@ -124,3 +124,10 @@ test('HTTP preserves backend decimal string boundaries in both response and PUT 
   const event = await request<{ data: { sequence: string } }>('worker', detail.path)
   expect(event.body.data.sequence).toBe(boundary)
 })
+
+test('log proxy errors do not reflect arbitrary diagnostic messages or untrusted codes', async () => {
+  for (const code of ['unexpected_proxy_failure', '__proto__', 'synthetic-token-not-a-real-secret']) {
+    globalThis.fetch = async () => new Response(JSON.stringify({ code, message: '<img onerror=alert(1)> Authorization: synthetic-only' }), { status: 502 })
+    await expect(request('worker', '/admin/v1/logs/platform/events')).rejects.toMatchObject({ code: 'log_error', message: '日志读取失败，请核对对应服务状态。' })
+  }
+})

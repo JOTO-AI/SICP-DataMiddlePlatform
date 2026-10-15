@@ -320,3 +320,27 @@ test('F08 detail uses correlation for cross-source logs and source failure never
   await page.goBack()
   await expect(page.getByText('当前事件未记录结果', { exact: true })).toBeVisible()
 })
+test('F08 sanitized log text remains inert and bounded and copy equals only visible content', async ({ page }) => {
+  await setup(page)
+  await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { (window as any).copiedLogText = text } } }))
+  const fixture = managementCapture('log_detail'), d = fixture.response.data as any
+  // Adversarial display boundary only: retain DTO identity and use a redacted marker, no real credentials.
+  d.response = { body: '<img src=x onerror="window.injected=true"> Authorization: [REDACTED] ' + '边界'.repeat(40000), truncated: true }
+  d.redaction.truncated = true
+  await page.route(`**${fixture.path}`, route => route.fulfill({ json: fixture.response }))
+  await page.goto(`/console/logs/platform/events/${d.event_id}`)
+  const text = page.getByLabel('日志脱敏详情', { exact: true })
+  await expect(text).toContainText('Authorization: [REDACTED]')
+  expect((await text.textContent())!.length).toBe(4096)
+  expect(await page.evaluate(() => (window as any).injected)).toBeUndefined()
+  await expect(page.locator('main img')).toHaveCount(0)
+  await page.getByRole('button', { name: '复制当前显示文本', exact: true }).click()
+  expect(await page.evaluate(() => (window as any).copiedLogText)).toBe(await text.textContent())
+  await page.getByRole('button', { name: '展开内容（最多 65536 字符）', exact: true }).click()
+  expect((await text.textContent())!.length).toBe(65536)
+  await page.getByRole('button', { name: '复制当前显示文本', exact: true }).click()
+  expect(await page.evaluate(() => (window as any).copiedLogText)).toBe(await text.textContent())
+  await page.getByRole('link', { name: '数据源', exact: true }).click()
+  await expect(text).toHaveCount(0)
+  expect(await page.evaluate(() => JSON.stringify([Object.entries(localStorage), Object.entries(sessionStorage)]))).not.toContain('[REDACTED]')
+})

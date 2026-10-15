@@ -137,8 +137,11 @@ export async function request<T>(service: 'query' | 'worker', path: string, opti
     if (!options.health) {
       if (typeof body.code !== 'string') throw new ApiError('服务响应的 code 不符合当前接口协议。', 'invalid_response', requestID, status, responseHeaders, responseText)
       if (!response.ok || !['ok', 'accepted'].includes(body.code)) {
-        const message = domainMessages[domain][body.code] ?? common[body.code] ?? (typeof body.message === 'string' && body.message ? body.message : '请求失败。')
-        throw new ApiError(message, body.code, typeof body.request_id === 'string' && body.request_id ? body.request_id : requestID, status, responseHeaders, responseText)
+        const known = Object.hasOwn(domainMessages[domain], body.code) ? domainMessages[domain][body.code] : Object.hasOwn(common, body.code) ? common[body.code] : undefined
+        // Log proxies may fail before producing a sanitized application envelope.
+        const message = known ?? (domain === 'logs' ? '日志读取失败，请核对对应服务状态。' : typeof body.message === 'string' && body.message ? body.message : '请求失败。')
+        const code = domain === 'logs' && !known ? 'log_error' : body.code
+        throw new ApiError(message, code, typeof body.request_id === 'string' && body.request_id ? body.request_id : requestID, status, responseHeaders, responseText)
       }
     }
     return { body: body as T, status, requestID, snapshot: responseHeaders['X-Query-Snapshot'] || '', headers: responseHeaders, ...(options.captureResponse ? { responseText } : {}) }

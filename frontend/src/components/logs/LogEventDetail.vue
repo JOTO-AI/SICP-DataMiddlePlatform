@@ -23,7 +23,7 @@ async function read() {
     const response = await request<Envelope<unknown>>('worker', '/admin/v1' + path, { signal: run.signal, captureResponse: true, domain: 'logs' })
     if (!active || !run.current()) return
     const value = readLogDetail(response.body.data, props.source, props.eventId, props.epoch ?? data.value?.epoch, props.sequence ?? data.value?.sequence)
-    if (response.status !== 200 || response.body.code !== 'ok' || !value || !response.responseText || response.responseText.length > 2 * 1024 * 1024) throw new ApiError('日志详情与所选事件、世代或字段契约不一致，请返回历史重新查询。', 'invalid_response')
+    if (response.status !== 200 || response.body.code !== 'ok' || !value || !response.responseText || new TextEncoder().encode(response.responseText).byteLength > 2 * 1024 * 1024) throw new ApiError('日志详情与所选事件、世代或字段契约不一致，请返回历史重新查询。', 'invalid_response')
     const text = objectTokens(response.responseText).get('data')
     if (!text) throw new ApiError('未取得日志详情原文。', 'invalid_response')
     data.value = value; raw.value = text
