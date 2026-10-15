@@ -40,3 +40,14 @@ export function readDeliveryDetail(v: unknown, id: string): DeliveryDetail | nul
   }
   return v as unknown as DeliveryDetail
 }
+// Delivery facts are independent for each recipient; none of these states implies inbox receipt.
+export const deliveryMeaning: Record<string, string> = {
+  queued: '已进入投递队列，尚未开始发送。',
+  retry: '服务端已安排重试；以下次尝试时间为准，此页不另建投递。',
+  sending: '通道调用进行中，结果尚未确认。',
+  accepted: '通道已接受，不代表收件箱已送达。',
+  rejected: '通道明确拒绝本次投递。',
+  unknown: '发送结果未知，可能已被通道处理；此页不提供自动重发。',
+  cancelled: '尚未发送的投递已取消，不表示已发送邮件被撤回。',
+  exhausted: '已达到重试次数或有效期限，服务端不再继续尝试。',
+}

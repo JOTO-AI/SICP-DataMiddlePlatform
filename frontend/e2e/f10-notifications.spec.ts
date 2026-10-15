@@ -203,3 +203,25 @@ test('F10 mail testing is disabled for unconfigured or unsaved settings and canc
   await page.getByRole('dialog').getByRole('button', { name: '暂不提交' }).click()
   await expect(send).toBeEnabled(); expect(posts).toBe(0)
 })
+test('F10 delivery protocol states never imply inbox arrival or automatic resend of an unknown result', async ({ page }) => {
+  await setup(page)
+  const detail = managementCapture('delivery_detail').response as any, id = detail.data.delivery.id
+  let state = 'unknown'
+  await page.route(`**/admin/v1/notifications/${id}`, route => {
+    const body = structuredClone(detail)
+    // State transitions are protocol variants of the original recipient, not invented business records.
+    body.data.delivery.status = state; body.data.attempts[0].outcome = state
+    return route.fulfill({ json: body })
+  })
+  await page.goto('/console/notifications')
+  await page.getByRole('button', { name: '查看投递详情' }).click()
+  const panel = page.getByRole('region', { name: '投递详情', exact: true })
+  const meanings: Record<string, string> = { queued: '尚未开始发送', retry: '服务端已安排重试', sending: '通道调用进行中', accepted: '不代表收件箱已送达', rejected: '通道明确拒绝', unknown: '可能已被通道处理', cancelled: '不表示已发送邮件被撤回', exhausted: '重试次数或有效期限' }
+  for (const [value, text] of Object.entries(meanings)) {
+    state = value; await panel.getByRole('button', { name: '刷新投递详情' }).click()
+    await expect(panel).toContainText(text)
+    await expect(panel).toContainText('第 1 次')
+    await expect(panel.getByRole('button', { name: /重发/ })).toHaveCount(0)
+  }
+  await expect(panel).toContainText('其他收件人的成功或失败分别记录')
+})
