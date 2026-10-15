@@ -239,3 +239,48 @@ test('F08 missing log detail explains retention without inventing success or que
   await page.getByRole('link', { name: '← 返回此源日志', exact: true }).click()
   await expect(page).toHaveURL(/\/console\/logs\/platform$/)
 })
+test('F08 call association missing IDs never fabricates attempts or issues a broad scan', async ({ page }) => {
+  await setup(page)
+  // Kind/source boundary applied to the captured DTO; no generated upstream business rows are added.
+  const fixture = managementCapture('log_detail'), d = fixture.response.data as any
+  d.source = 'upstream'; d.kind = 'call'
+  let scans = 0
+  await page.route('**/admin/v1/logs/upstream/events?*', route => { scans++; return route.abort() })
+  await page.route(`**/admin/v1/logs/upstream/events/${d.event_id}`, route => route.fulfill({ json: fixture.response }))
+  await page.goto(`/console/logs/upstream/events/${d.event_id}`)
+  const related = page.getByRole('region', { name: '逻辑调用逐次尝试' })
+  await expect(related).toContainText('无法可靠读取逐次尝试')
+  await expect(related.getByRole('button', { name: '读取调用尝试' })).toHaveCount(0)
+  expect(scans).toBe(0)
+})
+
+test('F08 call association scans explicit bounded batches and keeps empty evidence partial', async ({ page }) => {
+  await setup(page)
+  // Association metadata boundary: the ordinary source result remains the existing empty upstream page.
+  const fixture = managementCapture('log_detail'), d = fixture.response.data as any
+  d.source = 'upstream'; d.kind = 'call'; d.call_id = d.request_id
+  await page.route(`**/admin/v1/logs/upstream/events/${d.event_id}`, route => route.fulfill({ json: fixture.response }))
+  const urls: URL[] = []; let first: any
+  await page.route('**/admin/v1/logs/upstream/events?*', route => {
+    const url = new URL(route.request().url()); urls.push(url)
+    const response = first ? structuredClone(first) : recordedLogPage('upstream')
+    if (!first) {
+      response.data.filter = { ...response.data.filter, ...Object.fromEntries(url.searchParams), page_size: 50 }
+      response.data.next_cursor = 'attempt-scan-next'; first = structuredClone(response)
+    } else response.data.next_cursor = null
+    return route.fulfill({ json: response })
+  })
+  await page.goto(`/console/logs/upstream/events/${d.event_id}`)
+  const related = page.getByRole('region', { name: '逻辑调用逐次尝试' })
+  await expect(related.getByRole('button', { name: '读取调用尝试', exact: true })).toBeVisible()
+  expect(urls).toHaveLength(0)
+  await related.getByRole('button', { name: '读取调用尝试', exact: true }).click()
+  await expect(related).toContainText('还有未读取的事件，当前为部分结果')
+  expect(urls[0]!.searchParams.get('request_id')).toBe(d.request_id)
+  expect(urls[0]!.searchParams.get('id_format')).toBe('correlation')
+  expect(urls[0]!.searchParams.has('call_id')).toBe(false)
+  await related.getByRole('button', { name: '继续读取尝试' }).click()
+  await expect(related).toContainText('仍不代表完整调用生命周期')
+  expect([...urls[1]!.searchParams.keys()]).toEqual(['cursor'])
+  await expect(related).toContainText('不能据此判断未执行或调用成功')
+})
