@@ -9,6 +9,8 @@ test.beforeEach(async ({ page }) => {
   const updates = managementCapture('updates'), update = managementCapture('update_detail')
   await page.route('**/admin/v1/update-events?*', route => route.fulfill({ status: updates.status, json: updates.response }))
   await page.route('**/admin/v1/update-events/*', route => new URL(route.request().url()).pathname === update.path ? route.fulfill({ status: update.status, json: update.response }) : route.abort())
+  const nodes = managementCapture('operation_nodes')
+  await page.route('**/admin/v1/update-events/*/operations?*', route => route.fulfill({ status: nodes.status, json: nodes.response }))
   await page.route('**/admin/v1/logs/**', route => route.abort())
   const items = backendCatalog() as { id: string; version: string }[]
   await page.route('**/admin/v1/apis', route => route.fulfill({ json: { code: 'ok', message: '', data: { version: items[0]!.version, items } } }))
@@ -2797,4 +2799,71 @@ test('F07 expired update cursor requires explicit first-batch refresh', async ({
   await history.getByRole('button', { name: '重新读取事件首批', exact: true }).click()
   await expect(history).toContainText('已到本次查询末批')
   expect(reads).toBe(3)
+})
+
+test('F07 operation tree lazily loads recorded nodes and retains parent on continuation', async ({ page }, testInfo) => {
+  await setup(page)
+  const capture = managementCapture('operation_nodes'), task = recordedUpdateEvent()
+  let roots = 0, children = 0
+  await page.route(`**${capture.path}?*`, route => {
+    const q = new URL(route.request().url()).searchParams
+    if (!q.has('parent_operation_id')) { roots++; return route.fulfill({ status: capture.status, json: capture.response }) }
+    children++; expect(q.get('parent_operation_id')).toBe('publication')
+    if (children === 1) expect(q.get('page_size')).toBe('50')
+    else { expect(q.get('cursor')).toBe('protocol-branch-next'); expect(q.has('page_size')).toBe(false) }
+    // Empty branch and cursor are protocol boundaries; no new publication is invented.
+    return route.fulfill({ json: { code: 'ok', data: { items: [], parent_operation_id: 'publication', next_cursor: children === 1 ? 'protocol-branch-next' : null } } })
+  })
+  await page.goto(`/console/updates/${task.id}`)
+  const tree = page.getByRole('region', { name: '更新操作树', exact: true })
+  await expect(tree.getByRole('button', { name: '查看节点 publication', exact: true })).toBeVisible()
+  expect(roots).toBe(1); expect(children).toBe(0)
+  await tree.getByRole('button', { name: '查看节点 publication', exact: true }).click()
+  await expect(tree.getByRole('region', { name: '操作节点详情', exact: true })).toContainText('未观测')
+  await tree.getByRole('button', { name: '展开 路由与发布', exact: true }).click()
+  await expect(tree).toContainText('此分支未返回节点')
+  await tree.getByRole('button', { name: '加载更多 路由与发布', exact: true }).click()
+  await expect(tree.getByRole('button', { name: '加载更多 路由与发布', exact: true })).toHaveCount(0)
+  await tree.getByRole('button', { name: '收起 路由与发布', exact: true }).click()
+  await tree.getByRole('button', { name: '展开 路由与发布', exact: true }).click()
+  expect(children).toBe(2)
+  await page.setViewportSize({ width: 390, height: 844 }); await tree.scrollIntoViewIfNeeded()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('operation-tree-mobile.png'), fullPage: true })
+})
+
+test('F07 operation branch rejects mismatched parent and preserves task facts on diagnostic failure', async ({ page }) => {
+  await setup(page)
+  const capture = managementCapture('operation_nodes'), task = recordedUpdateEvent(); let attempt = 0
+  await page.route(`**${capture.path}?*`, route => {
+    if (!new URL(route.request().url()).searchParams.has('parent_operation_id')) return route.fulfill({ status: capture.status, json: capture.response })
+    attempt++
+    return attempt === 1 ? route.fulfill({ json: capture.response }) : route.fulfill({ status: 503, json: { code: 'unavailable', message: '', data: null } })
+  })
+  await page.goto(`/console/updates/${task.id}`)
+  const tree = page.getByRole('region', { name: '更新操作树', exact: true })
+  await tree.getByRole('button', { name: '展开 路由与发布', exact: true }).click()
+  await expect(tree).toContainText('未拼接此批')
+  await tree.getByRole('button', { name: '重试此分支', exact: true }).click()
+  await expect(tree).not.toContainText('未拼接此批')
+  await expect(page.getByRole('region', { name: '更新事件事实', exact: true })).toContainText(String(task.task_id))
+  await expect(tree.getByRole('button', { name: '查看节点 publication', exact: true })).toHaveCount(1)
+})
+test('F07 collapsing an operation branch cancels its late response', async ({ page }) => {
+  await setup(page)
+  const capture = managementCapture('operation_nodes'), task = recordedUpdateEvent()
+  let release!: () => void, waiting = false
+  const gate = new Promise<void>(resolve => { release = resolve })
+  await page.route(`**${capture.path}?*`, async route => {
+    if (!new URL(route.request().url()).searchParams.has('parent_operation_id')) return route.fulfill({ status: capture.status, json: capture.response })
+    waiting = true; await gate
+    await route.fulfill({ json: { code: 'ok', data: { items: [], next_cursor: 'late-cursor', parent_operation_id: 'publication' } } }).catch(() => {})
+  })
+  await page.goto(`/console/updates/${task.id}`)
+  const tree = page.getByRole('region', { name: '更新操作树', exact: true })
+  await tree.getByRole('button', { name: '展开 路由与发布', exact: true }).click()
+  await expect.poll(() => waiting).toBe(true)
+  await tree.getByRole('button', { name: '收起 路由与发布', exact: true }).click(); release()
+  await expect(tree.getByRole('button', { name: '展开 路由与发布', exact: true })).toBeEnabled()
+  await expect(tree.getByRole('button', { name: '加载更多 路由与发布', exact: true })).toHaveCount(0)
 })
