@@ -2,7 +2,7 @@
 
 Vue 3 + TypeScript + Vite，中文浅色管理台。浏览器通过同源会话连接后端；业务结果、运行状态、日志和配置均来自后端，不内置演示数据。
 
-F01–F11 开发项已交付；F12 的本机回归、容量检查和交付文档继续收尾。**2026-10-15 按用户要求，真实后端联调和实际网关验收延后至服务器部署完成后执行。** 浏览器拦截测试通过不等于真实服务已验收。后端 T/OI 验收保持原暂停状态。
+F01–F11 开发项已交付；F12 的本机回归、容量检查、交付文档与复核结果见 [交付复核](../development_docs/FRONTEND_REVIEW.md)。**2026-10-15 按用户要求，真实后端联调和实际网关验收延后至服务器部署完成后执行。** 浏览器拦截测试通过不等于真实服务已验收。后端 T/OI 验收保持原暂停状态。
 
 ## 启动与连接
 
@@ -84,13 +84,15 @@ npm.cmd run test:unit
 npm.cmd run build
 npm.cmd run check:production
 $env:SICP_TEST_BROWSER='C:/Program Files/Google/Chrome/Application/chrome.exe'
-npm.cmd test -- --fully-parallel --workers=4 --reporter=line --output=../artifacts/frontend-regression
+npm.cmd test -- --fully-parallel --workers=2 --reporter=line --output=../artifacts/frontend-regression
 ```
 
-Linux 可使用 `npx playwright install --with-deps chromium` 安装浏览器，无需 `SICP_TEST_BROWSER`。容量单项按预登记单 worker 执行：
+CI 同样将功能回归与容量测试顺序分开，并保留 JSON 报告和构建清单。
+
+Linux 可使用 `npx playwright install --with-deps chromium` 安装浏览器，无需 `SICP_TEST_BROWSER`。容量用例独立放在 performance/，不与功能用例并行，按预登记单 worker 执行：
 
 ```sh
-npx playwright test e2e/f12-capacity.spec.ts --workers=1 --output=../artifacts/frontend-capacity
+npm run test:capacity
 ```
 
 用例覆盖 loopback 和内网 HTTP 域名；使用[后端来源夹具](fixtures/README.md)，正常业务不新增编造数据。畸形、限流、响应丢失、日志容量等为明确标记的协议边界变体。独立报告保存在 `artifacts/`，它不受 Git 跟踪；需要长期留存时一并归档。
@@ -101,7 +103,7 @@ npx playwright test e2e/f12-capacity.spec.ts --workers=1 --output=../artifacts/f
 
 ```sh
 # 现有已配置部署：只构建并替换 console，不重启后端
- docker compose up -d --build --no-deps console
+docker compose up -d --build --no-deps console
 ```
 
 在仓库根目录执行，浏览器默认访问 <http://127.0.0.1:18080/console/>。首次部署按 [统一部署说明](../deploy/README.md) 准备 `.env`；已有文件不要覆盖。根 Compose 已包含 console，镜像多阶段构建只复制 dist 到 Nginx，不将测试夹具/源代码放入运行层。`npm run build` 也可生成静态资源，但必须沿用 `/console/` 路径、[静态 Nginx 配置](nginx.conf)及统一同源网关；`npm run preview` 只用于本地预览。

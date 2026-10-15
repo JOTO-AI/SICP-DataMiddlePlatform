@@ -1,0 +1,847 @@
+{
+  "sourceTreeSha256": "36adca3ab4fdc84bc6f6b0936bce240d45ca6ec57a430194d4a043638bffd0a3",
+  "screenshotCount": 168,
+  "screenshots": [
+    {
+      "file": "artifacts/frontend-f12-06/final/components-F02-shared-comp-04ab2-ts-errors-and-copy-fallback-intranet-http/common-components-mobile.png",
+      "bytes": 30504,
+      "sha256": "b34327aba284516e4b7224b8d8d8e9d724995dfa156fbca0707cacb64004a562"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/components-F02-shared-comp-04ab2-ts-errors-and-copy-fallback-intranet-http/common-table-mobile.png",
+      "bytes": 48087,
+      "sha256": "9452386d8f4cd60253599f588b4123cd43c9f66c6565f8ec93b20c82da12766a"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/components-F02-shared-comp-04ab2-ts-errors-and-copy-fallback-loopback/common-components-mobile.png",
+      "bytes": 30504,
+      "sha256": "b34327aba284516e4b7224b8d8d8e9d724995dfa156fbca0707cacb64004a562"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/components-F02-shared-comp-04ab2-ts-errors-and-copy-fallback-loopback/common-table-mobile.png",
+      "bytes": 48087,
+      "sha256": "9452386d8f4cd60253599f588b4123cd43c9f66c6565f8ec93b20c82da12766a"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-desktop-shell--dc1fd-sed-navigation-stays-usable-intranet-http/shell-collapsed.png",
+      "bytes": 115450,
+      "sha256": "8e89e9e1f8d46e1bce5e6dfa15ddc2b09be18039f8928e4d66905f01e368421d"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-desktop-shell--dc1fd-sed-navigation-stays-usable-intranet-http/shell-expanded.png",
+      "bytes": 124515,
+      "sha256": "970f855fe4d980b7210b27b51544edc9570a8e590e88e71f5a049347c334adeb"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-desktop-shell--dc1fd-sed-navigation-stays-usable-intranet-http/shell-table.png",
+      "bytes": 135164,
+      "sha256": "dbec384aa441b18fb1c9cac21ba31e372bf9e3708eb946b9f9789f6cf0bb3572"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-desktop-shell--dc1fd-sed-navigation-stays-usable-loopback/shell-collapsed.png",
+      "bytes": 115513,
+      "sha256": "610b741443c3e0d6fdb3fdf13c4947c8b28c485d8eff5e8972d6071599e7951a"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-desktop-shell--dc1fd-sed-navigation-stays-usable-loopback/shell-expanded.png",
+      "bytes": 124591,
+      "sha256": "efe284c331365f0ec156be227ed91dcdfdd419759bcea310a66c85a6624c57ea"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-desktop-shell--dc1fd-sed-navigation-stays-usable-loopback/shell-table.png",
+      "bytes": 135164,
+      "sha256": "dbec384aa441b18fb1c9cac21ba31e372bf9e3708eb946b9f9789f6cf0bb3572"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-responsive-she-28f14-rawer-without-extra-queries-intranet-http/mobile-navigation.png",
+      "bytes": 12660,
+      "sha256": "b0847403f0bb7dca86459bdb1b8897683ef30305e9f7fd87d96cd419e1a3d69d"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-responsive-she-28f14-rawer-without-extra-queries-intranet-http/mobile-query-table.png",
+      "bytes": 90539,
+      "sha256": "cd1449567fedb97d1a91db3281319b09688e1b2bf100fdcd2f03c24c1ffaa38c"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-responsive-she-28f14-rawer-without-extra-queries-intranet-http/responsive-1024.png",
+      "bytes": 111821,
+      "sha256": "c58ee1fd6d74967a060c3cbafdddf9069bf724a798998f5d0eeff95b6c3ce625"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-responsive-she-28f14-rawer-without-extra-queries-intranet-http/responsive-1440.png",
+      "bytes": 124510,
+      "sha256": "9da582f1d6b3efd910cc433e0d2ef7708d810981733727caf0b25a3cd028f35b"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-responsive-she-28f14-rawer-without-extra-queries-intranet-http/responsive-390.png",
+      "bytes": 103405,
+      "sha256": "591f59461d49befabaa7b84cc864e3a02e88d6bcb651c59bdfc9a890262fc438"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-responsive-she-28f14-rawer-without-extra-queries-intranet-http/responsive-768.png",
+      "bytes": 109631,
+      "sha256": "e69453e588e4ca934a85240f337be25d5408ef6c0db49fc878de04bc5f5126b6"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-responsive-she-28f14-rawer-without-extra-queries-loopback/mobile-navigation.png",
+      "bytes": 12660,
+      "sha256": "b0847403f0bb7dca86459bdb1b8897683ef30305e9f7fd87d96cd419e1a3d69d"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-responsive-she-28f14-rawer-without-extra-queries-loopback/mobile-query-table.png",
+      "bytes": 90539,
+      "sha256": "cd1449567fedb97d1a91db3281319b09688e1b2bf100fdcd2f03c24c1ffaa38c"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-responsive-she-28f14-rawer-without-extra-queries-loopback/responsive-1024.png",
+      "bytes": 111775,
+      "sha256": "33954c8b8e7db98449128280c926caa748aa293bbf28885b9ed4e9582b4a5d82"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-responsive-she-28f14-rawer-without-extra-queries-loopback/responsive-1440.png",
+      "bytes": 124461,
+      "sha256": "788cce76bbaecf19457d3b670fe1a1051e6cf22b506e58a9f65e9a7a024590ef"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-responsive-she-28f14-rawer-without-extra-queries-loopback/responsive-390.png",
+      "bytes": 103373,
+      "sha256": "cce9eed4f2bf8b020926d0c5b2a30e964855cd728659d67ae85ec69ca834975a"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F02-responsive-she-28f14-rawer-without-extra-queries-loopback/responsive-768.png",
+      "bytes": 109567,
+      "sha256": "ba3c22a95b33cd5982d7be78210653073755049bbc4d65d75b9129aa0c0e0cd3"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F03-primary-naviga-53b0f-o-fabricated-module-results-intranet-http/seven-module-navigation.png",
+      "bytes": 12492,
+      "sha256": "324015ba71abaae9069e32e688ffa006911c735cf9d68a282c98a7d68481537d"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F03-primary-naviga-53b0f-o-fabricated-module-results-loopback/seven-module-navigation.png",
+      "bytes": 12492,
+      "sha256": "324015ba71abaae9069e32e688ffa006911c735cf9d68a282c98a7d68481537d"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F04-compact-overvi-ef998-parates-missing-event-times-intranet-http/compact-overview-desktop.png",
+      "bytes": 122540,
+      "sha256": "3663ec0c1f37209695eb24593fc06d66b53bf1a79fefe010efca6fbb70222349"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F04-compact-overvi-ef998-parates-missing-event-times-intranet-http/compact-overview-mobile.png",
+      "bytes": 103520,
+      "sha256": "4ef4b2e8024ed1899bd5df551f6084da5e4d7e4f98ecf4be9b0ddfeefc702e8e"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F04-compact-overvi-ef998-parates-missing-event-times-loopback/compact-overview-desktop.png",
+      "bytes": 122370,
+      "sha256": "e8e85232e166f909dedccec059b0cd6ac542726abf7addec358c6f6de58993b1"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F04-compact-overvi-ef998-parates-missing-event-times-loopback/compact-overview-mobile.png",
+      "bytes": 103336,
+      "sha256": "1fc246735594e589770109b05d6c794605897dc36aec6a3e335859589a520b3a"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F04-overview-retai-ca656-out-inventing-log-readiness-intranet-http/overview-stale-mobile.png",
+      "bytes": 136839,
+      "sha256": "06426fca276134640e0983b1d729ea5777d580f8c0a22edabee244f864ac39b5"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F04-overview-retai-ca656-out-inventing-log-readiness-loopback/overview-stale-mobile.png",
+      "bytes": 136610,
+      "sha256": "910357c112464739e3effb5a21d973f24919b2948bb0d4abe9055bd7d46f6279"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F04-sources-filter-d5640-etails-with-keyboard-return-intranet-http/sources-drawer-desktop.png",
+      "bytes": 69938,
+      "sha256": "f56bdd3bc0ce8d69a828423fe05f0257a5fb15fda4fd5e95ff9f43e629b8d47f"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F04-sources-filter-d5640-etails-with-keyboard-return-intranet-http/sources-drawer-mobile.png",
+      "bytes": 38249,
+      "sha256": "4d4f7ef8138d0f66d892f1ef8a6a56e54cc61c8292f69fc0ecd90e104ef1967e"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F04-sources-filter-d5640-etails-with-keyboard-return-loopback/sources-drawer-desktop.png",
+      "bytes": 69804,
+      "sha256": "6385efed893c4a4e84a9ea5bd3af96363823398ad1401f2934442ad02d06c538"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F04-sources-filter-d5640-etails-with-keyboard-return-loopback/sources-drawer-mobile.png",
+      "bytes": 38208,
+      "sha256": "eff5ac3c99cca8840410c8dab901e3afa5b14f7f07742592d9179a8eb3e1ecc6"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-catalog-search-fce63-ing-or-inventing-interfaces-intranet-http/api-catalog-desktop.png",
+      "bytes": 183429,
+      "sha256": "55f89c84d0ed9170a681e10b5cbabed8ab0ca79502bcebb8481791356f8d0af8"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-catalog-search-fce63-ing-or-inventing-interfaces-intranet-http/api-catalog-mobile.png",
+      "bytes": 127935,
+      "sha256": "588da1ff0a6a46128e967a9fcae8f731fceb44b3d2f1757bf9a1419f0cd80f59"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-catalog-search-fce63-ing-or-inventing-interfaces-loopback/api-catalog-desktop.png",
+      "bytes": 183364,
+      "sha256": "0484eb40ac6ea725989ccbfe8a6b2e893c6c61a10cd70fa468c4ff27c00ec6b4"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-catalog-search-fce63-ing-or-inventing-interfaces-loopback/api-catalog-mobile.png",
+      "bytes": 127879,
+      "sha256": "f690cc92d334430f4e79bcf1ffca5f8bdd921a0a43d4b8453d8a61602df7af7a"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-details-keep-e-fb260-e-while-tabs-stay-read-only-intranet-http/api-detail-desktop.png",
+      "bytes": 182779,
+      "sha256": "0359f0fed524be7add3edfc6ceda12f468569e9307f6ce9ebf84a8b86bfc45f8"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-details-keep-e-fb260-e-while-tabs-stay-read-only-intranet-http/api-detail-mobile.png",
+      "bytes": 125254,
+      "sha256": "c0922f5e0c0a3891c91b72f45ae035fb7f6669b0af97226392ff9c787bf8c979"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-details-keep-e-fb260-e-while-tabs-stay-read-only-loopback/api-detail-desktop.png",
+      "bytes": 182596,
+      "sha256": "92c55bc57bc2c49f1f3b2bd33dfc9c8424e75c8920feca74860d044156ab2433"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-details-keep-e-fb260-e-while-tabs-stay-read-only-loopback/api-detail-mobile.png",
+      "bytes": 125168,
+      "sha256": "34814a005775d5e498a123c8789a934de66827e4c957e7fdc7ace13762ee62af"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-management-doc-415d8-lows-and-performs-no-writes-intranet-http/management-docs-mobile.png",
+      "bytes": 112129,
+      "sha256": "726b166eb40f4ccc1cfb34b14bb93dcb7e5d1d77fc4fbe76201a7c3423b52bcc"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-management-doc-415d8-lows-and-performs-no-writes-loopback/management-docs-mobile.png",
+      "bytes": 112129,
+      "sha256": "726b166eb40f4ccc1cfb34b14bb93dcb7e5d1d77fc4fbe76201a7c3423b52bcc"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-provider-Query-04b04-eparate-fields-and-defaults-intranet-http/source-params-mobile.png",
+      "bytes": 102318,
+      "sha256": "1d4645227fcff86ad0b4a1f54fd475b8f3a1899d187ee32b36506913ebe3ef7e"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-provider-Query-04b04-eparate-fields-and-defaults-loopback/source-params-mobile.png",
+      "bytes": 102236,
+      "sha256": "ab4e1b55bae3b0120205f4ad044db1e7fbe8ee83adff4ce6996693b043183d4b"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-recursive-fiel-1a2dc--nested-responses-on-mobile-intranet-http/schema-mobile.png",
+      "bytes": 160495,
+      "sha256": "cd6889e256d7918e0f177dbff8cfed712ae90fcaf96a8f4cd4cf01f9f9f6ed0f"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F05-recursive-fiel-1a2dc--nested-responses-on-mobile-loopback/schema-mobile.png",
+      "bytes": 160411,
+      "sha256": "4fd2876725f511086bba522c46a74522d9aa0e450cadc8ebd2e9c0d25a5aff2a"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-business-execu-3851d-isting-backend-capture-once-intranet-http/business-response-mobile.png",
+      "bytes": 37603,
+      "sha256": "0750ad857c078e4deded84f47b99642c55339665a8bff267aa8a10171740b6b5"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-business-execu-3851d-isting-backend-capture-once-loopback/business-response-mobile.png",
+      "bytes": 37603,
+      "sha256": "0750ad857c078e4deded84f47b99642c55339665a8bff267aa8a10171740b6b5"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-complete-organ-9ccdd-ection-on-edited-conditions-intranet-http/organizations-complete-desktop.png",
+      "bytes": 69136,
+      "sha256": "7dc0b93535a0d48711fc154d568b80aa18e84ca05a64f1202b2be2d331bafa59"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-complete-organ-9ccdd-ection-on-edited-conditions-intranet-http/organizations-complete-mobile.png",
+      "bytes": 46071,
+      "sha256": "f5e0890a54d1faec49ed8dc492eadcf08a2e0535e36b2bd8e0b0469b38d733bc"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-complete-organ-9ccdd-ection-on-edited-conditions-loopback/organizations-complete-desktop.png",
+      "bytes": 69136,
+      "sha256": "7dc0b93535a0d48711fc154d568b80aa18e84ca05a64f1202b2be2d331bafa59"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-complete-organ-9ccdd-ection-on-edited-conditions-loopback/organizations-complete-mobile.png",
+      "bytes": 46071,
+      "sha256": "f5e0890a54d1faec49ed8dc492eadcf08a2e0535e36b2bd8e0b0469b38d733bc"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-editor-validat-c6264--common-and-advanced-fields-intranet-http/test-parameters-mobile.png",
+      "bytes": 34746,
+      "sha256": "43962b539a547ebf38b1d2e15c790b9e7cf31433ba59c2153030c059415df08f"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-editor-validat-c6264--common-and-advanced-fields-loopback/test-parameters-mobile.png",
+      "bytes": 34746,
+      "sha256": "43962b539a547ebf38b1d2e15c790b9e7cf31433ba59c2153030c059415df08f"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-grade-adapter--19103-nd-backend-record-semantics-intranet-http/grade-context-mobile.png",
+      "bytes": 48575,
+      "sha256": "dfb5009b62a6d30ce910b235ad0ced70f15b96c32315ec1beceb3486a9dcc863"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-grade-adapter--19103-nd-backend-record-semantics-loopback/grade-context-mobile.png",
+      "bytes": 48507,
+      "sha256": "123c26ce3f73e05feebc18f327c8ad688594d67f92bb17e47ae9000618034f37"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-grade-adapter--f866f-nd-backend-record-semantics-intranet-http/grade-context-mobile.png",
+      "bytes": 48232,
+      "sha256": "366bc29ec6634778652757579744f0681141239499b4885073be240cab378939"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-grade-adapter--f866f-nd-backend-record-semantics-loopback/grade-context-mobile.png",
+      "bytes": 48123,
+      "sha256": "ad2e632eb83b4e9a32b0b8d6e86c0ca81af7bed419675a7115ab08b50dfe5120"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-outcomes-rejec-203b0-ilures-before-any-execution-intranet-http/test-outcome-mobile.png",
+      "bytes": 31263,
+      "sha256": "c6b40d880e7c9056b864de1cab19efb0145f7ca22f1392320f15a454eedc2ded"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-outcomes-rejec-203b0-ilures-before-any-execution-loopback/test-outcome-mobile.png",
+      "bytes": 31263,
+      "sha256": "c6b40d880e7c9056b864de1cab19efb0145f7ca22f1392320f15a454eedc2ded"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-pagination-stu-ae78d--clears-on-edited-page-size-intranet-http/pagination-mobile.png",
+      "bytes": 36878,
+      "sha256": "c495842aed9883f8fbcff77f0b056f5aab789ccd9dd8f3889b1c610e53b796ab"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-pagination-stu-ae78d--clears-on-edited-page-size-loopback/pagination-mobile.png",
+      "bytes": 36800,
+      "sha256": "49e925519faa0e8b8a8002b6c6b93f4b7d303ae8e64d7cad9fa91e022f4335e2"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-personnel-deta-00587-elds-without-extra-requests-intranet-http/person-details-mobile.png",
+      "bytes": 29659,
+      "sha256": "516d6b5691637bf8079ce25a395a9cb0e65ab54a75460bfa08cd83d4a39176c9"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-personnel-deta-00587-elds-without-extra-requests-loopback/person-details-mobile.png",
+      "bytes": 29659,
+      "sha256": "516d6b5691637bf8079ce25a395a9cb0e65ab54a75460bfa08cd83d4a39176c9"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-personnel-deta-50850-elds-without-extra-requests-intranet-http/person-details-mobile.png",
+      "bytes": 26594,
+      "sha256": "3c2afb7aaadbff05023cd24d086112c279c03281589b6a65360635c153013671"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-personnel-deta-50850-elds-without-extra-requests-loopback/person-details-mobile.png",
+      "bytes": 26594,
+      "sha256": "3c2afb7aaadbff05023cd24d086112c279c03281589b6a65360635c153013671"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-recent-busines-1e5d2-tadata-and-clear-on-refresh-intranet-http/recent-tests-mobile.png",
+      "bytes": 53721,
+      "sha256": "20109fae28a71c57c9eb3b36473fbaadac79341b52125ef7d55e84f505e22835"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-recent-busines-1e5d2-tadata-and-clear-on-refresh-loopback/recent-tests-mobile.png",
+      "bytes": 53757,
+      "sha256": "8baf30b4827c795603ae351ab91d381732245d5ff5df92eed221ad4d1fb6e5eb"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-roster-navigat-3d858-snapshot-pages-exactly-once-intranet-http/roster-verification-mobile.png",
+      "bytes": 43904,
+      "sha256": "ad3f45856cb63ca6802503f24013df4e739804e9a0774c33654aace087e39b04"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-roster-navigat-3d858-snapshot-pages-exactly-once-loopback/roster-verification-mobile.png",
+      "bytes": 43921,
+      "sha256": "79cc8a7961ba7a931aaef5a91f85bfeab51c0920e805fadc2bbf27f1d5d64204"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-shared-views-o-07fc9-ocally-without-new-requests-intranet-http/response-organizations-mobile.png",
+      "bytes": 48381,
+      "sha256": "ce9d4e69f53515b42d7a9295fb02e2d1b84a50cb754cb3a06a08ee24cee5b705"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-shared-views-o-07fc9-ocally-without-new-requests-loopback/response-organizations-mobile.png",
+      "bytes": 48265,
+      "sha256": "6ef035a760e50cfdf7a57df19726a667e8994e45fd6da0911465757c5613a006"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-shared-views-s-5524f-ocally-without-new-requests-intranet-http/response-timetable-mobile.png",
+      "bytes": 46389,
+      "sha256": "12f861ecc22db8e0d4d9c7a08a9bf8bbf820f703b76e38f1d61cd960d4c7ba0a"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-shared-views-s-5524f-ocally-without-new-requests-loopback/response-timetable-mobile.png",
+      "bytes": 46389,
+      "sha256": "12f861ecc22db8e0d4d9c7a08a9bf8bbf820f703b76e38f1d61cd960d4c7ba0a"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-shared-views-s-f9919-ocally-without-new-requests-intranet-http/response-grades-mobile.png",
+      "bytes": 46197,
+      "sha256": "ae5f5293fc2a7d368f8ce67ff6894b758c6699a195c168709a497f242def1d54"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-shared-views-s-f9919-ocally-without-new-requests-loopback/response-grades-mobile.png",
+      "bytes": 46197,
+      "sha256": "ae5f5293fc2a7d368f8ce67ff6894b758c6699a195c168709a497f242def1d54"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-source-execute-347b0--unchanged-mock-result-text-intranet-http/source-test-mobile.png",
+      "bytes": 32533,
+      "sha256": "7a00d3c1925a1f0a5aeaba8f7f7ff124f6e44f09e084572d6b69db34aca49f5f"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-source-execute-347b0--unchanged-mock-result-text-loopback/source-test-mobile.png",
+      "bytes": 32533,
+      "sha256": "7a00d3c1925a1f0a5aeaba8f7f7ff124f6e44f09e084572d6b69db34aca49f5f"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-test-dialog-bi-52359-esh-drafts-and-no-execution-intranet-http/test-dialog-desktop.png",
+      "bytes": 61343,
+      "sha256": "f05792eee7b5fc068fbe2d76880b404c4edc1860f0c505e22e0ef121edf209e2"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-test-dialog-bi-52359-esh-drafts-and-no-execution-intranet-http/test-dialog-mobile.png",
+      "bytes": 35889,
+      "sha256": "412e4cda2d0ab3339dcd4292df150bac9f9fb71e661322ba5ee3299e6713fe65"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-test-dialog-bi-52359-esh-drafts-and-no-execution-loopback/test-dialog-desktop.png",
+      "bytes": 61343,
+      "sha256": "f05792eee7b5fc068fbe2d76880b404c4edc1860f0c505e22e0ef121edf209e2"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-test-dialog-bi-52359-esh-drafts-and-no-execution-loopback/test-dialog-mobile.png",
+      "bytes": 35889,
+      "sha256": "412e4cda2d0ab3339dcd4292df150bac9f9fb71e661322ba5ee3299e6713fe65"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-timetable-week-211e7--or-guessed-teacher-pairing-intranet-http/timetable-week-desktop.png",
+      "bytes": 62542,
+      "sha256": "59d168acefeac5780408d8824d03f5cc019b233743b3ff509b92f5bfa2b2429f"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-timetable-week-211e7--or-guessed-teacher-pairing-intranet-http/timetable-week-mobile.png",
+      "bytes": 31071,
+      "sha256": "499e188372eac9a554884d7569faf1d784f274d10f57bfbeeb4e3b6f9bce1130"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-timetable-week-211e7--or-guessed-teacher-pairing-loopback/timetable-week-desktop.png",
+      "bytes": 62542,
+      "sha256": "59d168acefeac5780408d8824d03f5cc019b233743b3ff509b92f5bfa2b2429f"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-timetable-week-211e7--or-guessed-teacher-pairing-loopback/timetable-week-mobile.png",
+      "bytes": 31071,
+      "sha256": "499e188372eac9a554884d7569faf1d784f274d10f57bfbeeb4e3b6f9bce1130"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-timetable-week-de435--or-guessed-teacher-pairing-intranet-http/timetable-week-desktop.png",
+      "bytes": 62273,
+      "sha256": "d1a3589f4b73178eb4c67a6ecfedecdc4c5c347dffea332d63ad0d73ac050edc"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-timetable-week-de435--or-guessed-teacher-pairing-intranet-http/timetable-week-mobile.png",
+      "bytes": 30855,
+      "sha256": "9ba3fd422604579f91081457c1672a132352aa3259a8eb67685854a206b8d36b"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-timetable-week-de435--or-guessed-teacher-pairing-loopback/timetable-week-desktop.png",
+      "bytes": 62273,
+      "sha256": "d1a3589f4b73178eb4c67a6ecfedecdc4c5c347dffea332d63ad0d73ac050edc"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F06-timetable-week-de435--or-guessed-teacher-pairing-loopback/timetable-week-mobile.png",
+      "bytes": 30855,
+      "sha256": "9ba3fd422604579f91081457c1672a132352aa3259a8eb67685854a206b8d36b"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F07-event-history--94f2f-d-task-identity-for-details-intranet-http/update-detail-mobile.png",
+      "bytes": 43351,
+      "sha256": "f6444ab199cc05f30aa586570dd1a394852b6ad2b71db6a840aef900f13f1a34"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F07-event-history--94f2f-d-task-identity-for-details-intranet-http/update-history-mobile.png",
+      "bytes": 30979,
+      "sha256": "2d41c812acbdd4822cc373f51aff4da133550789a971ba3d9cc2620a508baa24"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F07-event-history--94f2f-d-task-identity-for-details-loopback/update-detail-mobile.png",
+      "bytes": 43351,
+      "sha256": "f6444ab199cc05f30aa586570dd1a394852b6ad2b71db6a840aef900f13f1a34"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F07-event-history--94f2f-d-task-identity-for-details-loopback/update-history-mobile.png",
+      "bytes": 30913,
+      "sha256": "2943d089cbb64819ba6da5b64c002757c4f0a8ab9ee9ba21b81f64e36d39b9bb"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F07-operation-tree-a28d9-ains-parent-on-continuation-intranet-http/operation-tree-mobile.png",
+      "bytes": 113607,
+      "sha256": "d7dee7343d9cff3b2a140a899c0d0d80933e34430d5b0969ab7034321db3bf08"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F07-operation-tree-a28d9-ains-parent-on-continuation-loopback/operation-tree-mobile.png",
+      "bytes": 113635,
+      "sha256": "0496f1cbb9e4a74168f3bdf42542946906385d43b5d6c73a058b5091ef74e034"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F07-update-filters-d59ae-preserve-their-cursor-scope-intranet-http/update-filters-mobile.png",
+      "bytes": 37731,
+      "sha256": "5bbd45f018f18681c374ef9297e981ebaefeffcb35f5ca0a317eb6e8f5cce1ba"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-F07-update-filters-d59ae-preserve-their-cursor-scope-loopback/update-filters-mobile.png",
+      "bytes": 37731,
+      "sha256": "5bbd45f018f18681c374ef9297e981ebaefeffcb35f5ca0a317eb6e8f5cce1ba"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-T25-UI-学生信息-contra-2ceef-ields-pagination-and-mobile-intranet-http/-students-query-mobile.png",
+      "bytes": 75135,
+      "sha256": "0b107e45894b4fd3ef260ba7c4e4af5aa489f73be182ea3b78a2351eebcf39bf"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-T25-UI-学生信息-contra-2ceef-ields-pagination-and-mobile-loopback/-students-query-mobile.png",
+      "bytes": 75135,
+      "sha256": "0b107e45894b4fd3ef260ba7c4e4af5aa489f73be182ea3b78a2351eebcf39bf"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-T25-UI-教学班学生-contr-9ae34-ields-pagination-and-mobile-intranet-http/-teaching-classes-students-query-mobile.png",
+      "bytes": 52609,
+      "sha256": "194062ea0c43b0e11cb0befaecb721174cdee607ff2237286b55b7dcbf3b6368"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-T25-UI-教学班学生-contr-9ae34-ields-pagination-and-mobile-loopback/-teaching-classes-students-query-mobile.png",
+      "bytes": 52609,
+      "sha256": "194062ea0c43b0e11cb0befaecb721174cdee607ff2237286b55b7dcbf3b6368"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-T25-UI-教师教学班-contr-11db6-ields-pagination-and-mobile-intranet-http/-staff-teaching-classes-query-mobile.png",
+      "bytes": 53743,
+      "sha256": "dc410186b16966ef540280f257fa9bac47f2123ce9c2637ea1163f1d15093d0a"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-T25-UI-教师教学班-contr-11db6-ields-pagination-and-mobile-loopback/-staff-teaching-classes-query-mobile.png",
+      "bytes": 53743,
+      "sha256": "dc410186b16966ef540280f257fa9bac47f2123ce9c2637ea1163f1d15093d0a"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-T25-UI-教职工信息-contr-b3359-ields-pagination-and-mobile-intranet-http/-staff-query-mobile.png",
+      "bytes": 64857,
+      "sha256": "21e3c59379d1cff4f95f4742e8ca9beb564f35af963ab0b59787e51fe4bb9892"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-T25-UI-教职工信息-contr-b3359-ields-pagination-and-mobile-loopback/-staff-query-mobile.png",
+      "bytes": 64857,
+      "sha256": "21e3c59379d1cff4f95f4742e8ca9beb564f35af963ab0b59787e51fe4bb9892"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-T25-UI-组织查询-contra-29929-ields-pagination-and-mobile-intranet-http/-organizations-query-mobile.png",
+      "bytes": 67678,
+      "sha256": "a68ff7358d47299f4fb15b01073d197e065088edb2ed4149eabb11ef1c554b7a"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-T25-UI-组织查询-contra-29929-ields-pagination-and-mobile-loopback/-organizations-query-mobile.png",
+      "bytes": 67678,
+      "sha256": "a68ff7358d47299f4fb15b01073d197e065088edb2ed4149eabb11ef1c554b7a"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-failed-initializat-9c32c-nabling-duplicate-bootstrap-intranet-http/automatic-tasks-desktop.png",
+      "bytes": 220983,
+      "sha256": "d5186d64cbfc9902279026d2681dda98ca60badd9ab0efdc151d50dea9a84277"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-failed-initializat-9c32c-nabling-duplicate-bootstrap-intranet-http/automatic-tasks-mobile.png",
+      "bytes": 191575,
+      "sha256": "c79da896316d133980ed6c0b75e25ce876eec812e3c6a7205d5645ca6f198997"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-failed-initializat-9c32c-nabling-duplicate-bootstrap-loopback/automatic-tasks-desktop.png",
+      "bytes": 221034,
+      "sha256": "646ffe0374a5d2ace48703fc171f78fb685f3d2f4c9570cf9424d442bba53384"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-failed-initializat-9c32c-nabling-duplicate-bootstrap-loopback/automatic-tasks-mobile.png",
+      "bytes": 191621,
+      "sha256": "c9fe48c518e84c3a4bf54777d137f9eaa8d44de9e708b61866d541c6d5f8cf39"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-failed-task-shows--e43ae-nd-can-refresh-delayed-logs-intranet-http/failure-diagnostic-mobile.png",
+      "bytes": 215291,
+      "sha256": "e4b1aecd5a4f32768f0aa65ae81c4cef5c63a6037af4318b1ff641a55638022c"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-failed-task-shows--e43ae-nd-can-refresh-delayed-logs-loopback/failure-diagnostic-mobile.png",
+      "bytes": 215268,
+      "sha256": "4ca9136cf9eac1acbb0f89aa4e532eae38e11140dfc66e528bfcce0f9dc0d9a2"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-historical-data-ve-5cd78-stay-visible-as-active-work-intranet-http/reuse-progress-desktop.png",
+      "bytes": 222318,
+      "sha256": "cfe61f1ce5819ce756d54625d77a0a552e71250904e0ab4fca13adb9dc8e28d1"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-historical-data-ve-5cd78-stay-visible-as-active-work-intranet-http/reuse-progress-mobile.png",
+      "bytes": 193703,
+      "sha256": "6fab761e621b7d399a3b2679a9573bcea825295e3d514dc9fd097e415ed1b9e5"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-historical-data-ve-5cd78-stay-visible-as-active-work-loopback/reuse-progress-desktop.png",
+      "bytes": 222324,
+      "sha256": "9d67953cf01d6ecfc5b8e8ca09dc298d3ef0ce99c59971d3fcdbb54140bf5b87"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-historical-data-ve-5cd78-stay-visible-as-active-work-loopback/reuse-progress-mobile.png",
+      "bytes": 193687,
+      "sha256": "54423206064941f68cf58ac5c01d2d4a2aee150690088a5d9456cf44595fe255"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-login-errors-are-c-5b417-ile-login-fits-the-viewport-intranet-http/login-mobile.png",
+      "bytes": 21641,
+      "sha256": "42e8e40434112c920f9a1184eeb7e8f6edb9c60af969b41ede2a3d188dc56501"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-login-errors-are-c-5b417-ile-login-fits-the-viewport-loopback/login-mobile.png",
+      "bytes": 21641,
+      "sha256": "42e8e40434112c920f9a1184eeb7e8f6edb9c60af969b41ede2a3d188dc56501"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-manual-incremental-3d239--displays-success-published-intranet-http/manual-incremental-success_published.png",
+      "bytes": 175611,
+      "sha256": "78bb2126d49debca9f8f941c287d16b409ab5ea799abf04985b09df44013271d"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-manual-incremental-3d239--displays-success-published-loopback/manual-incremental-success_published.png",
+      "bytes": 175881,
+      "sha256": "63c948b3f72754d4827b0da56f7e1f4fbd83be2b0932f42372d141e3e81f42ee"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-manual-incremental-558f0--displays-success-unchanged-intranet-http/manual-incremental-success_unchanged.png",
+      "bytes": 175719,
+      "sha256": "1b67b036f2f38cbbf2e05a5c0bea7e3fd73eb9a7c199b0bbd4b745e100a2cff8"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-manual-incremental-558f0--displays-success-unchanged-loopback/manual-incremental-success_unchanged.png",
+      "bytes": 175733,
+      "sha256": "b47bfc1de946a9f3b330478611adea4da936c6b27dd8a541d17812c816b5b414"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-overview-shows-ini-6190b-omes-ready-when-it-finishes-intranet-http/initializing-overview-desktop.png",
+      "bytes": 140472,
+      "sha256": "aa31c34e51cd22f775a8dba2842d408dbd39b342c2da42fa5def86cf122d0ee5"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-overview-shows-ini-6190b-omes-ready-when-it-finishes-intranet-http/initializing-overview-mobile.png",
+      "bytes": 120525,
+      "sha256": "d0bcad19ea9c2898f9a3ec0684a55a660a38bc89095af36af8f425b8fdbc2049"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-overview-shows-ini-6190b-omes-ready-when-it-finishes-loopback/initializing-overview-desktop.png",
+      "bytes": 140450,
+      "sha256": "84f020ad31a504daff741ea956b07400444b1143dc6d61511e5075dd67589707"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-overview-shows-ini-6190b-omes-ready-when-it-finishes-loopback/initializing-overview-mobile.png",
+      "bytes": 120462,
+      "sha256": "05a9fdc858b65c732f19927952f41b32cc678c4fc8dbb49c717504d96ce5d7cc"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-partial-initializa-eb016-retaining-successful-tables-intranet-http/single-table-repair.png",
+      "bytes": 250976,
+      "sha256": "7138b94bddd11dbddaa046da8960328f4fc88896d090222e9c120a1e90ec4d2d"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-partial-initializa-eb016-retaining-successful-tables-loopback/single-table-repair.png",
+      "bytes": 251194,
+      "sha256": "fc30831933b1d0c32d36ea0c624bad9e8e3e2ec90f8db5f4e3d018978b3619bb"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-post-acquisition-s-5ac8a-e-execution-and-publication-intranet-http/build-progress-desktop.png",
+      "bytes": 230165,
+      "sha256": "e77ea934cb81522c579694edfd1c07d43ebdb77d1bd5c840ec7e81773f5a5737"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-post-acquisition-s-5ac8a-e-execution-and-publication-intranet-http/build-progress-mobile.png",
+      "bytes": 200485,
+      "sha256": "a0d56bfc1353a732fb93c42f5f3e52465b92d08401a513d96e9d1bcf7108daa0"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-post-acquisition-s-5ac8a-e-execution-and-publication-loopback/build-progress-desktop.png",
+      "bytes": 230193,
+      "sha256": "bd534acdd64c129854ac21f0f84b7e7f4303d47ddcdf12e640001e1540f71e19"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-post-acquisition-s-5ac8a-e-execution-and-publication-loopback/build-progress-mobile.png",
+      "bytes": 200548,
+      "sha256": "be50687319d65a86d63cac95ffce3619ab0c99e0df8f20444f73b0adcac5a60f"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-query-failures-dis-ee7e9-d-mobile-pages-fit-viewport-intranet-http/query-mobile.png",
+      "bytes": 50274,
+      "sha256": "4ad8d60a680b01fa20f13a8d1950222409defbca19076f72c5a50c4b6830bc21"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-query-failures-dis-ee7e9-d-mobile-pages-fit-viewport-loopback/query-mobile.png",
+      "bytes": 50274,
+      "sha256": "4ad8d60a680b01fa20f13a8d1950222409defbca19076f72c5a50c4b6830bc21"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-session-survives-r-63901-d-logout-clears-the-console-intranet-http/overview-desktop.png",
+      "bytes": 124525,
+      "sha256": "78cb1dca85babad11e3a70dbc9c091b41761bcff3933ee059b4a02f116866a3c"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-session-survives-r-63901-d-logout-clears-the-console-loopback/overview-desktop.png",
+      "bytes": 124583,
+      "sha256": "c6bf8d327a2b19d8a007f95fee30c5b0cab4e6ec0627b3735b154d36b0025753"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-table-page-progres-9d3d2--the-last-counts-on-failure-intranet-http/page-progress-desktop.png",
+      "bytes": 221837,
+      "sha256": "15c8892dbaae60d0f4e0d767bfa3e7c1a2ffb71a3c5c959989ecd719959c91ec"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-table-page-progres-9d3d2--the-last-counts-on-failure-intranet-http/page-progress-mobile.png",
+      "bytes": 193444,
+      "sha256": "f085f655d179959ea160174cf834a1ee084d1b5f27148293ae3f0d8a7504a480"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-table-page-progres-9d3d2--the-last-counts-on-failure-loopback/page-progress-desktop.png",
+      "bytes": 221971,
+      "sha256": "d0b415dea968f2979a27cc78079e753bef8f901d7d96063e775efb4f02230ef2"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/console-table-page-progres-9d3d2--the-last-counts-on-failure-loopback/page-progress-mobile.png",
+      "bytes": 193542,
+      "sha256": "f5212841441fd441c4e85707a19e89a9b2d13289531ba061f7292c4298fcb9d9"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/dialog-F02-dialogs-telepor-25af5-ore-focus-with-scroll-locks-intranet-http/drawer-mobile.png",
+      "bytes": 35313,
+      "sha256": "6366352fa75957689f208309f6565cd11847412c321151cc99f198ad0e4c3385"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/dialog-F02-dialogs-telepor-25af5-ore-focus-with-scroll-locks-loopback/drawer-mobile.png",
+      "bytes": 35313,
+      "sha256": "6366352fa75957689f208309f6565cd11847412c321151cc99f198ad0e4c3385"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/dialog-F02-ordinary-dismis-b5f23-s-wait-emit-one-close-event-intranet-http/async-wait.png",
+      "bytes": 47575,
+      "sha256": "24c1fae77a81bcf3872b5e7c0eb06aacae76131123ac688589fd91869a20da72"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/dialog-F02-ordinary-dismis-b5f23-s-wait-emit-one-close-event-loopback/async-wait.png",
+      "bytes": 47575,
+      "sha256": "24c1fae77a81bcf3872b5e7c0eb06aacae76131123ac688589fd91869a20da72"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f06-logs-F06-log-handoff-f-b359e-d-existing-sanitized-detail-intranet-http/logs-desktop.png",
+      "bytes": 107151,
+      "sha256": "c1fe896feb000b3e1ca7e53c12642cf8e94d1918cca731f2e4d4a7a39cd84846"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f06-logs-F06-log-handoff-f-b359e-d-existing-sanitized-detail-intranet-http/logs-mobile.png",
+      "bytes": 89361,
+      "sha256": "94fb68ff43eb3bbf013a67a39605d94ed68ae491aa1352048e27aa33457ca9af"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f06-logs-F06-log-handoff-f-b359e-d-existing-sanitized-detail-loopback/logs-desktop.png",
+      "bytes": 107151,
+      "sha256": "c1fe896feb000b3e1ca7e53c12642cf8e94d1918cca731f2e4d4a7a39cd84846"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f06-logs-F06-log-handoff-f-b359e-d-existing-sanitized-detail-loopback/logs-mobile.png",
+      "bytes": 89361,
+      "sha256": "94fb68ff43eb3bbf013a67a39605d94ed68ae491aa1352048e27aa33457ca9af"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f06-logs-F08-direct-log-de-97bac-d-preserves-them-on-failure-intranet-http/log-detail-mobile.png",
+      "bytes": 90754,
+      "sha256": "9b245c8ca1023f55d86add44f1e5b725d340db918e3b98959650be23a53c0278"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f06-logs-F08-direct-log-de-97bac-d-preserves-them-on-failure-loopback/log-detail-mobile.png",
+      "bytes": 90754,
+      "sha256": "9b245c8ca1023f55d86add44f1e5b725d340db918e3b98959650be23a53c0278"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f06-logs-F08-four-log-view-5b0f9--batches-without-auto-query-intranet-http/log-views-mobile.png",
+      "bytes": 86904,
+      "sha256": "7195a751e9ec6073727751ab7e61916978cf0b603d538fdb4183365d40741747"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f06-logs-F08-four-log-view-5b0f9--batches-without-auto-query-loopback/log-views-mobile.png",
+      "bytes": 86904,
+      "sha256": "7195a751e9ec6073727751ab7e61916978cf0b603d538fdb4183365d40741747"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f06-logs-F09-summary-budge-b7d1b-ut-moving-the-read-position-intranet-http/live-budget-mobile.png",
+      "bytes": 129731,
+      "sha256": "59a7d3a675eca0f3af47be404e1db43071c68d3ad6d08d32665d10849ce374e7"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f06-logs-F09-summary-budge-b7d1b-ut-moving-the-read-position-loopback/live-budget-mobile.png",
+      "bytes": 129731,
+      "sha256": "59a7d3a675eca0f3af47be404e1db43071c68d3ad6d08d32665d10849ce374e7"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f10-notifications-F10-disa-5f3f5-pient-delivery-and-attempts-intranet-http/notification-history-mobile.png",
+      "bytes": 134887,
+      "sha256": "1e676d871a8e0a145839fc2dad862185545d72fc2916509e70177ffbc315d983"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f10-notifications-F10-disa-5f3f5-pient-delivery-and-attempts-loopback/notification-history-mobile.png",
+      "bytes": 134887,
+      "sha256": "1e676d871a8e0a145839fc2dad862185545d72fc2916509e70177ffbc315d983"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f11-settings-F11-system-se-a0aa3--instead-of-zero-or-healthy-intranet-http/system-mobile.png",
+      "bytes": 130516,
+      "sha256": "13b5db6dae6e8fc54c5296383eada7606a7eeaf3ee864ba3f4c760bdb6a881ea"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/f11-settings-F11-system-se-a0aa3--instead-of-zero-or-healthy-loopback/system-mobile.png",
+      "bytes": 130516,
+      "sha256": "13b5db6dae6e8fc54c5296383eada7606a7eeaf3ee864ba3f4c760bdb6a881ea"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/json-F02-request-editor-pr-df87e-d-examples-without-requests-intranet-http/request-editor-mobile.png",
+      "bytes": 33282,
+      "sha256": "651022279c1425e3b279cfe7d55aa8eb3ffd4b75daa7654df8c308beaf3f33b1"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/json-F02-request-editor-pr-df87e-d-examples-without-requests-loopback/request-editor-mobile.png",
+      "bytes": 33282,
+      "sha256": "651022279c1425e3b279cfe7d55aa8eb3ffd4b75daa7654df8c308beaf3f33b1"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/json-F02-response-viewer-r-fe35e-ies-only-visible-plain-text-intranet-http/response-viewer-mobile.png",
+      "bytes": 35782,
+      "sha256": "78a592ebd957daf2290252b51d80be4497a68e673add8e95ebe1318f97f1df5b"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/json-F02-response-viewer-r-fe35e-ies-only-visible-plain-text-loopback/response-viewer-mobile.png",
+      "bytes": 35782,
+      "sha256": "78a592ebd957daf2290252b51d80be4497a68e673add8e95ebe1318f97f1df5b"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/states-F02-control-states--27708-behavior-and-reduced-motion-intranet-http/disabled-controls.png",
+      "bytes": 31472,
+      "sha256": "8bccd397f23dc873dc53d183fc25b3a2b08190b3c8b87856bbffc198b96352e8"
+    },
+    {
+      "file": "artifacts/frontend-f12-06/final/states-F02-control-states--27708-behavior-and-reduced-motion-loopback/disabled-controls.png",
+      "bytes": 31472,
+      "sha256": "8bccd397f23dc873dc53d183fc25b3a2b08190b3c8b87856bbffc198b96352e8"
+    }
+  ],
+  "note": "Artifact provenance only; not all images or breakpoints manually visually accepted."
+}

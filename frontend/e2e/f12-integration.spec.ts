@@ -3,11 +3,13 @@ import { managementCapture } from '../fixtures/backend'
 test('F12 update deep link preserves control facts beside missing or malformed diagnostics without triggering work', async ({ page }) => {
   await page.route('**/console-api/session', route => route.fulfill({ json: managementCapture('session').response }))
   const detail = managementCapture('update_detail'), response = detail.response as any
+  response.data.failed_attempts = [{ source: managementCapture('source_test').request!.api_id, at: response.data.accepted_at, failure: 'request_timeout', response: { body: { invalid: true } } }] // Malformed nested protocol value, not a new business fixture.
   response.data.diagnostics_unavailable = true
   response.data.acquisition = { tables: null } // Diagnostic protocol failure must not erase actual queued task facts.
   await page.route('**' + detail.path, route => route.fulfill({ json: response }))
   const nodes = managementCapture('operation_nodes')
   await page.route('**/admin/v1/update-events/*/operations?*', route => route.fulfill({ json: nodes.response }))
+  const pageErrors: string[] = []; page.on('pageerror', error => pageErrors.push(error.message))
   const writes: string[] = []; page.on('request', request => { if (request.method() !== 'GET') writes.push(request.url()) })
   await page.goto('/console/updates/' + response.data.task_id)
   await expect(page.getByRole('region', { name: '更新事件事实' })).toContainText(response.data.task_id)
@@ -22,4 +24,5 @@ test('F12 update deep link preserves control facts beside missing or malformed d
   await page.getByText('实际任务响应', { exact: true }).click()
   await expect(raw).toHaveCount(0)
   expect(writes).toEqual([])
+  expect(pageErrors).toEqual([])
 })

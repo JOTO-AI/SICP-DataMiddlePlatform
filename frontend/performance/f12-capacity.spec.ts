@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { backendCatalog, managementCapture, paginationCapture } from '../fixtures/backend'
 import { recordedLogPage } from '../fixtures/logTests'
+test.beforeAll(async ({}, info) => { expect(info.config.workers, 'Capacity measurements require the registered single-worker environment').toBe(1) })
 const mib = 1024 * 1024
 async function setup(page: Page) {
   await page.route('**/admin/**', route => route.abort())

@@ -95,9 +95,14 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npm run build
+      - run: npm run check:fixtures && npm run check:visual-baseline && npm run check:theme
+      - run: npm run test:unit
+      - run: npm run build && npm run check:production
       - run: npx playwright install --with-deps chromium
-      - run: npm test
+      - run: npm test -- --fully-parallel --workers=2 --reporter=line,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ../artifacts/frontend-regression/report.json
+      - run: npm run test:capacity
       - name: Build console image
         run: docker build -t sicp-console:phase1 .
       - uses: actions/upload-artifact@v4
@@ -107,6 +112,9 @@ jobs:
           path: |
             frontend/test-results/
             frontend/dist/
+            artifacts/frontend-regression/
+            artifacts/frontend-capacity/
+            artifacts/frontend-f12-04/build-audit.json
   unit:
     runs-on: ubuntu-24.04
     outputs:

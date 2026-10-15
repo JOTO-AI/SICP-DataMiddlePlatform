@@ -1,0 +1,435 @@
+{
+  "createdAt": "2026-10-15T04:26:16.664Z",
+  "reviewedBase": "352cad782e01058d64c211dd0a43ee27c5bb7968",
+  "sourceTreeSha256": "36adca3ab4fdc84bc6f6b0936bce240d45ca6ec57a430194d4a043638bffd0a3",
+  "environment": {
+    "platform": "win32",
+    "node": "v24.15.0",
+    "browser": "155.0.8059.40",
+    "modes": [
+      "loopback",
+      "intranet-http"
+    ],
+    "backend": "recorded HTTP interception only; actual backend/gateway acceptance deferred by user"
+  },
+  "reports": [
+    {
+      "file": "artifacts/frontend-f12-06/final-report.json",
+      "sha256": "5dfc8939d9c8f0ffcf76b793766ca7b41d6abe3252834890e29de02fcde638ae",
+      "stats": {
+        "startTime": "2026-10-15T04:09:38.536Z",
+        "duration": 702007.166,
+        "expected": 363,
+        "skipped": 0,
+        "unexpected": 3,
+        "flaky": 0
+      }
+    },
+    {
+      "file": "artifacts/frontend-f12-06/recheck-report.json",
+      "sha256": "ac0d669e293a5e71375e480b8ca9396ff4426eb7bb9ac4618b218d2c149e09d1",
+      "stats": {
+        "startTime": "2026-10-15T04:24:43.156Z",
+        "duration": 15907.235,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "file": "artifacts/frontend-f12-06/capacity-report.json",
+      "sha256": "e6a70dfc8d885a2a31eda84809e27e6f5b812717f9c3e2107c4ac3c6c78e9997",
+      "stats": {
+        "startTime": "2026-10-15T04:22:03.172Z",
+        "duration": 27598.088,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    }
+  ],
+  "originalFailures": [
+    {
+      "key": "console.spec.ts/failed full update offers retry of incomplete tables and single-table repair/intranet-http",
+      "file": "console.spec.ts",
+      "title": "failed full update offers retry of incomplete tables and single-table repair",
+      "project": "intranet-http",
+      "status": "unexpected",
+      "results": [
+        {
+          "status": "timedOut",
+          "duration": 34772,
+          "errors": [
+            "\u001b[31mTearing down \"context\" exceeded the test timeout of 30000ms.\u001b[39m"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "f12-capacity.spec.ts/F12 capacity records 1000 log frames and release on navigation/loopback",
+      "file": "f12-capacity.spec.ts",
+      "title": "F12 capacity records 1000 log frames and release on navigation",
+      "project": "loopback",
+      "status": "unexpected",
+      "results": [
+        {
+          "status": "failed",
+          "duration": 10651,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m5000\u001b[39m\nReceived:   \u001b[31m6108\u001b[39m\n\n  73 |   const stream = page.getByRole('region', { name: '实时日志接收' })\n  74 |   await expect(stream).toContainText('已接收 1000 条新增事件')\n> 75 |   const receiveMs = Date.now() - start; expect(receiveMs).toBeLessThan(5000)\n     |                                                           ^\n  76 |   await expect(stream).toContainText('已展示 0 条 · 待展示 999 条 · 实时剩余预算 999 条')\n  77 |   start = Date.now(); await stream.getByRole('button', { name: '显示 999 条新日志', exact: true }).click()\n  78 |   await expect(stream.getByRole('listitem')).toHaveCount(499)\n    at D:\\JOTO_Projects\\LocalDataMiddlePlatform\\frontend\\e2e\\f12-capacity.spec.ts:75:59"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "f12-capacity.spec.ts/F12 capacity records 1000 log frames and release on navigation/intranet-http",
+      "file": "f12-capacity.spec.ts",
+      "title": "F12 capacity records 1000 log frames and release on navigation",
+      "project": "intranet-http",
+      "status": "unexpected",
+      "results": [
+        {
+          "status": "failed",
+          "duration": 9064,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m5000\u001b[39m\nReceived:   \u001b[31m5034\u001b[39m\n\n  73 |   const stream = page.getByRole('region', { name: '实时日志接收' })\n  74 |   await expect(stream).toContainText('已接收 1000 条新增事件')\n> 75 |   const receiveMs = Date.now() - start; expect(receiveMs).toBeLessThan(5000)\n     |                                                           ^\n  76 |   await expect(stream).toContainText('已展示 0 条 · 待展示 999 条 · 实时剩余预算 999 条')\n  77 |   start = Date.now(); await stream.getByRole('button', { name: '显示 999 条新日志', exact: true }).click()\n  78 |   await expect(stream.getByRole('listitem')).toHaveCount(499)\n    at D:\\JOTO_Projects\\LocalDataMiddlePlatform\\frontend\\e2e\\f12-capacity.spec.ts:75:59"
+          ]
+        }
+      ]
+    }
+  ],
+  "reconciliation": {
+    "functionalCases": 362,
+    "isolatedCapacityCases": 4,
+    "latestPassed": 366,
+    "unresolved": 0,
+    "note": "Original full run: 363/366 passed. Two capacity timings rerun with preregistered single worker, one browser context teardown timeout rerun without changing assertion or timeout. This is reconciled evidence, not a claim that the original full run was green."
+  },
+  "finalCapacityMeasurements": [
+    {
+      "timestamp": "2026-10-15T04:22:29.838Z",
+      "project": "intranet-http",
+      "node": "v24.15.0",
+      "platform": "win32",
+      "input": "Existing backend captures; only JSON whitespace and log identity capacity variants",
+      "sourceHead": "352cad782e01058d64c211dd0a43ee27c5bb7968",
+      "browser": "155.0.8059.40",
+      "receiveMs": 2356,
+      "renderMs": 558,
+      "baselineHeap": 1799120,
+      "peakHeap": 12465388,
+      "releasedHeap": 5521244,
+      "domElements": 179,
+      "streams": 1,
+      "frames": 1000
+    },
+    {
+      "timestamp": "2026-10-15T04:22:20.492Z",
+      "project": "loopback",
+      "node": "v24.15.0",
+      "platform": "win32",
+      "input": "Existing backend captures; only JSON whitespace and log identity capacity variants",
+      "sourceHead": "352cad782e01058d64c211dd0a43ee27c5bb7968",
+      "browser": "155.0.8059.40",
+      "receiveMs": 1486,
+      "renderMs": 498,
+      "baselineHeap": 1716984,
+      "peakHeap": 12527644,
+      "releasedHeap": 5574384,
+      "domElements": 179,
+      "streams": 1,
+      "frames": 1000
+    },
+    {
+      "timestamp": "2026-10-15T04:22:24.838Z",
+      "project": "intranet-http",
+      "node": "v24.15.0",
+      "platform": "win32",
+      "input": "Existing backend captures; only JSON whitespace and log identity capacity variants",
+      "sourceHead": "352cad782e01058d64c211dd0a43ee27c5bb7968",
+      "browser": "155.0.8059.40",
+      "firstLoadMs": 1106,
+      "queryMs": 307,
+      "expandMs": 62,
+      "nextPageMs": 77,
+      "baselineHeap": 4641932,
+      "peakHeap": 5376552,
+      "releasedHeap": 5410004,
+      "domElements": 45
+    },
+    {
+      "timestamp": "2026-10-15T04:22:16.062Z",
+      "project": "loopback",
+      "node": "v24.15.0",
+      "platform": "win32",
+      "input": "Existing backend captures; only JSON whitespace and log identity capacity variants",
+      "sourceHead": "352cad782e01058d64c211dd0a43ee27c5bb7968",
+      "browser": "155.0.8059.40",
+      "firstLoadMs": 3623,
+      "queryMs": 410,
+      "expandMs": 95,
+      "nextPageMs": 81,
+      "baselineHeap": 4650324,
+      "peakHeap": 5309560,
+      "releasedHeap": 4965292,
+      "domElements": 45
+    }
+  ],
+  "staticChecks": {
+    "unitTests": 112,
+    "fixtureProvenanceHashes": 150,
+    "visualBaselineImages": 28,
+    "themePairs": 20,
+    "productionBuildFiles": 55,
+    "productionJSBytes": 493377,
+    "ciYamlParsed": true
+  },
+  "testSources": [
+    {
+      "file": "frontend/e2e/ComponentHarness.vue",
+      "sha256": "25dc0787bc2a0119412665e1af76a079e304bb6e52b506ddcb066a22d5e5333b"
+    },
+    {
+      "file": "frontend/e2e/JsonHarness.vue",
+      "sha256": "46f2705c596908062f24f0fcbabe7a7a20c10b58974bc117eb78c5e6ab01ab95"
+    },
+    {
+      "file": "frontend/e2e/StatesHarness.vue",
+      "sha256": "541cc46b7da6256003907d0ef4297e395436c74263def215a043c4217bb76cab"
+    },
+    {
+      "file": "frontend/e2e/components.html",
+      "sha256": "64d0427e290ab1b94d1650a527ec0d1b5a2cc2146835603494604bac66343c79"
+    },
+    {
+      "file": "frontend/e2e/components.spec.ts",
+      "sha256": "898f3164ed8bf7a3d1c65661383b4c94ef549508d428e97e8da8c46ff12a4926"
+    },
+    {
+      "file": "frontend/e2e/components.ts",
+      "sha256": "0248da7636e6f0bc491ed3d51dd8fead5c892b734b7a8788eedb7133180f20f8"
+    },
+    {
+      "file": "frontend/e2e/console.spec.ts",
+      "sha256": "f37fa618877f8d88541b5d74616d033090efafc680f67392bd7fa003e2dc5fe4"
+    },
+    {
+      "file": "frontend/e2e/dialog.spec.ts",
+      "sha256": "bc7098ffe41cb6cece23d6b76794dbef4e1da25581354e645c2e8d6b04a24e5d"
+    },
+    {
+      "file": "frontend/e2e/f06-logs.spec.ts",
+      "sha256": "f5d658750504673020265643945c0d1912057c4adc4fedb81a2405981e3083cb"
+    },
+    {
+      "file": "frontend/e2e/f10-notifications.spec.ts",
+      "sha256": "7afa52f1983d62c0e7b656c3490daac38f810065147b948ec24c352b02cd9eb8"
+    },
+    {
+      "file": "frontend/e2e/f11-settings.spec.ts",
+      "sha256": "9449d0725f4f35810319c0188069bf80c44bd2c8ef1488da0fd2d4bcccf21bd6"
+    },
+    {
+      "file": "frontend/e2e/f12-integration.spec.ts",
+      "sha256": "d0c496993a24cd2614030cf08ead3c0d2f5e32d4e7549c7c7de4b424f9ae3547"
+    },
+    {
+      "file": "frontend/e2e/json.html",
+      "sha256": "82def751c4e3d5c304ad8b7014fbf939769d59020dc2e69674c43241c4bdea10"
+    },
+    {
+      "file": "frontend/e2e/json.spec.ts",
+      "sha256": "9b9e20828718ca4966da2e52b4df72f95c149eaf9cb625ba92c8ac458000decc"
+    },
+    {
+      "file": "frontend/e2e/json.ts",
+      "sha256": "3d40a652baaac5d16f893be9cc1872718009ea527cc46d9f8aea38e0b75bba57"
+    },
+    {
+      "file": "frontend/e2e/states.html",
+      "sha256": "7925170371e07f27c6346e9a8bc463da19f3d73b8547474233fb2397a8fc17a5"
+    },
+    {
+      "file": "frontend/e2e/states.spec.ts",
+      "sha256": "d645881042d16371a6bef8f0aace5c86964b2207f4d54566f5a4ee67745c9e9f"
+    },
+    {
+      "file": "frontend/e2e/states.ts",
+      "sha256": "4e98ea04348ebd57fa886a215f53ef54a0e7e569ab0cbb8c3ff441fbc9e1f413"
+    },
+    {
+      "file": "frontend/performance/f12-capacity.spec.ts",
+      "sha256": "16c1e7655b23f01a874fdf483e18b2c384718a3463599e951d7682af026e55de"
+    },
+    {
+      "file": "frontend/playwright.config.ts",
+      "sha256": "1aa77d40ee970c67c2125862de02ff26ce8dd07accc4683e636933ec43398734"
+    },
+    {
+      "file": "frontend/playwright.performance.config.ts",
+      "sha256": "a1e3d6d15c967b18ffa52ce182a018bdd26b59d441847586666bf3ea9deb9f81"
+    },
+    {
+      "file": "frontend/playwright.unit.config.ts",
+      "sha256": "2b51304e01d37a48d4cfadf43ada4a36d038931b30c3610cd93952fe6c2bfdd3"
+    },
+    {
+      "file": "frontend/unit/auth.spec.ts",
+      "sha256": "898173e7657a899cacda02477e09f168dcf8bd408eb440c3141f8d85132a134e"
+    },
+    {
+      "file": "frontend/unit/businessTest.spec.ts",
+      "sha256": "0016d6b24df26920b1a6db7a272888201bf8976aaddec2ee8984d58f761a8b7b"
+    },
+    {
+      "file": "frontend/unit/catalog.spec.ts",
+      "sha256": "b3c5ef1a9e65822c8b2f39a3beb4664f476a5a2a1128d97c9cedd379b0912da6"
+    },
+    {
+      "file": "frontend/unit/display.spec.ts",
+      "sha256": "de3010011a399664ba120861807d89726036423c810bce32ffcbe95e2ecd5468"
+    },
+    {
+      "file": "frontend/unit/fixtures.spec.ts",
+      "sha256": "6f54c65728bc4af4cbc01d80e4019672a0f30c411168073d49d4ef1278fbd109"
+    },
+    {
+      "file": "frontend/unit/grades.spec.ts",
+      "sha256": "f63aace109aece80deff8eea3f7848052280c648a73d3806376c1314657e7844"
+    },
+    {
+      "file": "frontend/unit/http.spec.ts",
+      "sha256": "1f58de0a00df556d35fb85c0cbe8b61a6a9c8536818c4a6943fba40de7f3f2bc"
+    },
+    {
+      "file": "frontend/unit/json.spec.ts",
+      "sha256": "583d590f0c866dd3109784bc50f7817a33c3a3937349de057ea489387298e9b2"
+    },
+    {
+      "file": "frontend/unit/logAttempts.spec.ts",
+      "sha256": "5fa5860f043e9df7d106323fcbb0d3321bc899a0248c6c7a5deead874367a5b1"
+    },
+    {
+      "file": "frontend/unit/logBuffer.spec.ts",
+      "sha256": "3ac23ed47b76fe4395973efa0bd13dfef889d809984577421271e7667e3ab194"
+    },
+    {
+      "file": "frontend/unit/logDetail.spec.ts",
+      "sha256": "1127ff895f65da5b187cf37899756585a6cd3fac4269e5ebbbfaacea7f2e66e1"
+    },
+    {
+      "file": "frontend/unit/logHistory.spec.ts",
+      "sha256": "f61413438d2d0ac03cfce3ee65e1a08b5926b5a68cd2ae20fb75fe3d9718ae7c"
+    },
+    {
+      "file": "frontend/unit/logLive.spec.ts",
+      "sha256": "a74e08f8cb80296b5f0f149bf62a1407f5628468feaa0ec39d23051bdbc3ce60"
+    },
+    {
+      "file": "frontend/unit/logSSE.spec.ts",
+      "sha256": "fabd7c6d39868943595c0929bdc24a41bc675a76ba9d2f0b3f62b8b19c1d5a44"
+    },
+    {
+      "file": "frontend/unit/logViews.spec.ts",
+      "sha256": "68e5e333e4732d531232a7cc44d143fe55f0d8520518ca235bec5a64c6b4b37a"
+    },
+    {
+      "file": "frontend/unit/notificationSettings.spec.ts",
+      "sha256": "65ee3d11edea97afa2b69912a92c6b7a699c9f4b9243fc333ef61c3c6d3399cd"
+    },
+    {
+      "file": "frontend/unit/notifications.spec.ts",
+      "sha256": "826216f4dc75f44a2236c9748e1743de04c8f0e16ebf7971bf752b6dcda655da"
+    },
+    {
+      "file": "frontend/unit/operations.spec.ts",
+      "sha256": "a075a8a01216f01cf80bea75a622ccda16b63b9a4c6e3f8cffe6a14cc03803b8"
+    },
+    {
+      "file": "frontend/unit/organizationCollection.spec.ts",
+      "sha256": "931193dba9890f06af9bd810390afb646e6b9713c21f2f04d323bb02c0ac564b"
+    },
+    {
+      "file": "frontend/unit/overview.spec.ts",
+      "sha256": "13083f23ba54a014f4be2718fa440c982ecec3fef5b471bd3d14bdd5877c5f5b"
+    },
+    {
+      "file": "frontend/unit/pending.spec.ts",
+      "sha256": "d64c02ace94d1b93a3cdcea60ea2aee0ca171812a441cc7feed37baaccbbe929"
+    },
+    {
+      "file": "frontend/unit/polling.spec.ts",
+      "sha256": "0bc01e16c9ec8a19ee0eedf583f5a5742e2328bd5292917083ddfade08ca0f87"
+    },
+    {
+      "file": "frontend/unit/progress.spec.ts",
+      "sha256": "ea6fc05ad92f7104593aca4963652eef5f6088968f79515cf41724de7fcc9b50"
+    },
+    {
+      "file": "frontend/unit/queryPagination.spec.ts",
+      "sha256": "363d15798b84d8e86c2f1a8818f612115f13d784a994f1b8996ed4904538684e"
+    },
+    {
+      "file": "frontend/unit/recentTests.spec.ts",
+      "sha256": "d4e2ab976784ec12722103b0ee9375b12b7832e36395a9a8f2a8a3b7196cf14a"
+    },
+    {
+      "file": "frontend/unit/requestScope.spec.ts",
+      "sha256": "b07d9ec3ca0fc07b72638292acacf4d3c4995b7a6cb0fda799b80f5de74eccb7"
+    },
+    {
+      "file": "frontend/unit/responseViews.spec.ts",
+      "sha256": "663aa34210cef86369e1952ea1693c5cbb16222c514658f98e8a63cc4705b53d"
+    },
+    {
+      "file": "frontend/unit/roster.spec.ts",
+      "sha256": "1cda8ff15f850fbafec2b7eb4933a6e583407462342ea56778151508ffd10ed8"
+    },
+    {
+      "file": "frontend/unit/sourceTest.spec.ts",
+      "sha256": "b940cd416eed4f344a432406fc65260df57e1bc240dc4ff5429368035352716e"
+    },
+    {
+      "file": "frontend/unit/sources.spec.ts",
+      "sha256": "840c3aeab2d10ea2954742bee62c259c64025f70dbfe4b2dfa6216177c34786f"
+    },
+    {
+      "file": "frontend/unit/systemStatus.spec.ts",
+      "sha256": "55c8f3fe1b62e3cf6136a53a5e834e5edc255b0e070b56202795eb24da6216f4"
+    },
+    {
+      "file": "frontend/unit/testOutcome.spec.ts",
+      "sha256": "086c41ca78bdca88fe27c83f26a2d06a65cb9241d91bac29c05e6cbea0154841"
+    },
+    {
+      "file": "frontend/unit/testRequest.spec.ts",
+      "sha256": "89e1a25d56f1b72eec782d2ee35c307e859e78d1faf5ba16f436e6d20dd41386"
+    },
+    {
+      "file": "frontend/unit/timestamp.spec.ts",
+      "sha256": "819094cbc7cbe1fdd1447fa6f7001a2f176e676e9b865e7ab2e11a481bfb88d4"
+    },
+    {
+      "file": "frontend/unit/timetable.spec.ts",
+      "sha256": "92954c3261864cbc334dc134e06145cb80b3e9ef2c0345959f528171b7d69e86"
+    },
+    {
+      "file": "frontend/unit/updateActions.spec.ts",
+      "sha256": "0c8ae640c9a1ce24bdd11b5a47a2f6256a7ee2fba582472ba784ad79e630b840"
+    },
+    {
+      "file": "frontend/unit/updateEvents.spec.ts",
+      "sha256": "14642159cd5bc95c1aa241f12c1cbaec6edec2141063b5f2617240fa918db0e8"
+    },
+    {
+      "file": "frontend/unit/updateMeaning.spec.ts",
+      "sha256": "b81392ea0c12ee8c8f3b155cda61accb8e9d6dc2c9e0859b3d18cb9820a95408"
+    },
+    {
+      "file": "frontend/unit/updateOperations.spec.ts",
+      "sha256": "05ca10613d9ac078ecfd999659d1a3cfbfae07deb37afdd707de8bd246d1b2ab"
+    }
+  ]
+}

@@ -12,6 +12,7 @@
     "check:production": "node scripts/check-production.mjs",
     "check:theme": "node scripts/check-theme.mjs",
     "check:fixtures": "node scripts/check-fixtures.mjs",
+    "test:capacity": "playwright test --config playwright.performance.config.ts",
     "test:unit": "playwright test --config playwright.unit.config.ts"
   },
   "dependencies": {

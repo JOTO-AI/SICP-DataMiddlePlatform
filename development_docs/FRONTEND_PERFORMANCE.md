@@ -16,3 +16,5 @@
 正常查询与翻页逐字使用 `fixtures/v1/pagination.json` 的 students.query 第 1/2 页；大 JSON 使用已有响应增加 JSON 合法空白至 256 KiB，不制造业务字段。容量日志复制既有脱敏事件，仅将 event_id/sequence/cursor 改为独立容量协议编号；不是新增业务样本，不能作为真实日志吞吐验收。
 
 测量与构建 JSON 报告写入 `artifacts/frontend-f12-04/`，登记环境、时间、输入来源、源码 SHA/工作区状态、构建文件 SHA-256；最终结果在执行记录追加。阈值失败先查原因，不能事后放宽阈值换取通过。
+
+F12-06 复核：将容量测试单独放入 `frontend/performance/`，通过 `npm run test:capacity` 使用单 worker 配置。并行功能回归不再重复执行容量阈值；第一次四 worker 混跑曾出现 6.1 秒接收延迟，原报告保留，不以该运行替代上述单 worker 基线，也未放宽阈值。浏览器关闭上下文超时单独复测，不改业务断言。
