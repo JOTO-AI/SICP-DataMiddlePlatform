@@ -263,6 +263,51 @@ test('failed task shows upstream evidence as text and can refresh delayed logs',
   await expect(page.getByText('失败原因：acquisition_failed', { exact: true })).toBeVisible()
 })
 
+test('unified diagnostics show unknown errors, missing responses and request context', async ({ page }, testInfo) => {
+  await setup(page)
+  const task = { task_id: 'unified-task', mode: 'incremental', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-10-15T02:00:00Z' }
+  const common = { at: task.accepted_at, source: 'dwd_bzksbjsjzlb', page: 7, attempt: 2, failure: 'unknown', task_id: 'task-log-id', call_id: 'call-log-id', attempt_id: 'attempt-log-id', path: '/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb', mode: 'incremental', page_size: 50, start_time: '2026-10-15 08:00:00', end_time: '2026-10-15 10:00:00' }
+  let phase = 0
+  const cases = [
+    [{ kind: 'data', method: 'GET', endpoint: 'https://synthetic.invalid/source', started_at: task.accepted_at, duration_ns: 90000000, sent: true, stage: 'transport', failure: 'new_transport', error: 'TLS handshake failed <img src=x onerror="window.injected=true">', error_type: '*tls.CertificateVerificationError' }],
+    [{ kind: 'data', method: 'GET', endpoint: 'https://synthetic.invalid/source', sent: true, http_status: 200, business_code: '98765', stage: 'business', error: 'new provider failure', response: { body: 'novel error', truncated: true, read_error: true } }],
+    [{ kind: 'data', method: 'GET', endpoint: 'https://synthetic.invalid/source', sent: true, http_status: 401, response: { body: 'data token rejected' } }, { kind: 'authentication', method: 'GET', endpoint: 'https://synthetic.invalid/apizt/opentoken/oauth/token', sent: true, http_status: 502, stage: 'http', response: { body: '内部错误，请联系管理员', request_id: 'auth-request-id' } }],
+    [{ kind: 'data', method: 'GET', endpoint: '/source', sent: false, stage: 'schedule', error: 'request budget exhausted' }],
+    [{ kind: 'data', method: 'GET', endpoint: '/source', sent: true, http_status: 503, stage: 'http', response: { unavailable: 'empty' } }],
+  ]
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, items: [task] } } }))
+  await page.route('**/admin/v1/tasks/unified-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, failed_attempts: [{ ...common, diagnostics: cases[phase] }] } } }))
+  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await page.getByRole('button', { name: /unified-task/ }).click()
+  const evidence = page.getByRole('region', { name: '采集失败记录' })
+  await expect(evidence).toContainText('未收到 HTTP 响应')
+  await expect(evidence).toContainText('TLS handshake failed')
+  await expect(evidence).toContainText('https://synthetic.invalid/source')
+  await expect(evidence.locator('img')).toHaveCount(0)
+  await evidence.getByText('请求关联与采集参数', { exact: true }).click()
+  await expect(evidence.getByText('call-log-id', { exact: true })).toBeVisible()
+  await expect(evidence).toContainText('2026-10-15 08:00:00 ～ 2026-10-15 10:00:00')
+  phase = 1
+  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await expect(evidence).toContainText('数据接口 HTTP 状态200')
+  await expect(evidence).toContainText('业务码98765')
+  await expect(evidence).toContainText('响应正文未完整读取')
+  phase = 2
+  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await expect(evidence).toContainText('获取上游 Token 失败 · HTTP 502')
+  await expect(evidence.getByRole('region', { name: '认证错误摘要' })).toContainText('auth-request-id')
+  await expect(evidence.getByRole('region', { name: '数据接口错误摘要' })).toContainText('data token rejected')
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+  await page.screenshot({ path: testInfo.outputPath('unified-diagnostics-mobile.png'), fullPage: true })
+  phase = 3
+  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await expect(evidence).toContainText('未发起 HTTP 请求')
+  phase = 4
+  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await expect(evidence).toContainText('上游返回了 HTTP 状态，但响应正文为空')
+})
+
 test('authentication failure shows token endpoint and redacted response separately from data page', async ({ page }, testInfo) => {
   await setup(page)
   const task = { task_id: 'auth-diagnostic-task', mode: 'incremental', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-10-14T10:12:32Z' }
@@ -281,13 +326,13 @@ test('authentication failure shows token endpoint and redacted response separate
   await expect(evidence).toContainText('数据接口错误摘要')
   await expect(evidence).toContainText('auth-trace')
   await expect(evidence.locator('img')).toHaveCount(0)
-  await expect(auth).toContainText('认证响应正文未完整读取')
+  await expect(auth).toContainText('响应正文未完整读取')
   await page.setViewportSize({ width: 390, height: 844 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
   await page.screenshot({ path: testInfo.outputPath('authentication-error-mobile.png'), fullPage: true })
   legacy = true
   await page.getByRole('button', { name: '刷新详情', exact: true }).click()
-  await expect(auth).toContainText('本条记录未保存认证错误正文')
+  await expect(auth).toContainText('本条记录未保存可展示的错误正文')
 })
 
 test('table page progress auto-opens, refreshes and preserves the last counts on failure', async ({ page }, testInfo) => {

@@ -80,16 +80,17 @@ func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch
 	defer func() {
 		outcome := events.Succeeded
 		if finalErr != nil {
+			finalErr = ensureEvidence(input, finalErr)
 			outcome = events.Failed
 		}
 		failureKind := ""
-		var authentication *diagnostic.Authentication
+		var requests []diagnostic.Request
 		var failure *Failure
 		if errors.As(finalErr, &failure) {
 			failureKind = string(failure.Kind)
-			authentication = failure.Attempt.Authentication
+			requests = failure.Attempt.Diagnostics
 		}
-		if err := call.FinishSource(ctx, outcome, nil, nil, failureKind, nil, authentication); err != nil {
+		if err := call.FinishDiagnostics(ctx, outcome, nil, nil, failureKind, requests); err != nil {
 			result.ObservationError = err
 		}
 		if result.FinalFailure != nil {
@@ -125,6 +126,9 @@ func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch
 			return result, &Failure{Kind: ObservationFailure}
 		}
 		page, err := fetch(attemptCtx, input)
+		if err != nil {
+			err = ensureEvidence(input, err)
+		}
 		meta, outcome := page.Attempt, events.Succeeded
 		var observedFailure *Failure
 		if err != nil {
@@ -137,7 +141,7 @@ func fetchPage(ctx context.Context, input PageRequest, policy RetryPolicy, fetch
 		if observedFailure != nil {
 			failureKind = string(observedFailure.Kind)
 		}
-		if recordErr := span.FinishSource(ctx, outcome, meta.HTTPStatus, meta.BusinessCode, failureKind, meta.Response, meta.Authentication); recordErr != nil {
+		if recordErr := span.FinishDiagnostics(ctx, outcome, meta.HTTPStatus, meta.BusinessCode, failureKind, meta.Diagnostics); recordErr != nil {
 			result.ObservationError = recordErr
 		}
 		if err == nil {

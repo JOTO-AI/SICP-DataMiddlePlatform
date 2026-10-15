@@ -18,7 +18,23 @@ X-SICP-Request: console
 
 管理 JSON 外壳固定 `code/message/data`；失败 `data:null`，成功集合为空时 `items:[]`。请求标识取 `X-Request-ID`；不要把日志中已脱敏的关联 ID 当原始控制 task ID。时间为 RFC3339，日志输入最多微秒、带时区，输出 UTC；未知时间为 `null`。日志 sequence/high_water/floor、revision 和标注为 string 的计数字段用十进制字符串，不能转 JS Number 后再回传。
 
-上游 Token 获取失败的 call/attempt 结束日志保留 `metadata.failure="authentication"`，并通过 `metadata.authentication` 显示安全诊断，例如 `{"endpoint":"/apizt/opentoken/oauth/token","reason":"http","http_status":502,"response":{"body":"内部错误，请联系管理员","content_type":"text/html"}}`。任务失败尝试列表的 `authentication` 字段提供相同信息。认证状态与数据页的 `http_status` 分开：首次取 Token 失败时没有数据页 HTTP 状态；数据页 401 后刷新 Token 返回 502 时，两者分别保留，前端分别展示认证和数据接口的错误摘要。reason 区分 HTTP、网络、超时、响应结构、业务拒绝及无效 Token 等原因。认证 HTTP 错误或业务拒绝使用与数据接口一致的脱敏摘要规则：JSON 仅保留错误字段，HTML 按纯文本展示，正文最多 2 KiB，提供请求标识、截断与读取不完整标记；不保存认证请求参数、凭据、Token、原始正文或成功认证响应。未收到 HTTP 响应时省略认证 `http_status`。旧版本漏写的结束日志及错误摘要无法补造。部署此修复时应同步更新 worker、所有 query 副本及 console，保证读写端和页面都识别新诊断字段。
+上游失败的 call/attempt 结束日志、任务失败尝试列表和日志详情统一提供 `diagnostics[]`。认证和数据接口共用同一记录格式；数据页 401 后刷新 Token 返回 502 时，数组按发生顺序保留两条失败请求，不覆盖彼此。成功请求不写错误正文；其后预算或冷却检查失败仍保留真实请求状态。每条记录包含：
+
+| 字段 | 含义 |
+|---|---|
+| `kind`、`method`、`endpoint` | 认证或数据请求、HTTP 方法、去掉查询参数的接口地址 |
+| `started_at`、`duration_ns` | 请求开始时间及耗时；外层 `at` 是尝试结束事件时间 |
+| `sent`、`http_status` | 是否调用 HTTP 客户端、实际收到的状态；未收到响应时省略状态，不编造 0/500 |
+| `business_code` | 上游业务码，以字符串表示，独立于 HTTP 状态 |
+| `stage`、`failure`、`error`、`error_type` | 失败阶段、分类、脱敏后的底层异常或校验原因、异常类型 |
+| `response` | 安全正文摘要、上游请求标识、内容类型、`truncated` 和 `read_error` |
+| `response.unavailable` | `empty` 空正文、`invalid_json` 无法完整解析、`filtered` 无可展示内容、`success_payload_omitted` 省略成功或认证数据 |
+
+任务失败尝试同时提供受影响的 `source`、目标数据接口 `path`、`page`、`page_size`、`attempt`、`mode`、增量窗口 `start_time/end_time`，以及 `task_id/call_id/attempt_id/event_id` 日志关联 ID。这里的任务日志关联 ID 使用现有 HMAC，与任务接口的原始任务 ID 不同，可直接匹配日志查询。前端展开“请求关联与采集参数”查看。
+
+分类不再决定诊断是否可写入：新的分类在 `metadata.failure` 归为 `unknown`，原始有界分类和错误保留在 `diagnostics`。JSON 摘要按字段递归过滤凭据、业务数据及个人标识，不要求枚举错误码或错误消息；无法安全解析的正文会明确标记，不能当作没有错误。HTML 仅按文本显示。单条正文最多 2 KiB；组合内容超过事件容量时进一步截断正文并标记，保留接口和状态。网络错误去除凭据 URL 并脱敏。不保存查询参数、Token、成功认证正文或原始业务记录。
+
+旧事件的 `response` / `metadata.authentication` 仍可读取；任务 API 保留旧字段投影以兼容已有客户端。历史未记录的信息不会补造。需同步更新 worker、全部 query 副本及 console（先更新读端再恢复新 worker 写入）。旧版本日志读取器不认识 `diagnostics`，写入新事件后不能单独回滚读取端。
 
 | HTTP / code | 接入处理 |
 |---|---|

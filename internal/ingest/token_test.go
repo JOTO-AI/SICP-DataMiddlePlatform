@@ -324,6 +324,7 @@ func TestTokenErrorSummariesAreBoundedAndExcludeSuccessData(t *testing.T) {
 		{"business", `{"code":403,"message":"app rejected test-secret-@:/?#%$","data":{"access_token":"private-issued-token"}}`, "app rejected", 200, false},
 		{"oversize", strings.Repeat("gateway unavailable ", 2000), "gateway unavailable", 502, true},
 		{"invalid_success", `{"code":200,"message":"private-issued-token","data":{"access_token":""}}`, "", 200, false},
+		{"html_success_status", "<h1>authentication service maintenance</h1>", "", 200, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c := authenticatedTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -336,6 +337,15 @@ func TestTokenErrorSummariesAreBoundedAndExcludeSuccessData(t *testing.T) {
 				t.Fatal("missing failure", err)
 			}
 			r := f.Attempt.Authentication.Response
+			if len(f.Attempt.Diagnostics) != 1 {
+				t.Fatal("missing unified authentication evidence")
+			}
+			if tc.name == "html_success_status" && !strings.Contains(f.Attempt.Diagnostics[0].Response.Body, "authentication service maintenance") {
+				t.Fatal("HTTP 200 error page discarded")
+			}
+			if tc.name == "invalid_success" && (f.Attempt.Diagnostics[0].Response.Body != "" || f.Attempt.Diagnostics[0].Response.Unavailable != "success_payload_omitted") {
+				t.Fatal("success token payload escaped into diagnostic")
+			}
 			if !r.Valid() || r.Truncated != tc.truncated || tc.summary != "" && !strings.Contains(r.Body, tc.summary) || tc.summary == "" && r.Body != "" {
 				t.Fatal("incorrect safe authentication summary")
 			}

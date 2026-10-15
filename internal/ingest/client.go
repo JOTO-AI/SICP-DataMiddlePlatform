@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/diagnostic"
@@ -32,6 +33,9 @@ type PageRequest struct {
 }
 
 type Attempt struct {
+	// Completed retains safe request facts if a later budget/cooldown check fails.
+	Completed      *diagnostic.Request
+	Diagnostics    []diagnostic.Request
 	Authentication *diagnostic.Authentication
 	Sent           bool
 	HTTPStatus     *int
@@ -137,7 +141,24 @@ func (c *Client) staticToken() string {
 	return c.token
 }
 
-func (c *Client) fetch(ctx context.Context, input PageRequest, token string) (Page, error) {
+func (c *Client) fetch(ctx context.Context, input PageRequest, token string) (page Page, finalErr error) {
+	evidence := c.evidence("data", definitions[input.Table].Path, token)
+	defer func() {
+		var f *Failure
+		if errors.As(finalErr, &f) {
+			evidence.finish(ctx, f)
+		} else if finalErr == nil {
+			r := evidence.request
+			r.DurationNS = max(0, time.Since(r.StartedAt).Nanoseconds())
+			r.Response = *diagnostic.Capture(evidence.header, nil, false, evidence.secrets...)
+			r.Response.Unavailable = "success_payload_omitted"
+			if page.Attempt.BusinessCode != nil {
+				r.BusinessCode = strconv.FormatInt(*page.Attempt.BusinessCode, 10)
+			}
+			r = r.Sanitize(evidence.secrets...)
+			page.Attempt.Completed = &r
+		}
+	}()
 	a := Attempt{}
 	retryAfter := ""
 	fail := func(kind FailureKind, cause error) (Page, error) {
@@ -173,7 +194,7 @@ func (c *Client) fetch(ctx context.Context, input PageRequest, token string) (Pa
 		return fail(CancelledFailure, err)
 	}
 	a.Sent = true
-	resp, err := c.http.Do(req)
+	resp, err := evidence.send(req)
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
 	}
@@ -193,15 +214,17 @@ func (c *Client) fetch(ctx context.Context, input PageRequest, token string) (Pa
 		var body []byte
 		var readErr error
 		if resp.Body != nil {
-			body, readErr = io.ReadAll(io.LimitReader(resp.Body, diagnostic.CaptureBytes+1))
+			body, readErr = evidence.read(resp.Body, diagnostic.CaptureBytes)
 		}
 		a.Response = c.errorResponse(resp.Header, body, readErr != nil, token)
+		evidence.request.Stage = "http"
 		return fail(HTTPFailure, nil)
 	}
 	if resp.Body == nil {
+		evidence.message = "response body is absent"
 		return fail(StructureFailure, nil)
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, c.maxBytes+1))
+	body, err := evidence.read(resp.Body, c.maxBytes)
 	if ctx.Err() != nil {
 		return fail(CancelledFailure, ctx.Err())
 	}
@@ -209,45 +232,57 @@ func (c *Client) fetch(ctx context.Context, input PageRequest, token string) (Pa
 		return Page{}, &Failure{Kind: TransportFailure, Attempt: a, retryable: temporaryTransport(err), retryAfter: retryAfter}
 	}
 	if int64(len(body)) > c.maxBytes {
+		evidence.message = "response exceeds configured byte limit"
 		return fail(ResponseLimit, nil)
 	}
+	evidence.request.Stage = "decode"
 	envelope, err := objectFields(body)
 	if err != nil {
+		evidence.err = err
 		a.Response = c.errorResponse(resp.Header, body, false, token)
 		return fail(StructureFailure, nil)
 	}
+	evidence.request.Stage = "validate"
 	code, valid := integer(envelope["code"])
 	if !valid {
+		evidence.message = "response.code must be an integer"
 		a.Response = c.errorResponse(resp.Header, body, false, token)
 		return fail(BusinessFailure, nil)
 	}
 	a.BusinessCode = &code
 	if code != 200 {
+		evidence.request.Stage = "business"
 		a.Response = c.errorResponse(resp.Header, body, false, token)
 		return fail(BusinessFailure, nil)
 	}
 	// Source message is validated but never propagated to errors or telemetry.
 	message := bytes.TrimSpace(envelope["message"])
 	if len(message) == 0 || message[0] != '"' {
+		evidence.message = "response.message must be a string"
 		return fail(StructureFailure, nil)
 	}
 	data, err := objectFields(envelope["data"])
 	if err != nil {
+		evidence.message = "response.data must be an object with unique keys"
 		return fail(StructureFailure, nil)
 	}
 	total, valid := integer(data["total"])
 	if !valid || total < 0 {
+		evidence.message = "response.data.total must be a non-negative integer"
 		return fail(StructureFailure, nil)
 	}
 	list := bytes.TrimSpace(data["list"])
 	if len(list) == 0 || list[0] != '[' {
+		evidence.message = "response.data.list must be an array"
 		return fail(StructureFailure, nil)
 	}
 	var rawRows []json.RawMessage
 	if err := json.Unmarshal(list, &rawRows); err != nil {
+		evidence.err = err
 		return fail(StructureFailure, nil)
 	}
 	if int64(len(rawRows)) > total || len(rawRows) > input.PageSize {
+		evidence.message = "response row count exceeds total or requested page size"
 		return fail(StructureFailure, nil)
 	}
 	rows := make([]Record, 0, len(rawRows))

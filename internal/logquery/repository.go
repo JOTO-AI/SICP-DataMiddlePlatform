@@ -319,7 +319,7 @@ func project(source Source, epoch string, r Record) Detail {
 	e.OccurredAt = e.OccurredAt.UTC().Truncate(time.Microsecond)
 	r.ReceivedAt = r.ReceivedAt.UTC().Truncate(time.Microsecond)
 	i := e.Identity
-	out := Detail{EventItem: EventItem{Source: source, Epoch: epoch, EventID: e.ID, Sequence: r.Sequence, Kind: e.Kind, Phase: e.Phase, OccurredAt: &e.OccurredAt, ReceivedAt: &r.ReceivedAt, Outcome: ptr(e.Outcome), Operation: ptr(e.Metadata.Operation), RequestID: ptr(i.RequestID), TaskID: ptr(i.TaskID), StepID: ptr(i.StepID), CallID: ptr(i.CallID), AttemptID: ptr(i.AttemptID), AttemptNo: ptr(i.AttemptNo), HTTPStatus: e.HTTPStatus, BusinessCode: e.BusinessCode, DurationNS: e.DurationNS}, EntityID: e.EntityID, Metadata: e.Metadata, Response: e.Response}
+	out := Detail{EventItem: EventItem{Source: source, Epoch: epoch, EventID: e.ID, Sequence: r.Sequence, Kind: e.Kind, Phase: e.Phase, OccurredAt: &e.OccurredAt, ReceivedAt: &r.ReceivedAt, Outcome: ptr(e.Outcome), Operation: ptr(e.Metadata.Operation), RequestID: ptr(i.RequestID), TaskID: ptr(i.TaskID), StepID: ptr(i.StepID), CallID: ptr(i.CallID), AttemptID: ptr(i.AttemptID), AttemptNo: ptr(i.AttemptNo), HTTPStatus: e.HTTPStatus, BusinessCode: e.BusinessCode, DurationNS: e.DurationNS}, EntityID: e.EntityID, Metadata: e.Metadata, Response: e.Response, Diagnostics: e.Diagnostics}
 	if i.Purpose != "" {
 		out.Test = &TestIdentity{Purpose: Purpose(i.Purpose), TestRunID: i.TestRunID}
 	}

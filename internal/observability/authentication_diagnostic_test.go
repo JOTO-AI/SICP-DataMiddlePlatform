@@ -101,7 +101,8 @@ func TestAuthenticationFailureSurvivesPersistenceAndTaskLookup(t *testing.T) {
 				}
 				if saved.Event.Phase == events.Finished {
 					ends++
-					if saved.Event.Metadata.Authentication == nil || *saved.Event.Metadata.Authentication != want {
+					requests := saved.Event.Diagnostics
+					if len(requests) == 0 || requests[len(requests)-1].Kind != "authentication" || requests[len(requests)-1].HTTPStatus != 502 || requests[len(requests)-1].Response != want.Response {
 						t.Fatal("call/attempt detail lost auth evidence")
 					}
 				}
@@ -145,7 +146,7 @@ func TestAuthenticationRequestDeadlineStillRecordsBothEnds(t *testing.T) {
 		t.Fatalf("deadline evidence lost: %v observation=%v events=%d", err, result.ObservationError, len(saved))
 	}
 	for _, e := range saved[2:] {
-		if e.Phase != events.Finished || e.Metadata.Failure != "request_timeout" || e.Metadata.Authentication == nil || e.Metadata.Authentication.Reason != "timeout" || e.Metadata.Authentication.HTTPStatus != 0 || e.HTTPStatus != nil {
+		if e.Phase != events.Finished || e.Metadata.Failure != "request_timeout" || len(e.Diagnostics) != 1 || e.Diagnostics[0].Kind != "authentication" || e.Diagnostics[0].Failure != "timeout" || e.Diagnostics[0].HTTPStatus != 0 || e.HTTPStatus != nil {
 			t.Fatal("request timeout lost token endpoint context or invented a response")
 		}
 	}

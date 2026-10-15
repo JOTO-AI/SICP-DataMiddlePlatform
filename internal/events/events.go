@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"math"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -49,6 +50,7 @@ type Identity struct {
 	TestRunID string  `json:"test_run_id,omitempty"`
 }
 type Event struct {
+	Diagnostics  []diagnostic.Request `json:"diagnostics,omitempty"`
 	ID           string               `json:"event_id"`
 	EntityID     string               `json:"entity_id"`
 	Kind         Kind                 `json:"kind"`
@@ -123,6 +125,17 @@ func (i Identity) valid() bool {
 	return validID(i.RequestID) && validID(i.TaskID) && validID(i.StepID) && validID(i.CallID) && validID(i.AttemptID) && (i.Instance == "" || i.Instance == "M" || i.Instance == "S") && i.AttemptNo >= 0 && i.validPurpose()
 }
 func (e Event) Validate() error {
+	if len(e.Diagnostics) > 2 {
+		return ErrEvent
+	}
+	if len(e.Diagnostics) > 0 && (e.Phase != Finished || e.Outcome != Failed || (e.Kind != Attempt && e.Kind != Call)) {
+		return ErrEvent
+	}
+	for _, request := range e.Diagnostics {
+		if !request.Valid() {
+			return ErrEvent
+		}
+	}
 	if e.Metadata.Authentication != nil && (e.Phase != Finished || e.Outcome != Failed || (e.Kind != Attempt && e.Kind != Call)) {
 		return ErrEvent
 	}
@@ -284,21 +297,27 @@ func (s *Span) FinishedAt() (time.Time, bool) {
 
 // Finish records business completion; Transport records client delivery separately.
 func (s *Span) Finish(ctx context.Context, outcome Outcome, status *int, code *int64) error {
-	return s.end(ctx, Finished, outcome, status, code, "", nil, nil)
+	return s.end(ctx, Finished, outcome, status, code, "", nil, nil, nil)
 }
 func (s *Span) FinishFailure(ctx context.Context, outcome Outcome, status *int, code *int64, failure string) error {
-	return s.end(ctx, Finished, outcome, status, code, failure, nil, nil)
+	return s.end(ctx, Finished, outcome, status, code, failure, nil, nil, nil)
 }
 func (s *Span) FinishResponse(ctx context.Context, outcome Outcome, status *int, code *int64, failure string, response *diagnostic.Response) error {
-	return s.end(ctx, Finished, outcome, status, code, failure, response, nil)
+	return s.end(ctx, Finished, outcome, status, code, failure, response, nil, nil)
 }
 func (s *Span) FinishSource(ctx context.Context, outcome Outcome, status *int, code *int64, failure string, response *diagnostic.Response, authentication *diagnostic.Authentication) error {
-	return s.end(ctx, Finished, outcome, status, code, failure, response, authentication)
+	return s.end(ctx, Finished, outcome, status, code, failure, response, authentication, nil)
 }
 func (s *Span) Transport(ctx context.Context, outcome Outcome, status *int) error {
-	return s.end(ctx, Transport, outcome, status, nil, "", nil, nil)
+	return s.end(ctx, Transport, outcome, status, nil, "", nil, nil, nil)
 }
-func (s *Span) end(ctx context.Context, phase Phase, outcome Outcome, status *int, code *int64, failure string, response *diagnostic.Response, authentication *diagnostic.Authentication) error {
+
+// FinishDiagnostics stores one canonical evidence list; legacy fields are not
+// duplicated into the durable payload.
+func (s *Span) FinishDiagnostics(ctx context.Context, outcome Outcome, status *int, code *int64, failure string, requests []diagnostic.Request) error {
+	return s.end(ctx, Finished, outcome, status, code, NormalizeFailure(failure), nil, nil, requests)
+}
+func (s *Span) end(ctx context.Context, phase Phase, outcome Outcome, status *int, code *int64, failure string, response *diagnostic.Response, authentication *diagnostic.Authentication, requests []diagnostic.Request) error {
 	if s == nil {
 		return nil
 	}
@@ -314,7 +333,7 @@ func (s *Span) end(ctx context.Context, phase Phase, outcome Outcome, status *in
 	var e Event
 	if *pending != nil {
 		old := **pending
-		if old.Outcome != outcome || old.Metadata.Failure != failure || !sameValue(old.HTTPStatus, status) || !sameValue(old.BusinessCode, code) || !sameValue(old.Response, response) || !sameValue(old.Metadata.Authentication, authentication) {
+		if !slices.Equal(old.Diagnostics, requests) || old.Outcome != outcome || old.Metadata.Failure != failure || !sameValue(old.HTTPStatus, status) || !sameValue(old.BusinessCode, code) || !sameValue(old.Response, response) || !sameValue(old.Metadata.Authentication, authentication) {
 			return ErrEvent
 		}
 		e = old
@@ -330,6 +349,7 @@ func (s *Span) end(ctx context.Context, phase Phase, outcome Outcome, status *in
 		e.OccurredAt = now.UTC()
 		e.Outcome = outcome
 		e.Metadata.Failure = failure
+		e.Diagnostics = slices.Clone(requests)
 		if authentication != nil {
 			copy := *authentication
 			e.Metadata.Authentication = &copy
