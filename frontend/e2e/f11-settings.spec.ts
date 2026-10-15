@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { managementCapture } from '../fixtures/backend'
+test.beforeEach(async ({ page }) => { await page.route('**/admin/v1/settings/retention', route => route.fulfill({ json: managementCapture('retention').response })) })
 test('F11 system selected backend fields retain unavailable and unknown instead of zero or healthy', async ({ page }, info) => {
   await page.route('**/console-api/session', route => route.fulfill({ json: managementCapture('session').response }))
   await page.route('**/admin/v1/system/status', route => route.fulfill({ json: managementCapture('system').response }))
@@ -36,4 +37,31 @@ test('F11 runtime settings link to supported pages while deployment secrets have
   await expect(config).toContainText('SMTP 可达性未知')
   await expect(config.locator('input,textarea,select')).toHaveCount(0)
   await expect(page.locator('body')).not.toContainText('DO-NOT-RENDER-secret')
+})
+test('F11 retention validates days, preserves old confirmed values on conflict and saves captured payload without cleanup', async ({ page }) => {
+  await page.route('**/console-api/session', route => route.fulfill({ json: managementCapture('session').response }))
+  await page.route('**/admin/v1/system/status', route => route.fulfill({ json: managementCapture('system').response }))
+  let writes = 0, cleanups = 0
+  await page.route('**/admin/v1/maintenance/**', route => { cleanups++; return route.abort() })
+  await page.route('**/admin/v1/settings/retention', route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: managementCapture('retention').response })
+    writes++
+    if (writes === 1) return route.fulfill({ status: 409, json: { code: 'revision_conflict' } })
+    expect(route.request().postDataJSON()).toEqual(managementCapture('save_retention').request)
+    return route.fulfill({ json: managementCapture('save_retention').response })
+  })
+  await page.goto('/console/settings/retention')
+  const panel = page.getByRole('region', { name: '日志保留期', exact: true }), input = panel.getByLabel('平台日志保留天数')
+  await input.fill('3651'); await panel.getByRole('button', { name: '保存保留期' }).click()
+  await expect(panel.getByRole('alert')).toContainText('1 至 3650'); expect(writes).toBe(0)
+  await input.fill('1'); await panel.getByRole('button', { name: '保存保留期' }).click()
+  await expect(panel).toContainText('上次确认配置：版本 1 · 平台 30 天')
+  await expect(input).toHaveValue('1')
+  await expect(panel.getByRole('button', { name: '保存保留期' })).toBeDisabled()
+  await panel.getByRole('button', { name: '读取保留期' }).click()
+  await panel.getByRole('button', { name: '保留编辑，使用最新版本' }).click()
+  await expect(input).toHaveValue('1')
+  await input.fill('30'); await panel.getByRole('button', { name: '保存保留期' }).click()
+  await expect(panel).toContainText('上次确认配置：版本 2')
+  expect(writes).toBe(2); expect(cleanups).toBe(0)
 })

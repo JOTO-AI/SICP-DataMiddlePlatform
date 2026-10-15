@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
   const nodes = managementCapture('operation_nodes')
   await page.route('**/admin/v1/update-events/*/operations?*', route => route.fulfill({ status: nodes.status, json: nodes.response }))
   await page.route('**/admin/v1/logs/**', route => route.abort())
-  for (const name of ['decisions', 'deliveries', 'notification_settings', 'system']) { const f = managementCapture(name); await page.route(`**${f.path}{,?*}`, route => route.fulfill({ json: f.response })) }
+  for (const name of ['decisions', 'deliveries', 'notification_settings', 'system', 'retention']) { const f = managementCapture(name); await page.route(`**${f.path}{,?*}`, route => route.fulfill({ json: f.response })) }
   const items = backendCatalog() as { id: string; version: string }[]
   await page.route('**/admin/v1/apis', route => route.fulfill({ json: { code: 'ok', message: '', data: { version: items[0]!.version, items } } }))
   await page.route('**/admin/v1/apis/*', route => {
@@ -1164,7 +1164,7 @@ test('F03 primary navigation has seven modules with no fabricated module results
   for (const title of titles.slice(4)) {
     await nav.getByRole('link', { name: title, exact: true }).click()
     await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
-    if (title === '系统设置') await expect(page.getByRole('alert')).toHaveCount(1)
+    if (title === '系统设置') await expect(page.getByRole('alert')).toHaveCount(2)
     else if (title === '日志中心') await expect(page.getByText('尚未查询持久日志', { exact: true })).toBeVisible()
     else await expect(page.getByRole('alert')).toHaveCount(3)
     await expect(page.getByRole('table')).toHaveCount(0)
