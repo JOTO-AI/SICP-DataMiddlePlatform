@@ -87,3 +87,60 @@ test('F10 mail form validates recorded recipient edits and saves exact string re
   expect(writes).toHaveLength(1); expect(writes[0]!.method).toBe('PUT'); expect(writes[0]!.body).toEqual(saved.request)
   expect(mailCalls).toBe(0)
 })
+test('F10 settings conflict preserves local edits and compares actual server settings before an explicit choice', async ({ page }) => {
+  await setup(page)
+  let reads = 0, writes = 0
+  await page.route('**/admin/v1/settings/notifications', route => {
+    if (route.request().method() === 'PUT') { writes++; return route.fulfill({ status: 409, json: { code: 'revision_conflict' } }) }
+    reads++
+    const response = managementCapture('notification_settings').response as any
+    if (reads > 1) response.data.settings = managementCapture('save_notifications').response.data
+    return route.fulfill({ json: response })
+  })
+  await page.goto('/console/notifications')
+  const settings = page.getByRole('region', { name: '邮件通知设置', exact: true })
+  await settings.getByLabel('源结构变化', { exact: true }).uncheck()
+  await settings.getByRole('button', { name: '保存邮件配置', exact: true }).click()
+  await expect(settings).toContainText('本地编辑仍保留')
+  await expect(settings.getByLabel('源结构变化', { exact: true })).not.toBeChecked()
+  await expect(settings.getByRole('button', { name: '保存邮件配置', exact: true })).toBeDisabled()
+  await settings.getByRole('button', { name: '读取邮件配置', exact: true }).click()
+  await expect(settings).toContainText('版本 2')
+  await expect(settings).toContainText('源结构变化：开启')
+  await expect(settings.getByLabel('源结构变化', { exact: true })).not.toBeChecked()
+  await settings.getByRole('button', { name: '使用此版本，保留本地编辑', exact: true }).click()
+  await expect(settings).toContainText('配置版本 2')
+  await expect(settings.getByLabel('源结构变化', { exact: true })).not.toBeChecked()
+  expect(writes).toBe(1)
+  await settings.getByRole('button', { name: '读取邮件配置', exact: true }).click()
+  await settings.getByRole('button', { name: '采用服务端配置，放弃本地编辑', exact: true }).click()
+  await expect(settings.getByRole('alert')).toHaveCount(0)
+  await expect(settings.getByLabel('源结构变化', { exact: true })).toBeChecked()
+  expect(writes).toBe(1)
+})
+
+test('F10 unconfigured channel blocks enabling but clearing recipients can save disabled without blocking history', async ({ page }) => {
+  await setup(page)
+  const address = (managementCapture('deliveries').response.data as any).items[0].recipient, saved = managementCapture('save_notifications')
+  let writes = 0
+  await page.route('**/admin/v1/settings/notifications', route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: managementCapture('notification_settings').response })
+    writes++; expect(route.request().postDataJSON()).toEqual(saved.request)
+    return route.fulfill({ json: saved.response })
+  })
+  await page.goto('/console/notifications')
+  const settings = page.getByRole('region', { name: '邮件通知设置', exact: true })
+  await settings.getByLabel('启用邮件通知', { exact: true }).check()
+  await settings.getByRole('button', { name: '添加收件人', exact: true }).click()
+  await settings.getByLabel('收件人 1', { exact: true }).fill(address)
+  await settings.getByRole('button', { name: '保存邮件配置', exact: true }).click()
+  await expect(settings.getByRole('alert')).toContainText('邮件通道未配置')
+  expect(writes).toBe(0)
+  await expect(page.getByRole('region', { name: '通知决策', exact: true })).toContainText('0 / 0 / 0 / 0')
+  await settings.getByRole('button', { name: '删除收件人 1', exact: true }).click()
+  await expect(settings).toContainText('本次将保存为关闭通知')
+  await settings.getByRole('button', { name: '保存邮件配置', exact: true }).click()
+  await expect(settings.getByLabel('启用邮件通知', { exact: true })).not.toBeChecked()
+  await expect(settings).toContainText('配置版本 2')
+  expect(writes).toBe(1)
+})
