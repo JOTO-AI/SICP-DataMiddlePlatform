@@ -69,3 +69,12 @@ FT09-01/-10 与其余未勾选复合条件：完整视觉/真实环境验收和�
 ## main 同步补充（2026-10-15）
 
 本轮将 main `5433ec8` 的统一上游诊断接入当前前端，沿用任务与日志详情，并修复单日志库来源兼容。具体冲突取舍、后端捕获来源、review 发现与测试结果见 [合并复核](verification/FRONTEND_MAIN_MERGE_REVIEW.md)。本节不改变以上真实服务和完整视觉验收的待办状态。
+
+## 更新任务页面去重复核（2026-10-15）
+
+- 起点：`2af55cd`。删除重复历史列表与仅该列表使用的 CSS；自动更新摘要和当前未结束任务入口保留，任务结束后该入口消失。状态读取失败时不展示当前任务入口，并继续禁止无法核对条件的新操作。
+- Review：事件列表仍负责历史分页、筛选与详情；原任务号查询、维护、诊断与重试保持可达。状态请求、轮询、生命周期取消、操作条件及幂等逻辑无改动。当前事件入口和忙碌提示链接采用不同文案，避免同页同名入口混淆。未发现未解决阻塞项。
+- 测试：70/70 浏览器用例通过（loopback / intranet-http，各 35 项），覆盖任务进度、失败重跑、单表维护、诊断、受理重试、状态失效、页面切换、历史分页/筛选/游标与操作树。复用已有后端捕获和边界场景，仅调整被删除列表的导航方式并补充去重/当前任务断言；夹具文件未改。类型检查、生产构建、57 文件审计及 150 项来源 hash 通过。
+- 人工查看 `artifacts/frontend-task-simplify/results/console-update-entry-expla-b6a8a-blocks-use-of-stale-history-loopback/` 下 `updates-current-task.png` 与 `updates-current-task-mobile.png`：重复列表消失，当前任务与维护区正常，小屏无整页横向溢出。
+- 重现：在 frontend 设置 `SICP_TEST_BROWSER` 为 Chrome 路径，运行 `npx playwright test console.spec.ts -g "BT09|post-acquisition|historical data|failed full|manual incremental|partial initialization|failed task|backend diagnostic|legacy and malformed|table page progress|task page|unknown admission|abandoning an unconfirmed|failed initialization|initialization retry|update entry|F01 leaving|F01 pending|F01 read polling|F07" --workers=2 --fully-parallel --reporter=line,json --output=../artifacts/frontend-task-simplify/results`。JSON 报告由 `PLAYWRIGHT_JSON_OUTPUT_NAME=../artifacts/frontend-task-simplify/report.json` 指定。
+- 报告 SHA-256：`d8cfd3f4df0855972cfad76037d40595f0430071d58c17a9547a8f8e6b590e0f`。本次为针对性前端回归，不代替服务器联调、完整视觉验收或既有后端验收。

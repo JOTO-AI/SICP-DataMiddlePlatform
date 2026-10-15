@@ -101,7 +101,7 @@ if (recovered) { key.value = recovered.operation.key; error.value = '已恢复�
 let timer: ReturnType<typeof setTimeout> | undefined
 let active = true
 const terminal = computed(() => !!task.value?.finished_at || ['success_published', 'success_unchanged', 'failed'].includes(task.value?.status || ''))
-const statusLabels: Record<string, string> = { accepted: '已受理', running: '执行中', published_pending_progress: '已发布，正在确认进度', success_published: '发布成功', success_unchanged: '检查完成，无变化', failed: '执行失败' }
+const statusLabels: Record<string, string> = { queued: '排队中', accepted: '已受理', running: '执行中', published_pending_progress: '已发布，正在确认进度', success_published: '发布成功', success_unchanged: '检查完成，无变化', failed: '执行失败' }
 const detailStatus = computed(() => task.value && ['initialize', 'force_full'].includes(task.value.mode) && task.value.status === 'failed' && task.value.acquisition?.tables.some(table => table.status === 'collected') && task.value.acquisition.tables.some(table => table.status !== 'collected') ? '部分完成，待补齐' : statusLabels[task.value?.status || ''] || task.value?.status)
 const stages = computed(() => task.value ? [{ name: '已受理', at: task.value.accepted_at }, { name: '开始执行', at: task.value.started_at }, { name: '构建就绪', at: task.value.ready_at }, { name: '发布完成', at: task.value.published_at }, { name: '检查完成', at: task.value.checked_at }, { name: '任务结束', at: task.value.finished_at }] : [])
 function stop() { auto.value = false; detailRequests.cancel(); loading.value = false; clearTimeout(timer) }
@@ -194,16 +194,12 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
       <p v-if="overview?.initialized">下次计划时间：{{ time(overview.next_due_at) }}。执行中或恢复中会顺延。</p>
       <p v-if="overview?.cooldown_until">冷却截止时间：{{ time(overview.cooldown_until) }}</p>
     </div>
-    <div class="section-bar next-heading"><h2>调度状态中的最近任务</h2><span class="muted">操作前校验，正常每 15 秒刷新；历史阅读使用上方事件列表</span></div>
     <p v-if="historyError" class="error" role="alert">{{ historyError }}</p>
-    <div class="link-list">
-      <button v-for="item in overview?.items" :key="item.task_id" class="history-task" @click="selectTask(item.task_id)" :disabled="busy || loading">
-        <span>{{ modeLabels[item.mode] || item.mode }} · {{ statusLabels[item.status] || item.status }}</span>
-        <small>{{ time(item.accepted_at) }} · {{ item.operator === 'scheduler' ? '系统调度' : item.operator }}</small>
-        <code>{{ item.task_id }}</code>
-      </button>
-      <p v-if="overview && !overview.items.length" class="muted">暂无任务。全新环境启动后会自动创建初始化任务。</p>
-    </div>
+    <section v-if="currentActiveTask && !historyError" aria-label="当前执行任务" class="section-note">
+      <h2>当前任务</h2>
+      <p>{{ modeLabels[currentActiveTask.mode] || currentActiveTask.mode }} · {{ statusLabels[currentActiveTask.status] || currentActiveTask.status }}</p>
+      <RouterLink :to="{ name: 'update-detail', params: { id: currentActiveTask.task_id } }">查看当前事件详情</RouterLink>
+    </section>
     <div class="section-bar next-heading"><h2>维护与详情</h2><span class="muted">日常运行无需手动操作</span></div>
     <div class="task-layout">
       <form class="panel" :aria-busy="busy" @submit.prevent="confirm">
@@ -220,7 +216,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
       </form>
       <div class="task-detail">
         <form class="lookup" :aria-busy="loading" @submit.prevent="selectTask(lookup.trim())"><label for="task-id">查找任务</label><div class="actions"><input id="task-id" v-model="lookup" required :disabled="loading || busy" placeholder="输入完整任务号" @input="stop(); task = null; taskError = ''"><button :disabled="loading || busy">{{ loading ? '查询中…' : '查看任务' }}</button></div></form>
-        <p class="hint">点击最近任务查看详情，也可输入历史任务号。</p>
+        <p class="hint">历史记录请使用上方事件列表，也可输入任务号查看执行详情。</p>
         <p v-if="taskError" class="error" role="alert">{{ taskError }}</p>
         <template v-if="task">
           <div class="section-bar"><h2>执行详情</h2><StatusBadge :value="task.status" :label="statusLabels[task.status] ? detailStatus || undefined : undefined" /></div>
