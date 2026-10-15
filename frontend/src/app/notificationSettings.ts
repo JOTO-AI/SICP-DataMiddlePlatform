@@ -28,3 +28,4 @@ export function notificationPayload(revision: string, draft: NotificationDraft, 
   const rules = Object.fromEntries(configurableRules.map(key => [key, draft.rules[key] === true]))
   return { revision, enabled, recipients: recipients.sort(), rules }
 }
+export const channelResults: Record<string, string> = { not_observed: '尚未观测实际发送', accepted: '最近一次被通道接受', rejected: '最近一次被通道拒绝', temporary_failure: '最近一次发生临时故障', unknown: '最近一次发送结果未知' }

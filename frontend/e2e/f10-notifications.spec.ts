@@ -225,3 +225,12 @@ test('F10 delivery protocol states never imply inbox arrival or automatic resend
   }
   await expect(panel).toContainText('其他收件人的成功或失败分别记录')
 })
+test('F10 configured mail is distinct from real send observation and unsupported rule settings are absent', async ({ page }) => {
+  await configuredMail(page); await page.goto('/console/notifications')
+  const diagnostic = page.getByRole('region', { name: '邮件通道观察', exact: true })
+  await expect(diagnostic).toContainText('尚未观测实际发送')
+  await expect(diagnostic).toContainText('观察时间：未提供')
+  await expect(page.getByRole('region', { name: '邮件通知设置', exact: true })).toContainText('通道：配置已提供')
+  await expect(page.getByRole('group', { name: '当前支持的通知规则' }).getByRole('checkbox')).toHaveCount(3)
+  await expect(page.getByRole('group', { name: '当前支持的通知规则' })).toContainText('阈值待服务端提供保存契约')
+})
