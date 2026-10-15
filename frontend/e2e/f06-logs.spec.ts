@@ -207,7 +207,7 @@ test('F08 phase filter and explicit correlation preserve recorded event boundari
   await page.getByLabel('开始时间', { exact: true }).fill('2026-10-01T00:00')
   await page.getByLabel('结束时间', { exact: true }).fill('2026-10-14T00:00')
   await page.getByRole('button', { name: '查询日志首批', exact: true }).click()
-  await expect(page.getByText(/范围最多 7 天/)).toBeVisible(); expect(calls).toBe(1)
+  await expect(page.getByRole('alert').getByText(/范围最多 7 天/)).toBeVisible(); expect(calls).toBe(1)
 })
 test('F08 direct log detail shows captured facts and exact sanitized tokens and preserves them on failure', async ({ page }, info) => {
   await setup(page)
@@ -365,4 +365,27 @@ test('F09 live bootstrap fixes server lower bound and history uses only next cur
   await page.getByRole('button', { name: '下一批日志', exact: true }).click()
   await expect(page.getByText('本批没有匹配的日志事件', { exact: true })).toBeVisible()
   expect([...urls[1]!.searchParams.entries()]).toEqual([['cursor', 'history-next']])
+})
+test('F09 complete SSE event is deduplicated and only complete checkpoint resumes the stream', async ({ page }) => {
+  await setup(page)
+  const initial = recordedLogPage(), item = initial.data.items[0]
+  initial.data.filter.mode = 'live'; initial.data.filter.to = null; initial.data.high_water = '0'; initial.data.items = []; initial.data.stream_cursor = 'initial-live'
+  await page.route('**/admin/v1/logs/platform/events?*', route => route.fulfill({ json: initial }))
+  const cursors: string[] = []
+  await page.route('**/admin/v1/logs/platform/stream?*', route => {
+    cursors.push(new URL(route.request().url()).searchParams.get('cursor')!)
+    expect(route.request().headers()['last-event-id']).toBe(cursors.at(-1))
+    const event = `id: event-complete\r\nevent: event\r\ndata: ${JSON.stringify(item)}\r\n\r\n`
+    const body = cursors.length === 1 ? event + event + ': heartbeat\n\nid: checkpoint-complete\nevent: checkpoint\ndata: {"sequence":"22"}\n\nid: partial\nevent: checkpoint\ndata: {"sequence":"23"}' : 'event: control\ndata: {"code":"connection_expired","retryable":true,"rebuild_required":false}\n\n'
+    return route.fulfill({ contentType: 'text/event-stream', body })
+  })
+  await page.goto('/console/logs')
+  await page.getByRole('combobox', { name: '查询模式', exact: true }).selectOption('live')
+  await page.getByRole('button', { name: '查询日志首批', exact: true }).click()
+  const stream = page.getByRole('region', { name: '实时日志接收' })
+  await expect(stream).toContainText('已接收 1 条新增事件')
+  await expect(stream.getByRole('link', { name: '查看新增事件详情' })).toHaveCount(1)
+  await stream.getByRole('button', { name: '继续实时连接' }).click()
+  await expect.poll(() => cursors.length).toBe(2)
+  expect(cursors).toEqual(['initial-live', 'checkpoint-complete'])
 })

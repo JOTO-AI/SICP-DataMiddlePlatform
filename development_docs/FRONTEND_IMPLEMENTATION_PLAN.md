@@ -241,7 +241,7 @@ frontend/gateway-e2e/  真实网关与部署验证
 关联需求：R08、R11。采用接入包规定的可取消流式 fetch，明确维护 Last-Event-ID。
 
 - [x] F09-01 开启实时模式先请求 `mode=live` 的历史页，固定 from 且 to 为空；stream_cursor 用于连接，next_cursor 仅用于翻历史。
-- [ ] F09-02 实现 SSE 分帧解析和 event/checkpoint/control 处理；仅完整 event/checkpoint 帧更新位置，半帧、心跳和 control 不推进；按 source/epoch/event_id 去重。
+- [x] F09-02 实现 SSE 分帧解析和 event/checkpoint/control 处理；仅完整 event/checkpoint 帧更新位置，半帧、心跳和 control 不推进；按 source/epoch/event_id 去重。
 - [ ] F09-03 断线以最后完整 ID 退避续传；rebuild_required、游标失效、epoch/floor 变化重查历史并提示缺口；不使用浏览器时间推断续接位置。
 - [ ] F09-04 切源、改筛选、切页、退出或会话失效时关闭旧流；每页面仅订阅当前源，旧连接的回调无法写入新列表。
 - [ ] F09-05 列表及待展示缓冲均有上限，初始预算合计 1000 条摘要；阅读旧日志时显示新记录计数，不抢滚动位置。裁剪可见记录给出历史补查入口。
