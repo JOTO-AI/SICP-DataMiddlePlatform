@@ -233,6 +233,26 @@ func TestT03_17SuccessfulResponseAlsoPreservesCooldown(t *testing.T) {
 	}
 }
 
+func TestPostResponseCooldownFailureRetainsActualRequest(t *testing.T) {
+	clock := fakeBudgetClock()
+	start := clock.now
+	client := sourceClient(t, transportFunc(func(*http.Request) (*http.Response, error) {
+		r := response(200, io.NopCloser(strings.NewReader(emptyResponse)))
+		r.Header.Set("Retry-After", "invalid-date")
+		return r, nil
+	}))
+	c := coordinator(t, client, configBudget(), clock, &savedCooldown{}, freeAdmission())
+	_, err := c.FetchPage(context.Background(), pageRequest(), taskBudget(t, start.Add(time.Hour), 9))
+	var failure *ingest.Failure
+	if !errors.As(err, &failure) || len(failure.Attempt.Diagnostics) != 1 {
+		t.Fatal("missing post-response failure")
+	}
+	r := failure.Attempt.Diagnostics[0]
+	if !r.Sent || r.HTTPStatus != 200 || r.BusinessCode != "200" || r.Stage != "schedule" || r.StartedAt.IsZero() || r.Response.Unavailable != "success_payload_omitted" {
+		t.Fatal("successful response invented as unsent request")
+	}
+}
+
 func TestT03_17CooldownSurvivesCoordinatorAndTaskReplacement(t *testing.T) {
 	for _, header := range []string{"60", "Fri, 01 Jan 2100 00:01:00 GMT"} {
 		clock := fakeBudgetClock()

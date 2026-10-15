@@ -13,6 +13,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/diagnostic"
 	"github.com/JOTO-AI/SICP-DataMiddlePlatform/internal/events"
 )
 
@@ -191,14 +192,38 @@ func (s *Sanitizer) Sanitize(e events.Event, d Details) (SafeEvent, error) {
 		copy.Candidate = s.Correlation(copy.Candidate)
 		e.Metadata.Build = &copy
 	}
+	if len(e.Diagnostics) > 0 {
+		requests := make([]diagnostic.Request, len(e.Diagnostics))
+		for i, request := range e.Diagnostics {
+			requests[i] = request.Sanitize(s.secrets...)
+		}
+		e.Diagnostics = requests
+	}
 	if e.Response != nil {
 		copy := e.Response.Sanitize(s.secrets...)
 		e.Response = &copy
+	}
+	if e.Metadata.Authentication != nil {
+		copy := *e.Metadata.Authentication
+		copy.Response = copy.Response.Sanitize(s.secrets...)
+		e.Metadata.Authentication = &copy
 	}
 	env := envelope{e, detailSummary{Redacted: size > 0, OriginalBytes: size, FieldCount: len(d.Fields), Truncated: size > int64(s.detailBytes)}}
 	body, err := json.Marshal(env)
 	if err != nil {
 		return SafeEvent{}, ErrPayload
+	}
+	for limit := diagnostic.PreviewBytes / 2; len(body) > s.maxBytes && len(env.Event.Diagnostics) > 0; limit /= 2 {
+		for i, request := range env.Event.Diagnostics {
+			env.Event.Diagnostics[i] = request.LimitText(limit)
+		}
+		body, err = json.Marshal(env)
+		if err != nil {
+			return SafeEvent{}, ErrPayload
+		}
+		if limit == 0 {
+			break
+		}
 	}
 	return s.restore(body)
 }

@@ -67,6 +67,7 @@ func TestAuthenticationEvidenceIsValidatedAndFrozenOnReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 	auth := &diagnostic.Authentication{Endpoint: diagnostic.TokenEndpoint, Reason: "http", HTTPStatus: 502}
+	auth.Response.Body = "upstream unavailable"
 	if err := span.FinishSource(ctx, events.Failed, nil, nil, "authentication", nil, auth); err != events.ErrRecord {
 		t.Fatal(err)
 	}
@@ -75,6 +76,11 @@ func TestAuthenticationEvidenceIsValidatedAndFrozenOnReplay(t *testing.T) {
 		t.Fatal("replay changed auth status")
 	}
 	auth.HTTPStatus = 502
+	auth.Response.Body = "changed"
+	if err := span.FinishSource(ctx, events.Failed, nil, nil, "authentication", nil, auth); err != events.ErrEvent {
+		t.Fatal("replay changed authentication response")
+	}
+	auth.Response.Body = "upstream unavailable"
 	if err := span.FinishSource(ctx, events.Failed, nil, nil, "authentication", nil, auth); err != nil {
 		t.Fatal(err)
 	}

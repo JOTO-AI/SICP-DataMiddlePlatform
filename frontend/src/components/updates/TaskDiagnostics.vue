@@ -12,8 +12,6 @@ const progress = computed(() => record(props.task.work_progress) && typeof props
 const acquisition = computed(() => record(props.task.acquisition) && Array.isArray(props.task.acquisition.tables) && props.task.acquisition.tables.every(t => record(t) && typeof t.table === 'string' && typeof t.status === 'string') ? props.task.acquisition as unknown as Acquisition : undefined)
 function validAttempt(item: unknown): boolean {
   if (!record(item) || typeof item.source !== 'string' || typeof item.at !== 'string' || typeof item.failure !== 'string') return false
-  if (item.response != null && (!record(item.response) || ['body', 'request_id', 'content_type'].some(key => item.response && (item.response as Record<string, unknown>)[key] != null && typeof (item.response as Record<string, unknown>)[key] !== 'string'))) return false
-  if (item.authentication != null && (!record(item.authentication) || typeof item.authentication.endpoint !== 'string' || typeof item.authentication.reason !== 'string')) return false
   return true
 }
 const attempts = computed(() => Array.isArray(props.task.failed_attempts) ? props.task.failed_attempts.filter(validAttempt) as unknown as FailedAttempt[] : undefined)

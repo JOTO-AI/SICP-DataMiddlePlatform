@@ -1,5 +1,6 @@
 import { readLogEvent, logID, type LogEvent, type LogSource } from './logHistory'
 export interface LogDetail extends LogEvent {
+  diagnostics?: unknown
   entity_id: string; metadata: Record<string, unknown>
   response: { body?: string; request_id?: string; content_type?: string; truncated?: boolean; read_error?: boolean } | null
   redaction: { redacted: boolean; truncated: boolean; original_bytes: string; field_count: number }

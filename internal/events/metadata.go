@@ -73,7 +73,7 @@ func (m Metadata) valid() bool {
 		}
 	}
 	switch m.Failure {
-	case "", "authentication", "configuration", "transport", "http", "business", "structure", "response_limit", "cancelled", "record", "retry_wait", "observation", "budget", "request_timeout", "cooldown", "cooldown_storage":
+	case "", "unknown", "authentication", "configuration", "transport", "http", "business", "structure", "response_limit", "cancelled", "record", "retry_wait", "observation", "budget", "request_timeout", "cooldown", "cooldown_storage":
 	default:
 		return false
 	}
@@ -104,4 +104,14 @@ type metadataKey struct{}
 
 func WithMetadata(ctx context.Context, m Metadata) context.Context {
 	return context.WithValue(ctx, metadataKey{}, m)
+}
+
+// Unknown classifications cannot discard the failure record. Retain the
+// detailed reason separately in the bounded request diagnostic.
+func NormalizeFailure(failure string) string {
+	m := Metadata{Failure: failure}
+	if !m.valid() {
+		return "unknown"
+	}
+	return failure
 }

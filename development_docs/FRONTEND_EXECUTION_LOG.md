@@ -610,3 +610,13 @@
 - CI 仅更新 frontend job，顺序执行来源/主题/单元/构建、两 worker 功能回归和单 worker 容量，归档各自报告；YAML 解析校验通过，后端/gateway jobs 未改动，未主动触发后端验收，远端 CI 状态未作为通过证据。
 - 证据：artifacts/frontend-f12-06/final-report.json（完整原始运行）、capacity-report.json（独立容量）、recheck-report.json（最终复测）和对应截图。verification/frontend_f12_regression.json 记录报告 hash、失败原因与复测、测试源码 hash；frontend_f12_screenshots.json 记录 168 张截图 hash；frontend_f12_final_build.json 记录最终源码树与构建产物 hash。
 - F12-06 及已完整覆盖的前端 FT 条件勾选。F12-02/-03 按用户要求等服务器部署后测试；未实测的完整视觉/真实环境/上线验收和扩展契约保持待办。本机开发收尾不等于整套上线验收完成。
+
+## main 同步 · 统一上游失败诊断（2026-10-15）
+
+- 起点 `6c0b1d1`，合入 main `5433ec8`，逐文件解决诊断实现与前端组件迁移冲突。后端运行实现与 main 相同，当前更新筛选、游标和正常业务 Mock 保留。
+- 以现有任务/日志详情为基础共用诊断组件，新记录使用 diagnostics，旧记录兼容 response/authentication；不新增日志库、历史端点或独立错误页面。
+- 后端失败测试导出 9 份已持久化/读取的真实测试 DTO，前端测试读取这些捕获；另列协议损坏/缺失兼容边界。
+- Review 修复 platform 单日志库下 call/attempt 被前端拒绝的问题，来源和 HMAC 关联保持原值；保留有界纯文本、日志跳转和部分不可用时的已有事实。
+- 验证进展及最终结果统一见 [本次复核](verification/FRONTEND_MAIN_MERGE_REVIEW.md)。四项 Windows 文件日志缓冲失败已在原始 main 复现，不写成后端全包全绿。服务器 F12-02/-03 与既有后端 T/OI 验收保持延期/暂停。
+
+- 最终结果：117 单元通过，366/366 完整前端功能回归通过，最终 5 项诊断单元复测通过；生产构建、57 文件产物审计、150 来源 hash、28 图追踪、20 组对比度及相关 Go vet 通过。Review 无新增未解决阻塞项；M01–M04 勾选，F12-02/-03 不变。

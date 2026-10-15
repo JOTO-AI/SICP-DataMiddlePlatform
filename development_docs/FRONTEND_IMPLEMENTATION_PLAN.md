@@ -404,3 +404,12 @@ frontend/gateway-e2e/  真实网关与部署验证
 - [ ] FT09-10 人工 review 问题全部关闭；R01 至 R11、28 图覆盖、契约差异和执行证据逐项核对。保留旧静态产物及与后端契约相容的回退说明，完整测试通过后才标记前端交付完成。
 
 当前可复用的命令为 `cd frontend` 后执行 `npm.cmd run build`、`npm.cmd test`；前者已包含 `vue-tsc --noEmit`。新增状态测试脚本及网关命令在对应实施步骤落地后写入 README，未配置的脚本不列为已可执行。真实后端和网关验收使用独立环境记录，不以 Mock 报告替代。
+
+## main 同步：统一上游失败诊断（2026-10-15）
+
+范围：将 main `5433ec8` 合入前端分支，以当前页面为基础吸收后端完整错误记录；[合并复核](verification/FRONTEND_MAIN_MERGE_REVIEW.md)。
+
+- [x] M01 合并后端统一 diagnostics，实现与现有更新筛选、游标和业务 Mock 兼容。
+- [x] M02 任务详情与日志详情共用诊断展示，保留旧记录、日志关联及已有 UI；兼容 platform 单日志库的 call/attempt。
+- [x] M03 使用后端失败测试导出的 DTO 验证新诊断链路；不编造正常查询数据。
+- [x] M04 完整前端回归、生产构建与 code review 通过后提交并 push；记录后端基线失败与服务器验收延期。

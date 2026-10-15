@@ -1,0 +1,88 @@
+{
+  "generated_at": "2026-10-15T07:05:35.219Z",
+  "frontend_base": "6c0b1d1a50f7c020475125ff68e5cadfed366f7b",
+  "main": "5433ec8c7414a8a4dce79023b67d716ff75f3acf",
+  "functional_regression": {
+    "report": "artifacts/frontend-main-merge/final-regression.json",
+    "sha256": "0099f8c40ef9a61c83c071c3f87f8dc783cc5f61409dfa85ed29908f2e6cf1a1",
+    "stats": {
+      "startTime": "2026-10-15T06:51:13.181Z",
+      "duration": 780557.137,
+      "expected": 366,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "workers": 2,
+    "origins": [
+      "loopback",
+      "intranet-http"
+    ]
+  },
+  "unit": {
+    "passed": 117,
+    "failed": 0,
+    "final_diagnostic_recheck": {
+      "passed": 5,
+      "failed": 0
+    }
+  },
+  "build": {
+    "sourceTreeSha256": "e97f8c8347f0ee75aa47b245dbde0b9a56cae55cd7b58d0692a4b4bdd181b691",
+    "assets": 57,
+    "jsBytes": 500302,
+    "failures": [],
+    "report": "artifacts/frontend-f12-04/build-audit.json",
+    "sha256": "8a7e0dc76c5d24b4259ee4620158fba1c9abb98bba9a94d442d190922274af12"
+  },
+  "existing_checks": {
+    "fixture_provenance_hashes": 150,
+    "visual_baseline_images": 28,
+    "theme_pairs": 20
+  },
+  "diagnostic_captures": {
+    "empty_HTTP.json": "3a1b62de25d70120fa58b173303cd802d0352496f5454cfec99a13b0879818af",
+    "initial_token_502.json": "0daf27f7e5b74b99ee2e5e0a7cae7dd6e2f7f66f431e1692bfa685f7dc2250a0",
+    "invalid_data.json": "1687984b5247958d651615eddb59dd6c5278f305bcee79082eaa4f2be77c3f2b",
+    "invalid_envelope.json": "f01206202aab85e6ea35d1694074a11bdddecff746f1aaf50d4477ef0a077804",
+    "page_401_then_token_502.json": "d97d1aed69cee147843bd83d75fd1bc47fecd86919568c05935e3f4051b8593d",
+    "partial_body.json": "61293ff4a5d78ce64e1cf96f4a6d7cb784357e3e17d476563e8985c8d2cd32a5",
+    "unfamiliar_HTTP.json": "0b34157a1c110abd35e7418f9a8d5fbc9d621b765243574bde903ea471fa6a69",
+    "unfamiliar_transport.json": "dc9cbbdc36bdacf59dacfac85a16a389663c8094737d5de1e869ecef9d11db45",
+    "unknown_business.json": "fd923ec9688d212366d9264fc41190b7303a75fc620f9a039636a9e3adb202fa"
+  },
+  "backend": {
+    "complete_packages_passed": [
+      "internal/diagnostic",
+      "internal/ingest",
+      "internal/events"
+    ],
+    "focused_tests_passed": [
+      "observability authentication/unified/response/dual",
+      "logquery diagnostic projection/export",
+      "operations/admin frontend update filters"
+    ],
+    "vet_passed": [
+      "diagnostic",
+      "ingest",
+      "events",
+      "observability",
+      "logquery",
+      "admin",
+      "operations"
+    ],
+    "windows_observability_baseline_failures": [
+      "TestDirectoryDurableReplayAndConflict",
+      "TestDirectoryBatchBoundDoesNotPreventDrainingBacklog",
+      "TestT28_13RealJournalOwnershipAndModeSurviveReopen",
+      "TestQuotaCountsOrphansAndAllowsIdempotentReplayWhenFull"
+    ],
+    "baseline_reproduced_on": "5433ec8"
+  },
+  "review": {
+    "result": "passed",
+    "remaining_new_blockers": 0
+  },
+  "server_integration": "deferred_by_user",
+  "gateway_acceptance": "deferred_by_user"
+}

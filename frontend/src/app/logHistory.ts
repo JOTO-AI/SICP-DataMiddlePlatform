@@ -15,7 +15,7 @@ export function logHistoryPath(f: LogFilters, cursor = '') {
   else {
     if (f.mode && !['history', 'live'].includes(f.mode)) throw new Error('日志模式无效。')
     q.set('mode', f.mode ?? 'history'); q.set('page_size', '50')
-    if (f.kind) { if (!(f.source === 'platform' ? ['request', 'task', 'step', 'audit'] : ['call', 'attempt']).includes(f.kind)) throw new Error('事件类型与日志来源不匹配。'); q.set('kind', f.kind) }
+    if (f.kind) { if (!(f.source === 'platform' ? ['request', 'task', 'step', 'audit', 'call', 'attempt'] : ['call', 'attempt']).includes(f.kind)) throw new Error('事件类型与日志来源不匹配。'); q.set('kind', f.kind) }
     if (f.phase) { if (!['started', 'finished', 'transport'].includes(f.phase)) throw new Error('日志阶段无效。'); q.set('phase', f.phase) }
     if (f.operation) { if (!operations.some(op => op.operation === f.operation)) throw new Error('业务接口筛选无效。'); q.set('operation', f.operation) }
     if (f.identity) {
@@ -42,7 +42,7 @@ export function readLogEvent(value: unknown, source: LogSource, epoch?: string):
   if (!object(value)) return null
   const item = value as unknown as LogEvent
   if (item.source !== source || !['platform', 'upstream'].includes(source) || typeof item.epoch !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(item.epoch) || epoch && item.epoch !== epoch || !logID(item.event_id) || !decimal(item.sequence)) return null
-  if (!['request', 'task', 'step', 'call', 'attempt', 'audit'].includes(item.kind) || !(source === 'upstream' ? ['call', 'attempt'] : ['request', 'task', 'step', 'audit']).includes(item.kind) || !['started', 'finished', 'transport'].includes(item.phase) || item.outcome !== null && !['succeeded', 'failed', 'interrupted'].includes(item.outcome) || item.occurred_at !== null && !time(item.occurred_at) || item.received_at !== null && !time(item.received_at) || item.http_status !== null && (!Number.isInteger(item.http_status) || item.http_status < 100 || item.http_status > 599) || item.duration_ns !== null && !decimal(item.duration_ns)) return null
+  if (!['request', 'task', 'step', 'call', 'attempt', 'audit'].includes(item.kind) || !(source === 'upstream' ? ['call', 'attempt'] : ['request', 'task', 'step', 'audit', 'call', 'attempt']).includes(item.kind) || !['started', 'finished', 'transport'].includes(item.phase) || item.outcome !== null && !['succeeded', 'failed', 'interrupted'].includes(item.outcome) || item.occurred_at !== null && !time(item.occurred_at) || item.received_at !== null && !time(item.received_at) || item.http_status !== null && (!Number.isInteger(item.http_status) || item.http_status < 100 || item.http_status > 599) || item.duration_ns !== null && !decimal(item.duration_ns)) return null
   if (item.operation !== null && (typeof item.operation !== 'string' || item.operation.length > 128) || item.attempt_no !== null && (!Number.isSafeInteger(item.attempt_no) || item.attempt_no < 1) || item.business_code !== null && !Number.isInteger(item.business_code)) return null
   for (const field of ['request_id', 'task_id', 'step_id', 'call_id', 'attempt_id'] as const) if (item[field] !== null && !logID(item[field])) return null
   if (item.test !== null && (!object(item.test) || !['test', 'sync'].includes(item.test.purpose) || item.test.purpose === 'test' && !logID(item.test.test_run_id) || item.test.purpose === 'sync' && item.test.test_run_id !== '')) return null

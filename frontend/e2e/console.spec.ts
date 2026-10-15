@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { backendCapture, backendCatalog, managementCapture, paginationCapture } from '../fixtures/backend'
 import { sourceJobResult } from '../fixtures/sourceTests'
 import { recordedUpdateEvent } from '../fixtures/updateTests'
+import { diagnosticCapture, diagnosticScenarios } from '../fixtures/diagnostics'
 import { operations, queryBody, cell } from '../src/queryOperations'
 
 test.beforeEach(async ({ page }) => {
@@ -301,6 +302,79 @@ test('failed task shows upstream evidence as text and can refresh delayed logs',
   await page.getByRole('button', { name: '刷新详情', exact: true }).click()
   await expect(evidence).toContainText('暂时无法读取调用日志')
   await expect(evidence).toContainText('第 1115 页 · 第 3 次尝试 · HTTP 500')
+  await expect(page.getByText('失败原因：acquisition_failed', { exact: true })).toBeVisible()
+})
+
+test('backend diagnostic captures render on task and linked log details', async ({ page }, testInfo) => {
+  await setup(page)
+  // The task shell is an existing UI failure scenario; evidence and log DTOs are backend exports.
+  const task = { task_id: 'auth-failed-task', mode: 'incremental', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-10-14T10:12:32Z' }
+  let captured = diagnosticCapture('unfamiliar_transport'), unavailable = false
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, items: [task] } } }))
+  await page.route('**/admin/v1/tasks/auth-failed-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, failed_attempts: [captured.attempt], diagnostics_unavailable: unavailable } } }))
+  await page.getByRole('link', { name: '更新事件', exact: true }).click()
+  await page.getByRole('button', { name: /auth-failed-task/ }).click()
+  const evidence = page.getByRole('region', { name: '采集失败记录' })
+  for (const scenario of diagnosticScenarios) {
+    captured = diagnosticCapture(scenario)
+    await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+    for (const d of captured.attempt.diagnostics) {
+      const section = evidence.getByRole('region', { name: d.kind === 'authentication' ? '认证错误摘要' : '数据接口错误摘要' })
+      await expect(section).toContainText(d.endpoint!)
+      if (d.error) await expect(section).toContainText(d.error)
+      if (d.response?.body) await expect(section).toContainText(d.response.body)
+      if (d.http_status) await expect(section).toContainText('HTTP 状态' + d.http_status)
+      else await expect(section).toContainText('未收到 HTTP 响应')
+      if (d.business_code) await expect(section).toContainText('业务码' + d.business_code)
+      if (d.response?.read_error) await expect(section).toContainText('响应正文未完整读取')
+      if (d.response?.unavailable === 'empty') await expect(section).toContainText('响应正文为空')
+    }
+  }
+  await expect(evidence.getByRole('region', { name: '认证错误摘要' })).toHaveCount(1)
+  await expect(evidence.getByRole('region', { name: '数据接口错误摘要' })).toHaveCount(1)
+  await evidence.getByText('请求关联与采集参数', { exact: true }).click()
+  await expect(evidence.getByText(captured.attempt.call_id!, { exact: true })).toBeVisible()
+  unavailable = true
+  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await expect(evidence).toContainText('暂时无法读取调用日志')
+  await expect(evidence).toContainText('获取上游 Token 失败 · HTTP 502')
+  const link = evidence.getByRole('link', { name: '查看此失败尝试日志' })
+  const detail = captured.log_detail
+  await expect(link).toHaveAttribute('href', '/console/logs/' + detail.source + '/events/' + detail.event_id)
+  await page.route('**/admin/v1/logs/' + detail.source + '/events/' + detail.event_id, route => route.fulfill({ json: { code: 'ok', data: detail } }))
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+  await page.screenshot({ path: testInfo.outputPath('diagnostics-task-mobile.png'), fullPage: true })
+  await link.click()
+  await expect(page.getByRole('heading', { name: '事件内容' })).toBeVisible()
+  await expect(page.getByRole('region', { name: '认证错误摘要' })).toContainText('获取上游 Token 失败 · HTTP 502')
+  await expect(page.getByRole('region', { name: '数据接口错误摘要' })).toContainText('数据接口 HTTP 状态401')
+  await expect(page.locator('.request-diagnostics img')).toHaveCount(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+  await page.screenshot({ path: testInfo.outputPath('diagnostics-log-mobile.png'), fullPage: true })
+})
+
+test('legacy and malformed diagnostics retain confirmed task facts', async ({ page }) => {
+  await setup(page)
+  const task = { task_id: 'auth-failed-task', mode: 'incremental', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-10-14T10:12:32Z' }
+  const captured = diagnosticCapture('page_401_then_token_502')
+  // Compatibility/malformed protocol variants, never normal business query fixtures.
+  let attempt: any = { ...captured.attempt, diagnostics: undefined }
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, items: [task] } } }))
+  await page.route('**/admin/v1/tasks/auth-failed-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, failed_attempts: [attempt] } } }))
+  await page.getByRole('link', { name: '更新事件', exact: true }).click()
+  await page.getByRole('button', { name: /auth-failed-task/ }).click()
+  const evidence = page.getByRole('region', { name: '采集失败记录' })
+  const auth = evidence.getByRole('region', { name: '认证错误摘要' })
+  await expect(auth).toContainText('内部错误，请联系管理员')
+  await expect(auth).not.toContainText('unauthorized')
+  delete attempt.authentication.response
+  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await expect(auth).toContainText('本条记录未保存可展示的错误正文')
+  attempt = { ...captured.attempt, diagnostics: [captured.attempt.diagnostics[0], { ...captured.attempt.diagnostics[1], http_status: '502' }] }
+  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await expect(evidence).toContainText('部分请求诊断字段不完整')
+  await expect(evidence.getByRole('region', { name: '数据接口错误摘要' })).toContainText('unauthorized')
   await expect(page.getByText('失败原因：acquisition_failed', { exact: true })).toBeVisible()
 })
 

@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -56,12 +56,22 @@ func (c *Client) fetchAuthenticated(ctx context.Context, input PageRequest) (Pag
 	var previous Attempt
 	for attempt := 0; attempt < 2; attempt++ {
 		if err := ctx.Err(); err != nil {
-			return Page{}, &Failure{Kind: CancelledFailure, Cause: err, Attempt: previous}
+			failure := &Failure{Kind: CancelledFailure, Cause: err, Attempt: previous}
+			evidence := c.evidence("authentication", diagnostic.TokenEndpoint, "")
+			evidence.request.Stage = "schedule"
+			evidence.finish(ctx, failure)
+			return Page{}, failure
 		}
 		token, err := c.leaseToken(ctx)
 		if err != nil {
 			var f *Failure
 			if errors.As(err, &f) {
+				if len(f.Attempt.Diagnostics) == 0 {
+					evidence := c.evidence("authentication", diagnostic.TokenEndpoint, "")
+					evidence.request.Stage = "schedule"
+					evidence.finish(ctx, f)
+				}
+				previous.Diagnostics = append(previous.Diagnostics, f.Attempt.Diagnostics...)
 				previous.Authentication = f.Attempt.Authentication
 				f.Attempt = previous
 			}
@@ -70,6 +80,10 @@ func (c *Client) fetchAuthenticated(ctx context.Context, input PageRequest) (Pag
 		page, err := c.fetch(ctx, input, token)
 		rejected := authenticationRejected(err)
 		c.releaseToken(token, rejected)
+		var current *Failure
+		if errors.As(err, &current) {
+			current.Attempt.Diagnostics = append(previous.Diagnostics, current.Attempt.Diagnostics...)
+		}
 		if !rejected {
 			return page, err
 		}
@@ -144,7 +158,14 @@ func authenticationRejected(err error) bool {
 		(*f.Attempt.BusinessCode == 401 || *f.Attempt.BusinessCode == 403)
 }
 
-func (c *Client) acquireToken(parent context.Context) error {
+func (c *Client) acquireToken(parent context.Context) (finalErr error) {
+	evidence := c.evidence("authentication", diagnostic.TokenEndpoint, "")
+	defer func() {
+		var f *Failure
+		if errors.As(finalErr, &f) {
+			evidence.finish(parent, f)
+		}
+	}()
 	a := c.auth
 	a.token, a.validUntil = "", time.Time{}
 	ctx, cancel := context.WithTimeout(parent, a.timeout)
@@ -155,6 +176,7 @@ func (c *Client) acquireToken(parent context.Context) error {
 	u.Path, u.RawPath = diagnostic.TokenEndpoint, ""
 	u.RawQuery = url.Values{"appId": {a.appID}, "secret": {a.secret}}.Encode()
 	status := 0
+	var summary diagnostic.Response
 	fail := func(reason string) error {
 		kind := AuthenticationFailure
 		var cause error
@@ -166,14 +188,14 @@ func (c *Client) acquireToken(parent context.Context) error {
 		} else if ctx.Err() != nil {
 			reason = "timeout"
 		}
-		return &Failure{Kind: kind, Cause: cause, Attempt: Attempt{Authentication: &diagnostic.Authentication{Endpoint: diagnostic.TokenEndpoint, Reason: reason, HTTPStatus: status}}}
+		return &Failure{Kind: kind, Cause: cause, Attempt: Attempt{Authentication: &diagnostic.Authentication{Endpoint: diagnostic.TokenEndpoint, Reason: reason, HTTPStatus: status, Response: summary}}}
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return fail("configuration")
 	}
 	req.Header.Set("Accept", "application/json")
-	resp, err := c.http.Do(req)
+	resp, err := evidence.send(req)
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
 	}
@@ -188,36 +210,52 @@ func (c *Client) acquireToken(parent context.Context) error {
 		return fail("transport")
 	}
 	if resp.StatusCode != http.StatusOK {
+		if resp.Body != nil {
+			body, readErr := evidence.read(resp.Body, diagnostic.CaptureBytes)
+			summary = *c.errorResponse(resp.Header, body, readErr != nil, "")
+		}
+		evidence.request.Stage = "http"
 		return fail("http")
 	}
 	if resp.Body == nil {
+		evidence.message = "response body is absent"
 		return fail("read")
 	}
 	const limit = 64 << 10
-	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
+	body, err := evidence.read(resp.Body, limit)
 	if err != nil || ctx.Err() != nil {
 		return fail("read")
 	}
 	if len(body) > limit {
+		evidence.message = "authentication response exceeds configured byte limit"
 		return fail("response_limit")
 	}
+	evidence.request.Stage = "decode"
 	envelope, err := objectFields(body)
 	if err != nil {
+		evidence.err = err
 		return fail("structure")
 	}
+	evidence.request.Stage = "validate"
 	code, ok := integer(envelope["code"])
 	if !ok {
+		evidence.message = "response.code must be an integer"
 		return fail("structure")
 	}
+	evidence.request.BusinessCode = strconv.FormatInt(code, 10)
 	if code != 200 {
+		evidence.request.Stage = "business"
+		summary = *c.errorResponse(resp.Header, body, false, "")
 		return fail("business")
 	}
 	data, err := objectFields(envelope["data"])
 	if err != nil {
+		evidence.message = "response.data must be an object with unique keys"
 		return fail("structure")
 	}
 	var token string
 	if json.Unmarshal(data["access_token"], &token) != nil || strings.TrimSpace(token) == "" || len(token) > 16384 {
+		evidence.message = "response.data.access_token is missing, blank or too long"
 		return fail("invalid_token")
 	}
 	// The captured contract does not specify a lifetime. Recognize an optional
@@ -229,6 +267,7 @@ func (c *Client) acquireToken(parent context.Context) error {
 		lead := min(ttl/10, 30*time.Second)
 		a.validUntil = started.Add(ttl - lead)
 		if !a.now().Before(a.validUntil) {
+			evidence.message = "received token has already expired"
 			return fail("expired_token")
 		}
 	}

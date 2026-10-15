@@ -122,10 +122,11 @@ type Redaction struct {
 // and apply MaxEventBytes before constructing this DTO, never expose raw JSON.
 type Detail struct {
 	EventItem
-	EntityID  string               `json:"entity_id"`
-	Metadata  events.Metadata      `json:"metadata"`
-	Response  *diagnostic.Response `json:"response"`
-	Redaction Redaction            `json:"redaction"`
+	Diagnostics []diagnostic.Request `json:"diagnostics,omitempty"`
+	EntityID    string               `json:"entity_id"`
+	Metadata    events.Metadata      `json:"metadata"`
+	Response    *diagnostic.Response `json:"response"`
+	Redaction   Redaction            `json:"redaction"`
 }
 
 type Page struct {

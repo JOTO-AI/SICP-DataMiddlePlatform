@@ -11,6 +11,15 @@ import (
 )
 
 type FailedAttempt struct {
+	Diagnostics    []diagnostic.Request       `json:"diagnostics,omitempty"`
+	TaskID         string                     `json:"task_id,omitempty"`
+	CallID         string                     `json:"call_id,omitempty"`
+	AttemptID      string                     `json:"attempt_id,omitempty"`
+	Path           string                     `json:"path,omitempty"`
+	Mode           string                     `json:"mode,omitempty"`
+	PageSize       int                        `json:"page_size,omitempty"`
+	StartTime      string                     `json:"start_time,omitempty"`
+	EndTime        string                     `json:"end_time,omitempty"`
 	Authentication *diagnostic.Authentication `json:"authentication,omitempty"`
 	EventID        string                     `json:"event_id"`
 	LogSource      storage.LogSource          `json:"log_source"`
@@ -169,7 +178,17 @@ func (d TaskDiagnostics) failedAttempts(ctx context.Context, taskID string, sour
 		if e.Identity.TaskID != id || e.Kind != events.Attempt || e.Phase != events.Finished || e.Outcome != events.Failed {
 			return nil, ErrPayload
 		}
-		out = append(out, FailedAttempt{EventID: e.ID, LogSource: source, At: e.OccurredAt, Source: e.Metadata.Source, Page: e.Metadata.Page, Attempt: e.Identity.AttemptNo, Failure: e.Metadata.Failure, HTTPStatus: e.HTTPStatus, BusinessCode: e.BusinessCode, DurationNS: e.DurationNS, Response: e.Response, Authentication: e.Metadata.Authentication})
+		item := FailedAttempt{Diagnostics: e.Diagnostics, TaskID: e.Identity.TaskID, CallID: e.Identity.CallID, AttemptID: e.Identity.AttemptID, Path: e.Metadata.Path, Mode: e.Metadata.Mode, PageSize: e.Metadata.PageSize, StartTime: e.Metadata.StartTime, EndTime: e.Metadata.EndTime, EventID: e.ID, LogSource: source, At: e.OccurredAt, Source: e.Metadata.Source, Page: e.Metadata.Page, Attempt: e.Identity.AttemptNo, Failure: e.Metadata.Failure, HTTPStatus: e.HTTPStatus, BusinessCode: e.BusinessCode, DurationNS: e.DurationNS, Response: e.Response, Authentication: e.Metadata.Authentication}
+		// Keep existing API consumers working while the UI adopts diagnostics.
+		for _, request := range e.Diagnostics {
+			response := request.Response
+			if request.Kind == "authentication" {
+				item.Authentication = &diagnostic.Authentication{Endpoint: diagnostic.TokenEndpoint, Reason: request.Failure, HTTPStatus: request.HTTPStatus, Response: response}
+			} else if request.HTTPStatus != 0 {
+				item.Response = &response
+			}
+		}
+		out = append(out, item)
 	}
 	if rows.Err() != nil {
 		return nil, ErrDelivery

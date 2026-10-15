@@ -1,0 +1,141 @@
+{
+  "attempt": {
+    "diagnostics": [
+      {
+        "kind": "data",
+        "method": "GET",
+        "endpoint": "https://synthetic.invalid/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+        "started_at": "2026-10-15T06:39:56.757537Z",
+        "duration_ns": 0,
+        "sent": true,
+        "stage": "transport",
+        "failure": "transport",
+        "error": "novel proxy failure: [request URL omitted] [redacted] [redacted]",
+        "error_type": "*errors.errorString"
+      }
+    ],
+    "task_id": "881139e0d2f5f1cb911a3c9aaff6e0b0c15a3a2cfd6721492725c7e58c28fd6f",
+    "call_id": "e646760f94b5a5aabd496ed286e3a7c2fc8e60f3fd91a397ed8aac2d1d1d61e3",
+    "attempt_id": "6641373f6833353d575da62f00dca18785a1c6c2af93d696c985748c2097ef06",
+    "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+    "mode": "incremental",
+    "page_size": 50,
+    "start_time": "2026-10-14 08:00:00",
+    "end_time": "2026-10-14 10:00:00",
+    "event_id": "74341dc829b67717dfe8d8ccdb2af5cef2dce4dd904b9e99d5a733c770fa7371",
+    "log_source": "platform",
+    "at": "2026-10-15T06:39:56.7570098Z",
+    "source": "dwd_bzksbjsjzlb",
+    "page": 7,
+    "attempt": 1,
+    "failure": "transport",
+    "duration_ns": 0
+  },
+  "envelope": {
+    "event": {
+      "diagnostics": [
+        {
+          "kind": "data",
+          "method": "GET",
+          "endpoint": "https://synthetic.invalid/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+          "started_at": "2026-10-15T06:39:56.757537Z",
+          "duration_ns": 0,
+          "sent": true,
+          "stage": "transport",
+          "failure": "transport",
+          "error": "novel proxy failure: [request URL omitted] [redacted] [redacted]",
+          "error_type": "*errors.errorString"
+        }
+      ],
+      "event_id": "74341dc829b67717dfe8d8ccdb2af5cef2dce4dd904b9e99d5a733c770fa7371",
+      "entity_id": "6641373f6833353d575da62f00dca18785a1c6c2af93d696c985748c2097ef06",
+      "kind": "attempt",
+      "phase": "finished",
+      "identity": {
+        "task_id": "881139e0d2f5f1cb911a3c9aaff6e0b0c15a3a2cfd6721492725c7e58c28fd6f",
+        "call_id": "e646760f94b5a5aabd496ed286e3a7c2fc8e60f3fd91a397ed8aac2d1d1d61e3",
+        "attempt_id": "6641373f6833353d575da62f00dca18785a1c6c2af93d696c985748c2097ef06",
+        "attempt_no": 1,
+        "purpose": "sync"
+      },
+      "occurred_at": "2026-10-15T06:39:56.7570098Z",
+      "outcome": "failed",
+      "duration_ns": 0,
+      "metadata": {
+        "source": "dwd_bzksbjsjzlb",
+        "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+        "mode": "incremental",
+        "page": 7,
+        "page_size": 50,
+        "start_time": "2026-10-14 08:00:00",
+        "end_time": "2026-10-14 10:00:00",
+        "failure": "transport"
+      }
+    },
+    "details": {
+      "redacted": false,
+      "original_bytes": 0,
+      "field_count": 0,
+      "truncated": false
+    }
+  },
+  "log_detail": {
+    "source": "platform",
+    "epoch": "epoch",
+    "event_id": "74341dc829b67717dfe8d8ccdb2af5cef2dce4dd904b9e99d5a733c770fa7371",
+    "sequence": "9",
+    "kind": "attempt",
+    "phase": "finished",
+    "occurred_at": "2026-10-15T06:39:56.757009Z",
+    "received_at": "2026-10-13T00:00:01Z",
+    "outcome": "failed",
+    "operation": null,
+    "request_id": null,
+    "task_id": "881139e0d2f5f1cb911a3c9aaff6e0b0c15a3a2cfd6721492725c7e58c28fd6f",
+    "step_id": null,
+    "call_id": "e646760f94b5a5aabd496ed286e3a7c2fc8e60f3fd91a397ed8aac2d1d1d61e3",
+    "attempt_id": "6641373f6833353d575da62f00dca18785a1c6c2af93d696c985748c2097ef06",
+    "attempt_no": 1,
+    "http_status": null,
+    "business_code": null,
+    "duration_ns": "0",
+    "test": {
+      "purpose": "sync",
+      "test_run_id": ""
+    },
+    "audit": null,
+    "diagnostics": [
+      {
+        "kind": "data",
+        "method": "GET",
+        "endpoint": "https://synthetic.invalid/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+        "started_at": "2026-10-15T06:39:56.757537Z",
+        "duration_ns": 0,
+        "sent": true,
+        "stage": "transport",
+        "failure": "transport",
+        "error": "novel proxy failure: [request URL omitted] [redacted] [redacted]",
+        "error_type": "*errors.errorString"
+      }
+    ],
+    "entity_id": "6641373f6833353d575da62f00dca18785a1c6c2af93d696c985748c2097ef06",
+    "metadata": {
+      "source": "dwd_bzksbjsjzlb",
+      "path": "/apizt/openapi/invoke/sjzc/release/dwd_bzksbjsjzlb",
+      "mode": "incremental",
+      "page": 7,
+      "page_size": 50,
+      "start_time": "2026-10-14 08:00:00",
+      "end_time": "2026-10-14 10:00:00",
+      "failure": "transport"
+    },
+    "response": null,
+    "redaction": {
+      "redacted": false,
+      "truncated": false,
+      "original_bytes": "0",
+      "field_count": 0
+    }
+  },
+  "provenance": "TestUnifiedEvidenceSurvivesEveryFailureStage/unfamiliar_transport"
+}

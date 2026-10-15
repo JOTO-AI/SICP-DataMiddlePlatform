@@ -101,6 +101,8 @@ npm run test:capacity
 
 ## 构建、部署与回退
 
+本次 main 统一诊断合并涉及后端日志格式：先更新全部 query 读取副本与 console，再恢复新 worker 写入。日志出现 `diagnostics[]` 后，不能单独回滚到不识别它的旧日志读取器；以下“只替换 console”命令适用于后端已经兼容的部署。任务和日志共用错误展示，历史 `response/authentication` 继续兼容，见 [合并复核](../development_docs/verification/FRONTEND_MAIN_MERGE_REVIEW.md)。
+
 ```sh
 # 现有已配置部署：只构建并替换 console，不重启后端
 docker compose up -d --build --no-deps console
