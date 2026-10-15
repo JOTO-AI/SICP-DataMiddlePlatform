@@ -23,6 +23,8 @@ const action = ref('force-full'), predecessor = ref(''), key = ref(newIdempotenc
 interface Overview { items: Task[]; initialized: boolean; next_due_at?: string; cooldown_until?: string; interval_seconds: number }
 const overview = ref<Overview | null>(null), historyError = ref(''), historyBusy = ref(false)
 const hasActiveTask = computed(() => overview.value?.items.some(item => !['failed', 'success_published', 'success_unchanged'].includes(item.status)) ?? false)
+const admissionBusy = ref(false)
+const currentActiveTask = computed(() => overview.value?.items.find(item => !['failed', 'success_published', 'success_unchanged'].includes(item.status)))
 const actionReasons = ref<Record<string, string> | null>(null), checking = ref(false)
 const rerunAllowed = computed(() => !checking.value && !busy.value && !loading.value && !pending.value && !!overview.value && !historyBusy.value && !historyError.value && !hasActiveTask.value && actionAllows(actionReasons.value, 'rerun'))
 const acceptedLocation = ref<{ id: string; path: string } | null>(null)
@@ -77,7 +79,7 @@ async function refreshHistory() {
     if (tasksResponse.status !== 200 || tasksResponse.body.code !== 'ok' || !result || !Array.isArray(result.items) || result.items.some(item => !item || typeof item.task_id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(item.task_id) || typeof item.mode !== 'string' || typeof item.status !== 'string') || typeof result.initialized !== 'boolean' || actionsResponse.status !== 200 || actionsResponse.body.code !== 'ok' || !reasons) throw new ApiError('无法确认任务及操作条件，请重新读取。', 'invalid_response')
     if (!active || !run.current()) return
     actionReasons.value = reasons; overview.value = result; historyFailures = 0; historyRetryAfter = undefined
-    const current = overview.value.items.find(item => ['accepted', 'running', 'published_pending_progress'].includes(item.status))
+    const current = overview.value.items.find(item => ['queued', 'accepted', 'running', 'published_pending_progress'].includes(item.status))
     if (active && !lookup.value && current) selectTask(current.task_id)
   }
   catch (e) { if (active && run.current()) { historyError.value = describe(e); historyFailures++; historyRetryAfter = e instanceof ApiError ? e.headers['Retry-After'] : undefined } }
@@ -133,7 +135,7 @@ async function confirm() {
     pending.value = {
       ...createTaskOperation(action.value === 'table-full' ? `/admin/v1/tables/${encodeURIComponent(selectedTable.value)}/force-full` : rerunID ? `/admin/v1/tasks/${encodeURIComponent(rerunID)}/rerun` : `/admin/v1/tasks/${action.value}`, key.value),
       title: selected.value.title,
-      description: action.value === 'table-full' ? `将完整重采 ${selectedTable.value}，其它表复用最近完成的数据。若初始化仍缺其它表，本表成功后会保留结果，等待补齐；完整数据校验通过后统一发布。` : retryInitial ? `将复用已完成的表并重采待补齐的表，保留原失败任务 ${retryInitial.task_id} 的记录。无需重启服务。` : selected.value.text,
+      description: action.value === 'table-full' ? `将完整重采 ${selectedTable.value}，其它表复用最近完成的数据。若初始化仍缺其它表，本表成功后会保留结果，等待补齐；完整数据校验通过后统一发布。` : retryInitial ? `将复用已完成的表并重采待补齐的表，保留原失败任务 ${retryInitial.task_id} 的记录。无需重启服务。` : rerunID ? `将根据原失败任务 ${rerunID} 创建关联的新任务，原事件与失败证据保留；完整执行和发布结果须另行追踪。` : `范围：全部来源表。${selected.value.text}`,
     }
   }
   dialogOpen.value = true
@@ -142,13 +144,13 @@ function forceFull() { action.value = 'force-full'; confirm() }
 function syncIncremental() { action.value = 'incremental'; confirm() }
 function retryFull(id: string) { if (!rerunAllowed.value) return; action.value = 'rerun'; predecessor.value = id; confirm() }
 function forceTable(table: string) { if (!tableUpdateAllowed.value) return; action.value = 'table-full'; selectedTable.value = table; confirm() }
-function abandon() { if (pending.value) removePendingRecovery(recoveryContext, pending.value); pending.value = null; key.value = newIdempotencyKey(); error.value = ''; receipt.value = '' }
+function abandon() { if (pending.value) removePendingRecovery(recoveryContext, pending.value); pending.value = null; key.value = newIdempotencyKey(); error.value = ''; receipt.value = ''; admissionBusy.value = false }
 async function submit() {
   if (!active || busy.value || !pending.value) return
   const run = submitRequests.begin()
   const submission = { ...pending.value }
   recoveryAvailable.value = savePendingRecovery(recoveryContext, submission)
-  dialogOpen.value = false; busy.value = true; error.value = ''; receipt.value = ''
+  dialogOpen.value = false; busy.value = true; error.value = ''; receipt.value = ''; admissionBusy.value = false
   try {
     const response = await submitOperation<Task>(submission, run.signal)
     if (!run.current()) return
@@ -159,7 +161,7 @@ async function submit() {
     pending.value = null; key.value = newIdempotencyKey()
     task.value = null; auto.value = true; await fetchTask()
     if (run.current()) await refreshHistory()
-  } catch (e) { if (!run.current()) return; error.value = `${describe(e)} 原请求已保留；再次提交将使用相同操作与幂等键。` }
+  } catch (e) { if (!run.current()) return; admissionBusy.value = e instanceof ApiError && e.code === 'busy'; error.value = `${describe(e)} 原请求已保留；再次提交将使用相同操作与幂等键。` }
   finally { if (run.current()) busy.value = false }
 }
 async function fetchTask() {
@@ -212,7 +214,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
         <p v-if="pending" class="hint">已锁定请求：{{ pending.title }}。修改操作前请先结束本次请求。</p>
         <p v-if="pending && !recoveryAvailable" class="hint">当前浏览器无法保存恢复信息，刷新页面会丢失本次待确认请求。</p>
         <div class="actions"><button class="primary" :disabled="checking || busy || loading || (!pending && ((action === 'incremental' && incrementalBlocked) || (action === 'force-full' && forceFullBlocked) || (action === 'table-full' && !tableUpdateAllowed) || (action === 'rerun' && !rerunAllowed)))">{{ busy ? '正在提交…' : pending ? '重试原请求' : '提交更新' }}</button><button v-if="pending" type="button" :disabled="busy" @click="abandon">结束本次请求</button></div>
-        <p v-if="error" class="error" role="alert">{{ error }}</p><p v-if="receipt" class="success-text" role="status">{{ receipt }}</p>
+        <p v-if="error" class="error" role="alert">{{ error }}</p><p v-if="receipt" class="success-text" role="status">{{ receipt }}</p><p v-if="receipt && acceptedLocation"><RouterLink :to="{ name: 'update-detail', params: { id: acceptedLocation.id } }">查看已受理事件详情</RouterLink></p><div v-if="admissionBusy" class="hint"><p>后端正在处理更新或发布，原请求仍保留。先读取当前任务，再决定是否重试原请求。</p><button type="button" :disabled="historyBusy" @click="refreshHistory">读取当前任务</button><RouterLink v-if="currentActiveTask && !historyError" :to="{ name: 'update-detail', params: { id: currentActiveTask.task_id } }">查看当前任务详情</RouterLink></div>
       </form>
       <div class="task-detail">
         <form class="lookup" :aria-busy="loading" @submit.prevent="selectTask(lookup.trim())"><label for="task-id">查找任务</label><div class="actions"><input id="task-id" v-model="lookup" required :disabled="loading || busy" placeholder="输入完整任务号" @input="stop(); task = null; taskError = ''"><button :disabled="loading || busy">{{ loading ? '查询中…' : '查看任务' }}</button></div></form>

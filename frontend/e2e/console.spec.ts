@@ -2895,3 +2895,26 @@ test('F07 rerun preflight rejects the recorded queued task without submitting', 
   await expect(page.getByText('原任务尚未确认为失败，不能提交失败重跑。', { exact: true })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0); expect(posts).toBe(0)
 })
+test('F07 busy admission guides to captured current event and keeps the original request through acceptance', async ({ page }) => {
+  await setup(page)
+  const receipt = managementCapture('incremental'), detail = managementCapture('update_detail'), task = recordedUpdateEvent()
+  let busy = false, attempts = 0; const keys: string[] = []
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, items: busy ? [detail.response.data] : [], interval_seconds: 7200 } } }))
+  await page.route(`**/admin/v1/tasks/${task.task_id}`, route => route.fulfill({ status: detail.status, json: detail.response }))
+  await page.route(`**${receipt.path}`, route => {
+    attempts++; keys.push(route.request().headers()['idempotency-key']!); expect(route.request().postDataJSON()).toEqual({})
+    if (attempts === 1) { busy = true; return route.fulfill({ status: 409, json: { code: 'busy', data: null } }) }
+    return route.fulfill({ status: receipt.status, json: receipt.response })
+  })
+  await page.getByRole('link', { name: '更新事件', exact: true }).click()
+  await page.getByRole('button', { name: '立即增量同步', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('范围：全部来源表')
+  await page.getByRole('button', { name: '确认提交更新', exact: true }).click()
+  await page.getByRole('button', { name: '读取当前任务', exact: true }).click()
+  await expect(page.getByRole('link', { name: '查看当前任务详情', exact: true })).toHaveAttribute('href', `/console/updates/${task.id}`)
+  await page.getByRole('button', { name: '重试原请求', exact: true }).click()
+  await page.getByRole('button', { name: '确认提交更新', exact: true }).click()
+  await expect(page.getByRole('link', { name: '查看已受理事件详情', exact: true })).toHaveAttribute('href', `/console/updates/${task.id}`)
+  expect(keys).toHaveLength(2); expect(keys[0]).toBe(keys[1])
+  await expect(page.getByText(`任务已受理：${task.id}。受理不代表执行完成。`, { exact: true })).toBeVisible()
+})
