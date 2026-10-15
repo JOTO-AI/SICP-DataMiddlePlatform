@@ -20,3 +20,20 @@ test('F11 system selected backend fields retain unavailable and unknown instead 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: info.outputPath('system-mobile.png'), fullPage: true })
 })
+test('F11 runtime settings link to supported pages while deployment secrets have no editor or raw echo', async ({ page }) => {
+  await page.route('**/console-api/session', route => route.fulfill({ json: managementCapture('session').response }))
+  const response = managementCapture('system').response as any
+  // Security boundary mutation, never a normal fixture or real credential.
+  response.data.credentials = { source_configured: false, smtp_configured: true, log_cursor_configured: false, password: 'DO-NOT-RENDER-secret' }
+  response.data.smtp_reachability = 'unknown'
+  await page.route('**/admin/v1/system/status', route => route.fulfill({ json: response }))
+  await page.goto('/console/settings')
+  const config = page.getByRole('region', { name: '配置管理范围' })
+  await expect(config.getByRole('link', { name: '日志保留期' })).toHaveAttribute('href', '/console/settings/retention')
+  await expect(config.getByRole('link', { name: '邮件通知配置' })).toHaveAttribute('href', '/console/notifications')
+  await expect(config).toContainText('连接限制（部署时设置）')
+  await expect(config).toContainText('SMTP 配置已提供')
+  await expect(config).toContainText('SMTP 可达性未知')
+  await expect(config.locator('input,textarea,select')).toHaveCount(0)
+  await expect(page.locator('body')).not.toContainText('DO-NOT-RENDER-secret')
+})
