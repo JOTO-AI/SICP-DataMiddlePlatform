@@ -27,3 +27,16 @@ test('cleanup preview binds source, string range, policy revision and actual exp
   expect(previewReason(value, '2', Date.parse('2026-10-13T00:01:00Z'))).toContain('策略版本')
   expect(previewReason(value, '1', Date.parse(value.expires_at))).toContain('过期')
 })
+import { cleanupResult } from '../src/app/cleanup'
+test('cleanup results require terminal receipt identity and known outcome, preserving exact int64 count tokens', () => {
+  const job = managementCapture('cleanup_job').response.data as any
+  expect(cleanupResult(job)).toBeNull()
+  const complete = { ...job, status: 'succeeded', summary: { source: 'platform', deleted: 0, outcome_known: true, receipt_id: job.id } }
+  expect(cleanupResult(complete)).toEqual({ source: 'platform', deleted: '0', receipt: job.id })
+  expect(cleanupResult({ ...complete, status: 'running' })).toBeNull()
+  expect(cleanupResult({ ...complete, summary: { ...complete.summary, outcome_known: false } })).toBeNull()
+  expect(cleanupResult(complete, undefined, 'upstream')).toBeNull()
+  const raw = JSON.stringify({ data: complete }).replace('"deleted":0', '"deleted":9007199254740993')
+  expect(cleanupResult(JSON.parse(raw).data, raw)?.deleted).toBe('9007199254740993')
+  expect(cleanupResult(JSON.parse(raw).data)).toBeNull()
+})

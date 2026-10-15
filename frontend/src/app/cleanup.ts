@@ -11,3 +11,15 @@ export function previewReason(preview: CleanupPreview | null, revision: string, 
   if (revision && preview.revision !== revision) return '保留策略版本已变化，请重新预览。'
   return ''
 }
+import { objectTokens } from '../shared/jsonObject'
+import { terminalManagementJob, type ManagementJob } from './managementJobs'
+export function cleanupResult(job: ManagementJob, raw?: string, expectedSource?: string): { source: 'platform' | 'upstream'; deleted: string; receipt: string } | null {
+  const summary = job.summary
+  if (!terminalManagementJob(job) || summary.outcome_known !== true || !['platform', 'upstream'].includes(String(summary.source)) || expectedSource && summary.source !== expectedSource || summary.receipt_id !== job.id) return null
+  let deleted: unknown = typeof summary.deleted === 'number' && Number.isSafeInteger(summary.deleted) && summary.deleted >= 0 ? String(summary.deleted) : null
+  if (raw) {
+    try { const data = objectTokens(raw).get('data'), body = data && objectTokens(data).get('summary'); deleted = body ? objectTokens(body).get('deleted') : null } catch { return null }
+  }
+  if (!decimalString(deleted)) return null
+  return { source: summary.source as 'platform' | 'upstream', deleted, receipt: job.id }
+}

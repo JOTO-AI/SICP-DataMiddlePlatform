@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { managementCapture } from '../fixtures/backend'
-test.beforeEach(async ({ page }) => { await page.route('**/admin/v1/settings/retention', route => route.fulfill({ json: managementCapture('retention').response })) })
+test.beforeEach(async ({ page }) => { const job = managementCapture('cleanup_job'); await page.route('**' + job.path, route => route.fulfill({ json: job.response })); await page.route('**/admin/v1/settings/retention', route => route.fulfill({ json: managementCapture('retention').response })) })
 test('F11 system selected backend fields retain unavailable and unknown instead of zero or healthy', async ({ page }, info) => {
   await page.route('**/console-api/session', route => route.fulfill({ json: managementCapture('session').response }))
   await page.route('**/admin/v1/system/status', route => route.fulfill({ json: managementCapture('system').response }))
@@ -122,4 +122,43 @@ test('F11 cleanup explicit confirmation sends only preview revision and idempote
   expect(bodies[0]).toEqual({ preview_id: preview.data.id, revision: preview.data.revision, idempotency_key: expect.any(String) })
   await expect(panel.getByRole('region', { name: '清理作业', exact: true })).toContainText((managementCapture('cleanup').response.data as any).id)
   await expect(panel.getByRole('combobox')).toBeDisabled()
+})
+test('F11 cleanup response loss and reload retain one operation and only confirmed terminal receipt displays deleted count', async ({ page }) => {
+  await cleanupSetup(page)
+  const preview = managementCapture('preview').response as any; preview.data.count = '1'; preview.data.through = '1'
+  await page.route('**/admin/v1/maintenance/cleanup/preview', route => route.fulfill({ json: preview }))
+  const posts: any[] = []
+  await page.route('**/admin/v1/maintenance/cleanup', route => {
+    posts.push(route.request().postDataJSON())
+    return posts.length === 1 ? route.abort() : route.fulfill({ status: 202, json: managementCapture('cleanup').response })
+  })
+  const panel = page.getByRole('region', { name: '日志清理', exact: true })
+  await panel.getByRole('button', { name: '预览所选源' }).click()
+  await panel.getByRole('button', { name: '确认清理此源' }).click()
+  const dialog = page.getByRole('dialog', { name: '确认日志清理' })
+  await dialog.getByRole('button', { name: '提交此源清理' }).click()
+  await expect(dialog).toContainText('受理未确认')
+  await page.reload()
+  await expect(panel).toContainText('已恢复原清理请求')
+  expect(posts).toHaveLength(1)
+  await panel.getByRole('button', { name: '原键核对清理请求' }).click()
+  await dialog.getByRole('button', { name: '提交此源清理' }).click()
+  await expect(panel).toContainText('实际删除数量：未确认')
+  expect(posts).toHaveLength(2); expect(posts[1]).toEqual(posts[0])
+  await page.reload()
+  await expect(panel).toContainText('实际删除数量：未确认')
+  expect(posts).toHaveLength(2)
+  const job = managementCapture('cleanup_job'), complete = job.response as any
+  // Terminal receipt protocol variant: the confirmed zero derives from the existing zero-count preview.
+  complete.data.status = 'succeeded'; complete.data.finished_at = complete.data.accepted_at
+  complete.data.summary = { source: preview.data.source, deleted: Number((managementCapture('preview').response.data as any).count), outcome_known: true, receipt_id: complete.data.id }
+  await page.route('**' + job.path, route => route.fulfill({ json: complete }))
+  await panel.getByRole('button', { name: '刷新清理作业' }).click()
+  await expect(panel).toContainText('实际确认删除：0 条')
+  await expect(panel).toContainText('结果来源：平台日志')
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('sicp.pending-operations.v1'))).toBeNull()
+  expect(posts).toHaveLength(2)
+  await panel.getByRole('button', { name: '结束此请求并重新预览' }).click()
+  await expect(panel.getByRole('combobox')).toBeEnabled()
+  await expect(panel.getByRole('region', { name: '清理预览' })).toHaveCount(0)
 })
