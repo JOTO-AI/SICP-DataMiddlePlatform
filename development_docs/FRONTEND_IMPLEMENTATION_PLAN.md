@@ -262,7 +262,7 @@ frontend/gateway-e2e/  真实网关与部署验证
 
 关联需求：R10。参考图 24、25。
 
-- [ ] F11-01 接入 `/admin/v1/system/status`，展示依赖、双源、缓冲、实际存储、配置和探测时间；unknown/null/unavailable 保持原义。
+- [x] F11-01 接入 `/admin/v1/system/status`，展示依赖、双源、缓冲、实际存储、配置和探测时间；unknown/null/unavailable 保持原义。
 - [ ] F11-02 区分 runtime_fields 与 deployment_fields；密钥/SMTP/连接配置只显示安全摘要，不能把部署项做成无保存契约的可编辑字段。
 - [ ] F11-03 保留期读取/更新使用 revision 和 1 至 3650 天边界；保存失败保持旧生效值，冲突不覆盖。
 - [ ] F11-04 清理每次选择一个日志源，先预览数量、范围、保护原因、版本及期限，再明确确认并提交对应 preview_id；预览过期或策略改变重新预览。

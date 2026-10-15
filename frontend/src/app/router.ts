@@ -10,7 +10,7 @@ export const navigation = [
   { id: 'notifications', path: '/notifications', title: '通知中心', icon: '♧' },
   { id: 'settings', path: '/settings', title: '系统设置', icon: '⚙' },
 ] as const
-const pending = () => import('../pages/ModulePending.vue')
+
 export const router = createRouter({
   history: createWebHistory('/console/'),
   routes: [
@@ -23,11 +23,11 @@ export const router = createRouter({
     { path: '/updates/:id', name: 'update-detail', meta: { navigation: 'tasks' }, component: () => import('../pages/UpdateDetail.vue'), props: { title: '更新详情' } },
     { path: '/sources', name: 'sources', meta: { navigation: 'sources' }, component: () => import('../pages/Sources.vue') },
     { path: '/notifications', name: 'notifications', meta: { navigation: 'notifications' }, component: () => import('../pages/Notifications.vue') },
-    ...navigation.filter(item => ['settings'].includes(item.id)).map(item => ({ path: item.path, name: item.id, meta: { navigation: item.id }, component: pending, props: { title: item.title } })),
+    { path: '/settings', name: 'settings', meta: { navigation: 'settings' }, component: () => import('../pages/Settings.vue') },
     { path: '/logs/:source(platform|upstream)/events/:eventId([a-f0-9]{64})', name: 'log-detail', meta: { navigation: 'logs' }, component: () => import('../pages/LogDetail.vue'), props: { title: '日志详情' } },
     { path: '/logs', name: 'logs', meta: { navigation: 'logs' }, component: () => import('../pages/Logs.vue') },
     { path: '/logs/:source', name: 'log-source', meta: { navigation: 'logs' }, component: () => import('../pages/Logs.vue'), props: { title: '日志中心' } },
-    { path: '/settings/:section', name: 'settings-section', meta: { navigation: 'settings' }, component: pending, props: { title: '系统设置' } },
+    { path: '/settings/:section', name: 'settings-section', meta: { navigation: 'settings' }, component: () => import('../pages/Settings.vue') },
     { path: '/queries', redirect: to => ({ path: '/apis', query: to.query, hash: to.hash }) },
     { path: '/sync/tasks/:taskId', redirect: to => ({ name: 'update-detail', params: { id: to.params.taskId }, query: to.query }) },
     { path: '/tasks/:taskId', redirect: to => ({ name: 'update-detail', params: { id: to.params.taskId }, query: to.query }) },

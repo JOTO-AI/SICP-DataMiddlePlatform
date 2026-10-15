@@ -548,3 +548,8 @@
 - 前一步 `d518e58` 已 push。独立显示 channel_state、最近 last_result 和 observed_at；not_observed 明确“尚未观测实际发送”，配置存在不视为健康，接受不视为收件箱送达。
 - Review：未知观察枚举保守显示，空时间保持未提供；当前三类规则与待增补规则/阈值明确区分，没有虚构可保存配置。仍需后端增补的契约差异保持开放。
 - 验证：4/4 浏览器专项及类型/生产构建通过。configured/not_observed 组合由原配置样例作协议变体，实际观察和空时间不编造。证据 artifacts/frontend-f10-06/final；F10 六项开发完成，不将真实 SMTP 验收计作通过。
+## F11-01 系统运行状态与双源容量
+
+- 前一步 `54630ad` 已 push。系统设置接入 system/status，依赖就绪、双源读取/维护配置、缓冲用量/上限、实际事件/回执字节、floor/high_water 和服务端探测时间分别展示。部分字段缺失、null、unknown、unavailable 不映射零或健康。
+- Review：只读取已知安全字段，无整包 JSON 回显；计数保留字符串，超过安全整数的数值保持未确认。读取失败保留旧快照并明确标注，离页清理。旧导航与 settings 深链接迁移到实际页面。
+- 验证：109/109 单元、6/6 浏览器、最终类型/构建、150 项来源校验通过。首次路由替换脚本错误已修复后复测。现有 system 样例是 selected_fields，未伪造缺失字段。390px 截图已查看，无整页横溢。证据 artifacts/frontend-f11-01/final。
