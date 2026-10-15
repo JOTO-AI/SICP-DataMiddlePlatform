@@ -422,3 +422,5 @@ frontend/gateway-e2e/  真实网关与部署验证
 - [x] V02 对齐接口中心分类、详情左目录和文档表格层级，检查共享组件及多页面布局，完成视觉复核和回归。
 
 V01/V02 的取舍、截图范围与回归证据见 [界面细节复核](verification/FRONTEND_VISUAL_DETAIL_REVIEW.md)。未实测的完整视觉验收和服务器联调保持原待办状态。
+
+- [x] V03 更新事件页删除自动更新、当前任务与内嵌执行详情，维护/查找保留；按 15 图调整筛选和表格，详情轮询归独立页，完成 80 项相关回归、视觉复核和 code review。见 [更新事件页复核](verification/FRONTEND_UPDATE_PAGE_REVIEW.md)。

@@ -1,0 +1,65 @@
+{
+  "base": "0a1ee95",
+  "step": "V03",
+  "reports": [
+    {
+      "path": "artifacts/frontend-update-page/first-report.json",
+      "sha256": "a0513848225bd18c8a3efd6205c590cceb0916d835b0b333c9e6c80260d0d9fa",
+      "stats": {
+        "startTime": "2026-10-15T09:13:17.365Z",
+        "duration": 198016.029,
+        "expected": 68,
+        "skipped": 0,
+        "unexpected": 4,
+        "flaky": 0
+      }
+    },
+    {
+      "path": "artifacts/frontend-update-page/recheck-report.json",
+      "sha256": "3532783ebd61d9fc301e520c39a60229681ac036c2c5dd5744e33dbca1900052",
+      "stats": {
+        "startTime": "2026-10-15T09:18:52.672Z",
+        "duration": 21465.996000000003,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      }
+    },
+    {
+      "path": "artifacts/frontend-update-page/final-report.json",
+      "sha256": "a16f66588971dff9e0d799ff4df4020c37f3d7b2c1d10979ab91e66e77055bac",
+      "stats": {
+        "startTime": "2026-10-15T09:20:38.292Z",
+        "duration": 176490.755,
+        "expected": 80,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    }
+  ],
+  "unit": {
+    "passed": 122,
+    "failed": 0
+  },
+  "checks": {
+    "build": "passed",
+    "production": {
+      "files": 58,
+      "jsBytes": 507651,
+      "failures": []
+    },
+    "fixtureHashes": 150,
+    "themePairs": 20
+  },
+  "viewports": [
+    1440,
+    1280,
+    1024,
+    768,
+    390
+  ],
+  "unresolvedFindings": [],
+  "integration": "deferred by user"
+}

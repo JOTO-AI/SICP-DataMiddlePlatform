@@ -56,11 +56,19 @@ export function readUpdatePage(value: unknown): UpdatePage | null {
   }
   return page
 }
-export interface UpdateDetail extends Omit<UpdateEvent, 'id'> { operator?: string | null; progress_confirmed?: boolean | null; failure?: string | null; diagnostics_unavailable?: boolean }
+export interface UpdateDetail extends Omit<UpdateEvent, 'id'> { operator?: string | null; progress_confirmed?: boolean | null; failure?: string | null; diagnostics_unavailable?: boolean; selected_table?: string | null }
 export function readUpdateDetail(value: unknown, id: string): UpdateDetail | null {
   if (!value || typeof value !== 'object' || !taskFields(value as Record<string, unknown>) || (value as UpdateDetail).task_id !== id) return null
   const detail = value as UpdateDetail
   if (detail.operator != null && typeof detail.operator !== 'string' || detail.failure != null && typeof detail.failure !== 'string' ||
-    detail.progress_confirmed != null && typeof detail.progress_confirmed !== 'boolean' || detail.diagnostics_unavailable != null && typeof detail.diagnostics_unavailable !== 'boolean') return null
+    detail.progress_confirmed != null && typeof detail.progress_confirmed !== 'boolean' || detail.diagnostics_unavailable != null && typeof detail.diagnostics_unavailable !== 'boolean' || detail.selected_table != null && !word(detail.selected_table)) return null
   return detail
+}
+// Completed runtime only; missing timestamps stay unknown.
+export function updateDuration(item: Pick<UpdateEvent, 'started_at' | 'finished_at' | 'status'>): string {
+  if (!item.finished_at) return ['queued', 'accepted', 'running', 'published_pending_progress'].includes(item.status) ? '尚未结束' : '未提供'
+  const start = timestampMicros(item.started_at), end = timestampMicros(item.finished_at)
+  if (start === null || end === null || end < start) return '未提供'
+  const seconds = (end - start) / 1000000n
+  return [seconds / 3600n, seconds / 60n % 60n, seconds % 60n].map(value => String(value).padStart(2, '0')).join(':')
 }

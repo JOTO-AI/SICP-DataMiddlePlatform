@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { managementCapture } from '../fixtures/backend'
 import { recordedUpdateEvent } from '../fixtures/updateTests'
-import { updateListPath, updateDetailPath, readUpdatePage, readUpdateDetail } from '../src/app/updateEvents'
+import { updateDuration, updateListPath, updateDetailPath, readUpdatePage, readUpdateDetail } from '../src/app/updateEvents'
 test('update events preserve captured task facts and backend event-to-task identity', () => {
   const captured = managementCapture('update_detail').response.data as Record<string, unknown>, event = recordedUpdateEvent()
   expect(event.id).toBe(captured.task_id); expect(event.task_id).toBe(captured.task_id)
@@ -31,6 +31,7 @@ test('update readers reject conflicting IDs, duplicate pages and malformed metad
   expect(readUpdateDetail({ ...captured, predecessor_id: event.id }, String(event.id))).toBeNull()
   expect(readUpdateDetail({ ...captured, progress_confirmed: 'false' }, String(event.id))).toBeNull()
   expect(readUpdateDetail({ ...captured, finished_at: 'not-a-time' }, String(event.id))).toBeNull()
+  expect(readUpdateDetail({ ...captured, selected_table: 123 }, String(event.id))).toBeNull()
   expect(readUpdateDetail({ ...captured, diagnostics_unavailable: 'false' }, String(event.id))).toBeNull()
   const unknown = readUpdateDetail({ ...captured, status: 'future_status' }, String(event.id))!
   expect(unknown.status).toBe('future_status')
@@ -47,4 +48,16 @@ test('update filters use server predicates and only the bound cursor on continua
   expect(() => updateListPath('', { ...f, task_id: '../task' })).toThrow()
   expect(() => updateListPath('', { ...f, to: '' })).toThrow()
   expect(() => updateListPath('', { ...f, from: '2026-10-01T00:00:00Z' })).toThrow()
+})
+
+test('event duration preserves missing backend timestamps and formats completed runtime', () => {
+  const event = recordedUpdateEvent() as Parameters<typeof updateDuration>[0]
+  expect(updateDuration(event)).toBe('尚未结束')
+  // Timestamp boundaries only; do not invent normal task rows.
+  const start = '2026-10-13T00:00:00.000001Z'
+  expect(updateDuration({ ...event, started_at: start, finished_at: '2026-10-13T01:02:03.000001Z' })).toBe('01:02:03')
+  expect(updateDuration({ ...event, started_at: start, finished_at: start })).toBe('00:00:00')
+  expect(updateDuration({ ...event, started_at: start, finished_at: '2026-10-12T23:59:59Z' })).toBe('未提供')
+  expect(updateDuration({ ...event, status: 'failed' })).toBe('未提供')
+  expect(updateDuration({ ...event, status: 'future_status' })).toBe('未提供')
 })

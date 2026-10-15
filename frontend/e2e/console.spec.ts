@@ -25,9 +25,11 @@ test.beforeEach(async ({ page }) => {
     return route.fulfill({ status: api ? 200 : 404, json: { code: api ? 'ok' : 'not_found', data: api ?? null } })
   })
 })
-async function viewTask(page: Page, id: string) {
+async function viewTask(page: Page, id: string, poll = false) {
   await page.getByLabel('查找任务', { exact: true }).fill(id)
   await page.getByRole('button', { name: '查看任务', exact: true }).click()
+  await expect(page).toHaveURL(new RegExp('/updates/' + id + '$'))
+  if (poll) await page.getByRole('checkbox', { name: /每 5 秒刷新/ }).check()
 }
 async function showQueries(page: Page) {
   const opener = page.getByRole('button', { name: '业务数据核验', exact: true })
@@ -49,12 +51,12 @@ test('BT09 real work, unknown totals, stalls and final timers', async ({ page })
   let completed = 500, unit = 'rows', finished: string | undefined
   const task = () => ({ task_id: 'actual-progress', mode: 'initialize', status, accepted_at: start.toISOString(), started_at: start.toISOString(), finished_at: finished })
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [task()] } } }))
-  await page.route('**/admin/v1/tasks/actual-progress', async route => {
+  await page.route('**/admin/v1/{tasks,update-events}/actual-progress', async route => {
     const heartbeat = await page.evaluate(() => new Date().toISOString())
     await route.fulfill({ json: { code: 'ok', data: { ...task(), work_progress: { phase, instance, unit, completed, total: 1000, total_known: known, attempt: 2, cumulative_completed: 1500, cumulative_elapsed_ms: 60000, started_at: start.toISOString(), heartbeat_at: heartbeat, last_progress_at: start.toISOString() } } } })
   })
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
-  await viewTask(page, 'actual-progress')
+  await viewTask(page, 'actual-progress', true)
   const stage = page.getByRole('region', { name: '当前执行阶段' })
   await expect(stage.getByRole('progressbar')).toHaveAttribute('value', '500')
   await expect(stage).toContainText('第 2 次执行')
@@ -80,7 +82,7 @@ test('BT09 real work, unknown totals, stalls and final timers', async ({ page })
   await expect(timer).toHaveText(frozen!)
   // Missing finished_at is an unknown duration, not the last heartbeat.
   finished = undefined
-  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await page.getByRole('button', { name: '刷新事件详情', exact: true }).click()
   await expect(timer).toContainText('未知')
   await expect(stage).toContainText('累计量包含重复执行')
   await page.setViewportSize({ width: 390, height: 844 })
@@ -96,13 +98,14 @@ test('post-acquisition stages show heartbeat, stale execution and publication', 
   let tables: string[] | undefined
   const task = () => ({ task_id: 'build-progress', mode: 'initialize', status, accepted_at: started.toISOString(), started_at: started.toISOString() })
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [task()] } } }))
-  await page.route('**/admin/v1/tasks/build-progress', route => route.fulfill({ json: { code: 'ok', data: { ...task(), work_progress: { phase, table, tables, instance, started_at: started.toISOString(), heartbeat_at: heartbeat }, acquisition: { updated_at: started.toISOString(), tables: [{ table: 'dwd_bzkscjzlb', status: 'collected', completed_pages: 1440, total_pages: 1440 }] } } } }))
+  await page.route('**/admin/v1/{tasks,update-events}/build-progress', route => route.fulfill({ json: { code: 'ok', data: { ...task(), work_progress: { phase, table, tables, instance, started_at: started.toISOString(), heartbeat_at: heartbeat }, acquisition: { updated_at: started.toISOString(), tables: [{ table: 'dwd_bzkscjzlb', status: 'collected', completed_pages: 1440, total_pages: 1440 }] } } } }))
   await page.getByRole('button', { name: '刷新状态', exact: true }).click()
   const stage = page.getByRole('region', { name: '当前执行阶段' })
   await expect(stage.getByRole('heading', { name: '当前阶段：构建表数据' })).toBeVisible()
   await expect(stage).toContainText('dwd_bzkscjzlb')
   await expect(stage).toContainText('执行器在线')
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
+  await viewTask(page, 'build-progress', true)
   await expect(stage.getByRole('heading', { name: '当前阶段：构建表数据' })).toBeVisible()
   table = undefined; tables = ['dwd_bzkscjzlb', 'dwd_bzkskbsjzlb']
   await page.clock.runFor(5100)
@@ -139,7 +142,7 @@ test('historical data verification and reuse stay visible as active work', async
   const task = { task_id: 'reuse-progress', mode: 'initialize', status: 'running', accepted_at: '2026-09-30T07:41:35Z' }
   let phase = 'checking', completed = 0, total: number | null = null, failed = false
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [{ ...task, status: failed ? 'failed' : 'running' }] } } }))
-  await page.route('**/admin/v1/tasks/reuse-progress', route => route.fulfill({ json: { code: 'ok', data: { ...task, status: failed ? 'failed' : 'running', acquisition: { updated_at: '2026-09-30T07:42:00Z', tables: [
+  await page.route('**/admin/v1/{tasks,update-events}/reuse-progress', route => route.fulfill({ json: { code: 'ok', data: { ...task, status: failed ? 'failed' : 'running', acquisition: { updated_at: '2026-09-30T07:42:00Z', tables: [
     { table: 'dwd_bzksbjsjzlb', status: 'collected', completed_pages: 1, total_pages: 1, reused: true },
     { table: 'dwd_bzkscjzlb', status: phase, completed_pages: completed, total_pages: total },
     { table: 'dwd_bzksgrtxsjzlb', status: 'waiting', completed_pages: 0, total_pages: null },
@@ -152,6 +155,7 @@ test('historical data verification and reuse stay visible as active work', async
   await page.clock.runFor(15100)
   await expect(page.getByRole('progressbar', { name: 'dwd_bzkscjzlb 历史数据校验进度' })).toHaveAttribute('value', '720')
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
+  await viewTask(page, 'reuse-progress', true)
   await expect(page.getByText('等待处理', { exact: true })).toBeVisible()
   phase = 'reusing'; completed = 360
   await page.clock.runFor(5100)
@@ -172,7 +176,7 @@ test('failed full update offers retry of incomplete tables and single-table repa
   await setup(page)
   const task = { task_id: 'failed-full', mode: 'force_full', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-09-30T10:00:00Z' }
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, items: [task] } } }))
-  await page.route('**/admin/v1/tasks/failed-full', route => route.fulfill({ json: { code: 'ok', data: { ...task, acquisition: { tables: [
+  await page.route('**/admin/v1/{tasks,update-events}/failed-full', route => route.fulfill({ json: { code: 'ok', data: { ...task, acquisition: { tables: [
     { table: 'dwd_bzksbjsjzlb', status: 'collected', completed_pages: 1, total_pages: 1 },
     { table: 'dwd_bzkscjzlb', status: 'failed', completed_pages: 9, total_pages: 20 },
   ] } } } }))
@@ -186,9 +190,12 @@ test('failed full update offers retry of incomplete tables and single-table repa
   await page.route('**/admin/v1/tasks/full-repair', route => route.fulfill({ json: { code: 'ok', data: { task_id: 'full-repair', mode: 'force_full', status: 'accepted' } } }))
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
   await viewTask(page, 'failed-full')
-  await expect(page.getByText('部分完成，待补齐', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: '强制更新 dwd_bzkscjzlb', exact: true })).toBeEnabled()
-  await page.getByRole('button', { name: '重试未完成的表', exact: true }).click()
+  await expect(page.getByRole('region', { name: '更新事件事实' })).toContainText('执行失败')
+  await expect(page.getByRole('button', { name: '强制更新 dwd_bzkscjzlb', exact: true })).toHaveCount(0)
+  await page.getByRole('link', { name: '← 返回更新事件', exact: true }).click()
+  await page.getByRole('radio', { name: /失败重跑/ }).check()
+  await page.getByLabel('原失败任务号 *', { exact: true }).fill('failed-full')
+  await page.getByRole('button', { name: '提交更新', exact: true }).click()
   await expect(page.getByRole('heading', { name: '确认失败重跑', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '确认提交更新', exact: true }).click()
   await expect(page.getByText('任务已受理：full-repair。受理不代表执行完成。')).toBeVisible()
@@ -208,7 +215,7 @@ for (const status of ['success_published', 'success_unchanged']) {
       if (keys.length === 1) return route.abort()
       return route.fulfill({ status: 202, json: { code: 'accepted', data: { task_id: 'manual-sync' } } })
     })
-    await page.route('**/admin/v1/tasks/manual-sync', route => route.fulfill({ json: { code: 'ok', data: {
+    await page.route('**/admin/v1/{tasks,update-events}/manual-sync', route => route.fulfill({ json: { code: 'ok', data: {
       task_id: 'manual-sync', mode: 'incremental', status, operator: 'admin', progress_confirmed: true,
       accepted_at: '2026-09-30T10:00:00Z', checked_at: '2026-09-30T10:05:00Z',
       published_at: status === 'success_published' ? '2026-09-30T10:05:00Z' : null,
@@ -222,6 +229,7 @@ for (const status of ['success_published', 'success_unchanged']) {
     await page.getByRole('button', { name: '重试原请求', exact: true }).click()
     await expect(page.getByRole('heading', { name: '确认增量同步', exact: true })).toBeVisible()
     await page.getByRole('button', { name: '确认提交更新', exact: true }).click()
+    await page.getByRole('link', { name: '查看已受理事件详情', exact: true }).click()
     await expect(page.getByText(status === 'success_published' ? '发布成功' : '检查完成，无变化', { exact: true })).toBeVisible()
     await expect(page.getByText('已确认', { exact: true })).toBeVisible()
     expect(keys).toHaveLength(2)
@@ -260,7 +268,7 @@ test('partial initialization can force only one table while retaining successful
   await setup(page)
   const task = { task_id: 'partial-initialization', mode: 'initialize', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-09-30T05:21:41Z' }
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [task] } } }))
-  await page.route('**/admin/v1/tasks/partial-initialization', route => route.fulfill({ json: { code: 'ok', data: { ...task, acquisition: { updated_at: '2026-09-30T06:00:00Z', tables: [
+  await page.route('**/admin/v1/{tasks,update-events}/partial-initialization', route => route.fulfill({ json: { code: 'ok', data: { ...task, acquisition: { updated_at: '2026-09-30T06:00:00Z', tables: [
     { table: 'dwd_bzksbjsjzlb', status: 'collected', completed_pages: 1, total_pages: 1, reused: true },
     { table: 'dwd_bzkscjzlb', status: 'failed', completed_pages: 1113, total_pages: 1440 },
   ] } } } }))
@@ -271,17 +279,22 @@ test('partial initialization can force only one table while retaining successful
     expect(route.request().headers()['idempotency-key']).toBeTruthy()
     return route.fulfill({ status: 202, headers: { Location: '/admin/v1/tasks/repair-one-table' }, json: { code: 'accepted', data: { task_id: 'repair-one-table' } } })
   })
-  await page.route('**/admin/v1/tasks/repair-one-table', route => route.fulfill({ json: { code: 'ok', data: { ...task, task_id: 'repair-one-table', status: 'accepted', selected_table: 'dwd_bzkscjzlb' } } }))
+  await page.route('**/admin/v1/{tasks,update-events}/repair-one-table', route => route.fulfill({ json: { code: 'ok', data: { ...task, task_id: 'repair-one-table', status: 'accepted', selected_table: 'dwd_bzkscjzlb' } } }))
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
   await viewTask(page, 'partial-initialization')
-  await expect(page.getByText('部分完成，待补齐', { exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: '更新事件事实' })).toContainText('执行失败')
   await expect(page.getByText('复用已完成数据', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: '强制更新 dwd_bzkscjzlb', exact: true }).click()
+  await page.getByRole('link', { name: '← 返回更新事件', exact: true }).click()
+  await page.getByRole('radio', { name: /单表强制更新/ }).check()
+  await page.getByRole('combobox', { name: '来源表', exact: true }).selectOption('dwd_bzkscjzlb')
+  await page.getByRole('button', { name: '提交更新', exact: true }).click()
   await expect(page.getByRole('dialog')).toContainText('其它表复用最近完成的数据')
   await page.screenshot({ path: testInfo.outputPath('single-table-repair.png'), fullPage: true })
   await page.getByRole('button', { name: '确认提交更新', exact: true }).click()
-  await expect(page.getByText('本次强制更新表：dwd_bzkscjzlb', { exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: '查看已受理事件详情', exact: true })).toHaveAttribute('href', '/console/updates/repair-one-table')
   expect(posted).toContain('/admin/v1/tables/dwd_bzkscjzlb/force-full')
+  await page.getByRole('link', { name: '查看已受理事件详情', exact: true }).click()
+  await expect(page.getByRole('region', { name: '更新事件事实' })).toContainText('本次强制更新表成绩 · dwd_bzkscjzlb')
 })
 
 test('failed task shows upstream evidence as text and can refresh delayed logs', async ({ page }, testInfo) => {
@@ -289,7 +302,7 @@ test('failed task shows upstream evidence as text and can refresh delayed logs',
   const task = { task_id: 'diagnostic-task', mode: 'initialize', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-09-30T05:21:41Z' }
   let unavailable = false
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [task] } } }))
-  await page.route('**/admin/v1/tasks/diagnostic-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, diagnostics_unavailable: unavailable, failed_attempts: [{ log_source: 'platform', event_id: (managementCapture('log_detail').response.data as any).event_id, at: '2026-09-30T05:45:25Z', source: 'dwd_bzkscjzlb', page: 1115, attempt: 3, failure: 'http', http_status: 500, duration_ns: 248000000, response: { body: 'database unavailable <img src=x onerror="window.injected=true">', request_id: 'upstream-trace', truncated: true, read_error: true } }] } } }))
+  await page.route('**/admin/v1/{tasks,update-events}/diagnostic-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, diagnostics_unavailable: unavailable, failed_attempts: [{ log_source: 'platform', event_id: (managementCapture('log_detail').response.data as any).event_id, at: '2026-09-30T05:45:25Z', source: 'dwd_bzkscjzlb', page: 1115, attempt: 3, failure: 'http', http_status: 500, duration_ns: 248000000, response: { body: 'database unavailable <img src=x onerror="window.injected=true">', request_id: 'upstream-trace', truncated: true, read_error: true } }] } } }))
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
   await viewTask(page, 'diagnostic-task')
   const evidence = page.getByRole('region', { name: '采集失败记录' })
@@ -303,10 +316,10 @@ test('failed task shows upstream evidence as text and can refresh delayed logs',
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
   await page.screenshot({ path: testInfo.outputPath('failure-diagnostic-mobile.png'), fullPage: true })
   unavailable = true
-  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await page.getByRole('button', { name: '刷新事件详情', exact: true }).click()
   await expect(evidence).toContainText('暂时无法读取调用日志')
   await expect(evidence).toContainText('第 1115 页 · 第 3 次尝试 · HTTP 500')
-  await expect(page.getByText('失败原因：acquisition_failed', { exact: true })).toBeVisible()
+  await expect(page.getByText('失败记录：acquisition_failed', { exact: true })).toBeVisible()
 })
 
 test('backend diagnostic captures render on task and linked log details', async ({ page }, testInfo) => {
@@ -315,13 +328,13 @@ test('backend diagnostic captures render on task and linked log details', async 
   const task = { task_id: 'auth-failed-task', mode: 'incremental', status: 'failed', failure: 'acquisition_failed', accepted_at: '2026-10-14T10:12:32Z' }
   let captured = diagnosticCapture('unfamiliar_transport'), unavailable = false
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, items: [task] } } }))
-  await page.route('**/admin/v1/tasks/auth-failed-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, failed_attempts: [captured.attempt], diagnostics_unavailable: unavailable } } }))
+  await page.route('**/admin/v1/{tasks,update-events}/auth-failed-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, failed_attempts: [captured.attempt], diagnostics_unavailable: unavailable } } }))
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
   await viewTask(page, 'auth-failed-task')
   const evidence = page.getByRole('region', { name: '采集失败记录' })
   for (const scenario of diagnosticScenarios) {
     captured = diagnosticCapture(scenario)
-    await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+    await page.getByRole('button', { name: '刷新事件详情', exact: true }).click()
     for (const d of captured.attempt.diagnostics) {
       const section = evidence.getByRole('region', { name: d.kind === 'authentication' ? '认证错误摘要' : '数据接口错误摘要' })
       await expect(section).toContainText(d.endpoint!)
@@ -339,7 +352,7 @@ test('backend diagnostic captures render on task and linked log details', async 
   await evidence.getByText('请求关联与采集参数', { exact: true }).click()
   await expect(evidence.getByText(captured.attempt.call_id!, { exact: true })).toBeVisible()
   unavailable = true
-  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await page.getByRole('button', { name: '刷新事件详情', exact: true }).click()
   await expect(evidence).toContainText('暂时无法读取调用日志')
   await expect(evidence).toContainText('获取上游 Token 失败 · HTTP 502')
   const link = evidence.getByRole('link', { name: '查看此失败尝试日志' })
@@ -365,7 +378,7 @@ test('legacy and malformed diagnostics retain confirmed task facts', async ({ pa
   // Compatibility/malformed protocol variants, never normal business query fixtures.
   let attempt: any = { ...captured.attempt, diagnostics: undefined }
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, items: [task] } } }))
-  await page.route('**/admin/v1/tasks/auth-failed-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, failed_attempts: [attempt] } } }))
+  await page.route('**/admin/v1/{tasks,update-events}/auth-failed-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, failed_attempts: [attempt] } } }))
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
   await viewTask(page, 'auth-failed-task')
   const evidence = page.getByRole('region', { name: '采集失败记录' })
@@ -373,22 +386,22 @@ test('legacy and malformed diagnostics retain confirmed task facts', async ({ pa
   await expect(auth).toContainText('内部错误，请联系管理员')
   await expect(auth).not.toContainText('unauthorized')
   delete attempt.authentication.response
-  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await page.getByRole('button', { name: '刷新事件详情', exact: true }).click()
   await expect(auth).toContainText('本条记录未保存可展示的错误正文')
   attempt = { ...captured.attempt, diagnostics: [captured.attempt.diagnostics[0], { ...captured.attempt.diagnostics[1], http_status: '502' }] }
-  await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+  await page.getByRole('button', { name: '刷新事件详情', exact: true }).click()
   await expect(evidence).toContainText('部分请求诊断字段不完整')
   await expect(evidence.getByRole('region', { name: '数据接口错误摘要' })).toContainText('unauthorized')
-  await expect(page.getByText('失败原因：acquisition_failed', { exact: true })).toBeVisible()
+  await expect(page.getByText('失败记录：acquisition_failed', { exact: true })).toBeVisible()
 })
 
-test('table page progress auto-opens, refreshes and preserves the last counts on failure', async ({ page }, testInfo) => {
+test('task detail progress refreshes on request and preserves the last counts on failure', async ({ page }, testInfo) => {
   await page.clock.install()
   await setup(page)
   const task = { task_id: 'page-progress-task', mode: 'initialize', status: 'running', accepted_at: '2026-09-30T03:08:08Z' }
   let completed = 720, failed = false, unavailable = false, reads = 0
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, items: [{ ...task, status: failed ? 'failed' : 'running' }] } } }))
-  await page.route('**/admin/v1/tasks/page-progress-task', route => {
+  await page.route('**/admin/v1/{tasks,update-events}/page-progress-task', route => {
     reads++
     if (unavailable) return route.fulfill({ status: 503, json: { code: 'unavailable' } })
     return route.fulfill({ json: { code: 'ok', data: { ...task, status: failed ? 'failed' : 'running', acquisition: { updated_at: '2026-09-30T04:00:00Z', tables: [
@@ -398,6 +411,7 @@ test('table page progress auto-opens, refreshes and preserves the last counts on
     ] } } } })
   })
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
+  await viewTask(page, 'page-progress-task', true)
   await expect(page.getByText('720 / 1440 页 · 50%', { exact: true })).toBeVisible()
   await expect(page.getByRole('checkbox')).toBeChecked()
   const bar = page.getByRole('progressbar', { name: 'dwd_bzkscjzlb 采集进度', exact: true })
@@ -445,7 +459,7 @@ test('task page renders with the browser capabilities of its deployment origin',
   expect(await page.evaluate(() => isSecureContext)).toBe(testInfo.project.name === 'loopback')
   expect(await page.evaluate(() => typeof crypto.randomUUID)).toBe(testInfo.project.name === 'loopback' ? 'function' : 'undefined')
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '更新事件', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '强制全量更新', exact: true })).toBeEnabled()
   await expect(page.getByLabel('幂等键', { exact: true })).toHaveValue(/^[a-f0-9]{32}$/)
   expect(errors).toEqual([])
@@ -599,7 +613,7 @@ for (const entry of [
     await expect(page.getByRole('article').filter({ hasText: '业务查询服务' }).locator('.tag')).toHaveText('✓ 已就绪')
     await expect(page.getByRole('article').filter({ hasText: '数据更新服务' }).locator('.tag')).toHaveText(entry.title)
     await page.getByRole('link', { name: '查看更新任务 →', exact: true }).click()
-    await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '更新事件', exact: true })).toBeVisible()
   })
 }
 
@@ -640,11 +654,11 @@ test('unknown admission retries original operation with the same idempotency key
   await expect(page.getByLabel('幂等键', { exact: true })).toBeDisabled()
   await page.getByRole('button', { name: '重试原请求' }).click()
   await page.getByRole('button', { name: '确认提交更新' }).click()
-  await expect(page.getByText('检查完成，无变化', { exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: '查看已受理事件详情' })).toHaveAttribute('href', '/console/updates/task-001')
   expect(keys).toHaveLength(2)
   expect(keys[1]).toBe(keys[0])
   await expect(page.getByLabel('幂等键', { exact: true })).not.toHaveValue(keys[0]!)
-  await expect(page.getByRole('checkbox')).toBeDisabled()
+  await expect(page.getByRole('checkbox')).toHaveCount(0)
 })
 
 test('abandoning an unconfirmed task renews the idempotency key', async ({ page }) => {
@@ -663,17 +677,16 @@ test('abandoning an unconfirmed task renews the idempotency key', async ({ page 
 test('failed initialization exposes a retry entry without enabling duplicate bootstrap', async ({ page }, testInfo) => {
   await setup(page)
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, interval_seconds: 7200, items: [{ task_id: 'automatic-initial-task', mode: 'initialize', status: 'failed', operator: 'scheduler', accepted_at: '2026-09-28T10:00:00Z' }] } } }))
-  await page.route('**/admin/v1/tasks/automatic-initial-task', route => route.fulfill({ json: { code: 'ok', data: { task_id: 'automatic-initial-task', mode: 'initialize', status: 'failed', operator: 'scheduler', accepted_at: '2026-09-28T10:00:00Z', failure: 'acquisition_failed' } } }))
+  await page.route('**/admin/v1/{tasks,update-events}/automatic-initial-task', route => route.fulfill({ json: { code: 'ok', data: { task_id: 'automatic-initial-task', mode: 'initialize', status: 'failed', operator: 'scheduler', accepted_at: '2026-09-28T10:00:00Z', failure: 'acquisition_failed' } } }))
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
   await expect(page.getByRole('button', { name: '重跑失败初始化', exact: true })).toBeEnabled()
   await expect(page.getByText('初始化未完成，可重新采集待补齐的表，或选择单表强制更新；已完成的表会保留复用，上游冷却期间任务会等待。')).toBeVisible()
-  await expect(page.getByText(/重启后系统会恢复未完成的初始化/)).toBeVisible()
   await expect(page.getByRole('radio')).toHaveCount(4)
   await expect(page.getByRole('radio', { name: /首次初始化/ })).toHaveCount(0)
   await expect(page.getByRole('radio', { name: /单表强制更新/ })).toBeVisible()
   await expect(page.getByRole('button', { name: '立即增量同步', exact: true })).toBeDisabled()
   await viewTask(page, 'automatic-initial-task')
-  await expect(page.getByText('失败原因：acquisition_failed')).toBeVisible()
+  await expect(page.getByText('失败记录：acquisition_failed')).toBeVisible()
   await expect(page.getByText('系统调度', { exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('automatic-tasks-desktop.png'), fullPage: true })
   await page.setViewportSize({ width: 390, height: 844 })
@@ -715,8 +728,7 @@ test('initialization retry keeps its predecessor and key across lost replies and
   expect(keys).toHaveLength(2)
   expect(keys[0]).toBe(keys[1])
   expect(forceCalls).toBe(0)
-  await expect(page.getByRole('link', { name: 'failed-init', exact: true })).toHaveAttribute('href', '/console/updates/failed-init')
-  await expect(page.getByRole('link', { name: '打开此事件完整详情', exact: true })).toHaveAttribute('href', '/console/updates/retry-init')
+  await expect(page.getByRole('link', { name: '查看已受理事件详情', exact: true })).toHaveAttribute('href', '/console/updates/retry-init')
   await expect(page.getByRole('button', { name: '强制全量更新', exact: true })).toBeDisabled()
 })
 
@@ -732,8 +744,9 @@ test('update entry explains active work and blocks use of stale history', async 
   await expect(page.getByRole('button', { name: '强制全量更新', exact: true })).toBeDisabled()
   await expect(page.getByText('已有更新任务正在执行或等待恢复，完成后才能再次启动。')).toBeVisible()
   const current = page.getByRole('region', { name: '当前执行任务', exact: true })
-  await expect(current).toContainText('执行中')
-  await expect(current.getByRole('link', { name: '查看当前事件详情' })).toHaveAttribute('href', '/console/updates/initial-task')
+  await expect(current).toHaveCount(0)
+  await expect(page.getByRole('region', { name: '任务执行与诊断' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: '自动更新', exact: true })).toHaveCount(0)
   await expect(page.getByRole('region', { name: '更新事件历史', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: '调度状态中的最近任务', exact: true })).toHaveCount(0)
   await expect(page.locator('.history-task')).toHaveCount(0)
@@ -841,11 +854,11 @@ test('task page resumes while an old detail request is still pending', async ({ 
   const gate = new Promise<void>(resolve => { release = resolve })
   const seen = new Promise<void>(resolve => { entered = resolve })
   let oldCalls = 0
-  await page.route('**/admin/v1/tasks/slow-old-task', async route => {
+  await page.route('**/admin/v1/{tasks,update-events}/slow-old-task', async route => {
     if (++oldCalls === 1) { pendingRequest = route.request(); entered(); await gate }
     await route.fulfill({ json: { code: 'ok', data: tasks[0] } })
   })
-  await page.route('**/admin/v1/tasks/selected-new-task', route => route.fulfill({ json: { code: 'ok', data: tasks[1] } }))
+  await page.route('**/admin/v1/{tasks,update-events}/selected-new-task', route => route.fulfill({ json: { code: 'ok', data: tasks[1] } }))
   try {
     await page.getByRole('link', { name: '更新事件', exact: true }).click()
     await viewTask(page, 'slow-old-task')
@@ -855,12 +868,12 @@ test('task page resumes while an old detail request is still pending', async ({ 
   await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
     await page.getByRole('link', { name: '更新事件', exact: true }).click()
     await viewTask(page, 'selected-new-task')
-    await expect(page.locator('.task-detail .task-id')).toHaveText('selected-new-task')
+    await expect(page.getByRole('region', { name: '更新事件事实' }).locator('.copy-id code').first()).toHaveText('selected-new-task')
     release()
     await expect.poll(() => pendingRequest.failure()).not.toBeNull()
     await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
-    await expect(page.locator('.task-detail .task-id')).toHaveText('selected-new-task')
-    await expect(page.getByLabel('查找任务')).toHaveValue('selected-new-task')
+    await expect(page.getByRole('region', { name: '更新事件事实' }).locator('.copy-id code').first()).toHaveText('selected-new-task')
+    await expect(page).toHaveURL(/\/updates\/selected-new-task$/)
   } finally { release() }
 })
 
@@ -975,7 +988,7 @@ test('F01 lazy routes preserve deep links, history and old hashes without execut
   await expect(page.getByRole('heading', { name: '业务查询', exact: true })).toBeVisible()
   await page.goto('./#tasks')
   await expect(page).toHaveURL(/\/console\/updates$/)
-  await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '更新事件', exact: true })).toBeVisible()
   expect(queries).toBe(0)
 })
 
@@ -1349,7 +1362,7 @@ test('F03 logout removes cached backend results and stops page polling', async (
   await page.getByRole('button', { name: '查询数据', exact: true }).click()
   await expect(page.getByRole('table')).toContainText('虚构学生001')
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '更新事件', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '退出登录', exact: true }).click()
   await expect(page).toHaveURL(/\/console\/login$/)
   await expect(page.getByRole('heading', { name: '登录管理控制台' })).toBeVisible()
@@ -1522,7 +1535,7 @@ test('F04 empty initialization directs to existing progress without exposing man
   await expect(notice).toContainText('首次初始化完成前不能进行业务查询')
   await expect(notice.getByRole('button')).toHaveCount(0)
   await notice.getByRole('link', { name: '查看初始化进度 →' }).click()
-  await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '更新事件', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '强制全量更新', exact: true })).toBeDisabled()
   await page.getByRole('radio', { name: /单表强制更新/ }).check()
   await expect(page.getByRole('button', { name: '提交更新', exact: true })).toBeDisabled()
@@ -1788,7 +1801,7 @@ test('F05 management documentation only navigates to dedicated workflows and per
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await docs.screenshot({ path: testInfo.outputPath('management-docs-mobile.png') })
   await docs.getByRole('link', { name: '前往更新事件 →', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '更新事件', exact: true })).toBeVisible()
   expect(writes).toBe(0)
 })
 
@@ -2862,6 +2875,7 @@ test('F07 update filters submit backend conditions and preserve their cursor sco
   await page.goto('/console/updates')
   const history = page.getByRole('region', { name: '更新事件历史', exact: true })
   await expect(history).toContainText('本批没有更新事件')
+  await history.getByRole('combobox', { name: '时间', exact: true }).selectOption('custom')
   await history.getByLabel('受理开始', { exact: true }).fill('2026-10-12T08:00')
   await history.getByLabel('受理结束', { exact: true }).fill('2026-10-14T08:00')
   await history.getByRole('combobox', { name: '更新模式', exact: true }).selectOption(String(event.mode))
@@ -3056,4 +3070,66 @@ test('V02 catalog navigation, Chinese required parameters and document layout fo
   await page.getByRole('button', { name: '查看完整响应字段' }).click()
   await expect(page.getByRole('tab', { name: '响应案例' })).toHaveAttribute('aria-selected', 'true')
   expect(writes).toBe(0)
+})
+
+test('V03 update list matches the reference layout and delegates execution to task details', async ({ page }, testInfo) => {
+  await page.clock.install()
+  await setup(page)
+  const event = recordedUpdateEvent(), capture = managementCapture('update_detail')
+  let details = 0, oldDetails = 0, writes = 0, lists = 0
+  await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { items: [capture.response.data], initialized: false, interval_seconds: 7200 } } }))
+  await page.route('**/admin/v1/tasks/' + event.task_id, route => { oldDetails++; return route.abort() })
+  await page.route('**/admin/v1/update-events?*', route => { lists++; return route.fulfill({ json: { code: 'ok', data: { items: [event], next_cursor: null } } }) })
+  await page.route('**' + capture.path, route => { details++; return route.fulfill({ status: capture.status, json: capture.response }) })
+  page.on('request', request => { if (['POST', 'PUT', 'DELETE'].includes(request.method())) writes++ })
+  await page.getByRole('link', { name: '更新事件', exact: true }).click()
+  const history = page.getByRole('region', { name: '更新事件历史', exact: true })
+  await expect(history.locator('tbody tr')).toHaveCount(1)
+  await expect(page.getByRole('heading', { name: '更新事件', exact: true })).toBeVisible()
+  for (const name of ['自动更新', '当前任务', '执行详情']) await expect(page.getByRole('heading', { name, exact: true })).toHaveCount(0)
+  await expect(page.getByRole('region', { name: '任务执行与诊断' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: '维护与详情', exact: true })).toBeVisible()
+  await expect(history.locator('thead th')).toHaveText(['事件号 / 任务号', '模式', '结果', '开始时间', '耗时', '操作'])
+  await expect(history.locator('.event-duration')).toHaveText('尚未结束')
+  for (const width of [1440, 1280, 1024, 768, 390]) {
+    await page.setViewportSize({ width, height: 960 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (width === 1440) {
+      const boxes = await history.locator('.filter-row > *').evaluateAll(nodes => nodes.map(n => n.getBoundingClientRect().bottom))
+      expect(Math.max(...boxes) - Math.min(...boxes)).toBeLessThan(2)
+    }
+    await page.screenshot({ path: testInfo.outputPath('update-events-' + width + '.png'), fullPage: true })
+  }
+  await page.clock.runFor(31000)
+  expect(details).toBe(0); expect(oldDetails).toBe(0); expect(lists).toBe(1)
+  await page.getByLabel('查找任务', { exact: true }).fill('../invalid')
+  await page.getByRole('button', { name: '查看任务', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('有效的完整任务号')
+  await viewTask(page, String(event.task_id))
+  const facts = page.getByRole('region', { name: '更新事件事实', exact: true })
+  await expect(facts).toContainText(String(event.task_id))
+  await page.clock.runFor(11000)
+  expect(details).toBe(1)
+  await page.getByRole('checkbox', { name: /每 5 秒刷新/ }).check()
+  await expect.poll(() => details).toBe(2)
+  await page.clock.runFor(5100)
+  await expect.poll(() => details).toBe(3)
+  await page.getByRole('link', { name: '← 返回更新事件', exact: true }).click()
+  await page.clock.runFor(11000)
+  expect(details).toBe(3); expect(writes).toBe(0); expect(oldDetails).toBe(0)
+})
+
+test('V03 update log action queries only after navigation with the backend task identity', async ({ page }) => {
+  await setup(page)
+  const event = recordedUpdateEvent()
+  await page.route('**/admin/v1/update-events?*', route => route.fulfill({ json: { code: 'ok', data: { items: [event], next_cursor: null } } }))
+  let logReads = 0
+  await page.route('**/admin/v1/logs/platform/events?*', route => { logReads++; const p = new URL(route.request().url()).searchParams; expect(p.get('task_id')).toBe(String(event.task_id)); expect(p.get('id_format')).toBe('raw'); return route.abort() })
+  await page.goto('/console/updates')
+  await expect(page.getByRole('region', { name: '更新事件历史', exact: true }).locator('tbody tr')).toHaveCount(1)
+  expect(logReads).toBe(0)
+  await page.getByRole('region', { name: '更新事件历史', exact: true }).getByRole('button', { name: '查看日志', exact: true }).click()
+  await expect(page).toHaveURL(/\/logs\/platform$/)
+  await expect(page.getByRole('textbox', { name: '关联标识', exact: true })).toHaveValue(String(event.task_id))
+  await expect.poll(() => logReads).toBe(1)
 })

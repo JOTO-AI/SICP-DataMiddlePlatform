@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import LazyResponse from '../components/LazyResponse.vue'
 import AsyncActionDialog from '../components/AsyncActionDialog.vue'
-import StatusBadge from '../components/StatusBadge.vue'
 import PageHeader from '../components/PageHeader.vue'
 import UpdateHistory from '../components/updates/UpdateHistory.vue'
+import { useRouter } from 'vue-router'
 import { validUpdateID } from '../app/updateEvents'
 import { actionAllows, actionExplanation, readActionReasons } from '../app/updateActions'
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
-import { request, describe, time, ApiError, type Envelope } from '../api'
+import { request, describe, ApiError, type Envelope } from '../api'
 import { pollingDelay } from '../app/polling'
 import { usePageVisibility } from '../composables/usePageVisibility'
 import { useRequestScope } from '../composables/useRequestScope'
@@ -15,12 +14,11 @@ import { newIdempotencyKey } from '../idempotency'
 import { session } from '../session'
 import { loadPendingRecovery, savePendingRecovery, removePendingRecovery } from '../storage/pending'
 import { createTaskOperation, submitOperation, type PendingOperation } from '../api/operations'
-import TaskDiagnostics from '../components/updates/TaskDiagnostics.vue'
 
-import type { WorkProgress as WorkProgressData } from '../workProgress'
-import { sourceTables, type Acquisition } from '../acquisition'
-import { type FailedAttempt } from '../components/updates/FailedAttempts.vue'
-interface Task { task_id: string; mode: string; status: string; operator?: string; predecessor_id?: string; accepted_at: string; started_at?: string; ready_at?: string; published_at?: string; checked_at?: string; finished_at?: string; progress_confirmed?: boolean; confirmed_until?: Record<string, string>; counts?: Record<string, number>; failure?: string; work_progress?: WorkProgressData; acquisition?: Acquisition; failed_attempts?: FailedAttempt[]; diagnostics_unavailable?: boolean; selected_table?: string }
+import { sourceTables } from '../acquisition'
+import { sourceName } from '../app/sourceNames'
+interface Task { task_id: string; mode: string; status: string }
+const router = useRouter()
 const action = ref('force-full'), predecessor = ref(''), key = ref(newIdempotencyKey()), lookup = ref('')
 interface Overview { items: Task[]; initialized: boolean; next_due_at?: string; cooldown_until?: string; interval_seconds: number }
 const overview = ref<Overview | null>(null), historyError = ref(''), historyBusy = ref(false)
@@ -28,10 +26,10 @@ const hasActiveTask = computed(() => overview.value?.items.some(item => !['faile
 const admissionBusy = ref(false)
 const currentActiveTask = computed(() => overview.value?.items.find(item => !['failed', 'success_published', 'success_unchanged'].includes(item.status)))
 const actionReasons = ref<Record<string, string> | null>(null), checking = ref(false)
-const rerunAllowed = computed(() => !checking.value && !busy.value && !loading.value && !pending.value && !!overview.value && !historyBusy.value && !historyError.value && !hasActiveTask.value && actionAllows(actionReasons.value, 'rerun'))
+const rerunAllowed = computed(() => !checking.value && !busy.value && !pending.value && !!overview.value && !historyBusy.value && !historyError.value && !hasActiveTask.value && actionAllows(actionReasons.value, 'rerun'))
 const acceptedLocation = ref<{ id: string; path: string } | null>(null)
 const selectedTable = ref('dwd_bzkscjzlb')
-const tableUpdateAllowed = computed(() => !checking.value && !!overview.value && (overview.value.initialized || !!failedInitialization.value) && !historyBusy.value && !historyError.value && !hasActiveTask.value && !busy.value && !loading.value && !pending.value && actionAllows(actionReasons.value, 'table_force_full'))
+const tableUpdateAllowed = computed(() => !checking.value && !!overview.value && (overview.value.initialized || !!failedInitialization.value) && !historyBusy.value && !historyError.value && !hasActiveTask.value && !busy.value && !pending.value && actionAllows(actionReasons.value, 'table_force_full'))
 const failedInitialization = computed(() => {
   const latest = overview.value?.items[0]
   return !overview.value?.initialized && latest?.mode === 'initialize' && latest.status === 'failed' ? latest : null
@@ -59,15 +57,10 @@ const forceFullHelp = computed(() => {
   return '强制全量更新会立即请求重新采集、校验并发布完整数据。'
 })
 const actions = computed(() => [{ id: 'incremental', title: '增量同步', text: '立即同步所有表的增量。有变化且校验通过后自动发布，无变化则确认同步进度；失败时保留当前版本和原同步进度。' }, { id: 'force-full', title: failedInitialization.value ? '重跑失败初始化' : '强制全量', text: failedInitialization.value ? '复用已经完整采集的表，重新采集待补齐的表。' : '维护操作：重新采集并构建完整数据，即使内容未变化。' }, { id: 'table-full', title: '单表强制更新', text: '只从上游完整采集所选表，其余表复用最近已完成的数据。初始化尚缺其他表时，保留本次结果，等待继续补齐。' }, { id: 'rerun', title: '失败重跑', text: '排除故障后，根据失败任务创建关联的新任务。' }])
-const failureDescriptions: Record<string, string> = {
-  corrupt_seal: '采集结果未完整封存或校验未通过，需重新采集。重启后系统会自动尝试恢复初始化。',
-  interrupted: '任务执行被中断。重启后系统会自动尝试恢复初始化。',
-  acquisition_failed: '部分表采集未完成。已完成的表可以保留复用，可强制更新失败表；全部补齐并通过校验后才完成初始化。',
-}
 let historyFailures = 0, historyRetryAfter: string | undefined
-const pageVisible = usePageVisibility(() => { detailRequests.cancel(); loading.value = false; clearTimeout(timer); historyRequests.cancel(); historyBusy.value = false; clearTimeout(historyTimer) }, () => { if (active) { void refreshHistory(); if (auto.value && !terminal.value) void fetchTask() } })
+const pageVisible = usePageVisibility(() => { historyRequests.cancel(); historyBusy.value = false; clearTimeout(historyTimer) }, () => { if (active) void refreshHistory() })
 let historyTimer: ReturnType<typeof setTimeout> | undefined
-const admissionRequests = useRequestScope(), historyRequests = useRequestScope(), detailRequests = useRequestScope(), submitRequests = useRequestScope()
+const admissionRequests = useRequestScope(), historyRequests = useRequestScope(), submitRequests = useRequestScope()
 async function refreshHistory() {
   if (!active || !pageVisible.value || historyBusy.value) return
   clearTimeout(historyTimer); historyBusy.value = true; historyError.value = ''
@@ -81,15 +74,16 @@ async function refreshHistory() {
     if (tasksResponse.status !== 200 || tasksResponse.body.code !== 'ok' || !result || !Array.isArray(result.items) || result.items.some(item => !item || typeof item.task_id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(item.task_id) || typeof item.mode !== 'string' || typeof item.status !== 'string') || typeof result.initialized !== 'boolean' || actionsResponse.status !== 200 || actionsResponse.body.code !== 'ok' || !reasons) throw new ApiError('无法确认任务及操作条件，请重新读取。', 'invalid_response')
     if (!active || !run.current()) return
     actionReasons.value = reasons; overview.value = result; historyFailures = 0; historyRetryAfter = undefined
-    const current = overview.value.items.find(item => ['queued', 'accepted', 'running', 'published_pending_progress'].includes(item.status))
-    if (active && !lookup.value && current) selectTask(current.task_id)
   }
   catch (e) { if (active && run.current()) { historyError.value = describe(e); historyFailures++; historyRetryAfter = e instanceof ApiError ? e.headers['Retry-After'] : undefined } }
   finally { if (run.current()) { historyBusy.value = false; if (active && pageVisible.value) historyTimer = setTimeout(refreshHistory, pollingDelay(15000, historyFailures, historyRetryAfter)) } }
 }
-function selectTask(id: string) { stop(); task.value = null; lookup.value = id; auto.value = true; void fetchTask() }
-const modeLabels: Record<string, string> = { initialize: '初始化', incremental: '增量同步', force_full: '强制全量' }
-const task = ref<Task | null>(null), busy = ref(false), loading = ref(false), error = ref(''), taskError = ref(''), receipt = ref(''), auto = ref(false)
+function openTask() {
+  const id = lookup.value.trim()
+  if (!validUpdateID(id)) { lookupError.value = '请输入有效的完整任务号。'; return }
+  lookupError.value = ''; void router.push({ name: 'update-detail', params: { id } })
+}
+const busy = ref(false), error = ref(''), receipt = ref(''), lookupError = ref('')
 const dialogOpen = ref(false)
 const selected = computed(() => actions.value.find(a => a.id === action.value)!)
 // Preserve the exact operation and key until a receipt is obtained or explicitly abandoned.
@@ -98,20 +92,13 @@ const recovered = loadPendingRecovery(recoveryContext).find(entry => entry.opera
 const recoveryAvailable = ref(true)
 const pending = ref<(PendingOperation & { title: string; description: string }) | null>(recovered ? { ...recovered.operation, title: '原更新操作', description: `恢复待确认请求：${recovered.operation.path}。将使用原操作与幂等键核对受理结果。` } : null)
 if (recovered) { key.value = recovered.operation.key; error.value = '已恢复待确认操作，请核对后重试原请求；尚未自动提交。' }
-let timer: ReturnType<typeof setTimeout> | undefined
 let active = true
-const terminal = computed(() => !!task.value?.finished_at || ['success_published', 'success_unchanged', 'failed'].includes(task.value?.status || ''))
-const statusLabels: Record<string, string> = { queued: '排队中', accepted: '已受理', running: '执行中', published_pending_progress: '已发布，正在确认进度', success_published: '发布成功', success_unchanged: '检查完成，无变化', failed: '执行失败' }
-const detailStatus = computed(() => task.value && ['initialize', 'force_full'].includes(task.value.mode) && task.value.status === 'failed' && task.value.acquisition?.tables.some(table => table.status === 'collected') && task.value.acquisition.tables.some(table => table.status !== 'collected') ? '部分完成，待补齐' : statusLabels[task.value?.status || ''] || task.value?.status)
-const stages = computed(() => task.value ? [{ name: '已受理', at: task.value.accepted_at }, { name: '开始执行', at: task.value.started_at }, { name: '构建就绪', at: task.value.ready_at }, { name: '发布完成', at: task.value.published_at }, { name: '检查完成', at: task.value.checked_at }, { name: '任务结束', at: task.value.finished_at }] : [])
-function stop() { auto.value = false; detailRequests.cancel(); loading.value = false; clearTimeout(timer) }
-onActivated(() => { active = true; void refreshHistory(); if (lookup.value.trim() && !terminal.value) { auto.value = true; void fetchTask() } })
-function deactivate() { active = false; admissionRequests.cancel(); checking.value = false; if (busy.value) error.value = '已停止等待，原操作与幂等键已保留；受理结果可能未知。'; submitRequests.cancel(); busy.value = false; dialogOpen.value = false; stop(); historyRequests.cancel(); historyBusy.value = false; clearTimeout(historyTimer) }
+onActivated(() => { active = true; void refreshHistory() })
+function deactivate() { active = false; admissionRequests.cancel(); checking.value = false; if (busy.value) error.value = '已停止等待，原操作与幂等键已保留；受理结果可能未知。'; submitRequests.cancel(); busy.value = false; dialogOpen.value = false; historyRequests.cancel(); historyBusy.value = false; clearTimeout(historyTimer) }
 onDeactivated(deactivate)
 onUnmounted(deactivate)
 async function confirm() {
   if (checking.value || busy.value) return
-  stop()
   error.value = ''
   if (!pending.value) {
     if (action.value === 'incremental' && incrementalBlocked.value) { error.value = incrementalHelp.value; return }
@@ -144,8 +131,6 @@ async function confirm() {
 }
 function forceFull() { action.value = 'force-full'; confirm() }
 function syncIncremental() { action.value = 'incremental'; confirm() }
-function retryFull(id: string) { if (!rerunAllowed.value) return; action.value = 'rerun'; predecessor.value = id; confirm() }
-function forceTable(table: string) { if (!tableUpdateAllowed.value) return; action.value = 'table-full'; selectedTable.value = table; confirm() }
 function abandon() { if (pending.value) removePendingRecovery(recoveryContext, pending.value); pending.value = null; key.value = newIdempotencyKey(); error.value = ''; receipt.value = ''; admissionBusy.value = false }
 async function submit() {
   if (!active || busy.value || !pending.value) return
@@ -161,86 +146,46 @@ async function submit() {
     receipt.value = `任务已受理：${lookup.value}。受理不代表执行完成。`
     removePendingRecovery(recoveryContext, submission)
     pending.value = null; key.value = newIdempotencyKey()
-    task.value = null; auto.value = true; await fetchTask()
     if (run.current()) await refreshHistory()
   } catch (e) { if (!run.current()) return; admissionBusy.value = e instanceof ApiError && e.code === 'busy'; error.value = `${describe(e)} 原请求已保留；再次提交将使用相同操作与幂等键。` }
   finally { if (run.current()) busy.value = false }
 }
-async function fetchTask() {
-  if (!active || !pageVisible.value || loading.value || !lookup.value.trim()) return
-  clearTimeout(timer); loading.value = true; taskError.value = ''
-  const run = detailRequests.begin(), id = lookup.value.trim()
-  const current = () => active && run.current() && lookup.value.trim() === id
-  try {
-    const response = await request<Envelope<Task>>('worker', acceptedLocation.value?.id === id ? acceptedLocation.value.path : `/admin/v1/tasks/${encodeURIComponent(id)}`, { signal: run.signal })
-    if (!current()) return
-    task.value = response.body.data
-    if (terminal.value) stop()
-  } catch (e) { if (current()) { taskError.value = `${describe(e)} 自动刷新已停止。${task.value ? '显示的进度为上次成功读取的结果。' : ''}`; stop() } }
-  finally { if (run.current()) { loading.value = false; if (active && pageVisible.value && auto.value) timer = setTimeout(fetchTask, 5000) } }
-}
-function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else stop() }
 </script>
 <template>
   <section>
-    <PageHeader title="更新任务" description="初始化和日常同步由系统自动执行，此处查看记录与处理异常。"><div class="actions"><button @click="refreshHistory" :disabled="historyBusy">刷新记录</button><button class="primary" @click="syncIncremental" :disabled="incrementalBlocked || busy || loading || !!pending" aria-describedby="incremental-help">立即增量同步</button><button @click="forceFull" :disabled="forceFullBlocked || busy || loading || !!pending" aria-describedby="force-full-help">{{ primaryLabel }}</button></div></PageHeader>
-    <UpdateHistory /><div class="section-note">
-      <h2>自动更新</h2>
-      <p v-if="overview">{{ overview.initialized ? '初始化已完成，系统按两小时间隔调度增量同步。' : '尚未完成初始化。全新环境自动开始，重启后系统会恢复未完成的初始化。' }}</p>
-      <p v-else>正在读取自动更新状态。</p>
-      <p v-if="overview && !overview.initialized" class="hint">每次启动最多自动重新采集一次，与上次失败至少间隔 5 分钟，并遵守上游冷却时间。若再次失败，请先检查失败原因。</p>
-      <p id="force-full-help" class="hint">{{ forceFullHelp }}</p>
-      <p id="incremental-help" class="hint">{{ incrementalHelp }}</p>
-      <p v-if="overview?.initialized">下次计划时间：{{ time(overview.next_due_at) }}。执行中或恢复中会顺延。</p>
-      <p v-if="overview?.cooldown_until">冷却截止时间：{{ time(overview.cooldown_until) }}</p>
-    </div>
-    <p v-if="historyError" class="error" role="alert">{{ historyError }}</p>
-    <section v-if="currentActiveTask && !historyError" aria-label="当前执行任务" class="section-note">
-      <h2>当前任务</h2>
-      <p>{{ modeLabels[currentActiveTask.mode] || currentActiveTask.mode }} · {{ statusLabels[currentActiveTask.status] || currentActiveTask.status }}</p>
-      <RouterLink :to="{ name: 'update-detail', params: { id: currentActiveTask.task_id } }">查看当前事件详情</RouterLink>
-    </section>
+    <PageHeader title="更新事件" description="一次更新作为一个事件，查看执行结果、阶段与调用。"><div class="update-primary"><button class="primary" @click="forceFull" :disabled="forceFullBlocked || busy || !!pending" aria-describedby="force-full-help">{{ primaryLabel }}</button><p id="force-full-help" class="hint">{{ forceFullHelp }}</p></div></PageHeader>
+    <UpdateHistory />
     <div class="section-bar next-heading"><h2>维护与详情</h2><span class="muted">日常运行无需手动操作</span></div>
     <div class="task-layout">
-      <form class="panel" :aria-busy="busy" @submit.prevent="confirm">
-        <h2>人工维护</h2><p v-if="checking" role="status">正在核对原任务是否允许重跑…</p><p class="muted">仅在需要完整重建或排除故障后使用。</p>
+      <form class="panel maintenance-form" aria-label="人工维护" :aria-busy="busy" @submit.prevent="confirm">
+        <div class="section-bar"><h3>人工维护</h3><button type="button" @click="refreshHistory" :disabled="historyBusy">刷新记录</button></div><p v-if="checking" role="status">正在核对原任务是否允许重跑…</p><p class="muted">仅在需要完整重建或排除故障后使用。</p>
+        <div class="maintenance-sync"><button type="button" @click="syncIncremental" :disabled="incrementalBlocked || busy || !!pending" aria-describedby="incremental-help">立即增量同步</button><p id="incremental-help" class="hint">{{ incrementalHelp }}</p></div><p v-if="historyError" class="error" role="alert">{{ historyError }}</p>
         <fieldset :disabled="checking || busy || !!pending"><legend>更新方式</legend><label v-for="item in actions" :key="item.id" class="radio-row"><input v-model="action" type="radio" :value="item.id" name="action"><span><strong>{{ item.title }}</strong><small>{{ item.text }}</small></span></label>
         <label v-if="action === 'rerun'">原失败任务号 *<input v-model="predecessor" required placeholder="输入失败任务号"></label>
-        <label v-if="action === 'table-full'">来源表<select v-model="selectedTable"><option v-for="name in sourceTables" :key="name" :value="name">{{ name }}</option></select></label>
+        <label v-if="action === 'table-full'">来源表<select v-model="selectedTable"><option v-for="name in sourceTables" :key="name" :value="name">{{ sourceName(name) }} · {{ name }}</option></select></label>
         <label class="key-label">幂等键<input v-model="key" required maxlength="128" spellcheck="false"></label></fieldset>
         <p class="hint" aria-label="后端操作条件">{{ actionExplanation(actionReasons, action === 'force-full' ? (failedInitialization ? 'rerun' : 'force_full') : action === 'table-full' ? 'table_force_full' : action === 'rerun' ? 'rerun' : 'incremental') }}</p><p v-if="action === 'table-full' && !tableUpdateAllowed" class="hint">当前不可执行单表更新：请先确认初始化已完成，或存在允许补齐的失败初始化任务，并等待当前任务和请求结束。</p><p class="hint">响应丢失时用原键重试，可避免重复创建任务。</p>
         <p v-if="pending" class="hint">已锁定请求：{{ pending.title }}。修改操作前请先结束本次请求。</p>
         <p v-if="pending && !recoveryAvailable" class="hint">当前浏览器无法保存恢复信息，刷新页面会丢失本次待确认请求。</p>
-        <div class="actions"><button class="primary" :disabled="checking || busy || loading || (!pending && ((action === 'incremental' && incrementalBlocked) || (action === 'force-full' && forceFullBlocked) || (action === 'table-full' && !tableUpdateAllowed) || (action === 'rerun' && !rerunAllowed)))">{{ busy ? '正在提交…' : pending ? '重试原请求' : '提交更新' }}</button><button v-if="pending" type="button" :disabled="busy" @click="abandon">结束本次请求</button></div>
+        <div class="actions"><button class="primary" :disabled="checking || busy || (!pending && ((action === 'incremental' && incrementalBlocked) || (action === 'force-full' && forceFullBlocked) || (action === 'table-full' && !tableUpdateAllowed) || (action === 'rerun' && !rerunAllowed)))">{{ busy ? '正在提交…' : pending ? '重试原请求' : '提交更新' }}</button><button v-if="pending" type="button" :disabled="busy" @click="abandon">结束本次请求</button></div>
         <p v-if="error" class="error" role="alert">{{ error }}</p><p v-if="receipt" class="success-text" role="status">{{ receipt }}</p><p v-if="receipt && acceptedLocation"><RouterLink :to="{ name: 'update-detail', params: { id: acceptedLocation.id } }">查看已受理事件详情</RouterLink></p><div v-if="admissionBusy" class="hint"><p>后端正在处理更新或发布，原请求仍保留。先读取当前任务，再决定是否重试原请求。</p><button type="button" :disabled="historyBusy" @click="refreshHistory">读取当前任务</button><RouterLink v-if="currentActiveTask && !historyError" :to="{ name: 'update-detail', params: { id: currentActiveTask.task_id } }">查看当前任务详情</RouterLink></div>
       </form>
-      <div class="task-detail">
-        <form class="lookup" :aria-busy="loading" @submit.prevent="selectTask(lookup.trim())"><label for="task-id">查找任务</label><div class="actions"><input id="task-id" v-model="lookup" required :disabled="loading || busy" placeholder="输入完整任务号" @input="stop(); task = null; taskError = ''"><button :disabled="loading || busy">{{ loading ? '查询中…' : '查看任务' }}</button></div></form>
-        <p class="hint">历史记录请使用上方事件列表，也可输入任务号查看执行详情。</p>
-        <p v-if="taskError" class="error" role="alert">{{ taskError }}</p>
-        <template v-if="task">
-          <div class="section-bar"><h2>执行详情</h2><StatusBadge :value="task.status" :label="statusLabels[task.status] ? detailStatus || undefined : undefined" /></div>
-          <p class="task-id">{{ task.task_id }}</p><p v-if="validUpdateID(task.task_id)"><RouterLink :to="{ name: 'update-detail', params: { id: task.task_id } }">打开此事件完整详情</RouterLink></p><p class="hint">执行器恢复沿用原任务和事件；主动重跑会创建新任务，通过前序任务号关联。两者不会合并成一次执行记录。</p>
-          <label class="check-row"><input type="checkbox" v-model="auto" :disabled="terminal || busy || loading" @change="toggleAuto">每 5 秒刷新，任务结束或查询失败后停止</label>
-          <p v-if="task.selected_table" class="hint">本次强制更新表：{{ task.selected_table }}</p>
-          <TaskDiagnostics :task="task" :allow-update="tableUpdateAllowed" @update-table="forceTable" />
-
-          <dl class="facts"><div><dt>更新模式</dt><dd>{{ modeLabels[task.mode] || task.mode }}</dd></div><div><dt>操作人</dt><dd>{{ task.operator === 'scheduler' ? '系统调度' : task.operator || '未提供' }}</dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed ? '已确认' : '未确认' }}</dd></div><div v-if="task.predecessor_id"><dt>前序任务</dt><dd><RouterLink v-if="validUpdateID(task.predecessor_id) && task.predecessor_id !== task.task_id" :to="{ name: 'update-detail', params: { id: task.predecessor_id } }">{{ task.predecessor_id }}</RouterLink><span v-else>{{ task.predecessor_id }}</span></dd></div></dl>
-          <p v-if="task.failure" class="error">失败原因：{{ task.failure }}</p>
-          <p v-if="task.failure && task.mode === 'initialize'" class="hint">{{ failureDescriptions[task.failure] }}</p>
-          <template v-if="task.status === 'failed' && task.mode === 'force_full'">
-            <p class="hint">已完成的表保留在本次任务中。可逐张强制更新失败表，或重试全部未完成表；补齐并校验通过后自动发布。若期间已完成其他同步，则使用当前版本重新采集。</p>
-            <button type="button" :disabled="!rerunAllowed || checking" @click="retryFull(task.task_id)">重试未完成的表</button>
-          </template>
-          <button type="button" :disabled="loading || busy" @click="selectTask(task.task_id)">刷新详情</button>
-
-          <ol class="timeline"><li v-for="stage in stages" :key="stage.name" :class="{ done: stage.at }"><span class="timeline-dot" aria-hidden="true"></span><span>{{ stage.name }}</span><time>{{ time(stage.at) }}</time></li></ol>
-          <p class="hint">未发生的阶段不代表失败；无变化检查可能无需重新发布。</p>
-          <LazyResponse class="raw" summary="查看完整任务结果与源进度" :value="task" label="任务结果 JSON" />
-        </template>
-        <div v-else class="empty" role="status"><span aria-hidden="true">↻</span><h3>{{ loading ? '正在读取任务' : '等待查看任务' }}</h3><p>提交更新后自动查看，也可输入已有任务号。</p></div>
-      </div>
+      <section class="panel task-lookup" aria-label="查找任务详情">
+        <form class="lookup" @submit.prevent="openTask"><label for="task-id">查找任务</label><div class="actions"><input id="task-id" v-model="lookup" required maxlength="128" placeholder="输入完整任务号" @input="lookupError = '';"><button>查看任务</button></div></form>
+        <p class="hint">在任务详情中查看执行阶段、采集进度、失败原因与关联日志。</p><p v-if="lookupError" class="error" role="alert">{{ lookupError }}</p>
+      </section>
     </div>
     <AsyncActionDialog v-model:open="dialogOpen" :title="`确认${pending?.title ?? ''}`" :description="pending?.description" confirm-label="确认提交更新" :busy="busy" @confirm="submit"><p class="hint">幂等键：{{ pending?.key }}</p></AsyncActionDialog>
   </section>
 </template>
+
+<style scoped>
+.update-primary { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: 380px; }
+.update-primary .hint { text-align: right; }
+.maintenance-sync { margin-bottom: 20px; }
+.maintenance-sync .hint { margin-top: 8px; }
+.maintenance-form .section-bar { margin-bottom: 0; }
+.task-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.task-lookup .hint { margin: 12px 0 0; }
+@media (max-width: 900px) { .task-layout { grid-template-columns: minmax(0, 1fr); } .update-primary { max-width: none; align-items: flex-start; } .update-primary .hint { text-align: left; } }
+</style>
