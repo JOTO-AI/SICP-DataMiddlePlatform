@@ -231,6 +231,7 @@ for (const status of ['success_published', 'success_unchanged']) {
     await page.getByRole('button', { name: '确认提交更新', exact: true }).click()
     await page.getByRole('link', { name: '查看已受理事件详情', exact: true }).click()
     await expect(page.getByText(status === 'success_published' ? '发布成功' : '检查完成，无变化', { exact: true })).toBeVisible()
+    await page.getByRole('tab', { name: '转移与发布', exact: true }).click()
     await expect(page.getByText('已确认', { exact: true })).toBeVisible()
     expect(keys).toHaveLength(2)
     expect(keys[1]).toBe(keys[0])
@@ -305,6 +306,7 @@ test('failed task shows upstream evidence as text and can refresh delayed logs',
   await page.route('**/admin/v1/{tasks,update-events}/diagnostic-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, diagnostics_unavailable: unavailable, failed_attempts: [{ log_source: 'platform', event_id: (managementCapture('log_detail').response.data as any).event_id, at: '2026-09-30T05:45:25Z', source: 'dwd_bzkscjzlb', page: 1115, attempt: 3, failure: 'http', http_status: 500, duration_ns: 248000000, response: { body: 'database unavailable <img src=x onerror="window.injected=true">', request_id: 'upstream-trace', truncated: true, read_error: true } }] } } }))
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
   await viewTask(page, 'diagnostic-task')
+  await page.getByRole('tab', { name: '异常与通知', exact: true }).click()
   const evidence = page.getByRole('region', { name: '采集失败记录' })
   await expect(evidence).toContainText('第 1115 页 · 第 3 次尝试 · HTTP 500')
   await expect(evidence).toContainText('database unavailable')
@@ -331,6 +333,7 @@ test('backend diagnostic captures render on task and linked log details', async 
   await page.route('**/admin/v1/{tasks,update-events}/auth-failed-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, failed_attempts: [captured.attempt], diagnostics_unavailable: unavailable } } }))
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
   await viewTask(page, 'auth-failed-task')
+  await page.getByRole('tab', { name: '异常与通知', exact: true }).click()
   const evidence = page.getByRole('region', { name: '采集失败记录' })
   for (const scenario of diagnosticScenarios) {
     captured = diagnosticCapture(scenario)
@@ -381,6 +384,7 @@ test('legacy and malformed diagnostics retain confirmed task facts', async ({ pa
   await page.route('**/admin/v1/{tasks,update-events}/auth-failed-task', route => route.fulfill({ json: { code: 'ok', data: { ...task, failed_attempts: [attempt] } } }))
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
   await viewTask(page, 'auth-failed-task')
+  await page.getByRole('tab', { name: '异常与通知', exact: true }).click()
   const evidence = page.getByRole('region', { name: '采集失败记录' })
   const auth = evidence.getByRole('region', { name: '认证错误摘要' })
   await expect(auth).toContainText('内部错误，请联系管理员')
@@ -686,6 +690,7 @@ test('failed initialization exposes a retry entry without enabling duplicate boo
   await expect(page.getByRole('radio', { name: /单表强制更新/ })).toBeVisible()
   await expect(page.getByRole('button', { name: '立即增量同步', exact: true })).toBeDisabled()
   await viewTask(page, 'automatic-initial-task')
+  await page.getByRole('tab', { name: '异常与通知', exact: true }).click()
   await expect(page.getByText('失败记录：acquisition_failed')).toBeVisible()
   await expect(page.getByText('系统调度', { exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('automatic-tasks-desktop.png'), fullPage: true })
@@ -3132,4 +3137,37 @@ test('V03 update log action queries only after navigation with the backend task 
   await expect(page).toHaveURL(/\/logs\/platform$/)
   await expect(page.getByRole('textbox', { name: '关联标识', exact: true })).toHaveValue(String(event.task_id))
   await expect.poll(() => logReads).toBe(1)
+})
+
+test('V04 figure16 detail shows stage strip, tabs and master-detail operation tree', async ({ page }, testInfo) => {
+  await setup(page)
+  const event = recordedUpdateEvent()
+  let writes = 0
+  page.on('request', r => { if (['POST', 'PUT', 'DELETE'].includes(r.method())) writes++ })
+  await page.goto('/console/updates/' + event.id)
+  const stage = page.getByRole('region', { name: '更新阶段进度' })
+  await expect(stage.locator('li')).toHaveCount(7)
+  await expect(stage.locator('.confirmed')).toHaveCount(0)
+  await expect(page.getByRole('tab')).toHaveText(['操作树', '转移与发布', '关联日志', '异常与通知'])
+  await page.getByRole('button', { name: '查看节点 publication', exact: true }).click()
+  const detail = page.getByRole('region', { name: '操作节点详情' })
+  await expect(detail).toContainText('路由与发布')
+  await expect(detail).toContainText('未观测')
+  for (const width of [1440, 1280, 1024, 768, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (width === 1440) {
+      const left = await page.locator('.operation-list').boundingBox(), right = await detail.boundingBox()
+      expect(left!.x + left!.width).toBeLessThanOrEqual(right!.x + 1)
+    }
+    await page.screenshot({ path: testInfo.outputPath('figure16-' + width + '.png'), fullPage: true })
+  }
+  for (const label of ['转移与发布', '关联日志', '异常与通知', '操作树']) {
+    await page.getByRole('tab', { name: label, exact: true }).click()
+    await expect(page.getByRole('tabpanel')).toBeVisible()
+  }
+  await page.getByRole('tab', { name: '操作树', exact: true }).focus()
+  await page.keyboard.press('End')
+  await expect(page.getByRole('tab', { name: '异常与通知' })).toBeFocused()
+  expect(writes).toBe(0)
 })

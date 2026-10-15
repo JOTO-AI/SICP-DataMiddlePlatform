@@ -424,3 +424,5 @@ frontend/gateway-e2e/  真实网关与部署验证
 V01/V02 的取舍、截图范围与回归证据见 [界面细节复核](verification/FRONTEND_VISUAL_DETAIL_REVIEW.md)。未实测的完整视觉验收和服务器联调保持原待办状态。
 
 - [x] V03 更新事件页删除自动更新、当前任务与内嵌执行详情，维护/查找保留；按 15 图调整筛选和表格，详情轮询归独立页，完成 80 项相关回归、视觉复核和 code review。见 [更新事件页复核](verification/FRONTEND_UPDATE_PAGE_REVIEW.md)。
+
+- [x] V04 按图 16 实现更新详情头部、七阶段进度、四标签和左右操作树；58 项浏览器、122 项单元及构建检查通过，完成视觉与 code review。见 [图 16 复核](verification/FRONTEND_FIGURE16_REVIEW.md)。
