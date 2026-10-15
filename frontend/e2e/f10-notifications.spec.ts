@@ -144,3 +144,62 @@ test('F10 unconfigured channel blocks enabling but clearing recipients can save 
   await expect(settings).toContainText('配置版本 2')
   expect(writes).toBe(1)
 })
+async function configuredMail(page: Page) {
+  await setup(page)
+  // Protocol eligibility variant only: reuse the recorded recipient, revision and actual job DTO.
+  const config = managementCapture('notification_settings').response as any
+  config.data.settings.revision = (managementCapture('test_notifications').request as any).revision
+  config.data.settings.enabled = true
+  config.data.settings.recipients = [(managementCapture('deliveries').response.data as any).items[0].recipient]
+  config.data.channel_state = 'configured'; config.data.channel_diagnostics.configured = true
+  await page.route('**/admin/v1/settings/notifications', route => route.fulfill({ json: config }))
+  const job = managementCapture('notification_test_job')
+  await page.route(`**${job.path}`, route => route.fulfill({ json: job.response }))
+}
+test('F10 explicit mail locks saved revision and recovers the same key after response loss without storing recipients', async ({ page }) => {
+  await configuredMail(page)
+  const posts: any[] = [], accepted = managementCapture('test_notifications')
+  await page.route('**/admin/v1/notifications/test', route => {
+    posts.push(route.request().postDataJSON())
+    return posts.length === 1 ? route.abort('failed') : route.fulfill({ status: 202, json: accepted.response })
+  })
+  await page.goto('/console/notifications')
+  const mail = page.getByRole('region', { name: '测试邮件', exact: true })
+  await mail.getByRole('button', { name: '发送测试邮件', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '确认发送测试邮件', exact: true })
+  await expect(dialog).toContainText('synthetic@example.invalid')
+  expect(posts).toHaveLength(0)
+  await dialog.getByRole('button', { name: '确认发送测试邮件', exact: true }).click()
+  await expect(dialog).toContainText('受理结果未确认')
+  const recovery = await page.evaluate(() => sessionStorage.getItem('sicp.pending-operations.v1'))
+  expect(recovery).not.toContain('synthetic@example.invalid')
+  expect(Object.keys(posts[0]).sort()).toEqual(['idempotency_key', 'revision'])
+  await page.reload()
+  await expect(mail).toContainText('已恢复原测试请求')
+  expect(posts).toHaveLength(1)
+  await mail.getByRole('button', { name: '原键重试测试请求' }).click()
+  await dialog.getByRole('button', { name: '确认发送测试邮件', exact: true }).click()
+  await expect(mail).toContainText('测试作业已受理，不代表邮件已送达')
+  expect(posts).toHaveLength(2); expect(posts[1]).toEqual(posts[0])
+  await expect(mail).toContainText((accepted.response.data as any).id)
+  await expect(mail.getByRole('button', { name: '查看投递详情' })).toHaveCount(0)
+  await expect(mail).toContainText('仅展示本批中与此测试事实号完全一致')
+  await page.reload()
+  await expect(mail).toContainText((accepted.response.data as any).id)
+  expect(posts).toHaveLength(2)
+})
+test('F10 mail testing is disabled for unconfigured or unsaved settings and cancel does not send', async ({ page }) => {
+  await setup(page); await page.goto('/console/notifications')
+  await expect(page.getByRole('button', { name: '发送测试邮件', exact: true })).toBeDisabled()
+  await configuredMail(page); await page.reload()
+  const send = page.getByRole('button', { name: '发送测试邮件', exact: true })
+  await expect(send).toBeEnabled()
+  await page.getByLabel('源结构变化', { exact: true }).uncheck()
+  await expect(send).toBeDisabled()
+  await page.getByLabel('源结构变化', { exact: true }).check()
+  let posts = 0
+  await page.route('**/admin/v1/notifications/test', route => { posts++; return route.abort() })
+  await send.click()
+  await page.getByRole('dialog').getByRole('button', { name: '暂不提交' }).click()
+  await expect(send).toBeEnabled(); expect(posts).toBe(0)
+})

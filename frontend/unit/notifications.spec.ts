@@ -18,3 +18,16 @@ test('notification readers reject identity, pagination and count contradictions 
   expect(readDeliveryDetail(detail, 'wrong-id')).toBeNull()
   expect(readDeliveryDetail({ ...detail, attempts: [...detail.attempts, ...detail.attempts] }, detail.delivery.id)).toBeNull()
 })
+import { readManagementJob, terminalManagementJob, notificationTestFact } from '../src/app/managementJobs'
+import { createJobOperation } from '../src/api/operations'
+test('mail test uses captured revision-only input and validates actual job identity separately from delivery', () => {
+  const capture = managementCapture('test_notifications'), job = capture.response.data as any
+  expect(readManagementJob(job, 'notification_test', job.id)).toEqual(job)
+  expect(readManagementJob(job, 'cleanup')).toBeNull()
+  expect(readManagementJob(job, 'notification_test', 'different')).toBeNull()
+  expect(terminalManagementJob(job)).toBe(false)
+  expect(notificationTestFact(job)).toBe('explicit:' + job.id)
+  const input = capture.request as { revision: string; idempotency_key: string }
+  expect(JSON.parse(createJobOperation('/admin/v1/notifications/test', { revision: input.revision }, input.idempotency_key).payload)).toEqual(input)
+  expect(notificationTestFact(job)).not.toBe((managementCapture('deliveries').response.data as any).items[0].fact_id)
+})
