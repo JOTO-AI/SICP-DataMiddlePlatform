@@ -3,6 +3,7 @@ import AsyncActionDialog from '../components/AsyncActionDialog.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import PageHeader from '../components/PageHeader.vue'
 import UpdateHistory from '../components/updates/UpdateHistory.vue'
+import { validUpdateID } from '../app/updateEvents'
 import { actionAllows, actionExplanation, readActionReasons } from '../app/updateActions'
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
 import { request, describe, time, ApiError, type Envelope } from '../api'
@@ -34,7 +35,7 @@ const failedInitialization = computed(() => {
   const latest = overview.value?.items[0]
   return !overview.value?.initialized && latest?.mode === 'initialize' && latest.status === 'failed' ? latest : null
 })
-const primaryLabel = computed(() => failedInitialization.value ? '重新初始化' : '强制全量更新')
+const primaryLabel = computed(() => failedInitialization.value ? '重跑失败初始化' : '强制全量更新')
 const forceFullBlocked = computed(() => checking.value || !actionAllows(actionReasons.value, failedInitialization.value ? 'rerun' : 'force_full') || historyBusy.value || !overview.value || !!historyError.value || hasActiveTask.value || (!overview.value.initialized && !failedInitialization.value))
 const incrementalBlocked = computed(() => checking.value || !actionAllows(actionReasons.value, 'incremental') || historyBusy.value || !overview.value || !!historyError.value || hasActiveTask.value || !overview.value.initialized)
 const incrementalHelp = computed(() => {
@@ -52,11 +53,11 @@ const forceFullHelp = computed(() => {
   if (hasActiveTask.value) return '已有更新任务正在执行或等待恢复，完成后才能再次启动。'
   if (failedInitialization.value && !actionAllows(actionReasons.value, 'rerun')) return actionExplanation(actionReasons.value, 'rerun')
   if (failedInitialization.value) return '初始化未完成，可重新采集待补齐的表，或选择单表强制更新；已完成的表会保留复用，上游冷却期间任务会等待。'
-  if (!overview.value.initialized) return '等待系统创建初始化任务；任务失败后可在此重新初始化。'
+  if (!overview.value.initialized) return '等待系统创建初始化任务；任务失败后可在此重跑失败初始化。'
   if (!actionAllows(actionReasons.value, 'force_full')) return actionExplanation(actionReasons.value, 'force_full')
   return '强制全量更新会立即请求重新采集、校验并发布完整数据。'
 })
-const actions = computed(() => [{ id: 'incremental', title: '增量同步', text: '立即同步所有表的增量。有变化且校验通过后自动发布，无变化则确认同步进度；失败时保留当前版本和原同步进度。' }, { id: 'force-full', title: failedInitialization.value ? '重新初始化' : '强制全量', text: failedInitialization.value ? '复用已经完整采集的表，重新采集待补齐的表。' : '维护操作：重新采集并构建完整数据，即使内容未变化。' }, { id: 'table-full', title: '单表强制更新', text: '只从上游完整采集所选表，其余表复用最近已完成的数据。初始化尚缺其他表时，保留本次结果，等待继续补齐。' }, { id: 'rerun', title: '失败重跑', text: '排除故障后，根据失败任务创建关联的新任务。' }])
+const actions = computed(() => [{ id: 'incremental', title: '增量同步', text: '立即同步所有表的增量。有变化且校验通过后自动发布，无变化则确认同步进度；失败时保留当前版本和原同步进度。' }, { id: 'force-full', title: failedInitialization.value ? '重跑失败初始化' : '强制全量', text: failedInitialization.value ? '复用已经完整采集的表，重新采集待补齐的表。' : '维护操作：重新采集并构建完整数据，即使内容未变化。' }, { id: 'table-full', title: '单表强制更新', text: '只从上游完整采集所选表，其余表复用最近已完成的数据。初始化尚缺其他表时，保留本次结果，等待继续补齐。' }, { id: 'rerun', title: '失败重跑', text: '排除故障后，根据失败任务创建关联的新任务。' }])
 const failureDescriptions: Record<string, string> = {
   corrupt_seal: '采集结果未完整封存或校验未通过，需重新采集。重启后系统会自动尝试恢复初始化。',
   interrupted: '任务执行被中断。重启后系统会自动尝试恢复初始化。',
@@ -222,12 +223,12 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
         <p v-if="taskError" class="error" role="alert">{{ taskError }}</p>
         <template v-if="task">
           <div class="section-bar"><h2>执行详情</h2><StatusBadge :value="task.status" :label="statusLabels[task.status] ? detailStatus || undefined : undefined" /></div>
-          <p class="task-id">{{ task.task_id }}</p>
+          <p class="task-id">{{ task.task_id }}</p><p v-if="validUpdateID(task.task_id)"><RouterLink :to="{ name: 'update-detail', params: { id: task.task_id } }">打开此事件完整详情</RouterLink></p><p class="hint">执行器恢复沿用原任务和事件；主动重跑会创建新任务，通过前序任务号关联。两者不会合并成一次执行记录。</p>
           <label class="check-row"><input type="checkbox" v-model="auto" :disabled="terminal || busy || loading" @change="toggleAuto">每 5 秒刷新，任务结束或查询失败后停止</label>
           <p v-if="task.selected_table" class="hint">本次强制更新表：{{ task.selected_table }}</p>
           <WorkProgress :progress="task.work_progress" :status="task.status" :started-at="task.started_at" :finished-at="task.finished_at" />
           <AcquisitionProgress :progress="task.acquisition" :status="task.status" :allow-update="tableUpdateAllowed" @update-table="forceTable" />
-          <dl class="facts"><div><dt>更新模式</dt><dd>{{ modeLabels[task.mode] || task.mode }}</dd></div><div><dt>操作人</dt><dd>{{ task.operator === 'scheduler' ? '系统调度' : task.operator || '未提供' }}</dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed ? '已确认' : '未确认' }}</dd></div><div v-if="task.predecessor_id"><dt>前序任务</dt><dd>{{ task.predecessor_id }}</dd></div></dl>
+          <dl class="facts"><div><dt>更新模式</dt><dd>{{ modeLabels[task.mode] || task.mode }}</dd></div><div><dt>操作人</dt><dd>{{ task.operator === 'scheduler' ? '系统调度' : task.operator || '未提供' }}</dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed ? '已确认' : '未确认' }}</dd></div><div v-if="task.predecessor_id"><dt>前序任务</dt><dd><RouterLink v-if="validUpdateID(task.predecessor_id) && task.predecessor_id !== task.task_id" :to="{ name: 'update-detail', params: { id: task.predecessor_id } }">{{ task.predecessor_id }}</RouterLink><span v-else>{{ task.predecessor_id }}</span></dd></div></dl>
           <p v-if="task.failure" class="error">失败原因：{{ task.failure }}</p>
           <p v-if="task.failure && task.mode === 'initialize'" class="hint">{{ failureDescriptions[task.failure] }}</p>
           <template v-if="task.status === 'failed' && task.mode === 'force_full'">

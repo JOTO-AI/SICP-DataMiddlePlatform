@@ -28,6 +28,7 @@ test('update readers reject conflicting IDs, duplicate pages and malformed metad
   expect(readUpdatePage({ items: [event], next_cursor: '' })).toBeNull()
   expect(readUpdatePage({ items: [event] })).toBeNull()
   expect(readUpdateDetail(captured, 'protocol-mismatch')).toBeNull()
+  expect(readUpdateDetail({ ...captured, predecessor_id: event.id }, String(event.id))).toBeNull()
   expect(readUpdateDetail({ ...captured, progress_confirmed: 'false' }, String(event.id))).toBeNull()
   expect(readUpdateDetail({ ...captured, finished_at: 'not-a-time' }, String(event.id))).toBeNull()
   expect(readUpdateDetail({ ...captured, diagnostics_unavailable: 'false' }, String(event.id))).toBeNull()

@@ -12,7 +12,7 @@ const word = (value: unknown) => typeof value === 'string' && value.length > 0 &
 function taskFields(value: Record<string, unknown>): boolean {
   return validUpdateID(value.task_id) && word(value.mode) && word(value.status) &&
     typeof value.accepted_at === 'string' && Number.isFinite(Date.parse(value.accepted_at)) &&
-    (value.predecessor_id == null || validUpdateID(value.predecessor_id)) &&
+    (value.predecessor_id == null || validUpdateID(value.predecessor_id) && value.predecessor_id !== value.task_id) &&
     updateTimes.every(([key]) => value[key] == null || typeof value[key] === 'string' && value[key].length <= 64 && Number.isFinite(Date.parse(value[key])))
 }
 export interface UpdateFilters { from: string; to: string; mode: string; status: string; task_id: string }

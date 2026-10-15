@@ -581,7 +581,7 @@ test('failed initialization exposes a retry entry without enabling duplicate boo
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: false, interval_seconds: 7200, items: [{ task_id: 'automatic-initial-task', mode: 'initialize', status: 'failed', operator: 'scheduler', accepted_at: '2026-09-28T10:00:00Z' }] } } }))
   await page.route('**/admin/v1/tasks/automatic-initial-task', route => route.fulfill({ json: { code: 'ok', data: { task_id: 'automatic-initial-task', mode: 'initialize', status: 'failed', operator: 'scheduler', accepted_at: '2026-09-28T10:00:00Z', failure: 'acquisition_failed' } } }))
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
-  await expect(page.getByRole('button', { name: '重新初始化', exact: true })).toBeEnabled()
+  await expect(page.getByRole('button', { name: '重跑失败初始化', exact: true })).toBeEnabled()
   await expect(page.getByText('初始化未完成，可重新采集待补齐的表，或选择单表强制更新；已完成的表会保留复用，上游冷却期间任务会等待。')).toBeVisible()
   await expect(page.getByText(/重启后系统会恢复未完成的初始化/)).toBeVisible()
   await expect(page.getByRole('radio')).toHaveCount(4)
@@ -614,8 +614,8 @@ test('initialization retry keeps its predecessor and key across lost replies and
   })
   await page.route('**/admin/v1/tasks/retry-init', route => route.fulfill({ json: { code: 'ok', data: { ...latest, predecessor_id: 'failed-init' } } }))
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
-  await page.getByRole('button', { name: '重新初始化', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '确认重新初始化', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '重跑失败初始化', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '确认重跑失败初始化', exact: true })).toBeVisible()
   await expect(page.getByRole('dialog')).toContainText('failed-init')
   await page.getByRole('button', { name: '确认提交更新', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('原请求已保留')
@@ -629,6 +629,8 @@ test('initialization retry keeps its predecessor and key across lost replies and
   expect(keys).toHaveLength(2)
   expect(keys[0]).toBe(keys[1])
   expect(forceCalls).toBe(0)
+  await expect(page.getByRole('link', { name: 'failed-init', exact: true })).toHaveAttribute('href', '/console/updates/failed-init')
+  await expect(page.getByRole('link', { name: '打开此事件完整详情', exact: true })).toHaveAttribute('href', '/console/updates/retry-init')
   await expect(page.getByRole('button', { name: '强制全量更新', exact: true })).toBeDisabled()
 })
 
@@ -645,12 +647,12 @@ test('update entry explains active work and blocks use of stale history', async 
   await expect(page.getByText('已有更新任务正在执行或等待恢复，完成后才能再次启动。')).toBeVisible()
   status = 'failed'
   await page.getByRole('button', { name: '刷新记录', exact: true }).click()
-  await expect(page.getByRole('button', { name: '重新初始化', exact: true })).toBeEnabled()
+  await expect(page.getByRole('button', { name: '重跑失败初始化', exact: true })).toBeEnabled()
   unavailable = true
   await page.getByRole('button', { name: '刷新记录', exact: true }).click()
   await expect(page.locator('#force-full-help')).toHaveText('无法确认当前任务状态，请先刷新记录。')
   await expect(page.locator('#incremental-help')).toHaveText('无法确认当前任务状态，请先刷新记录。')
-  await expect(page.getByRole('button', { name: '重新初始化', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '重跑失败初始化', exact: true })).toBeDisabled()
 })
 
 test('query failures display request ID and mobile pages fit viewport', async ({ page }, testInfo) => {
