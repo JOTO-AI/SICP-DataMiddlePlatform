@@ -5,6 +5,7 @@ import { request, ApiError, describe, type Envelope } from '../api'
 import { emptyLogFilters, logHistoryPath, readLogPage, logID, type LogPage, type LogEvent } from '../app/logHistory'
 import { consumeTestLogs } from '../app/testLogNavigation'
 import { consumeSourceLogs } from '../app/logNavigation'
+import { logViews, logViewFilters, selectedLogView } from '../app/logViews'
 import { operations } from '../queryOperations'
 import { useRequestScope } from '../composables/useRequestScope'
 import PageHeader from '../components/PageHeader.vue'
@@ -16,6 +17,8 @@ import JsonText from '../components/JsonText.vue'
 const routeSource = String(useRoute().params.source ?? 'platform')
 const filters = reactive(emptyLogFilters(routeSource === 'upstream' ? 'upstream' : 'platform'))
 const validSource = ['platform', 'upstream'].includes(routeSource)
+const view = computed(() => selectedLogView(filters))
+function chooseView(id: string) { const next = logViewFilters(id); if (next) Object.assign(filters, next) }
 const pages = ref<LogPage[]>([]), index = ref(0), busy = ref(false), error = ref(''), expired = ref(false)
 const current = computed(() => pages.value[index.value]), scope = useRequestScope(), detailScope = useRequestScope()
 const detail = ref(''), detailBusy = ref(false), detailError = ref(''), detailID = ref('')
@@ -23,14 +26,14 @@ let active = false
 function clearDetail() { detailScope.cancel(); detail.value = ''; detailError.value = ''; detailID.value = ''; detailBusy.value = false }
 function reset() { scope.cancel(); pages.value = []; index.value = 0; busy.value = false; error.value = ''; expired.value = false; clearDetail() }
 watch(filters, reset, { flush: 'sync' })
-watch(() => filters.source, source => { filters.operation = ''; filters.identity = ''; filters.identityField = source === 'upstream' ? 'test_run_id' : 'request_id'; filters.format = 'raw' }, { flush: 'sync' })
+watch(() => filters.source, source => { filters.kind = ''; filters.operation = ''; filters.identity = ''; filters.identityField = source === 'upstream' ? 'test_run_id' : 'request_id'; filters.format = 'raw' }, { flush: 'sync' })
 async function read(next = false) {
   if (!active || !validSource || busy.value || next && (!current.value?.next_cursor || expired.value)) return
   if (next && index.value + 1 < pages.value.length) { index.value++; clearDetail(); return }
   if (next && pages.value.length >= 20) { error.value = '本次最多保留 20 批，请缩小时间范围后重新查询。'; return }
   let path: string
   const cursor = next ? current.value!.next_cursor! : '', previous = next ? current.value : undefined, submitted = { ...filters }
-  try { path = logHistoryPath(submitted, cursor) } catch (cause) { error.value = describe(cause); return }
+  try { path = logHistoryPath(submitted, cursor) } catch (cause) { error.value = cause instanceof Error ? cause.message : '日志筛选无效。'; return }
   const run = scope.begin(); busy.value = true; error.value = ''; clearDetail()
   try {
     const result = await request<Envelope<unknown>>('worker', path, { signal: run.signal, domain: 'logs' })
@@ -67,9 +70,9 @@ onActivated(() => {
 onDeactivated(() => { active = false; reset(); Object.assign(filters, emptyLogFilters(routeSource === 'upstream' ? 'upstream' : 'platform')) })
 </script>
 <template><section class="log-history"><PageHeader title="日志中心" description="查询服务端持久调用日志，筛选在后端执行；开始、结束与逐次尝试可能各占一条事件。" /><template v-if="validSource">
-<form class="panel log-filters" aria-label="调用日志筛选" @submit.prevent="read()">
+<nav class="log-view-tabs" aria-label="日志视图"><button v-for="item in logViews" :key="item.id" type="button" :class="{ primary: view === item.id }" :aria-pressed="view === item.id" @click="chooseView(item.id)">{{ item.title }}</button></nav><p class="hint">当前视图：{{ logViews.find(item => item.id === view)?.title ?? '当前源全部事件' }} · 日志来源：{{ filters.source === 'platform' ? '本地日志库（platform）' : '上游日志库（upstream）' }}。选择视图后点击查询，切换会清除原筛选和已读批次。</p><form class="panel log-filters" aria-label="调用日志筛选" @submit.prevent="read()">
 <label>日志来源<select v-model="filters.source"><option value="platform">本地日志库</option><option value="upstream">上游日志库</option></select></label>
-<label>业务接口<select v-model="filters.operation" :disabled="filters.source === 'upstream'"><option value="">全部业务接口</option><option v-for="op in operations" :key="op.operation" :value="op.operation">{{ op.title }}</option></select></label>
+<label>事件类型<select v-model="filters.kind"><option value="">当前源全部事件</option><template v-if="filters.source === 'platform'"><option value="request">接口请求</option><option value="task">更新任务</option><option value="step">更新步骤</option><option value="audit">管理审计</option></template><template v-else><option value="call">逻辑调用</option><option value="attempt">逐次尝试</option></template></select></label><label>业务接口<select v-model="filters.operation" :disabled="filters.source === 'upstream'"><option value="">全部业务接口</option><option v-for="op in operations" :key="op.operation" :value="op.operation">{{ op.title }}</option></select></label>
 <label>关联标识类型<select v-model="filters.identityField"><option value="request_id">请求号</option><option value="test_run_id">源测试作业号</option><option value="task_id">更新任务号</option></select></label>
 <label>关联标识<input v-model="filters.identity" autocomplete="off" spellcheck="false" maxlength="128" /></label>
 <label>标识格式<select v-model="filters.format"><option value="raw">原始 ID</option><option value="correlation">日志关联 ID</option></select></label>
@@ -85,6 +88,6 @@ onDeactivated(() => { active = false; reset(); Object.assign(filters, emptyLogFi
 <section v-if="detailID" class="panel" aria-label="所选日志详情"><div class="section-bar"><h2>日志详情</h2><button @click="clearDetail">关闭日志详情</button></div><CopyId :value="detailID" label="日志事件号" /><p class="hint">仅展示后端脱敏详情；内容可能截断，不保证保存完整测试响应。</p><ErrorState v-if="detailError" :message="detailError" /><p v-if="detailBusy" role="status">正在读取日志详情…</p><JsonText v-if="detail" :text="detail" label="日志脱敏详情" /></section>
 </template><ErrorState v-else message="日志来源无效，仅支持 platform 或 upstream。" /></section></template>
 <style scoped>
-.log-history { min-width: 0; } .log-filters { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
+.log-view-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 18px 12px; } .log-history { min-width: 0; } .log-filters { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
 .log-filters label { flex: 1 1 220px; min-width: 0; } .filter-note { flex-basis: 100%; } .panel { margin-bottom: 20px; } .panel > p { margin-block: 12px; } .log-scroll { overflow: auto; } table { width: 100%; min-width: 840px; } .log-paging { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
 </style>

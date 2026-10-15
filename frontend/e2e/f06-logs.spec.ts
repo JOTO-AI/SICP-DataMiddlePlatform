@@ -162,3 +162,29 @@ test('F06 changing log filters cancels late reads and leaving clears identifiers
   await page.getByRole('navigation', { name: '主导航' }).getByRole('link', { name: '日志中心', exact: true }).click()
   await expect(page.getByLabel('关联标识', { exact: true })).toHaveValue('')
 })
+
+test('F08 four log views send backend source and kind and clear old batches without auto-query', async ({ page }, info) => {
+  await setup(page)
+  const queries: URL[] = []
+  await page.route('**/admin/v1/logs/*/events?*', route => {
+    const url = new URL(route.request().url()); queries.push(url)
+    const response = recordedLogPage(url.pathname.includes('/upstream/') ? 'upstream' : 'platform')
+    response.data.filter.kind = url.searchParams.get('kind') || undefined
+    if (response.data.filter.kind !== 'request') response.data.items = []
+    return route.fulfill({ json: response })
+  })
+  await page.goto('/console/logs')
+  const views = page.getByRole('navigation', { name: '日志视图', exact: true })
+  let count = 0
+  for (const [name, source, kind] of [['接口调用', 'platform', 'request'], ['更新操作', 'platform', 'task'], ['原数据接口', 'upstream', ''], ['管理审计', 'platform', 'audit']]) {
+    await views.getByRole('button', { name, exact: true }).click()
+    await expect(page.getByText('尚未查询持久日志', { exact: true })).toBeVisible(); expect(queries).toHaveLength(count)
+    await page.getByRole('button', { name: '查询日志首批', exact: true }).click()
+    await expect(page.getByRole('region', { name: '持久调用日志', exact: true })).toBeVisible()
+    count++; expect(queries).toHaveLength(count); expect(queries.at(-1)!.pathname).toContain(`/logs/${source}/events`)
+    expect(queries.at(-1)!.searchParams.get('kind')).toBe(kind || null)
+  }
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: info.outputPath('log-views-mobile.png'), fullPage: true })
+})
