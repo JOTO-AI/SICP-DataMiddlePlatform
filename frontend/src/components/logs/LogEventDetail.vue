@@ -10,6 +10,7 @@ import ErrorState from '../ErrorState.vue'
 import EmptyState from '../EmptyState.vue'
 import LogDetailContent from './LogDetailContent.vue'
 import LogAttempts from './LogAttempts.vue'
+import LogRelations from './LogRelations.vue'
 const props = defineProps<{ source: LogSource; eventId: string; epoch?: string; sequence?: string }>()
 const scope = useRequestScope(), data = ref<LogDetail | null>(null), raw = ref(''), busy = ref(false), error = ref('')
 let active = true
@@ -33,4 +34,4 @@ function activate() { active = true; if (!data.value) void read() }
 onMounted(activate); onActivated(activate)
 onDeactivated(() => { active = false; scope.cancel(); data.value = null; raw.value = ''; busy.value = false; error.value = '' })
 </script>
-<template><div><div class="section-bar"><h2>事件内容</h2><button type="button" :disabled="busy" @click="read">重新读取日志详情</button></div><ErrorState v-if="error" :message="error" /><p v-if="data && error" class="warning">保留上次确认的事件内容，本次读取未成功。</p><LogDetailContent v-if="data" :data="data" :raw="raw" /><EmptyState v-else :loading="busy" title="尚未取得日志详情" description="这里只读取所选事件，不重新调用业务或上游接口。" /><LogAttempts v-if="data?.source === 'upstream' && data.kind === 'call'" :call="data" /></div></template>
+<template><div><div class="section-bar"><h2>事件内容</h2><button type="button" :disabled="busy" @click="read">重新读取日志详情</button></div><ErrorState v-if="error" :message="error" /><p v-if="data && error" class="warning">保留上次确认的事件内容，本次读取未成功。</p><LogDetailContent v-if="data" :data="data" :raw="raw" /><EmptyState v-else :loading="busy" title="尚未取得日志详情" description="这里只读取所选事件，不重新调用业务或上游接口。" /><LogRelations v-if="data" :event="data" /><LogAttempts v-if="data?.source === 'upstream' && data.kind === 'call'" :call="data" /></div></template>

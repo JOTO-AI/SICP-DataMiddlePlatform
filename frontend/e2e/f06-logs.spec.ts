@@ -284,3 +284,39 @@ test('F08 call association scans explicit bounded batches and keeps empty eviden
   expect([...urls[1]!.searchParams.keys()]).toEqual(['cursor'])
   await expect(related).toContainText('不能据此判断未执行或调用成功')
 })
+test('F08 update task opens source logs using raw ID without a task write or URL filter', async ({ page }) => {
+  await setup(page)
+  const task = managementCapture('update_detail'), id = (task.response.data as any).task_id
+  await page.route(`**/admin/v1/update-events/${id}`, route => route.fulfill({ json: task.response }))
+  await page.route(`**/admin/v1/update-events/${id}/operations?*`, route => route.fulfill({ json: managementCapture('operation_nodes').response }))
+  const urls: URL[] = []
+  await page.route('**/admin/v1/logs/upstream/events?*', route => {
+    urls.push(new URL(route.request().url()))
+    const envelope = recordedLogPage('upstream'); envelope.data.filter.task_id = (managementCapture('log_detail').response.data as any).request_id
+    return route.fulfill({ json: envelope })
+  })
+  await page.goto(`/console/updates/${id}`)
+  await page.getByRole('button', { name: '查看上游采集日志', exact: true }).click()
+  await expect(page).toHaveURL(/\/console\/logs\/upstream$/)
+  await expect(page.getByText('本批没有匹配的日志事件', { exact: true })).toBeVisible()
+  expect(urls[0]!.searchParams.get('task_id')).toBe(id)
+  expect(urls[0]!.searchParams.get('id_format')).toBe('raw')
+  expect(new URL(page.url()).search).toBe('')
+})
+
+test('F08 detail uses correlation for cross-source logs and source failure never becomes no execution', async ({ page }) => {
+  await setup(page)
+  const fixture = managementCapture('log_detail'), d = fixture.response.data as any
+  await page.route(`**${fixture.path}`, route => route.fulfill({ json: fixture.response }))
+  const urls: URL[] = []
+  await page.route('**/admin/v1/logs/upstream/events?*', route => { urls.push(new URL(route.request().url())); return route.fulfill({ status: 503, json: { code: 'unavailable' } }) })
+  await page.goto(`/console/logs/platform/events/${d.event_id}`)
+  await page.getByRole('button', { name: '同请求日志 · 上游', exact: true }).click()
+  await expect(page).toHaveURL(/\/console\/logs\/upstream$/)
+  await expect(page.getByRole('alert')).toBeVisible()
+  expect(urls[0]!.searchParams.get('request_id')).toBe(d.request_id)
+  expect(urls[0]!.searchParams.get('id_format')).toBe('correlation')
+  await expect(page.getByText('本批没有匹配的日志事件', { exact: true })).toHaveCount(0)
+  await page.goBack()
+  await expect(page.getByText('当前事件未记录结果', { exact: true })).toBeVisible()
+})

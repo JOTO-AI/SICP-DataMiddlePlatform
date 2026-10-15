@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import Timestamp from '../Timestamp.vue'
+import { logDetailPath } from '../../app/links'
 import JsonText from '../JsonText.vue'
 
 export interface FailedAttempt {
+  event_id?: string; log_source?: string; authentication?: { endpoint: string; reason: string; http_status?: number }
   at: string; source: string; page: number; attempt: number; failure: string
   http_status?: number; business_code?: number; duration_ns?: number
   response?: { body?: string; request_id?: string; content_type?: string; truncated?: boolean; read_error?: boolean }
@@ -15,7 +17,7 @@ const reasons: Record<string, string> = { http: '上游返回 HTTP 错误', busi
   <section v-if="unavailable || attempts?.length || failed" class="failure-evidence" aria-label="采集失败记录">
     <h3>采集失败记录</h3>
     <p v-if="unavailable" class="error" role="status">暂时无法读取调用日志，任务状态不受影响。请稍后刷新详情。</p>
-    <template v-else-if="attempts?.length">
+    <template v-if="attempts?.length">
       <p class="hint">最近 20 次失败尝试，按时间倒序排列，包含重试和并行请求取消。错误摘要已脱敏。</p>
       <details v-for="(item, index) in attempts" :key="`${item.source}-${item.at}-${item.page}-${item.attempt}-${index}`" :open="index === 0">
         <summary>第 {{ item.page }} 页 · 第 {{ item.attempt }} 次尝试 · {{ item.http_status ? `HTTP ${item.http_status}` : reasons[item.failure] || item.failure }}</summary>
@@ -27,13 +29,16 @@ const reasons: Record<string, string> = { http: '上游返回 HTTP 错误', busi
           <div v-if="item.business_code != null"><dt>业务码</dt><dd>{{ item.business_code }}</dd></div>
           <div v-if="item.response?.request_id"><dt>上游请求标识</dt><dd>{{ item.response.request_id }}</dd></div>
         </dl>
+        <p v-if="item.event_id && item.log_source && logDetailPath(item.log_source, item.event_id)"><RouterLink :to="logDetailPath(item.log_source!, item.event_id!)!">查看此失败尝试日志</RouterLink></p>
+        <p v-if="item.authentication" class="warning">上游认证失败：{{ item.authentication.reason }} · {{ item.authentication.endpoint }} · HTTP {{ item.authentication.http_status ?? '未记录' }}</p>
+        <p v-if="item.failure === 'request_timeout'" class="hint">超时表示本端未及时收到结果，不代表原平台未处理请求。</p>
         <JsonText v-if="item.response?.body" :text="item.response.body" label="失败响应摘要" />
         <p v-else class="hint">未记录可展示的响应摘要，可能是旧版记录、未收到响应或响应没有错误说明。</p>
         <p v-if="item.response?.truncated" class="hint">响应摘要过长，已截断。</p>
         <p v-if="item.response?.read_error" class="hint">响应正文未完整读取，以上仅为已收到的错误信息。</p>
       </details>
     </template>
-    <p v-else class="hint">暂未查到失败请求记录。日志可能尚在写入，也可能失败发生在分页校验或保存阶段。可稍后刷新详情。</p>
+    <p v-else-if="!unavailable" class="hint">暂未查到失败请求记录。日志可能尚在写入，也可能失败发生在分页校验或保存阶段。可稍后刷新详情。</p>
   </section>
 </template>
 
