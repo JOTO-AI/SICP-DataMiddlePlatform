@@ -38,7 +38,7 @@ async function login(page: Page, tls: boolean, base = origin(tls)) {
   expect(result.query).toBe(200)
   expect(result.bad).toBe(403)
   expect([400, 404]).toContain(result.good)
-  await page.getByRole('link', { name: '更新任务', exact: true }).click()
+  await page.getByRole('link', { name: '更新事件', exact: true }).click()
   await expect(page.getByRole('heading', { name: '更新任务', exact: true })).toBeVisible()
 }
 test('GW-I03/GW-I05 real sessions, HTTP → HTTPS → HTTP, renewal and recovery', async ({ browser }) => {
