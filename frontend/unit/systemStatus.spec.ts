@@ -18,3 +18,12 @@ test('retention uses captured payload and enforces both 1..3650 bounds with exac
   expect(retentionPayload('9007199254740993', '1', '3650')).toEqual({ revision: '9007199254740993', platform_days: 1, upstream_days: 3650 })
   for (const days of ['0', '3651', '1.2', '', '-1', '1e2']) expect(() => retentionPayload('1', days, '30')).toThrow()
 })
+import { readCleanupPreview, previewReason } from '../src/app/cleanup'
+test('cleanup preview binds source, string range, policy revision and actual expiration', () => {
+  const value = managementCapture('preview').response.data as any
+  expect(readCleanupPreview(value, 'platform')).toEqual(value)
+  expect(readCleanupPreview(value, 'upstream')).toBeNull()
+  expect(previewReason(value, '1', Date.parse('2026-10-13T00:01:00Z'))).toBe('')
+  expect(previewReason(value, '2', Date.parse('2026-10-13T00:01:00Z'))).toContain('策略版本')
+  expect(previewReason(value, '1', Date.parse(value.expires_at))).toContain('过期')
+})

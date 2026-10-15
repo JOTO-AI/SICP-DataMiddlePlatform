@@ -65,3 +65,61 @@ test('F11 retention validates days, preserves old confirmed values on conflict a
   await expect(panel).toContainText('上次确认配置：版本 2')
   expect(writes).toBe(2); expect(cleanups).toBe(0)
 })
+async function cleanupSetup(page: import('@playwright/test').Page) {
+  await page.clock.setFixedTime(new Date('2026-10-13T00:01:00Z'))
+  await page.route('**/console-api/session', route => route.fulfill({ json: managementCapture('session').response }))
+  await page.route('**/admin/v1/system/status', route => route.fulfill({ json: managementCapture('system').response }))
+  await page.goto('/console/settings')
+}
+test('F11 cleanup binds one source, keeps zero preview inert, and requires new preview for expiration or changed policy', async ({ page }) => {
+  await cleanupSetup(page)
+  let previews = 0, submissions = 0
+  await page.route('**/admin/v1/maintenance/cleanup', route => { submissions++; return route.abort() })
+  await page.route('**/admin/v1/maintenance/cleanup/preview', route => {
+    previews++
+    const value = managementCapture('preview').response as any
+    expect(Object.keys(route.request().postDataJSON())).toEqual(['source'])
+    value.data.source = route.request().postDataJSON().source
+    // Nonzero range is an explicit preview-boundary variant, not a new ordinary log fixture.
+    if (previews > 1) { value.data.count = '1'; value.data.through = '1' }
+    return route.fulfill({ json: value })
+  })
+  const panel = page.getByRole('region', { name: '日志清理', exact: true })
+  await panel.getByRole('button', { name: '预览所选源' }).click()
+  await expect(panel).toContainText('本次没有可清理记录')
+  await expect(panel.getByRole('button', { name: '确认清理此源' })).toBeDisabled()
+  await panel.getByRole('combobox', { name: '清理日志源', exact: true }).selectOption('upstream')
+  await expect(panel.getByRole('region', { name: '清理预览' })).toHaveCount(0)
+  await panel.getByRole('button', { name: '预览所选源' }).click()
+  await expect(panel).toContainText('上游日志预览')
+  await page.clock.setFixedTime(new Date('2026-10-13T00:11:00Z'))
+  await expect(panel).toContainText('预览已过期')
+  await expect(panel.getByRole('button', { name: '确认清理此源' })).toBeDisabled()
+  await page.clock.setFixedTime(new Date('2026-10-13T00:01:00Z'))
+  await panel.getByRole('button', { name: '预览所选源' }).click()
+  await page.route('**/admin/v1/settings/retention', route => route.fulfill({ json: managementCapture('save_retention').response }))
+  await page.getByRole('button', { name: '读取保留期' }).click()
+  await expect(panel).toContainText('保留策略版本已变化')
+  await expect(panel.getByRole('button', { name: '确认清理此源' })).toBeDisabled()
+  expect(submissions).toBe(0)
+})
+test('F11 cleanup explicit confirmation sends only preview revision and idempotency key, then displays actual accepted job', async ({ page }) => {
+  await cleanupSetup(page)
+  const preview = managementCapture('preview').response as any
+  preview.data.count = '1'; preview.data.through = '1' // Preview quantity boundary only.
+  await page.route('**/admin/v1/maintenance/cleanup/preview', route => route.fulfill({ json: preview }))
+  const bodies: any[] = []
+  await page.route('**/admin/v1/maintenance/cleanup', route => { bodies.push(route.request().postDataJSON()); return route.fulfill({ status: 202, json: managementCapture('cleanup').response }) })
+  const panel = page.getByRole('region', { name: '日志清理', exact: true })
+  await panel.getByRole('button', { name: '预览所选源' }).click()
+  await panel.getByRole('button', { name: '确认清理此源' }).click()
+  expect(bodies).toHaveLength(0)
+  const dialog = page.getByRole('dialog', { name: '确认日志清理' })
+  await expect(dialog).toContainText('平台日志')
+  await dialog.getByRole('button', { name: '提交此源清理' }).click()
+  await expect(panel).toContainText('清理作业已受理，实际删除结果尚需确认')
+  expect(bodies).toHaveLength(1)
+  expect(bodies[0]).toEqual({ preview_id: preview.data.id, revision: preview.data.revision, idempotency_key: expect.any(String) })
+  await expect(panel.getByRole('region', { name: '清理作业', exact: true })).toContainText((managementCapture('cleanup').response.data as any).id)
+  await expect(panel.getByRole('combobox')).toBeDisabled()
+})
