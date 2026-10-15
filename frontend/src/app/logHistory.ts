@@ -31,7 +31,18 @@ export function logHistoryPath(f: LogFilters, cursor = '') {
   }
   return `/admin/v1/logs/${f.source}/events?${q}`
 }
-export interface LogEvent { source: LogSource; epoch: string; event_id: string; sequence: string; kind: string; phase: string; occurred_at: string | null; received_at: string | null; outcome: string | null; operation: string | null; request_id: string | null; task_id: string | null; http_status: number | null; duration_ns: string | null; test: { purpose: string; test_run_id: string } | null }
+export interface LogEvent { source: LogSource; epoch: string; event_id: string; sequence: string; kind: string; phase: string; occurred_at: string | null; received_at: string | null; outcome: string | null; operation: string | null; request_id: string | null; task_id: string | null; step_id: string | null; call_id: string | null; attempt_id: string | null; attempt_no: number | null; business_code: number | null; audit: { actor_id: string; action: string; object_id: string } | null; http_status: number | null; duration_ns: string | null; test: { purpose: string; test_run_id: string } | null }
+export function readLogEvent(value: unknown, source: LogSource, epoch?: string): LogEvent | null {
+  if (!object(value)) return null
+  const item = value as unknown as LogEvent
+  if (item.source !== source || !['platform', 'upstream'].includes(source) || typeof item.epoch !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(item.epoch) || epoch && item.epoch !== epoch || !logID(item.event_id) || !decimal(item.sequence)) return null
+  if (!['request', 'task', 'step', 'call', 'attempt', 'audit'].includes(item.kind) || !(source === 'upstream' ? ['call', 'attempt'] : ['request', 'task', 'step', 'audit']).includes(item.kind) || !['started', 'finished', 'transport'].includes(item.phase) || item.outcome !== null && !['succeeded', 'failed', 'interrupted'].includes(item.outcome) || item.occurred_at !== null && !time(item.occurred_at) || item.received_at !== null && !time(item.received_at) || item.http_status !== null && (!Number.isInteger(item.http_status) || item.http_status < 100 || item.http_status > 599) || item.duration_ns !== null && !decimal(item.duration_ns)) return null
+  if (item.operation !== null && (typeof item.operation !== 'string' || item.operation.length > 128) || item.attempt_no !== null && (!Number.isSafeInteger(item.attempt_no) || item.attempt_no < 1) || item.business_code !== null && !Number.isInteger(item.business_code)) return null
+  for (const field of ['request_id', 'task_id', 'step_id', 'call_id', 'attempt_id'] as const) if (item[field] !== null && !logID(item[field])) return null
+  if (item.test !== null && (!object(item.test) || !['test', 'sync'].includes(item.test.purpose) || item.test.purpose === 'test' && !logID(item.test.test_run_id) || item.test.purpose === 'sync' && item.test.test_run_id !== '')) return null
+  if (item.audit !== null && (!object(item.audit) || !logID(item.audit.actor_id) || !logID(item.audit.object_id) || typeof item.audit.action !== 'string' || item.audit.action.length > 128)) return null
+  return item
+}
 export interface LogPage { source: LogSource; epoch: string; high_water: string; retained_through: string; filter: Record<string, unknown>; items: LogEvent[]; next_cursor: string | null; expires_at: string | null }
 export function readLogPage(value: unknown, f: LogFilters, previous?: LogPage): LogPage | null {
   if (!object(value)) return null
@@ -47,11 +58,8 @@ export function readLogPage(value: unknown, f: LogFilters, previous?: LogPage): 
   if (previous && (p.epoch !== previous.epoch || p.high_water !== previous.high_water || BigInt(p.retained_through) < BigInt(previous.retained_through) || ['mode', 'from', 'to', 'page_size', 'operation', 'outcome', 'request_id', 'test_run_id', 'task_id', 'kind', 'phase'].some(k => filter[k] !== previous.filter[k]))) return null
   const seen = new Set<string>(); let last = previous?.items.at(-1)?.sequence
   for (const item of p.items) {
-    if (!object(item) || item.source !== p.source || item.epoch !== p.epoch || !logID(item.event_id) || seen.has(item.event_id) || !decimal(item.sequence) || BigInt(item.sequence) > BigInt(p.high_water) || BigInt(item.sequence) <= BigInt(p.retained_through) || last && BigInt(item.sequence) >= BigInt(last)) return null
-    if (!['request', 'task', 'step', 'call', 'attempt', 'audit'].includes(item.kind) || !['started', 'finished', 'transport'].includes(item.phase) || item.outcome !== null && !['succeeded', 'failed', 'interrupted'].includes(item.outcome) || item.occurred_at !== null && !time(item.occurred_at) || item.received_at !== null && !time(item.received_at) || item.http_status !== null && (!Number.isInteger(item.http_status) || item.http_status < 100 || item.http_status > 599) || item.duration_ns !== null && !decimal(item.duration_ns)) return null
-    if (f.phase && item.phase !== f.phase || f.kind && item.kind !== f.kind || f.source === 'upstream' && !['call', 'attempt'].includes(item.kind) || f.operation && item.operation !== f.operation || f.outcome && item.outcome !== f.outcome) return null
-    for (const field of ['request_id', 'task_id'] as const) if (item[field] !== null && !logID(item[field])) return null
-    if (item.test !== null && (!object(item.test) || !['test', 'sync'].includes(item.test.purpose) || item.test.purpose === 'test' && !logID(item.test.test_run_id) || item.test.purpose === 'sync' && item.test.test_run_id !== '')) return null
+    if (!readLogEvent(item, p.source, p.epoch) || seen.has(item.event_id) || BigInt(item.sequence) > BigInt(p.high_water) || BigInt(item.sequence) <= BigInt(p.retained_through) || last && BigInt(item.sequence) >= BigInt(last)) return null
+    if (f.phase && item.phase !== f.phase || f.kind && item.kind !== f.kind || f.operation && item.operation !== f.operation || f.outcome && item.outcome !== f.outcome) return null
     if (f.identity && (f.identityField === 'test_run_id' ? item.test?.test_run_id : item[f.identityField]) !== filter[f.identityField]) return null
     if (item.occurred_at !== null && (timestampMicros(item.occurred_at)! < timestampMicros(filter.from)! || timestampMicros(item.occurred_at)! >= timestampMicros(filter.to)!)) return null
     seen.add(item.event_id); last = item.sequence

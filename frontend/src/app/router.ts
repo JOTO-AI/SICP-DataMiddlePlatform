@@ -23,7 +23,7 @@ export const router = createRouter({
     { path: '/updates/:id', name: 'update-detail', meta: { navigation: 'tasks' }, component: () => import('../pages/UpdateDetail.vue'), props: { title: '更新详情' } },
     { path: '/sources', name: 'sources', meta: { navigation: 'sources' }, component: () => import('../pages/Sources.vue') },
     ...navigation.filter(item => ['notifications', 'settings'].includes(item.id)).map(item => ({ path: item.path, name: item.id, meta: { navigation: item.id }, component: pending, props: { title: item.title } })),
-    { path: '/logs/:source(platform|upstream)/events/:eventId([a-f0-9]{64})', name: 'log-detail', meta: { navigation: 'logs' }, component: pending, props: { title: '日志详情' } },
+    { path: '/logs/:source(platform|upstream)/events/:eventId([a-f0-9]{64})', name: 'log-detail', meta: { navigation: 'logs' }, component: () => import('../pages/LogDetail.vue'), props: { title: '日志详情' } },
     { path: '/logs', name: 'logs', meta: { navigation: 'logs' }, component: () => import('../pages/Logs.vue') },
     { path: '/logs/:source', name: 'log-source', meta: { navigation: 'logs' }, component: () => import('../pages/Logs.vue'), props: { title: '日志中心' } },
     { path: '/settings/:section', name: 'settings-section', meta: { navigation: 'settings' }, component: pending, props: { title: '系统设置' } },

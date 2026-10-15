@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch, onActivated, onDeactivated } from 'vue'
 import { useRoute } from 'vue-router'
 import { request, ApiError, describe, type Envelope } from '../api'
-import { emptyLogFilters, logHistoryPath, readLogPage, logID, type LogPage, type LogEvent } from '../app/logHistory'
+import { emptyLogFilters, logHistoryPath, readLogPage, type LogPage, type LogEvent } from '../app/logHistory'
 import { consumeTestLogs } from '../app/testLogNavigation'
 import { consumeSourceLogs } from '../app/logNavigation'
 import { logViews, logViewFilters, selectedLogView } from '../app/logViews'
@@ -13,17 +13,18 @@ import ErrorState from '../components/ErrorState.vue'
 import EmptyState from '../components/EmptyState.vue'
 import Timestamp from '../components/Timestamp.vue'
 import CopyId from '../components/CopyId.vue'
-import JsonText from '../components/JsonText.vue'
+import LogEventDetail from '../components/logs/LogEventDetail.vue'
+import { logKinds, logPhases, logOutcomes } from '../app/logDetail'
 const routeSource = String(useRoute().params.source ?? 'platform')
 const filters = reactive(emptyLogFilters(routeSource === 'upstream' ? 'upstream' : 'platform'))
 const validSource = ['platform', 'upstream'].includes(routeSource)
 const view = computed(() => selectedLogView(filters))
 function chooseView(id: string) { const next = logViewFilters(id); if (next) Object.assign(filters, next) }
 const pages = ref<LogPage[]>([]), index = ref(0), busy = ref(false), error = ref(''), expired = ref(false)
-const current = computed(() => pages.value[index.value]), scope = useRequestScope(), detailScope = useRequestScope()
-const detail = ref(''), detailBusy = ref(false), detailError = ref(''), detailID = ref('')
+const current = computed(() => pages.value[index.value]), scope = useRequestScope()
+const detailItem = ref<LogEvent | null>(null)
 let active = false
-function clearDetail() { detailScope.cancel(); detail.value = ''; detailError.value = ''; detailID.value = ''; detailBusy.value = false }
+function clearDetail() { detailItem.value = null }
 function reset() { scope.cancel(); pages.value = []; index.value = 0; busy.value = false; error.value = ''; expired.value = false; clearDetail() }
 watch(filters, reset, { flush: 'sync' })
 watch(() => filters.source, source => { filters.kind = ''; filters.phase = ''; filters.operation = ''; filters.identity = ''; filters.identityField = source === 'upstream' ? 'test_run_id' : 'request_id'; filters.format = 'raw' }, { flush: 'sync' })
@@ -50,17 +51,7 @@ async function read(next = false) {
   } finally { if (run.current()) busy.value = false }
 }
 function previous() { if (!busy.value && index.value > 0) { index.value--; clearDetail() } }
-async function showDetail(item: LogEvent) {
-  clearDetail(); const run = detailScope.begin(); detailBusy.value = true; detailID.value = item.event_id
-  try {
-    const result = await request<Envelope<unknown>>('worker', `/admin/v1/logs/${item.source}/events/${item.event_id}`, { signal: run.signal, domain: 'logs' })
-    if (!active || !run.current()) return
-    const value = result.body.data as Record<string, unknown> | null
-    if (result.status !== 200 || result.body.code !== 'ok' || !value || value.source !== item.source || value.epoch !== item.epoch || value.event_id !== item.event_id || value.sequence !== item.sequence || !logID(value.event_id)) throw new ApiError('日志详情与所选事件不一致。', 'invalid_response')
-    detail.value = JSON.stringify(value, null, 2)
-  } catch (cause) { if (active && run.current()) detailError.value = cause instanceof ApiError && cause.status === 404 ? '该事件暂不可查询，可能已过保留期；不能据此判断从未执行。' : describe(cause) }
-  finally { if (run.current()) detailBusy.value = false }
-}
+function showDetail(item: LogEvent) { detailItem.value = item }
 onActivated(() => {
   active = true
   const test = consumeTestLogs(), source = consumeSourceLogs()
@@ -81,11 +72,11 @@ onDeactivated(() => { active = false; reset(); Object.assign(filters, emptyLogFi
 <p class="hint filter-note">原始请求号、任务号或测试作业号选择“原始 ID”；从日志复制的关联号选择“日志关联 ID”。日志事件号用于详情定位，不作为任务号查询。</p><p class="hint filter-note">按事件发生时间筛选，入库时间单独展示。时间留空使用服务端最近 24 小时；手动时间为当前浏览器时区，最多查询 7 天。源测试使用作业号，源表全历史筛选尚未开放。筛选仅保留于当前页面内存。</p><button class="primary" type="submit" :disabled="busy">{{ busy ? '读取中…' : '查询日志首批' }}</button></form>
 <ErrorState v-if="error" :message="error" /><p v-if="error && current" class="warning">本次读取未成功，以下保留上次已确认批次。</p>
 <section v-if="current" class="panel" aria-label="持久调用日志"><h2>{{ current.source === 'platform' ? '本地日志库' : '上游日志库' }}</h2><p class="hint">范围 <Timestamp :value="String(current.filter.from)" /> 至 <Timestamp :value="String(current.filter.to)" /> · 第 {{ index + 1 }} 批 · 每批最多 50 条</p><p class="hint">后续新增记录不会改变本次翻批范围；查看新日志请重新查询首批。日志有保留期限，空结果不证明从未调用。</p>
-<div v-if="current.items.length" class="log-scroll" role="region" aria-label="持久调用日志表格" tabindex="0"><table><thead><tr><th>发生时间</th><th>类型 / 阶段</th><th>结果 / HTTP</th><th>耗时（ns）</th><th>关联标识</th><th>事件详情</th></tr></thead><tbody><tr v-for="item in current.items" :key="item.event_id"><td><Timestamp :value="item.occurred_at" /></td><td>{{ item.kind }} / {{ item.phase }}</td><td>{{ item.outcome ?? '尚未记录' }} / {{ item.http_status ?? '未记录' }}</td><td>{{ item.duration_ns ?? '未记录' }}</td><td><CopyId v-if="item.request_id" :value="item.request_id" label="日志请求关联号" /><CopyId v-if="item.test?.test_run_id" :value="item.test.test_run_id" label="日志测试关联号" /><CopyId v-if="item.task_id" :value="item.task_id" label="日志任务关联号" /></td><td><button type="button" @click="showDetail(item)">查看日志详情</button></td></tr></tbody></table></div>
+<div v-if="current.items.length" class="log-scroll" role="region" aria-label="持久调用日志表格" tabindex="0"><table><thead><tr><th>发生 / 入库时间</th><th>类型 / 阶段</th><th>结果 / HTTP</th><th>耗时（ns）</th><th>关联标识</th><th>事件详情</th></tr></thead><tbody><tr v-for="item in current.items" :key="item.event_id"><td><Timestamp :value="item.occurred_at" /><small>入库：<Timestamp :value="item.received_at" /></small></td><td>{{ logKinds[item.kind] || item.kind }} / {{ logPhases[item.phase] || item.phase }}</td><td>{{ item.outcome ? logOutcomes[item.outcome] || item.outcome : '尚未记录' }} / {{ item.http_status ?? '未记录' }}</td><td>{{ item.duration_ns ?? '未记录' }}</td><td><CopyId v-if="item.request_id" :value="item.request_id" label="日志请求关联号" /><CopyId v-if="item.test?.test_run_id" :value="item.test.test_run_id" label="日志测试关联号" /><CopyId v-if="item.task_id" :value="item.task_id" label="日志任务关联号" /></td><td><button type="button" @click="showDetail(item)">查看日志详情</button></td></tr></tbody></table></div>
 <EmptyState v-else title="本批没有匹配的日志事件" description="请核对时间与标识，也可能尚未入库或已过保留期。" />
 <div class="log-paging"><button :disabled="busy || index === 0" @click="previous">上一批日志</button><button :disabled="busy || expired || !current.next_cursor" @click="read(true)">下一批日志</button><span v-if="!current.next_cursor" class="hint">已到本次范围末批</span></div></section>
 <EmptyState v-else :loading="busy" title="尚未查询持久日志" description="选择条件后查询，支持按请求号或源测试作业号定位。" />
-<section v-if="detailID" class="panel" aria-label="所选日志详情"><div class="section-bar"><h2>日志详情</h2><button @click="clearDetail">关闭日志详情</button></div><CopyId :value="detailID" label="日志事件号" /><p class="hint">仅展示后端脱敏详情；内容可能截断，不保证保存完整测试响应。</p><ErrorState v-if="detailError" :message="detailError" /><p v-if="detailBusy" role="status">正在读取日志详情…</p><JsonText v-if="detail" :text="detail" label="日志脱敏详情" /></section>
+<section v-if="detailItem" class="panel" aria-label="所选日志详情"><div class="section-bar"><h2>日志详情</h2><button @click="clearDetail">关闭日志详情</button></div><RouterLink :to="{ name: 'log-detail', params: { source: detailItem.source, eventId: detailItem.event_id } }">打开独立日志详情页</RouterLink><LogEventDetail :key="`${detailItem.source}/${detailItem.epoch}/${detailItem.event_id}`" :source="detailItem.source" :event-id="detailItem.event_id" :epoch="detailItem.epoch" :sequence="detailItem.sequence" /></section>
 </template><ErrorState v-else message="日志来源无效，仅支持 platform 或 upstream。" /></section></template>
 <style scoped>
 .log-view-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 18px 12px; } .log-history { min-width: 0; } .log-filters { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
