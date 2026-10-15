@@ -6,6 +6,9 @@ import { recordedUpdateEvent } from '../fixtures/updateTests'
 import { operations, queryBody, cell } from '../src/queryOperations'
 
 test.beforeEach(async ({ page }) => {
+  // Unmatched requests must never reach a developer's running backend.
+  await page.route('**/console-api/**', route => route.abort())
+  await page.route('**/admin/v1/**', route => route.abort())
   const updates = managementCapture('updates'), update = managementCapture('update_detail')
   await page.route('**/admin/v1/update-events?*', route => route.fulfill({ status: updates.status, json: updates.response }))
   await page.route('**/admin/v1/update-events/*', route => new URL(route.request().url()).pathname === update.path ? route.fulfill({ status: update.status, json: update.response }) : route.abort())
@@ -141,7 +144,7 @@ test('historical data verification and reuse stay visible as active work', async
   await expect(page.getByText('正在检查已保存的分页数据，确认完整后复用。')).toBeVisible()
   await expect(page.getByRole('progressbar')).toHaveCount(0)
   completed = 720; total = 1440
-  await page.clock.runFor(10100)
+  await page.clock.runFor(15100)
   await expect(page.getByRole('progressbar', { name: 'dwd_bzkscjzlb 历史数据校验进度' })).toHaveAttribute('value', '720')
   await page.getByRole('link', { name: '更新事件', exact: true }).click()
   await expect(page.getByText('等待处理', { exact: true })).toBeVisible()
@@ -352,7 +355,7 @@ test('overview distinguishes unknown totals and completed acquisition from publi
   await expect(page.getByText('等待首个分页结果，暂未取得总页数。')).toBeVisible()
   await expect(page.getByRole('progressbar')).toHaveCount(0)
   collected = true
-  await page.clock.runFor(10100)
+  await page.clock.runFor(15100)
   await expect(page.getByText('所有表采集完成，构建与发布结果请查看任务状态。')).toBeVisible()
   await expect(page.getByRole('heading', { name: '正在全量更新', exact: true })).toBeVisible()
 })
@@ -487,7 +490,7 @@ test('overview shows initialization and automatically becomes ready when it fini
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
   await page.screenshot({ path: testInfo.outputPath('initializing-overview-mobile.png'), fullPage: true })
   finished = true
-  await page.clock.runFor(10100)
+  await page.clock.runFor(15100)
   await expect(progress).toHaveCount(0)
   await expect(page.getByText('✓ 已就绪', { exact: true })).toHaveCount(2)
   await page.getByRole('button', { name: '打开主导航' }).click()

@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { progressPercent } from '../../workProgress'
 import { time } from '../../api'
 import type { Acquisition, TableAcquisition } from '../../acquisition'
-const props = defineProps<{ progress?: Acquisition; status: string; compact?: boolean; allowUpdate?: boolean }>()
+const props = defineProps<{ progress?: Acquisition; status: string; compact?: boolean; allowUpdate?: boolean; readOnly?: boolean }>()
 defineEmits<{ updateTable: [table: string] }>()
 const tables = computed(() => props.progress?.tables || [])
 const completed = computed(() => tables.value.filter(table => table.status === 'collected').length)
@@ -15,7 +15,8 @@ function label(table: TableAcquisition) {
   if (table.status === 'waiting') return ended.value ? '未开始' : '等待处理'
   if (table.status === 'checking') return ended.value ? '历史数据校验已停止' : '正在校验历史数据'
   if (table.status === 'reusing') return ended.value ? '历史数据复用已停止' : '正在复用历史数据'
-  return ended.value ? '采集已停止' : '正在采集'
+  if (table.status === 'acquiring') return ended.value ? '采集已停止' : '正在采集'
+  return '未识别的采集状态（' + table.status + '）'
 }
 function phase(table: TableAcquisition) {
   return table.status === 'checking' ? '历史数据校验' : table.status === 'reusing' ? '历史数据复用' : '采集'
@@ -36,7 +37,7 @@ function percent(table: TableAcquisition) {
       <ul class="acquisition-tables">
         <li v-for="table in visible" :key="table.table">
           <div class="acquisition-heading"><code>{{ table.table }}</code><span>{{ label(table) }}</span></div>
-          <button v-if="!compact" type="button" :disabled="!allowUpdate" :aria-label="`强制更新 ${table.table}`" @click="$emit('updateTable', table.table)">强制更新此表</button>
+          <button v-if="!compact && !readOnly" type="button" :disabled="!allowUpdate" :aria-label="`强制更新 ${table.table}`" @click="$emit('updateTable', table.table)">强制更新此表</button>
           <template v-if="percent(table) !== undefined">
             <div class="acquisition-count">{{ table.completed_pages }} / {{ table.total_pages }} 页 · {{ percent(table) }}%</div>
             <progress :value="table.completed_pages" :max="table.total_pages ?? undefined" :aria-label="`${table.table} ${phase(table)}进度`">{{ percent(table) }}%</progress>

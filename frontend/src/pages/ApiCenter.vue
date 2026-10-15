@@ -11,7 +11,7 @@ import StatusBadge from '../components/StatusBadge.vue'
 import Timestamp from '../components/Timestamp.vue'
 import ManagementApiDocs from '../components/ManagementApiDocs.vue'
 import RecentTests from '../components/RecentTests.vue'
-const Queries = defineAsyncComponent(() => import('./Queries.vue'))
+const BusinessVerification = defineAsyncComponent(() => import('../components/BusinessVerification.vue'))
 const queryView = ref(false), catalog = ref<Catalog | null>(null), busy = ref(false), error = ref(''), readAt = ref('')
 const search = ref(''), group = ref('business')
 const groups = computed(() => [...new Set(catalog.value?.items.map(item => item.kind) ?? [])])
@@ -53,7 +53,7 @@ onUnmounted(stop)
       <RecentTests /><section class="panel catalog-notes" aria-label="补充说明"><h2>补充说明</h2><p class="hint">以下来源于控制台设计与现有管理接口说明，不计入后端可测试目录。</p><ManagementApiDocs /><div class="actions"><RouterLink to="/updates">更新事件</RouterLink><RouterLink to="/logs">日志中心</RouterLink><RouterLink to="/notifications">通知中心</RouterLink><RouterLink to="/settings">系统设置</RouterLink></div><h3>行政班查询 · 契约待定</h3><p>本地独立查询的方法与路径尚未确定。上游行政班源与教学班查询均不替代此接口。</p></section>
     </template>
     <button v-else class="catalog-back" @click="queryView = false">返回接口目录</button>
-    <KeepAlive><Queries v-if="queryView" /></KeepAlive>
+    <KeepAlive><BusinessVerification v-if="queryView" /></KeepAlive>
   </section>
 </template>
 <style scoped>

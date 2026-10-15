@@ -391,7 +391,8 @@ test('F09 complete SSE event is deduplicated and only complete checkpoint resume
   expect(cursors).toEqual(['initial-live', 'checkpoint-complete'])
 })
 test('F09 rate limits honor retry delay and expired position requires explicit gap rebuild', async ({ page }) => {
-  await page.clock.install()
+  await page.clock.install({ time: new Date('2026-10-15T00:00:00Z') })
+  await page.clock.pauseAt(new Date('2026-10-15T01:00:00Z'))
   await setup(page)
   const initial = recordedLogPage(); initial.data.filter.mode = 'live'; initial.data.filter.to = null; initial.data.stream_cursor = 'bound-cursor'
   let queries = 0, streams = 0
@@ -493,7 +494,9 @@ test('F09 summary budget includes history and pending rows without moving the re
   await expect(stream).toHaveCount(0)
 })
 test('F09 hidden page suspends stream retry and resumes the last checkpoint without bypassing rate limit', async ({ page }) => {
-  await page.clock.install(); await setup(page)
+  await page.clock.install({ time: new Date('2026-10-15T00:00:00Z') })
+  await page.clock.pauseAt(new Date('2026-10-15T01:00:00Z'))
+  await setup(page)
   const initial = recordedLogPage(); initial.data.filter.mode = 'live'; initial.data.filter.to = null; initial.data.stream_cursor = 'visibility-start'
   await page.route('**/admin/v1/logs/platform/events?*', route => route.fulfill({ json: initial }))
   const cursors: string[] = []
