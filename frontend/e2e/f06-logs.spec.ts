@@ -344,3 +344,25 @@ test('F08 sanitized log text remains inert and bounded and copy equals only visi
   await expect(text).toHaveCount(0)
   expect(await page.evaluate(() => JSON.stringify([Object.entries(localStorage), Object.entries(sessionStorage)]))).not.toContain('[REDACTED]')
 })
+test('F09 live bootstrap fixes server lower bound and history uses only next cursor', async ({ page }) => {
+  await setup(page)
+  const first = recordedLogPage(); first.data.filter.mode = 'live'; first.data.filter.to = null
+  first.data.stream_cursor = 'stream-start'; first.data.next_cursor = 'history-next'
+  const urls: URL[] = []
+  await page.route('**/admin/v1/logs/platform/events?*', route => {
+    const url = new URL(route.request().url()); urls.push(url)
+    const response = structuredClone(first)
+    if (url.searchParams.has('cursor')) { response.data.items = []; response.data.next_cursor = null }
+    return route.fulfill({ json: response })
+  })
+  await page.goto('/console/logs')
+  await page.getByRole('combobox', { name: '查询模式', exact: true }).selectOption('live')
+  await expect(page.getByLabel('结束时间', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: '查询日志首批', exact: true }).click()
+  await expect(page.getByText('实时（无固定结束时间）', { exact: true })).toBeVisible()
+  expect(urls[0]!.searchParams.get('mode')).toBe('live')
+  expect(urls[0]!.searchParams.has('to')).toBe(false)
+  await page.getByRole('button', { name: '下一批日志', exact: true }).click()
+  await expect(page.getByText('本批没有匹配的日志事件', { exact: true })).toBeVisible()
+  expect([...urls[1]!.searchParams.entries()]).toEqual([['cursor', 'history-next']])
+})
