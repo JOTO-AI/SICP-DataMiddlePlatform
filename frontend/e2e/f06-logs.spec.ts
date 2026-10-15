@@ -384,6 +384,8 @@ test('F09 complete SSE event is deduplicated and only complete checkpoint resume
   await page.getByRole('button', { name: '查询日志首批', exact: true }).click()
   const stream = page.getByRole('region', { name: '实时日志接收' })
   await expect(stream).toContainText('已接收 1 条新增事件')
+  await expect(stream.getByRole('link', { name: '查看新增事件详情' })).toHaveCount(0)
+  await stream.getByRole('button', { name: '显示 1 条新日志', exact: true }).click()
   await expect(stream.getByRole('link', { name: '查看新增事件详情' })).toHaveCount(1)
   await expect.poll(() => cursors.length).toBe(2)
   expect(cursors).toEqual(['initial-live', 'checkpoint-complete'])
@@ -448,4 +450,42 @@ test('F09 streaming session expiration clears logs and never reconnects', async 
   expect(calls).toBe(1)
   await expect(page.getByRole('region', { name: '实时日志接收' })).toHaveCount(0)
   await expect(page.getByRole('region', { name: '持久调用日志表格' })).toHaveCount(0)
+})
+test('F09 summary budget includes history and pending rows without moving the read position', async ({ page }, info) => {
+  await page.clock.install(); await setup(page)
+  const initial = recordedLogPage(), item = initial.data.items[0]
+  initial.data.filter.mode = 'live'; initial.data.filter.to = null; initial.data.stream_cursor = 'capacity-start'
+  await page.route('**/admin/v1/logs/platform/events?*', route => route.fulfill({ json: initial }))
+  let streams = 0
+  await page.route('**/admin/v1/logs/platform/stream?*', route => {
+    streams++
+    // Capacity-only protocol variants retain all captured business fields; not normal fixture records.
+    const body = streams <= 2 ? Array.from({ length: 600 }, (_, offset) => {
+      const n = (streams - 1) * 600 + offset + 1
+      return `id: capacity-${n}\nevent: event\ndata: ${JSON.stringify({ ...item, event_id: n.toString(16).padStart(64, '0'), sequence: String(21 + n) })}\n\n`
+    }).join('') : 'event: control\ndata: {"code":"forbidden","retryable":false,"rebuild_required":false}\n\n'
+    return route.fulfill({ contentType: 'text/event-stream', body })
+  })
+  await page.goto('/console/logs')
+  await page.getByRole('combobox', { name: '查询模式', exact: true }).selectOption('live')
+  await page.getByRole('button', { name: '查询日志首批', exact: true }).click()
+  const stream = page.getByRole('region', { name: '实时日志接收' }), list = stream.getByRole('list', { name: '已展示实时事件' })
+  await expect(stream).toContainText('已接收 600 条新增事件')
+  await expect(list.getByRole('listitem')).toHaveCount(0)
+  await stream.getByRole('button', { name: '显示 600 条新日志', exact: true }).click()
+  await expect(list.getByRole('listitem')).toHaveCount(499)
+  const first = await list.getByRole('link').first().getAttribute('href')
+  await list.evaluate(el => { el.scrollTop = 100 })
+  await page.clock.runFor(1100)
+  await expect(stream).toContainText('已接收 1200 条新增事件')
+  await expect(stream).toContainText('已展示 499 条 · 待展示 500 条 · 实时剩余预算 999 条')
+  expect(await list.getByRole('link').first().getAttribute('href')).toBe(first)
+  expect(await list.evaluate(el => el.scrollTop)).toBe(100)
+  await expect(stream).toContainText('201 条摘要被裁剪')
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: info.outputPath('live-budget-mobile.png'), fullPage: true })
+  await stream.getByRole('button', { name: '转到历史补查', exact: true }).click()
+  await expect(page.getByRole('combobox', { name: '查询模式', exact: true })).toHaveValue('history')
+  await expect(stream).toHaveCount(0)
 })
