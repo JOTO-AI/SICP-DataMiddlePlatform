@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LazyResponse from '../components/LazyResponse.vue'
 import AsyncActionDialog from '../components/AsyncActionDialog.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import PageHeader from '../components/PageHeader.vue'
@@ -239,7 +240,7 @@ function toggleAuto() { if (auto.value) { active = true; void fetchTask() } else
 
           <ol class="timeline"><li v-for="stage in stages" :key="stage.name" :class="{ done: stage.at }"><span class="timeline-dot" aria-hidden="true"></span><span>{{ stage.name }}</span><time>{{ time(stage.at) }}</time></li></ol>
           <p class="hint">未发生的阶段不代表失败；无变化检查可能无需重新发布。</p>
-          <details class="raw"><summary>查看完整任务结果与源进度</summary><pre>{{ JSON.stringify(task, null, 2) }}</pre></details>
+          <LazyResponse class="raw" summary="查看完整任务结果与源进度" :value="task" label="任务结果 JSON" />
         </template>
         <div v-else class="empty" role="status"><span aria-hidden="true">↻</span><h3>{{ loading ? '正在读取任务' : '等待查看任务' }}</h3><p>提交更新后自动查看，也可输入已有任务号。</p></div>
       </div>
