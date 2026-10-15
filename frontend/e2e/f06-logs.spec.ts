@@ -376,7 +376,7 @@ test('F09 complete SSE event is deduplicated and only complete checkpoint resume
     cursors.push(new URL(route.request().url()).searchParams.get('cursor')!)
     expect(route.request().headers()['last-event-id']).toBe(cursors.at(-1))
     const event = `id: event-complete\r\nevent: event\r\ndata: ${JSON.stringify(item)}\r\n\r\n`
-    const body = cursors.length === 1 ? event + event + ': heartbeat\n\nid: checkpoint-complete\nevent: checkpoint\ndata: {"sequence":"22"}\n\nid: partial\nevent: checkpoint\ndata: {"sequence":"23"}' : 'event: control\ndata: {"code":"connection_expired","retryable":true,"rebuild_required":false}\n\n'
+    const body = cursors.length === 1 ? event + event + ': heartbeat\n\nid: checkpoint-complete\nevent: checkpoint\ndata: {"sequence":"22"}\n\nid: partial\nevent: checkpoint\ndata: {"sequence":"23"}' : 'event: control\ndata: {"code":"forbidden","retryable":false,"rebuild_required":false}\n\n'
     return route.fulfill({ contentType: 'text/event-stream', body })
   })
   await page.goto('/console/logs')
@@ -385,7 +385,31 @@ test('F09 complete SSE event is deduplicated and only complete checkpoint resume
   const stream = page.getByRole('region', { name: '实时日志接收' })
   await expect(stream).toContainText('已接收 1 条新增事件')
   await expect(stream.getByRole('link', { name: '查看新增事件详情' })).toHaveCount(1)
-  await stream.getByRole('button', { name: '继续实时连接' }).click()
   await expect.poll(() => cursors.length).toBe(2)
   expect(cursors).toEqual(['initial-live', 'checkpoint-complete'])
+})
+test('F09 rate limits honor retry delay and expired position requires explicit gap rebuild', async ({ page }) => {
+  await page.clock.install()
+  await setup(page)
+  const initial = recordedLogPage(); initial.data.filter.mode = 'live'; initial.data.filter.to = null; initial.data.stream_cursor = 'bound-cursor'
+  let queries = 0, streams = 0
+  await page.route('**/admin/v1/logs/platform/events?*', route => { queries++; return route.fulfill({ json: initial }) })
+  await page.route('**/admin/v1/logs/platform/stream?*', route => {
+    streams++
+    if (streams === 1) return route.fulfill({ status: 429, headers: { 'Retry-After': '3' }, json: { code: 'resource_exhausted' } })
+    return route.fulfill({ contentType: 'text/event-stream', body: `event: control\ndata: ${JSON.stringify({ code: streams === 2 ? 'cursor_expired' : 'forbidden', retryable: false, rebuild_required: streams === 2 })}\n\n` })
+  })
+  await page.goto('/console/logs')
+  await page.getByRole('combobox', { name: '查询模式', exact: true }).selectOption('live')
+  await page.getByRole('button', { name: '查询日志首批', exact: true }).click()
+  const stream = page.getByRole('region', { name: '实时日志接收' })
+  await expect(stream).toContainText('3 秒后')
+  await page.clock.runFor(2900); expect(streams).toBe(1)
+  await page.clock.runFor(200)
+  await expect(stream).toContainText('可能存在缺口')
+  await page.clock.runFor(60000); expect(streams).toBe(2); expect(queries).toBe(1)
+  await stream.getByRole('button', { name: '重新读取实时起点', exact: true }).click()
+  await expect.poll(() => queries).toBe(2)
+  await expect(page.getByText('已请求新的实时起点；前后范围之间可能存在缺口，请按时间补查历史。', { exact: true })).toBeVisible()
+  await expect.poll(() => streams).toBe(3)
 })

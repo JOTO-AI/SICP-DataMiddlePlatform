@@ -24,7 +24,7 @@ export async function readLogStream(source: LogSource, cursor: string, signal: A
       const result = await reader.read()
       if (!current()) return
       if (result.done) { decoder.decode(); return }
-      renew(); parser.push(decoder.decode(result.value, { stream: true }))
+      renew(); try { parser.push(decoder.decode(result.value, { stream: true })) } catch { throw new LogStreamError('实时日志帧无法校验，请重新读取历史。', 422) }
     }
   } finally { clearTimeout(timer); if (reader) { try { await reader.cancel() } catch {} reader.releaseLock() } }
 }
