@@ -188,3 +188,24 @@ test('F08 four log views send backend source and kind and clear old batches with
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: info.outputPath('log-views-mobile.png'), fullPage: true })
 })
+test('F08 phase filter and explicit correlation preserve recorded event boundaries', async ({ page }) => {
+  await setup(page)
+  const response = recordedLogPage(), id = response.data.items[0].request_id; let calls = 0
+  await page.route('**/admin/v1/logs/platform/events?*', route => {
+    calls++; const q = new URL(route.request().url()).searchParams
+    expect(q.get('phase')).toBe('started'); expect(q.get('id_format')).toBe('correlation'); expect(q.get('request_id')).toBe(id)
+    response.data.filter.phase = 'started'; response.data.filter.request_id = id
+    return route.fulfill({ json: response })
+  })
+  await page.goto('/console/logs')
+  await page.getByRole('combobox', { name: '事件阶段', exact: true }).selectOption('started')
+  await page.getByLabel('关联标识', { exact: true }).fill(id)
+  await page.getByRole('combobox', { name: '标识格式', exact: true }).selectOption('correlation')
+  await page.getByRole('button', { name: '查询日志首批', exact: true }).click()
+  await expect(page.getByRole('region', { name: '持久调用日志表格' })).toBeVisible()
+  expect(calls).toBe(1)
+  await page.getByLabel('开始时间', { exact: true }).fill('2026-10-01T00:00')
+  await page.getByLabel('结束时间', { exact: true }).fill('2026-10-14T00:00')
+  await page.getByRole('button', { name: '查询日志首批', exact: true }).click()
+  await expect(page.getByText(/范围最多 7 天/)).toBeVisible(); expect(calls).toBe(1)
+})

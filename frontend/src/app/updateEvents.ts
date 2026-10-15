@@ -1,3 +1,4 @@
+import { timestampMicros } from '../shared/timestamp'
 export interface UpdateEvent {
   id: string; task_id: string; mode: string; status: string; predecessor_id: string | null
   accepted_at: string; started_at: string | null; ready_at: string | null; published_at: string | null; checked_at: string | null; finished_at: string | null
@@ -42,14 +43,14 @@ export function readUpdatePage(value: unknown): UpdatePage | null {
   if (!value || typeof value !== 'object') return null
   const page = value as UpdatePage
   if (!Array.isArray(page.items) || page.items.length > 50 || page.next_cursor !== null && (typeof page.next_cursor !== 'string' || !page.next_cursor || page.next_cursor.length > 4096)) return null
-  if (page.filter && (!page.filter.from || !page.filter.to || !Number.isFinite(Date.parse(page.filter.from)) || !Number.isFinite(Date.parse(page.filter.to)) || Date.parse(page.filter.from) >= Date.parse(page.filter.to))) return null
+  if (page.filter && (!page.filter.from || !page.filter.to || timestampMicros(page.filter.from) === null || timestampMicros(page.filter.to) === null || timestampMicros(page.filter.from)! >= timestampMicros(page.filter.to)!)) return null
   const ids = new Set<string>()
   for (const item of page.items) {
     // Current backend maps Event.ID and TaskID to the same task; reject conflicting identities.
     if (!item || typeof item !== 'object' || !validUpdateID(item.id) || item.task_id !== item.id || ids.has(item.id) || !taskFields(item as unknown as Record<string, unknown>)) return null
     if (page.filter) {
-      const f = page.filter, accepted = Date.parse(item.accepted_at)
-      if (accepted < Date.parse(f.from) || accepted >= Date.parse(f.to) || f.mode && item.mode !== f.mode || f.status && item.status !== f.status || f.task_id && item.task_id !== f.task_id) return null
+      const f = page.filter, accepted = timestampMicros(item.accepted_at)
+      if (accepted === null || accepted < timestampMicros(f.from)! || accepted >= timestampMicros(f.to)! || f.mode && item.mode !== f.mode || f.status && item.status !== f.status || f.task_id && item.task_id !== f.task_id) return null
     }
     ids.add(item.id)
   }

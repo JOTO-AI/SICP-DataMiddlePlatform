@@ -48,3 +48,21 @@ test('F06 test log handoff is one use and cleared on session changes', () => {
   expect(consumeTestLogs()).toBeNull()
   session.operator = ''; expect(prepareTestLogs(f)).toBe(false)
 })
+
+test('F08 phase, time window and explicit raw-versus-correlation formats follow the backend contract', () => {
+  const f = emptyLogFilters(), p = recordedLogPage().data
+  const phase = { ...f, phase: 'started' }
+  expect(new URL(logHistoryPath(phase), 'https://console.invalid').searchParams.get('phase')).toBe('started')
+  expect(readLogPage({ ...p, filter: { ...p.filter, phase: 'started' } }, phase)).not.toBeNull()
+  expect(readLogPage({ ...p, filter: { ...p.filter, phase: 'finished' } }, { ...phase, phase: 'finished' })).toBeNull()
+  expect(readLogPage({ ...p, filter: { ...p.filter, to: '2026-10-13T00:00:00Z' } }, f)).toBeNull()
+  expect(readLogPage({ ...p, filter: { ...p.filter, from: '2026-09-01T00:00:00Z' } }, f)).toBeNull()
+  expect(() => logHistoryPath({ ...f, phase: 'complete' })).toThrow()
+  expect(() => logHistoryPath({ ...f, from: '1999-01-01T00:00:00Z', to: '1999-01-02T00:00:00Z' })).toThrow()
+  const id = p.items[0].request_id
+  for (const format of ['raw', 'correlation'] as const) {
+    const q = new URL(logHistoryPath({ ...f, identity: id, format }), 'https://console.invalid').searchParams
+    expect(q.get('request_id')).toBe(id); expect(q.get('id_format')).toBe(format)
+    expect(q.has('event_id')).toBe(false); expect(q.has('page')).toBe(false)
+  }
+})

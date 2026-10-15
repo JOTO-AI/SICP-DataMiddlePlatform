@@ -3,6 +3,7 @@ import { ref, reactive, watch, computed, onMounted, onActivated, onDeactivated }
 import { request, describe, ApiError, type Envelope } from '../../api'
 import { updateListPath, readUpdatePage, updateModes, updateStatuses, emptyUpdateFilters, type UpdatePage } from '../../app/updateEvents'
 import { useRequestScope } from '../../composables/useRequestScope'
+import { timestampMicros } from '../../shared/timestamp'
 import ErrorState from '../ErrorState.vue'
 import EmptyState from '../EmptyState.vue'
 import StatusBadge from '../StatusBadge.vue'
@@ -34,7 +35,7 @@ async function read(next = false) {
     if (!value?.filter && (Object.values(filters).some(Boolean) || next && page.value?.filter)) throw new ApiError('更新事件未返回已提交的筛选范围。', 'invalid_response')
     if (value?.filter) {
       const f = value.filter
-      if ((f.mode ?? '') !== filters.mode || (f.status ?? '') !== filters.status || (f.task_id ?? '') !== filters.task_id || filters.from && (Date.parse(f.from) !== Date.parse(filters.from) || Date.parse(f.to) !== Date.parse(filters.to)) || next && page.value?.filter && JSON.stringify(f) !== JSON.stringify(page.value.filter)) throw new ApiError('更新事件筛选范围与当前查询不一致。', 'invalid_response')
+      if ((f.mode ?? '') !== filters.mode || (f.status ?? '') !== filters.status || (f.task_id ?? '') !== filters.task_id || filters.from && (timestampMicros(f.from) !== timestampMicros(new Date(filters.from).toISOString()) || timestampMicros(f.to) !== timestampMicros(new Date(filters.to).toISOString())) || next && page.value?.filter && JSON.stringify(f) !== JSON.stringify(page.value.filter)) throw new ApiError('更新事件筛选范围与当前查询不一致。', 'invalid_response')
     }
     const seen = new Set(pages.value.flatMap(page => page.items.map(item => item.id)))
     if (response.status !== 200 || response.body.code !== 'ok' || !value || next && (value.items.some(item => seen.has(item.id)) || value.next_cursor && (value.next_cursor === cursor || cursors.has(value.next_cursor)))) throw new ApiError('更新事件响应标识、记录或游标不符合当前分页链。', 'invalid_response')
