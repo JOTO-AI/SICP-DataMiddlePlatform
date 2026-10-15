@@ -1,4 +1,5 @@
 ﻿import type { CatalogAPI } from './catalog'
+import { catalogLimit } from './catalogCopy'
 import { sourceFieldLabels } from './sourceFieldLabels'
 
 // Documentation metadata only. Field constraints always come from the backend.
@@ -38,12 +39,12 @@ export function schemaRows(api: CatalogAPI, schema: unknown): { rows: SchemaRow[
     if (rows.length >= 1000 || depth > 12) { incomplete = true; return }
     if (!value || typeof value !== 'object' || Array.isArray(value)) { incomplete = true; return }
     const field = value as Record<string, unknown>
-    rows.push({ path, type: typeof field.type === 'string' ? field.type : '未声明', required: flag(field.required), nullable: flag(field.nullable),
-      defaultText: field.default == null ? '未声明' : JSON.stringify(field.default), limit: typeof field.limit === 'string' && field.limit ? field.limit : '未声明',
+    if (!(path === '$' && field.type === 'object' && field.properties && typeof field.properties === 'object' && !Array.isArray(field.properties))) rows.push({ path, type: typeof field.type === 'string' ? field.type : '未声明', required: flag(field.required), nullable: flag(field.nullable),
+      defaultText: field.default == null ? '未声明' : JSON.stringify(field.default), limit: catalogLimit(field.limit),
       description: path === '$' ? '根结构' : fieldDescription(api, name) })
     if (field.properties != null) {
       if (typeof field.properties !== 'object' || Array.isArray(field.properties)) incomplete = true
-      else for (const [key, child] of Object.entries(field.properties)) visit(child, path === '$' ? key : `${path}.${key}`, key, depth + 1)
+      else for (const [key, child] of Object.entries(field.properties).sort(([, a], [, b]) => Number(!!b && typeof b === 'object' && (b as Record<string, unknown>).required === true) - Number(!!a && typeof a === 'object' && (a as Record<string, unknown>).required === true))) visit(child, path === '$' ? key : `${path}.${key}`, key, depth + 1)
     }
     if (field.items != null) visit(field.items, `${path}[]`, name, depth + 1)
   }

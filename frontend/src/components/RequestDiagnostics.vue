@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { milliseconds } from "../shared/duration"
 import { computed } from 'vue'
 import { requestDiagnostics, type EvidenceInput } from '../app/requestDiagnostics'
 import Timestamp from './Timestamp.vue'
@@ -23,7 +24,7 @@ const unavailable: Record<string, string> = {
         <div><dt>接口</dt><dd>{{ request.method }} {{ request.endpoint ?? '旧记录未提供接口地址' }}</dd></div>
         <div><dt>{{ request.kind === 'authentication' ? '认证 HTTP 状态' : '数据接口 HTTP 状态' }}</dt><dd>{{ request.http_status ?? (request.sent === false ? '未发起 HTTP 请求' : request.sent === true ? '未收到 HTTP 响应' : '旧记录未提供') }}</dd></div>
         <div v-if="request.started_at"><dt>请求开始时间</dt><dd><Timestamp :value="request.started_at" /></dd></div>
-        <div v-if="request.duration_ns !== undefined"><dt>请求耗时</dt><dd>{{ (request.duration_ns / 1e9).toFixed(3) }} 秒</dd></div>
+        <div v-if="request.duration_ns !== undefined"><dt>请求耗时</dt><dd>{{ milliseconds(request.duration_ns) }} ms</dd></div>
         <div v-if="request.business_code !== undefined"><dt>业务码</dt><dd>{{ request.business_code }}</dd></div>
         <div v-if="request.stage"><dt>阶段</dt><dd>{{ request.stage }}</dd></div>
         <div v-if="request.failure"><dt>失败分类</dt><dd>{{ request.failure }}</dd></div>

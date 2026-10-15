@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { milliseconds } from "../shared/duration"
+import { logKinds, logPhases, logOutcomes } from '../app/logDetail'
 import { ref, onMounted, onActivated, onDeactivated, watch } from 'vue'
 import { request, describe, ApiError, type Envelope } from '../api'
 import type { CatalogAPI } from '../app/catalog'
@@ -47,7 +49,7 @@ onActivated(() => { if (props.api.kind === 'business' && !page.value && !busy.va
     <ErrorState v-if="error" :message="error" />
     <p v-if="error && page" class="warning">当前读取失败，以下保留上次成功读取的批次，不代表最新结果。</p>
     <template v-if="page"><p class="hint">范围 <Timestamp :value="page.filter.from" /> 至 <Timestamp :value="page.filter.to" /> · 第 {{ batch }} 批 · 读取于 <Timestamp :value="readAt" /></p>
-      <div v-if="page.items.length" class="call-scroll" role="region" aria-label="调用日志表格" tabindex="0"><table><thead><tr><th>事件时间</th><th>类型 / 阶段</th><th>结果</th><th>HTTP</th><th>耗时（ns）</th><th>详情</th></tr></thead><tbody><tr v-for="item in page.items" :key="item.event_id"><td><Timestamp :value="item.occurred_at" /></td><td>{{ item.kind }} / {{ item.phase }}</td><td>{{ item.outcome ?? '尚未记录' }}</td><td>{{ item.http_status ?? '未记录' }}</td><td>{{ item.duration_ns ?? '未记录' }}</td><td><RouterLink v-if="logDetailPath(item.source, item.event_id)" :to="logDetailPath(item.source, item.event_id)!">查看事件</RouterLink></td></tr></tbody></table></div>
+      <div v-if="page.items.length" class="call-scroll" role="region" aria-label="调用日志表格" tabindex="0"><table><thead><tr><th>事件时间</th><th>类型 / 阶段</th><th>结果</th><th>HTTP</th><th>耗时（ms）</th><th>详情</th></tr></thead><tbody><tr v-for="item in page.items" :key="item.event_id"><td><Timestamp :value="item.occurred_at" /></td><td>{{ logKinds[item.kind] || item.kind }} / {{ logPhases[item.phase] || item.phase }}</td><td>{{ item.outcome ? logOutcomes[item.outcome] || item.outcome : '尚未记录' }}</td><td>{{ item.http_status ?? '未记录' }}</td><td>{{ milliseconds(item.duration_ns) }}</td><td><RouterLink v-if="logDetailPath(item.source, item.event_id)" :to="logDetailPath(item.source, item.event_id)!">查看事件</RouterLink></td></tr></tbody></table></div>
       <EmptyState v-else title="此时间范围内没有匹配的日志事件" description="空日志不证明接口从未调用，也不表示当前服务健康。" />
       <button v-if="page.next_cursor" :disabled="busy" @click="read(true)">读取下一批</button><p v-else class="hint">已到本次日志范围末批。</p>
     </template>

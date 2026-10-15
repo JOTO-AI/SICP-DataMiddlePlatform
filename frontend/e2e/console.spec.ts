@@ -1665,7 +1665,7 @@ test('F05 provider Query and controlled test Body have separate fields and defau
   await expect(job).toContainText('page_size → pageSize')
   await expect(job).toContainText('POST /admin/v1/api-tests')
   await expect(job).toContainText('不接受自定义地址、令牌')
-  await expect(job.getByRole('row').filter({ has: page.locator('th code').filter({ hasText: /^page_size$/ }) })).toContainText('1..100')
+  await expect(job.getByRole('row').filter({ has: page.locator('th code').filter({ hasText: /^page_size$/ }) })).toContainText('范围：1–100')
   await expect(page.getByRole('tabpanel').getByRole('textbox')).toHaveCount(0)
   await page.setViewportSize({ width: 390, height: 844 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)

@@ -13,8 +13,8 @@ function validString(value: string) {
 }
 export function testParameters(api: CatalogAPI): ParameterDefinition[] {
   const common = new Set([...(operations.find(operation => operation.operation === api.id)?.fields.map(field => field.key) ?? []), 'page', 'page_size'])
-  return Object.entries(api.request.properties ?? {}).map(([name, field]) => ({ name, type: field.type, required: field.required,
-    nullable: !field.required, description: fieldDescription(api, name), advanced: !common.has(name), defaultText: field.default == null ? undefined : JSON.stringify(field.default) }))
+  return Object.entries(api.request.properties ?? {}).sort(([, a], [, b]) => Number(b.required) - Number(a.required)).map(([name, field]) => ({ name, type: field.type, required: field.required,
+    nullable: !field.required, description: fieldDescription(api, name), advanced: !field.required && !common.has(name), defaultText: field.default == null ? undefined : JSON.stringify(field.default) }))
 }
 export function editableExample(api: CatalogAPI, text: string): string {
   if (api.kind !== 'source') return text

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { milliseconds } from "../../shared/duration"
 import Timestamp from '../Timestamp.vue'
 import { logDetailPath } from '../../app/links'
 import RequestDiagnostics from '../RequestDiagnostics.vue'
@@ -28,7 +29,7 @@ const reasons: Record<string, string> = { authentication: '上游认证失败', 
           <div><dt>来源表</dt><dd>{{ item.source }}</dd></div>
           <div><dt>发生时间</dt><dd><Timestamp :value="item.at" /></dd></div>
           <div><dt>失败类型</dt><dd>{{ reasons[item.failure] || item.failure }}</dd></div>
-          <div v-if="item.duration_ns != null"><dt>耗时</dt><dd>{{ (item.duration_ns / 1e9).toFixed(2) }} 秒</dd></div>
+          <div v-if="item.duration_ns != null"><dt>耗时</dt><dd>{{ milliseconds(item.duration_ns) }} ms</dd></div>
           <div v-if="item.business_code != null"><dt>业务码</dt><dd>{{ Number.isSafeInteger(item.business_code) ? item.business_code : '超出精确数值范围，请查看日志原文' }}</dd></div>
           <div v-if="item.response?.request_id"><dt>上游请求标识</dt><dd>{{ item.response.request_id }}</dd></div>
         </dl>

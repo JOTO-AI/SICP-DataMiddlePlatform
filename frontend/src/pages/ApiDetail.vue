@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { prepareRoster, consumeRoster } from '../app/rosterNavigation'
 import type { RosterContext } from '../app/roster'
 import { request, describe, ApiError, type Envelope } from '../api'
+import { catalogPurpose, catalogNote } from '../app/catalogCopy'
 import { catalogName, readCatalogAPI, type CatalogAPI } from '../app/catalog'
 import { useRequestScope } from '../composables/useRequestScope'
 import PageHeader from '../components/PageHeader.vue'
@@ -78,7 +79,7 @@ onUnmounted(stop)
 <template>
   <section class="api-detail">
     <RouterLink to="/apis">← 接口目录</RouterLink>
-    <PageHeader :title="api ? catalogName(api) : '接口详情'" :description="api?.purpose"><button :disabled="busy" @click="refresh">{{ busy ? '读取中…' : '刷新详情' }}</button><button v-if="api" class="primary" :disabled="busy || !!error" @click="openTest">在线测试</button></PageHeader>
+    <PageHeader :title="api ? catalogName(api) : '接口详情'" :description="api ? catalogPurpose(api) : undefined"><button :disabled="busy" @click="refresh">{{ busy ? '读取中…' : '刷新详情' }}</button><button v-if="api" class="primary" :disabled="busy || !!error" @click="openTest">在线测试</button></PageHeader>
     <ErrorState v-if="error" :message="error" retryable :busy="busy" @retry="refresh" />
     <p v-if="error && api" class="warning">当前详情未确认，以下为上次成功读取的目录快照。</p>
     <template v-if="api">
@@ -91,7 +92,7 @@ onUnmounted(stop)
       </section>
       <div class="tabs api-tabs" role="tablist" aria-label="接口文档"><button v-for="(title, index) in tabs" :id="`api-tab-${index}`" :key="title" ref="tabButtons" role="tab" :aria-selected="tab === index" aria-controls="api-doc-panel" :tabindex="tab === index ? 0 : -1" :class="{ active: tab === index }" @click="tab = index" @keydown="keyTab">{{ title }}</button></div>
       <section id="api-doc-panel" class="panel api-tab-panel" role="tabpanel" :aria-labelledby="`api-tab-${tab}`" tabindex="0">
-        <template v-if="tab === 0"><h2>概览</h2><dl class="facts"><div><dt>接口标识</dt><dd><code>{{ api.id }}</code></dd></div><div><dt>接口分组</dt><dd>{{ api.kind === 'business' ? '本地业务接口' : api.kind === 'source' ? '上游接口' : api.kind }}</dd></div><div><dt>查询快照</dt><dd>{{ api.snapshot === true ? '使用查询快照' : api.snapshot === false ? '不使用查询快照' : '后端未提供' }}</dd></div></dl><ul v-if="api.notes?.length"><li v-for="(note, index) in api.notes" :key="index">{{ note }}</li></ul><p v-else class="hint">后端目录未提供附加说明。</p></template>
+        <template v-if="tab === 0"><h2>概览</h2><dl class="facts"><div><dt>接口标识</dt><dd><code>{{ api.id }}</code></dd></div><div><dt>接口分组</dt><dd>{{ api.kind === 'business' ? '本地业务接口' : api.kind === 'source' ? '上游接口' : api.kind }}</dd></div><div><dt>查询快照</dt><dd>{{ api.snapshot === true ? '使用查询快照' : api.snapshot === false ? '不使用查询快照' : '后端未提供' }}</dd></div></dl><ul v-if="api.notes?.length"><li v-for="(note, index) in api.notes" :key="index">{{ catalogNote(note) }}</li></ul><p v-else class="hint">后端目录未提供附加说明。</p></template>
         <template v-else-if="tab === 1"><h2>参数</h2><SourceRequestDocs v-if="api.kind === 'source'" :api="api" /><template v-else><h3>本地 POST · JSON Body</h3><p class="hint">字段通过 application/json 请求正文提交，不放入 Query。浏览器使用同源会话网关；业务服务密钥由服务端持有。</p><CatalogSchema :api="api" :schema="api.request" label="参数字段表" /><h3>组合规则</h3><ul><li v-for="rule in operationRules[api.id] ?? []" :key="rule">{{ rule }}</li></ul><details><summary>通用解析与分页规则</summary><ul><li v-for="rule in commonBusinessRules" :key="rule">{{ rule }}</li></ul></details></template></template>
         <ApiRequestExamples v-else-if="tab === 2" :api="api" @load="loadExample" />
         <template v-else-if="tab === 3"><ResponseContract :api="api" /><h2>响应字段</h2><p class="hint">{{ api.kind === 'source' ? '此 schema 描述 data.list 中的一条源记录。' : '此 schema 描述成功响应的 data 业务字段。' }}完整 HTTP 外壳见下方案例。</p><CatalogSchema :api="api" :schema="api.response" label="响应字段表" /><ExampleViewer :text="json(api.success_example)" title="成功响应案例" /><ExampleViewer :text="json(api.failure_example)" title="失败响应案例" /></template>
