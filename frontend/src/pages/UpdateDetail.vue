@@ -56,7 +56,7 @@ onDeactivated(deactivate); onUnmounted(deactivate)
   <RouterLink class="back-link" to="/updates">← 返回更新事件</RouterLink>
   <header class="event-heading" :role="task ? 'region' : undefined" :aria-label="task ? '更新事件事实' : undefined">
     <div><div class="title-line"><h1>更新详情</h1><StatusBadge v-if="task" :value="task.status" /></div><p class="event-id">事件号：<CopyId :value="id" label="更新事件号" /></p><p v-if="task" class="hint">任务号：<CopyId :value="task.task_id" label="任务号" /></p><p v-if="task?.selected_table" class="hint">本次强制更新表{{ sourceName(task.selected_table) }} · {{ task.selected_table }}</p></div>
-    <dl v-if="task" class="header-times"><div><dt>受理时间</dt><dd><Timestamp :value="task.accepted_at" /></dd></div><div><dt>开始时间</dt><dd><Timestamp :value="task.started_at" empty="尚未确认" /></dd></div><div><dt>发布时间</dt><dd><Timestamp :value="task.published_at" empty="尚未确认" /></dd></div></dl>
+    <dl v-if="task" class="header-times"><div><dt>受理时间</dt><dd><Timestamp :value="task.accepted_at" /></dd></div><div><dt>开始时间</dt><dd><Timestamp :value="task.started_at" empty="未记录" /></dd></div><div><dt>发布时间</dt><dd><Timestamp :value="task.published_at" empty="未记录" /></dd></div></dl>
   </header>
   <div class="detail-tools"><p class="hint" v-if="task">{{ updateModes[task.mode] || task.mode }} · <span>{{ task.operator === 'scheduler' ? '系统调度' : task.operator || '来源未提供' }}</span> · 读取于 <Timestamp :value="readAt" /></p><div class="actions"><label v-if="task" class="check-row"><input type="checkbox" v-model="auto" :disabled="terminal || busy" @change="toggleAuto">每 5 秒刷新，任务结束或查询失败后停止</label><button type="button" :disabled="busy" @click="read">刷新事件详情</button></div></div>
   <ErrorState v-if="error" :message="error" /><p v-if="error && task" class="warning">当前读取失败，保留上次已确认详情，不代表最新状态。</p>
@@ -65,13 +65,13 @@ onDeactivated(deactivate); onUnmounted(deactivate)
     <section class="detail-surface">
       <DetailTabs v-model="tab" :labels="tabs" id="update-details" />
       <section v-show="tab === 0" role="tabpanel" id="update-details-panel-0" aria-labelledby="update-details-tab-0">
-        <OperationTree ref="tree" :task-id="id">
+        <OperationTree ref="tree" :task-id="id" :task="task">
           <TaskDiagnostics :task="task" read-only mode="progress" />
         </OperationTree>
       </section>
       <section v-show="tab === 1" class="tab-content" role="tabpanel" id="update-details-panel-1" aria-labelledby="update-details-tab-1">
         <h2>转移与发布</h2><p class="hint">{{ updateMeaning(task.status, task.mode) }}</p>
-        <dl class="facts"><div v-for="[key, title] in updateTimes" :key="key"><dt>{{ title }}</dt><dd><Timestamp :value="task[key]" empty="尚未确认" /></dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed === true ? '已确认' : task.progress_confirmed === false ? '尚未确认' : '未提供' }}</dd></div></dl>
+        <dl class="facts"><div v-for="[key, title] in updateTimes" :key="key"><dt>{{ title }}</dt><dd><Timestamp :value="task[key]" empty="未记录" /></dd></div><div><dt>进度确认</dt><dd>{{ task.progress_confirmed === true ? '已确认' : task.progress_confirmed === false ? '尚未确认' : '未提供' }}</dd></div></dl>
         <p v-if="task.predecessor_id">前序任务：<RouterLink v-if="validUpdateID(task.predecessor_id)" :to="{ name: 'update-detail', params: { id: task.predecessor_id } }">{{ task.predecessor_id }}</RouterLink></p>
         <div class="actions"><button @click="showGroup('builds')">查看构建目标</button><button @click="showGroup('publication')">查看转移与发布记录</button><RouterLink to="/overview">查看当前数据组合</RouterLink></div>
       </section>

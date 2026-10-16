@@ -56,7 +56,7 @@ export function readUpdatePage(value: unknown): UpdatePage | null {
   }
   return page
 }
-export interface UpdateDetail extends Omit<UpdateEvent, 'id'> { operator?: string | null; progress_confirmed?: boolean | null; failure?: string | null; diagnostics_unavailable?: boolean; selected_table?: string | null; work_progress?: unknown }
+export interface UpdateDetail extends Omit<UpdateEvent, 'id'> { operator?: string | null; progress_confirmed?: boolean | null; failure?: string | null; diagnostics_unavailable?: boolean; selected_table?: string | null; work_progress?: unknown; acquisition?: unknown }
 export function readUpdateDetail(value: unknown, id: string): UpdateDetail | null {
   if (!value || typeof value !== 'object' || !taskFields(value as Record<string, unknown>) || (value as UpdateDetail).task_id !== id) return null
   const detail = value as UpdateDetail

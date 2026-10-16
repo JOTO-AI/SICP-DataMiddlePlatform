@@ -428,3 +428,5 @@ V01/V02 的取舍、截图范围与回归证据见 [界面细节复核](verifica
 - [x] V04 按图 16 实现更新详情头部、七阶段进度、四标签和左右操作树；58 项浏览器、122 项单元及构建检查通过，完成视觉与 code review。见 [图 16 复核](verification/FRONTEND_FIGURE16_REVIEW.md)。
 
 - [x] V05 按图 20 实现调用日志详情标题、三标签、错误摘要、执行时序/基本信息双栏、关联表与折叠 JSON；列表直接进入详情。172 项浏览器及 10 项补充复测、122 项单元和构建通过，完成视觉与 code review。见 [图 20 复核](verification/FRONTEND_FIGURE20_REVIEW.md)。
+
+- [x] V06 修正阶段条与采集进度不一致：聚合真实采集/任务证据，区分已完成、时间未记录和不适用；根操作分组显示摘要。完成单元、浏览器复测、构建和 code review，见 [阶段证据复核](verification/FRONTEND_STAGE_EVIDENCE_REVIEW.md)。

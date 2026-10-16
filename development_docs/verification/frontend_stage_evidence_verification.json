@@ -1,0 +1,52 @@
+{
+  "step": "V06",
+  "base": "300f60c",
+  "reports": [
+    {
+      "path": "artifacts/frontend-stage-evidence/report.json",
+      "sha256": "53f927a3313f4498323f712c87bea95d5e2c4fada3b05d59cff28f1955c3ee81",
+      "stats": {
+        "startTime": "2026-10-16T01:00:19.671Z",
+        "duration": 106140.897,
+        "expected": 40,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      }
+    },
+    {
+      "path": "artifacts/frontend-stage-evidence/final-report.json",
+      "sha256": "42015681dd7e64633ee54960682b753182863145df8d56598a7d53f571e2c807",
+      "stats": {
+        "startTime": "2026-10-16T01:02:25.869Z",
+        "duration": 105929.255,
+        "expected": 40,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      }
+    },
+    {
+      "path": "artifacts/frontend-stage-evidence/recheck-report.json",
+      "sha256": "9154447efe96b77dccdffc0993604ecad8c6007d66fd6e60fa393d93603a23de",
+      "stats": {
+        "startTime": "2026-10-16T01:04:47.004Z",
+        "duration": 32602.246,
+        "expected": 8,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    }
+  ],
+  "unit_passed": 127,
+  "focused_unit_passed": 5,
+  "widths_checked": [
+    1440,
+    1280,
+    1024,
+    768,
+    390
+  ],
+  "real_integration": "deferred_by_user"
+}
