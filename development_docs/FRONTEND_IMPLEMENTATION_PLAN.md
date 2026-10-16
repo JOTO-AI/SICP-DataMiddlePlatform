@@ -442,3 +442,5 @@ V01/V02 的取舍、截图范围与回归证据见 [界面细节复核](verifica
 - [x] V11 接口概览说明用途、适用场景与返回内容，技术元信息和约束折叠保留；完成契约核对、浏览器回归、构建、视觉及 code review。见 [接口概览复核](verification/FRONTEND_API_OVERVIEW_REVIEW.md)。
 
 - [x] V12 接口列表/详情补齐“已实现”绿色勾图标及 POST 绿色标签，保留未实现/未知区分；8 项浏览器、构建、视觉与 code review 通过。见 [接口状态样式复核](verification/FRONTEND_API_STATUS_REVIEW.md)。
+
+- [x] V13 按图 02 重排运行总览状态摘要、最近更新/源表、关注侧栏及折叠诊断；接入真实事件阶段与源定位，完成回归、构建、视觉和 code review。见 [图 02 复核](verification/FRONTEND_FIGURE02_REVIEW.md)。

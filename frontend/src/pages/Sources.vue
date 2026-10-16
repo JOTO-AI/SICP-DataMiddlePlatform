@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { sourceName } from '../app/sourceNames'
 import { computed, ref, onActivated, onDeactivated, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { router } from '../app/router'
 import { updateDetailPath, sourceLogContext } from '../app/links'
 import { prepareSourceLogs } from '../app/logNavigation'
@@ -19,6 +20,7 @@ import Timestamp from '../components/Timestamp.vue'
 import Drawer from '../components/Drawer.vue'
 import CopyId from '../components/CopyId.vue'
 
+const route = useRoute()
 const items = ref<SourceState[] | null>(null), error = ref(''), busy = ref(false), readAt = ref('')
 const name = ref(''), state = ref(''), selectedId = ref(''), drawerOpen = ref(false)
 const selected = computed(() => items.value?.find(item => item.id === selectedId.value))
@@ -52,7 +54,7 @@ async function refresh() {
 }
 function openLogs(id?: string | null) { if (prepareSourceLogs(id)) { drawerOpen.value = false; void router.push('/logs/upstream') } }
 function openSource(id: string) { selectedId.value = id; drawerOpen.value = true }
-onActivated(() => { active = true; void refresh() })
+onActivated(() => { active = true; if (typeof route.query.source === 'string') name.value = route.query.source; void refresh() })
 function stop() { active = false; cancel(); drawerOpen.value = false; selectedId.value = '' }
 onDeactivated(stop)
 onUnmounted(stop)

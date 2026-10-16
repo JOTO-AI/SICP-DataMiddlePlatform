@@ -459,6 +459,7 @@ test('overview distinguishes unknown totals and completed acquisition from publi
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ json: { code: 'ok', data: { initialized: true, items: [task] } } }))
   await page.route('**/admin/v1/tasks/progress-overview', route => route.fulfill({ json: { code: 'ok', data: { ...task, acquisition: { updated_at: '2026-09-30T04:00:00Z', tables: [{ table: 'dwd_bzkscjzlb', status: collected ? 'collected' : 'acquiring', completed_pages: collected ? 1 : 0, total_pages: collected ? 1 : null }] } } } }))
   await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await page.getByText('查看当前采集与执行进度', { exact: true }).click()
   await expect(page.getByText('等待首个分页结果，暂未取得总页数。')).toBeVisible()
   await expect(page.getByRole('progressbar')).toHaveCount(0)
   collected = true
@@ -505,6 +506,11 @@ test('expired session returns to login and removes protected pages', async ({ pa
   await expect(page.getByRole('status')).toContainText('登录已过期')
   await expect(page.getByRole('navigation')).toHaveCount(0)
 })
+
+async function openOverviewDiagnostics(page: Page) {
+  const details = page.locator('.overview-diagnostics')
+  if (await details.count() && !await details.evaluate(el => (el as HTMLDetailsElement).open)) await details.locator('summary').first().click()
+}
 
 async function setup(page: Page) {
   for (const name of ['overview', 'system', 'sources']) {
@@ -591,6 +597,7 @@ test('overview shows initialization and automatically becomes ready when it fini
   await expect(progress).toBeVisible()
   await expect(progress).toContainText('已运行')
   await expect(progress).toContainText('首次初始化完成前，业务数据暂不可查询。')
+  await openOverviewDiagnostics(page)
   await expect(page.getByRole('article').filter({ hasText: '数据更新服务' }).locator('.tag')).toHaveText('正在初始化')
   await page.screenshot({ path: testInfo.outputPath('initializing-overview-desktop.png'), fullPage: true })
   await page.setViewportSize({ width: 390, height: 844 })
@@ -625,7 +632,9 @@ for (const entry of [
     await page.route('**/console-api/**/readyz', route => route.fulfill({ json: { ready: true, dependencies_ready: true } }))
     await page.getByRole('button', { name: '刷新状态', exact: true }).click()
     await expect(page.getByRole('region', { name: entry.title })).toContainText('当前已发布数据仍可查询。')
+    await openOverviewDiagnostics(page)
     await expect(page.getByRole('article').filter({ hasText: '业务查询服务' }).locator('.tag')).toHaveText('✓ 已就绪')
+    await openOverviewDiagnostics(page)
     await expect(page.getByRole('article').filter({ hasText: '数据更新服务' }).locator('.tag')).toHaveText(entry.title)
     await page.getByRole('link', { name: '查看更新任务 →', exact: true }).click()
     await expect(page.getByRole('heading', { name: '更新事件', exact: true })).toBeVisible()
@@ -642,6 +651,7 @@ test('overview does not keep reporting progress when task status cannot be read'
   await page.route('**/console-api/worker/livez', route => route.fulfill({ status: 503, json: { live: false } }))
   await page.getByRole('button', { name: '刷新状态', exact: true }).click()
   await expect(page.getByText('更新服务状态异常或尚未确认，请结合下方检查结果判断任务是否仍在推进。')).toBeVisible()
+  await openOverviewDiagnostics(page)
   await expect(page.getByRole('article').filter({ hasText: '数据更新服务' }).locator('.tag')).toHaveText('尚未就绪')
   await page.route('**/admin/v1/tasks/', route => route.fulfill({ status: 503, json: { code: 'unavailable' } }))
   await page.getByRole('button', { name: '刷新状态', exact: true }).click()
@@ -1400,6 +1410,7 @@ test('F04 overview retains timestamped backend observations on failure without i
   await setup(page)
   const fixture = managementCapture('overview')
   const observedAt = (fixture.response.data as { observed_at: string }).observed_at
+  await openOverviewDiagnostics(page)
   const snapshot = page.getByRole('region', { name: '运行快照', exact: true })
   const logs = page.getByRole('region', { name: '日志状态', exact: true })
   await expect(snapshot.locator('time')).toHaveAttribute('datetime', observedAt)
@@ -1408,6 +1419,7 @@ test('F04 overview retains timestamped backend observations on failure without i
   await expect(logs).toContainText('未观测')
   await expect(logs.locator('.success')).toHaveCount(0)
   await expect(page.getByRole('button', { name: '刷新状态', exact: true })).toBeEnabled()
+  await openOverviewDiagnostics(page)
   const query = page.getByRole('article').filter({ hasText: '业务查询服务' })
   await page.route('**/console-api/query/readyz', route => route.fulfill({ json: { ready: true } }))
   await page.getByRole('button', { name: '刷新状态', exact: true }).click()
@@ -1445,6 +1457,7 @@ test('F04 compact overview uses recorded source rows and separates missing event
   await expect(table).toContainText('无失败记录')
   await expect(table.locator('.success')).toHaveCount(0)
   await expect(page.getByRole('region', { name: '最近更新', exact: true })).toContainText('最近更新记录为空')
+  await openOverviewDiagnostics(page)
   const service = page.getByRole('article').filter({ hasText: '业务查询服务' })
   await expect(service.getByText('进程存活', { exact: true })).not.toBeVisible()
   await service.locator('summary').filter({ hasText: '服务详情' }).click()
@@ -3324,4 +3337,78 @@ test('V12 implementation check and green POST label appear in catalog and detail
     await expect(info).toContainText(implemented === false ? '未实现' : '实现状态未知')
     await expect(info.locator('.status-check')).toHaveCount(0)
   }
+})
+
+test('V13 overview matches figure 02 hierarchy with recorded event and source data', async ({ page }, testInfo) => {
+  await setup(page)
+  const fixture = managementCapture('overview'), detail = managementCapture('update_detail')
+  const event = recordedUpdateEvent()
+  await page.route('**/admin/v1/overview', route => route.fulfill({ json: { ...fixture.response, data: { ...fixture.response.data as object, tasks: { ...(fixture.response.data as any).tasks, items: [event] } } } }))
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(page.getByRole('list', { name: '最近更新阶段', exact: true }).locator('li')).toHaveCount(4)
+  await expect(page.getByRole('list', { name: '最近更新阶段', exact: true })).toContainText('未开始')
+  await expect(page.getByRole('region', { name: '运行状态摘要', exact: true })).toContainText('日志状态未知')
+  await expect(page.locator('.overview-diagnostics')).not.toHaveAttribute('open', '')
+  await expect(page.getByRole('article')).toHaveCount(0)
+  for (const width of [1440, 1280, 1024, 768, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (width === 1440) {
+      const main = await page.locator('.overview-main').boundingBox(), side = await page.locator('.overview-side').boundingBox()
+      expect(main!.x + main!.width).toBeLessThan(side!.x)
+      expect(Math.abs(main!.y - side!.y)).toBeLessThan(2)
+    }
+    await page.screenshot({ path: testInfo.outputPath('overview-' + width + '.png'), fullPage: true })
+  }
+  const source = (managementCapture('sources').response.data as { items: { id: string }[] }).items[0]!
+  await page.getByRole('link', { name: '查看数据源 成绩', exact: true }).click()
+  await expect(page.getByLabel('源名称或标识', { exact: true })).toHaveValue(source.id)
+  await expect(page.getByRole('region', { name: '数据源表格，可横向滚动', exact: true })).toContainText(source.id)
+})
+
+test('V13 failed event remains failed and unavailable detail never becomes completed stages', async ({ page }, testInfo) => {
+  await setup(page)
+  const fixture = managementCapture('overview'), captured = managementCapture('update_detail')
+  const task = captured.response.data as any
+  // Terminal-state boundary based on recorded DTO and actual upstream diagnostic text.
+  const failure = diagnosticCapture('initial_token_502').attempt.diagnostics[0]!.error
+  const failed = { ...task, status: 'failed', failure }
+  let unavailable = false
+  await page.route('**/admin/v1/overview', route => route.fulfill({ json: { ...fixture.response, data: { ...fixture.response.data as object, tasks: { ...(fixture.response.data as any).tasks, initialized: true, items: [failed] } } } }))
+  await page.route('**' + captured.path, route => unavailable ? route.abort() : route.fulfill({ json: { ...captured.response, data: failed } }))
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(page.getByRole('region', { name: '运行状态摘要', exact: true })).toContainText('最近更新失败')
+  await expect(page.locator('.attention-card')).toContainText(failure!)
+  await expect(page.locator('.overview-stages .done')).toHaveCount(0)
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.screenshot({ path: testInfo.outputPath('overview-failed.png'), fullPage: true })
+  unavailable = true
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(page.getByRole('region', { name: '最近更新', exact: true })).toContainText('阶段详情读取失败')
+  await expect(page.locator('.overview-stages')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: '查看失败事件', exact: true })).toHaveAttribute('href', '/console/updates/' + task.task_id)
+})
+
+test('V13 compact stages preserve completed collection and ongoing copy construction evidence', async ({ page }) => {
+  await setup(page)
+  const overview = managementCapture('overview'), captured = managementCapture('update_detail')
+  const original = captured.response.data as any
+  const tables = (backendCatalog() as { id: string; kind: string }[]).filter(api => api.kind === 'source').map(api => ({ table: api.id, status: 'collected' }))
+  // Same recorded-DTo state boundaries as updateStageStates.spec.ts; no new business rows.
+  let task = { ...original, status: 'running', acquisition: { tables }, work_progress: { phase: 'building_table', instance: 'M' } }
+  await page.route('**/admin/v1/overview', route => route.fulfill({ json: { ...overview.response, data: { ...overview.response.data as object, tasks: { ...(overview.response.data as any).tasks, initialized: true, items: [task] } } } }))
+  await page.route('**' + captured.path, route => route.fulfill({ json: { ...captured.response, data: task } }))
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  const stages = page.getByRole('list', { name: '最近更新阶段', exact: true })
+  await expect(stages.locator('li').first()).toHaveClass('done')
+  await expect(stages.locator('li').nth(2)).toHaveClass('active')
+  await expect(stages.locator('li').nth(2)).toContainText('构建中')
+  await expect(stages.locator('li').last()).not.toHaveClass('done')
+  task = { ...task, status: 'success_published' }
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(stages.locator('li.done')).toHaveCount(4)
+  task = { ...task, status: 'success_unchanged' }
+  await page.getByRole('button', { name: '刷新状态', exact: true }).click()
+  await expect(stages.locator('li').nth(2)).toContainText('无需构建')
+  await expect(stages.locator('li').last()).toContainText('不适用')
 })
