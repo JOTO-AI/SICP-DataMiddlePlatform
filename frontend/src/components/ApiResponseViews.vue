@@ -24,8 +24,8 @@ watch(() => props.raw, () => { view.value = 'json'; selectedPerson.value = null 
 <template><div class="response-views"><GradeResultContext v-if="allowRecords !== false && api.id.startsWith('students.grades.') && !records.error" :api-id="api.id" :request-text="requestText" :raw="raw" :count="records.rows.length" />
   <div class="tabs" aria-label="响应视图"><button v-for="tab in tabs" :key="tab.id" type="button" :aria-pressed="view === tab.id" :class="{ active: view === tab.id }" @click="view = tab.id">{{ tab.label }}</button></div>
   <p v-if="stale && view !== 'json'" class="warning">上次读取结果，当前请求尚未取得新响应。</p>
-  <template v-if="view === 'json'"><ResponseViewer :text="raw" :http-status="httpStatus" :code="code" :request-id="requestId" :stale="stale" :label="api.kind === 'source' ? '管理作业响应原文' : '响应原文'" />
-    <template v-if="sourceResultText"><h4>本页源数据</h4><p class="hint">后端返回的 total/list 结果，保留原始数字；不是上游完整 HTTP 报文。</p><JsonText :text="sourceResultText" label="本页源数据 JSON" /></template>
+  <template v-if="view === 'json'"><ResponseViewer pretty :text="raw" :http-status="httpStatus" :code="code" :request-id="requestId" :stale="stale" :label="api.kind === 'source' ? '管理作业响应原文' : '响应原文'" />
+    <template v-if="sourceResultText"><h4>本页源数据</h4><p class="hint">后端返回的 total/list 结果，保留原始数字；不是上游完整 HTTP 报文。</p><JsonText pretty :text="sourceResultText" label="本页源数据 JSON" /></template>
     <details><summary>{{ api.kind === 'source' ? '管理响应头' : '实际响应头' }}</summary><JsonText :text="JSON.stringify(headers, null, 2)" :label="api.kind === 'source' ? '管理响应头 JSON' : '响应头'" /></details>
   </template>
   <div v-else-if="view === 'headers'"><p class="hint">本次响应允许展示的诊断头；未返回的字段不补造。切换视图不重新请求。</p><JsonText :text="JSON.stringify(headers, null, 2)" label="本次响应头 JSON" /></div>

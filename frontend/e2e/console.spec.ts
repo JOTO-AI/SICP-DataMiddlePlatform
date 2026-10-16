@@ -1928,7 +1928,7 @@ test('F06 editor validates real backend requests, preserves invalid drafts and s
 
 for (const operation of operations) test(`F06 business execution ${operation.operation} replays the existing backend capture once`, async ({ page }, testInfo) => {
   await setup(page)
-  const fixture = backendCapture(operation.operation), raw = JSON.stringify(fixture.response, null, 2) + '\n'
+  const fixture = backendCapture(operation.operation), raw = JSON.stringify(fixture.response)
   let queries = 0, jobs = 0
   await page.route(`**/console-api/query${operation.path}`, route => {
     queries++
@@ -1945,6 +1945,12 @@ for (const operation of operations) test(`F06 business execution ${operation.ope
   expect(queries).toBe(0)
   await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
   await expect(dialog.getByRole('region', { name: '响应内容', exact: true })).toContainText(`HTTP ${fixture.status}`)
+  await expect(dialog.getByLabel('响应JSON', { exact: true })).toHaveText(JSON.stringify(fixture.response, null, 2).slice(0, 4096))
+  if (operation.operation === 'students.query') {
+    await dialog.getByLabel('响应JSON', { exact: true }).scrollIntoViewIfNeeded()
+    await page.screenshot({ path: testInfo.outputPath('business-response-pretty-desktop.png') })
+  }
+  await dialog.getByRole('region', { name: '响应内容', exact: true }).getByRole('button', { name: '查看原文', exact: true }).click()
   await expect(dialog.getByLabel('响应原文', { exact: true })).toHaveText(raw.slice(0, 4096))
   await expect(dialog.getByRole('region', { name: '响应内容', exact: true })).toContainText(fixture.headers['X-Request-ID'] || fixture.response.request_id!)
   await dialog.getByText('实际响应头', { exact: true }).click()
@@ -1952,8 +1958,9 @@ for (const operation of operations) test(`F06 business execution ${operation.ope
   expect(queries).toBe(1)
   expect(jobs).toBe(0)
   if (operation.operation === 'students.query') {
+    await dialog.getByRole('region', { name: '响应内容', exact: true }).getByRole('button', { name: '格式化 JSON', exact: true }).click()
     await page.setViewportSize({ width: 390, height: 844 })
-    await dialog.getByRole('region', { name: '响应内容', exact: true }).scrollIntoViewIfNeeded()
+    await dialog.getByLabel('响应JSON', { exact: true }).scrollIntoViewIfNeeded()
     expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
     await page.screenshot({ path: testInfo.outputPath('business-response-mobile.png') })
   }
@@ -2012,7 +2019,9 @@ test('F06 source executes one fixed page then reads Location and displays unchan
   await expect(dialog).toContainText('运行中尚无结果不代表失败')
   await expect(dialog.getByLabel('请求 JSON', { exact: true })).toBeDisabled()
   await expect(dialog).toContainText('作业执行成功')
+  await dialog.locator('.json-viewer').filter({ has: page.getByLabel('本页源数据 JSON', { exact: true }) }).getByRole('button', { name: '查看原文', exact: true }).click()
   await expect(dialog.getByLabel('本页源数据 JSON', { exact: true })).toHaveText(done.resultText.slice(0, 4096))
+  await dialog.getByRole('region', { name: '响应内容', exact: true }).getByRole('button', { name: '查看原文', exact: true }).click()
   await expect(dialog.getByLabel('管理作业响应原文', { exact: true })).toHaveText(done.raw.slice(0, 4096))
   expect(posts).toBe(1); expect(gets).toBe(2); expect(queries).toBe(0)
   expect(await page.evaluate(() => sessionStorage.getItem('sicp.pending-operations.v1'))).toBeNull()
@@ -2148,9 +2157,11 @@ test('F06 outcomes distinguish validation, backend empty pages, backend failures
     await expect(outcome).toHaveAttribute('data-state', state!)
     if (mode === 'empty') {
       await expect(outcome).toContainText('不表示全部数据为空')
+      await dialog.getByRole('region', { name: '响应内容', exact: true }).getByRole('button', { name: '查看原文', exact: true }).click()
       await expect(dialog.getByLabel('响应原文', { exact: true })).toContainText('"total":12')
     }
     if (mode === 'proxy') {
+      await dialog.getByRole('region', { name: '响应内容', exact: true }).getByRole('button', { name: '查看原文', exact: true }).click()
       await expect(dialog.getByLabel('响应原文', { exact: true })).toHaveText('<h1>Bad Gateway</h1>')
       await expect(dialog.locator('h1')).toHaveCount(0)
     }
@@ -2188,6 +2199,7 @@ for (const [status, available, scenario, expected] of [['succeeded', false, 'suc
   const dialog = page.getByRole('dialog'), outcome = dialog.getByRole('status', { name: '测试状态', exact: true })
   await dialog.getByRole('button', { name: '执行源测试', exact: true }).click()
   await expect(outcome).toHaveAttribute('data-state', expected)
+  await dialog.getByRole('region', { name: '响应内容', exact: true }).getByRole('button', { name: '查看原文', exact: true }).click()
   await expect(dialog.getByLabel('管理作业响应原文', { exact: true })).toHaveText(fixture.raw)
   expect(posts).toBe(1)
 })
@@ -2222,6 +2234,7 @@ for (const operation of ['students.grades.query', 'students.timetable.query', 'o
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('请求 JSON', { exact: true }).fill(JSON.stringify(fixture.request))
   await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await dialog.getByRole('region', { name: '响应内容', exact: true }).getByRole('button', { name: '查看原文', exact: true }).click()
   await expect(dialog.getByLabel('响应原文', { exact: true })).toBeVisible()
   await dialog.getByRole('button', { name: '表格', exact: true }).click()
   const table = dialog.getByLabel('本次响应表格', { exact: true })
@@ -2244,6 +2257,7 @@ for (const operation of ['students.grades.query', 'students.timetable.query', 'o
   await dialog.getByRole('button', { name: '响应头', exact: true }).click()
   await expect(dialog.getByLabel('本次响应头 JSON', { exact: true })).toContainText('X-SICP-Combination')
   await dialog.getByRole('button', { name: 'JSON', exact: true }).click()
+  await dialog.getByRole('region', { name: '响应内容', exact: true }).getByRole('button', { name: '查看原文', exact: true }).click()
   await expect(dialog.getByLabel('响应原文', { exact: true })).toHaveText(JSON.stringify(fixture.response).slice(0, 4096))
   expect(calls).toBe(1)
 })
@@ -2266,11 +2280,13 @@ test('F06 shared source views ignore a closed instance late result and recover w
   await expect(dialog.getByLabel('本页源数据 JSON', { exact: true })).toHaveCount(0)
   expect(posts).toBe(1); expect(gets).toBe(1)
   await dialog.getByRole('button', { name: '查询原作业', exact: true }).click()
+  await dialog.locator('.json-viewer').filter({ has: page.getByLabel('本页源数据 JSON', { exact: true }) }).getByRole('button', { name: '查看原文', exact: true }).click()
   await expect(dialog.getByLabel('本页源数据 JSON', { exact: true })).toHaveText(fixture.resultText)
   await dialog.getByRole('button', { name: '表格', exact: true }).click()
   await expect(dialog.getByLabel('本次响应表格', { exact: true }).locator('tbody tr')).toHaveCount(JSON.parse(fixture.resultText).list.length)
   await dialog.getByRole('button', { name: '响应头', exact: true }).click()
   await dialog.getByRole('button', { name: 'JSON', exact: true }).click()
+  await dialog.getByRole('region', { name: '响应内容', exact: true }).getByRole('button', { name: '查看原文', exact: true }).click()
   await expect(dialog.getByLabel('管理作业响应原文', { exact: true })).toHaveText(fixture.raw)
   expect(posts).toBe(1); expect(gets).toBe(2)
 })
@@ -2329,6 +2345,7 @@ for (const api of operations.filter(api => api.paginated)) test(`F06 pagination 
   await expect(paging).toContainText(`第 1 / ${(first.response.data as { total: number }).total} 页`)
   await paging.getByRole('button', { name: '下一页', exact: true }).click()
   await expect(paging).toContainText('第 2 /')
+  await dialog.getByRole('region', { name: '响应内容', exact: true }).getByRole('button', { name: '查看原文', exact: true }).click()
   await expect(dialog.getByLabel('响应原文', { exact: true })).toHaveText(JSON.stringify(second.response))
   expect(calls).toHaveLength(2)
   if (api.operation === 'students.query') {
@@ -2346,6 +2363,7 @@ for (const api of operations.filter(api => api.paginated)) test(`F06 pagination 
   expect(calls).toHaveLength(3)
   await json.fill(JSON.stringify(baseline.request))
   await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await dialog.getByRole('region', { name: '响应内容', exact: true }).getByRole('button', { name: '查看原文', exact: true }).click()
   await expect(dialog.getByLabel('响应原文', { exact: true })).toHaveText(JSON.stringify(baseline.response).slice(0, 4096))
   expect(calls).toHaveLength(4); expect(calls[3]!.token).toBeUndefined()
 })
@@ -2732,6 +2750,7 @@ test('F06 recent source summaries distinguish unavailable cache, successful job 
   await expect(notice).toContainText('过期、被淘汰、服务重启后丢失、请求落在其他实例')
   expect(posts).toBe(1); expect(gets).toBe(1)
   await dialog.getByRole('button', { name: '查询原作业', exact: true }).click()
+  await dialog.locator('.json-viewer').filter({ has: page.getByLabel('本页源数据 JSON', { exact: true }) }).getByRole('button', { name: '查看原文', exact: true }).click()
   await expect(dialog.getByLabel('本页源数据 JSON', { exact: true })).toHaveText(available.resultText.slice(0, 4096))
   await expect(notice).toHaveCount(0)
   expect(posts).toBe(1); expect(gets).toBe(2)
