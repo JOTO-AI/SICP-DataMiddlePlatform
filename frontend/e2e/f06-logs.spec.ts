@@ -652,12 +652,13 @@ test('V07 timeline names recorded work and physical copies without per-row detai
   await setup(page)
   const captured = JSON.parse(readFileSync(new URL('../fixtures/log-context.json', import.meta.url), 'utf8'))
   const d = captured.details[0]
-  let reads = 0
+  let reads = 0, scans = 0
   await page.route('**/admin/v1/logs/platform/events/' + d.event_id, route => {
     reads++
     return route.fulfill({ json: { code: 'ok', data: d } })
   })
   await page.route('**/admin/v1/logs/platform/events?*', route => {
+    scans++
     const url = new URL(route.request().url()), response = recordedLogPage()
     Object.assign(response.data, { source: d.source, epoch: d.epoch, high_water: '4', retained_through: '0', items: captured.items, next_cursor: null })
     response.data.filter = { ...response.data.filter, ...Object.fromEntries(url.searchParams), page_size: 50 }
@@ -665,8 +666,15 @@ test('V07 timeline names recorded work and physical copies without per-row detai
   })
   await page.goto('/console/logs/platform/events/' + d.event_id)
   const timeline = page.getByRole('region', { name: '执行时序', exact: true })
+  await expect(timeline.getByRole('button', { name: /展开全部/ })).toHaveCount(0)
   await timeline.getByRole('button', { name: '读取关联时序', exact: true }).click()
+  await expect(timeline.locator('li')).toHaveCount(3)
+  const expand = timeline.getByRole('button', { name: '展开全部已读取记录（4 条）', exact: true })
+  await expect(expand).toHaveAttribute('aria-expanded', 'false')
+  await expand.focus()
+  await page.keyboard.press('Enter')
   await expect(timeline.locator('li')).toHaveCount(4)
+  await expect(timeline.getByRole('button', { name: '收起', exact: true })).toHaveAttribute('aria-expanded', 'true')
   // M's end and S's start share a backend timestamp; do not invent an order between them.
   await expect(timeline.locator('strong').filter({ hasText: '写入表数据 · 开始' })).toHaveCount(2)
   await expect(timeline.locator('strong').filter({ hasText: '写入表数据 · 结束' })).toHaveCount(2)
@@ -679,5 +687,13 @@ test('V07 timeline names recorded work and physical copies without per-row detai
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.screenshot({ path: info.outputPath('timeline-' + width + '.png'), fullPage: true })
   }
+  await timeline.getByRole('button', { name: '收起', exact: true }).click()
+  await expect(timeline.locator('li')).toHaveCount(3)
+  await page.screenshot({ path: info.outputPath('timeline-collapsed-390.png'), fullPage: true })
+  await expand.click()
+  await timeline.getByRole('button', { name: '重新读取关联时序', exact: true }).click()
+  await expect(timeline.locator('li')).toHaveCount(3)
+  await expect(expand).toHaveAttribute('aria-expanded', 'false')
+  expect(scans).toBe(2)
   expect(reads).toBe(1)
 })

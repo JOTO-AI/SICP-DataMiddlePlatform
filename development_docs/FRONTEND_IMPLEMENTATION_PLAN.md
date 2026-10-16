@@ -432,3 +432,5 @@ V01/V02 的取舍、截图范围与回归证据见 [界面细节复核](verifica
 - [x] V06 修正阶段条与采集进度不一致：聚合真实采集/任务证据，区分已完成、时间未记录和不适用；根操作分组显示摘要。完成单元、浏览器复测、构建和 code review，见 [阶段证据复核](verification/FRONTEND_STAGE_EVIDENCE_REVIEW.md)。
 
 - [x] V07 执行时序显示具体阶段、表名、副本及尝试，后端摘要返回已有操作上下文；完成回归、构建和 code review。见 [时序操作名称复核](verification/FRONTEND_LOG_CONTEXT_REVIEW.md)。
+
+- [x] V08 执行时序默认显示前 3 条，下方支持展开全部已读取记录及收起；保留后端分页，完成 10 项浏览器回归、构建和 code review。见 [时序复核补充](verification/FRONTEND_LOG_CONTEXT_REVIEW.md)。
