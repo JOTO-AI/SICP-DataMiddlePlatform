@@ -1900,7 +1900,7 @@ test('F06 editor validates real backend requests, preserves invalid drafts and s
   await dialog.getByRole('button', { name: '校验参数', exact: true }).click()
   await expect(dialog.getByText('参数校验通过；尚未发送请求。', { exact: true })).toBeVisible()
   await dialog.getByRole('button', { name: '参数编辑', exact: true }).click()
-  await expect(dialog.getByRole('textbox', { name: 'student_number', exact: true })).toHaveValue(JSON.stringify(captured.request.student_number))
+  await expect(dialog.getByRole('textbox', { name: 'student_number', exact: true })).toHaveValue(String(captured.request.student_number))
   await expect(dialog.getByRole('textbox', { name: 'score_min', exact: true })).toBeHidden()
   await dialog.getByRole('button', { name: /显示高级参数/ }).click()
   await expect(dialog.getByRole('textbox', { name: 'score_min', exact: true })).toBeVisible()
@@ -3181,4 +3181,55 @@ test('V04 figure16 detail shows stage strip, tabs and master-detail operation tr
   await page.keyboard.press('End')
   await expect(page.getByRole('tab', { name: '异常与通知' })).toBeFocused()
   expect(writes).toBe(0)
+})
+
+test('V09 plain text parameters submit the exact captured request', async ({ page }, info) => {
+  await setup(page)
+  const fixture = backendCapture('students.grades.query')
+  let calls = 0
+  await page.route('**/console-api/query/api/v1/sicp/students/grades/query', route => {
+    calls++
+    expect(route.request().postDataJSON()).toEqual(fixture.request)
+    return route.fulfill({ status: fixture.status, headers: fixture.headers, json: fixture.response })
+  })
+  await page.goto('/console/apis/students.grades.query')
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: '参数编辑', exact: true }).click()
+  await dialog.getByRole('textbox', { name: 'student_number', exact: true }).fill(String(fixture.request.student_number))
+  await dialog.getByRole('textbox', { name: 'academic_year', exact: true }).fill(String(fixture.request.academic_year))
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    await page.screenshot({ path: info.outputPath('plain-parameters-' + width + '.png'), fullPage: true })
+  }
+  await dialog.getByRole('button', { name: '执行测试', exact: true }).click()
+  await expect(dialog.getByRole('region', { name: '响应内容', exact: true })).toContainText('HTTP 200')
+  expect(calls).toBe(1)
+})
+
+for (const operation of ['students.grades.batch-query', 'organizations.query']) test('V09 typed list and boolean controls preserve backend contract ' + operation, async ({ page }) => {
+  await setup(page)
+  const contract = operation === 'organizations.query'
+    ? JSON.parse(readFileSync(new URL('../../internal/query/contract/testdata/phase2.json', import.meta.url), 'utf8')).organizations_request
+    : JSON.parse(readFileSync(new URL('../../internal/query/contract/testdata/batch_grades_request.json', import.meta.url), 'utf8'))
+  // The codec fixture also contains an empty-array validation failure; select
+  // its actual student list and required year for this valid-form scenario.
+  const body = operation === 'organizations.query' ? contract : { student_numbers: contract.student_numbers, academic_year: contract.academic_year }
+  await page.goto('/console/apis/' + operation)
+  await page.getByRole('button', { name: '在线测试', exact: true }).click()
+  const dialog = page.getByRole('dialog'), json = dialog.getByLabel('请求 JSON', { exact: true })
+  await json.fill(JSON.stringify(body))
+  await dialog.getByRole('button', { name: '参数编辑', exact: true }).click()
+  const key = operation === 'organizations.query' ? 'category_codes' : 'student_numbers'
+  await expect(dialog.getByRole('textbox', { name: key, exact: true })).toHaveValue(body[key].join('\n'))
+  await dialog.getByRole('textbox', { name: key, exact: true }).fill(body[key].join('\n'))
+  if (operation === 'organizations.query') {
+    const flag = dialog.getByRole('combobox', { name: 'is_active', exact: true })
+    await expect(flag).toHaveValue('false')
+    await flag.selectOption('false')
+  }
+  await dialog.getByRole('button', { name: '校验参数', exact: true }).click()
+  await expect(dialog.getByText('参数校验通过；尚未发送请求。', { exact: true })).toBeVisible()
+  expect(JSON.parse(await json.inputValue())).toEqual(body)
 })

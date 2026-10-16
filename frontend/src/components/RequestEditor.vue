@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, useId } from 'vue'
-import { parseRequestObject, parseEditableJSON, parameterError, jsonError, type ParameterDefinition } from '../shared/json'
+import { parseRequestObject, parameterError, jsonError, type ParameterDefinition } from '../shared/json'
+import { objectTokens } from '../shared/jsonObject'
+import { parameterDraft, parameterDraftValue, type ParameterDraft } from '../shared/parameterDraft'
 const props = withDefaults(defineProps<{ modelValue: string; parameters?: ParameterDefinition[]; disabled?: boolean; validateText?: (text: string) => Record<string, unknown> }>(), { parameters: () => [] })
 const emit = defineEmits<{ 'update:modelValue': [text: string]; edited: []; 'validation-error': [message: string] }>()
-const mode = ref<'json' | 'parameters'>('json'), error = ref(''), rows = ref<{ name: string; text: string; error: string }[]>([])
+const mode = ref<'json' | 'parameters'>('json'), error = ref(''), rows = ref<ParameterDraft[]>([])
 watch(error, value => emit('validation-error', value), { flush: 'sync' })
 const id = useId(), dirty = ref(false), showAdvanced = ref(false)
 const advanced = computed(() => new Set(props.parameters.filter(item => item.advanced).map(item => item.name)))
@@ -11,9 +13,13 @@ watch(() => props.modelValue, () => { if (mode.value === 'parameters') { mode.va
 function toParameters() {
   if (mode.value === 'parameters' || props.disabled) return
   try {
-    const body = parseRequestObject(props.modelValue)
+    const body = parseRequestObject(props.modelValue), tokens = objectTokens(props.modelValue)
     const names = [...new Set([...props.parameters.map(item => item.name), ...Object.keys(body)])]
-    rows.value = names.map(name => ({ name, text: Object.hasOwn(body, name) ? JSON.stringify(body[name], null, 2) : '', error: '' }))
+    rows.value = names.map(name => {
+      const row = parameterDraft(name, body, props.parameters.find(item => item.name === name))
+      if (row.format === 'json' && tokens.has(name)) row.text = tokens.get(name)!
+      return row
+    })
     showAdvanced.value = [...advanced.value].some(name => Object.hasOwn(body, name))
     dirty.value = false; error.value = ''; mode.value = 'parameters'
   } catch (cause) { error.value = jsonError(cause) }
@@ -25,9 +31,10 @@ function toJSON() {
   for (const row of rows.value) {
     row.error = ''
     const definition = props.parameters.find(item => item.name === row.name)
-    if (!row.text.trim()) { if (definition?.required) row.error = '此参数必填'; continue }
     try {
-      body[row.name] = parseEditableJSON(row.text)
+      const value = parameterDraftValue(row)
+      if (value === undefined) { if (definition?.required) row.error = '此参数必填'; continue }
+      body[row.name] = value
       if (definition) row.error = parameterError(body[row.name], definition)
       if (!row.error && definition?.type === 'integer' && body[row.name] !== null && !/^-?(0|[1-9]\d*)$/.test(row.text.trim())) row.error = '整数不接受小数或指数形式'
     } catch (cause) { row.error = jsonError(cause) }
@@ -59,9 +66,9 @@ defineExpose({ getRequestText, loadText })
   <p v-if="error" :id="`${id}-error`" class="error" role="alert">{{ error }}</p>
   <label v-if="mode === 'json'">请求 JSON<textarea :value="modelValue" :disabled="disabled" :aria-invalid="!!error" :aria-describedby="error ? `${id}-error` : undefined" rows="8" spellcheck="false" @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value); emit('edited')" /></label>
   <template v-else>
-    <p class="hint">每项填写 JSON 值：字符串使用双引号，数组使用方括号；留空表示省略。编号按字符串原样保留。未修改参数时切回 JSON 保留原文。</p>
+    <p class="hint">文本直接填写，无需引号；文本列表每行填写一项，无需方括号。清空字段表示省略，编号的前导零会保留。null 或复杂值可在 JSON 编辑中设置。</p>
     <button v-if="advanced.size" type="button" :disabled="disabled" :aria-expanded="showAdvanced" @click="showAdvanced = !showAdvanced">{{ showAdvanced ? '收起高级参数' : `显示高级参数（${advanced.size}）` }}</button>
-    <div class="parameter-editor-rows"><label v-for="(row, index) in rows" v-show="showAdvanced || !advanced.has(row.name)" :key="row.name"><code>{{ row.name }}</code><span class="hint">{{ parameters.find(item => item.name === row.name)?.description }}{{ parameters.find(item => item.name === row.name)?.required ? ' · 必填' : '' }}</span><textarea v-model="row.text" :aria-label="row.name" :disabled="disabled" :aria-invalid="!!row.error" :aria-describedby="row.error ? `${id}-${index}` : undefined" rows="2" spellcheck="false" @input="dirty = true; emit('edited')" /><span v-if="row.error" :id="`${id}-${index}`" class="field-error">{{ row.error }}</span></label></div>
+    <div class="parameter-editor-rows"><label v-for="(row, index) in rows" v-show="showAdvanced || !advanced.has(row.name)" :key="row.name"><code>{{ row.name }}</code><span class="hint">{{ parameters.find(item => item.name === row.name)?.description }}{{ parameters.find(item => item.name === row.name)?.required ? ' · 必填' : '' }}</span><input v-if="row.format === 'text'" v-model="row.text" :aria-label="row.name" :disabled="disabled" :aria-invalid="!!row.error" :aria-describedby="row.error ? `${id}-${index}` : undefined" type="text" :placeholder="row.present && row.original === null && !row.changed ? '当前为 null，填写可替换' : '直接填写文本'" @input="dirty = true; row.changed = true; emit('edited')" /><select v-else-if="row.format === 'boolean'" v-model="row.text" :aria-label="row.name" :disabled="disabled" :aria-invalid="!!row.error" :aria-describedby="row.error ? `${id}-${index}` : undefined" @change="dirty = true; row.changed = true; emit('edited')"><option value="">不传此参数</option><option value="true">是（true）</option><option value="false">否（false）</option><option v-if="parameters.find(item => item.name === row.name)?.nullable || row.original === null" value="null">空值（null）</option></select><textarea v-else v-model="row.text" :aria-label="row.name" :disabled="disabled" :aria-invalid="!!row.error" :aria-describedby="row.error ? `${id}-${index}` : undefined" :placeholder="row.format === 'lines' ? row.present && row.original === null && !row.changed ? '当前为 null，填写可替换' : '每行填写一项，无需引号' : '填写数字或 JSON 值'" rows="2" spellcheck="false" @input="dirty = true; row.changed = true; emit('edited')" /><span v-if="row.format === 'json' && parameters.find(item => item.name === row.name)?.type === 'string'" class="hint">当前值不是文本，请在 JSON 编辑中修正类型。</span><span v-if="row.error" :id="`${id}-${index}`" class="field-error">{{ row.error }}</span></label></div>
     <p v-if="!rows.length" class="hint">没有已声明或已填写的参数，可切回 JSON 添加。</p>
   </template>
 </div></template>

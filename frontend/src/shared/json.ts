@@ -1,5 +1,5 @@
 import { objectTokens } from './jsonObject'
-export interface ParameterDefinition { name: string; type: string; required?: boolean; nullable?: boolean; description?: string; defaultText?: string; advanced?: boolean }
+export interface ParameterDefinition { name: string; type: string; itemType?: string; required?: boolean; nullable?: boolean; description?: string; defaultText?: string; advanced?: boolean }
 export const MAX_EDITOR_CHARACTERS = 262144
 export const MAX_EDITOR_FIELDS = 100
 export function parseEditableJSON(text: string): unknown {

@@ -434,3 +434,5 @@ V01/V02 的取舍、截图范围与回归证据见 [界面细节复核](verifica
 - [x] V07 执行时序显示具体阶段、表名、副本及尝试，后端摘要返回已有操作上下文；完成回归、构建和 code review。见 [时序操作名称复核](verification/FRONTEND_LOG_CONTEXT_REVIEW.md)。
 
 - [x] V08 执行时序默认显示前 3 条，下方支持展开全部已读取记录及收起；保留后端分页，完成 10 项浏览器回归、构建和 code review。见 [时序复核补充](verification/FRONTEND_LOG_CONTEXT_REVIEW.md)。
+
+- [x] V09 在线测试参数按类型输入，文本无需引号、文本数组逐行填写、布尔值可选；保留原始 JSON 与空值语义，完成针对性测试、构建及 code review。见 [参数输入复核](verification/FRONTEND_PARAMETER_INPUT_REVIEW.md)。
