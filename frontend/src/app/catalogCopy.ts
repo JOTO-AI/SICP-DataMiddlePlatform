@@ -48,3 +48,53 @@ export function catalogLimit(text: unknown): string {
   const range = /^(\d+)\.\.(\d+)$/.exec(text)
   return range ? `范围：${range[1]}–${range[2]}` : text
 }
+
+export interface CatalogOverview { usage: string; result: string }
+// Reviewed against internal/query/contract DTOs and operation rules. Documentation
+// copy only: examples, fields and query results still come from the backend.
+const overviews: Record<string, CatalogOverview> = {
+  'students.grades.query': {
+    usage: '适合查看一名学生的课程成绩明细。未指定学年和学期时，查询该学生有成绩的最新学期；也可以指定学年、学期或跨学年查询。',
+    result: '返回成绩记录及总数，每条包含学生、课程、学年学期、成绩、绩点和成绩记录学分。总数按成绩记录计算，不按课程或学生去重。',
+  },
+  'students.grades.batch-query': {
+    usage: '适合按统一学年范围汇集多名学生的成绩明细，供业务系统进一步分析。必须指定学年，可用 all 查询全部学年；不按每名学生分别选择最新学期。',
+    result: '返回符合条件的成绩记录及总数，包含学生、课程、学年学期、成绩、绩点和成绩记录学分。',
+  },
+  'students.timetable.query': {
+    usage: '适合展示学生个人课表。通过学号、学年和学期定位，可查看该学生的实际课程安排。',
+    result: '返回课程安排，包括课程、授课教师、上课地点、日期、教学周和节次。课表一次返回，不分页。',
+  },
+  'staff.timetable.query': {
+    usage: '适合展示教师授课日程。通过工号、学年和学期定位，也可进一步查看某个教学班的安排。',
+    result: '返回课程安排，包括课程、授课教师、上课地点、日期、教学周和节次。课表一次返回，不分页。',
+  },
+  'organizations.query': {
+    usage: '适合检索组织单位，或按上级组织查找直接子级。上级条件只匹配直接下级，不递归查询所有后代。',
+    result: '返回组织编号、名称、上级组织编号、类别和有效状态，以及符合条件的记录总数。',
+  },
+  'students.query': {
+    usage: '适合检索学生档案或按单位、专业、年级等条件形成学生列表。所属单位和行政班信息来自当前学籍。',
+    result: '返回学号、姓名、学籍状态、所属单位、校区、专业、年级、行政班等信息，以及符合条件的记录总数。',
+  },
+  'staff.query': {
+    usage: '适合检索教职工档案，或按单位和状态查询人员列表。可以通过工号定位人员，也可以通过姓名检索。',
+    result: '返回工号、姓名、状态、所属单位及邮箱、电话等字段，以及符合条件的记录总数；缺失的信息可能为空。',
+  },
+  'staff.teaching-classes.query': {
+    usage: '适合查看教师在指定学年、学期承担的教学班，并选择教学班继续查看学生名单。',
+    result: '返回教学班、计划课程、课程和授课教师信息，以及每个教学班实际去重学生人数。人数来自教学班学生关联，不是源课表中的选读人数。',
+  },
+  'teaching-classes.students.query': {
+    usage: '适合查看教学班学生名单。使用教学班编号、计划课程编号、学年和学期共同定位，可承接“教师教学班”接口的查询结果。',
+    result: '返回学生学号、姓名、所属单位和行政班等名单信息及总数。名单分页返回，读取全部页面后才能核对完整人数。',
+  },
+}
+export function catalogOverview(api: CatalogAPI): CatalogOverview | null {
+  if (api.kind === 'business' && api.purpose === api.id) return overviews[api.id] ?? null
+  if (api.kind === 'source' && api.purpose === `Read one page of ${api.id}`) return {
+    usage: `适合核对上游的${catalogName(api)}记录、排查字段或数据获取问题。在线测试仅读取指定的一页，不推进同步进度。`,
+    result: '返回所选页的源记录和上游提供的总数。具体字段见“响应案例”；一页结果不代表完整数据集。',
+  }
+  return null
+}

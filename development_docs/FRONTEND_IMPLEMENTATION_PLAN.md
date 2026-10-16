@@ -438,3 +438,5 @@ V01/V02 的取舍、截图范围与回归证据见 [界面细节复核](verifica
 - [x] V09 在线测试参数按类型输入，文本无需引号、文本数组逐行填写、布尔值可选；保留原始 JSON 与空值语义，完成针对性测试、构建及 code review。见 [参数输入复核](verification/FRONTEND_PARAMETER_INPUT_REVIEW.md)。
 
 - [x] V10 在线测试响应 JSON 默认换行缩进，支持原文切换并保留数字精度；完成单元、浏览器复测、构建和 code review。见 [JSON 展示复核](verification/FRONTEND_RESPONSE_JSON_REVIEW.md)。
+
+- [x] V11 接口概览说明用途、适用场景与返回内容，技术元信息和约束折叠保留；完成契约核对、浏览器回归、构建、视觉及 code review。见 [接口概览复核](verification/FRONTEND_API_OVERVIEW_REVIEW.md)。

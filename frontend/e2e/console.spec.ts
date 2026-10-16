@@ -3076,6 +3076,7 @@ test('V02 catalog navigation, Chinese required parameters and document layout fo
   page.on('request', request => { if (['POST', 'PUT', 'DELETE'].includes(request.method())) writes++ })
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.goto('/console/apis/students.grades.query')
+  await expect(page.getByText('查询指定学生的成绩，支持课程、学期和成绩范围筛选。', { exact: true })).toBeVisible()
   await page.getByRole('tab', { name: '参数', exact: true }).click()
   const directory = page.getByRole('complementary', { name: '接口列表', exact: true })
   const fields = page.getByRole('region', { name: '参数字段表', exact: true })
@@ -3084,7 +3085,6 @@ test('V02 catalog navigation, Chinese required parameters and document layout fo
   await expect(fields.locator('tbody tr').first()).toContainText('是')
   await expect(fields).not.toContainText('根结构')
   await expect(fields).not.toContainText('nonblank')
-  await expect(page.getByText('查询指定学生的成绩，支持课程、学期和成绩范围筛选。', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '复制接口地址', exact: true })).toBeVisible()
   for (const width of [1440, 1280, 1024, 768, 390]) {
     await page.setViewportSize({ width, height: 1000 })
@@ -3251,4 +3251,49 @@ for (const operation of ['students.grades.batch-query', 'organizations.query']) 
   await dialog.getByRole('button', { name: '校验参数', exact: true }).click()
   await expect(dialog.getByText('参数校验通过；尚未发送请求。', { exact: true })).toBeVisible()
   expect(JSON.parse(await json.inputValue())).toEqual(body)
+})
+
+test('V11 overview explains backend catalog operations before collapsed technical notes', async ({ page }, testInfo) => {
+  test.setTimeout(60000)
+  await setup(page)
+  let executions = 0
+  await page.route('**/console-api/query/api/**', route => { executions++; return route.abort() })
+  await page.route('**/admin/v1/api-tests', route => { executions++; return route.abort() })
+  const items = backendCatalog() as { id: string; kind: string }[]
+  for (const api of items) {
+    await page.goto(`/console/apis/${api.id}`)
+    const panel = page.getByRole('tabpanel')
+    await expect(panel.getByRole('heading', { name: '接口说明', exact: true })).toBeVisible()
+    await expect(panel.getByRole('heading', { name: '适用场景', exact: true })).toBeVisible()
+    await expect(panel.getByRole('heading', { name: '返回内容', exact: true })).toBeVisible()
+    await expect(panel.getByText('接口标识', { exact: true })).not.toBeVisible()
+    if (api.id === 'students.grades.query') {
+      await expect(panel).toContainText('最新学期')
+      await expect(panel).toContainText('成绩、绩点和成绩记录学分')
+      await page.setViewportSize({ width: 1440, height: 1100 })
+      await panel.scrollIntoViewIfNeeded()
+      await page.screenshot({ path: testInfo.outputPath('overview-desktop.png'), fullPage: true })
+      await page.setViewportSize({ width: 390, height: 844 })
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await page.screenshot({ path: testInfo.outputPath('overview-mobile.png'), fullPage: true })
+      await page.setViewportSize({ width: 1280, height: 720 })
+    }
+    if (api.kind === 'source') await expect(panel).toContainText('不推进同步进度')
+    await panel.getByText('接口标识与调用约束', { exact: true }).click()
+    await expect(panel.getByText('接口标识', { exact: true })).toBeVisible()
+    await expect(panel.locator('details')).toContainText(api.id)
+  }
+  expect(executions).toBe(0)
+})
+
+test('V11 changed backend purpose remains visible without stale explanatory copy', async ({ page }) => {
+  await setup(page)
+  const api = (backendCatalog() as { id: string; purpose: string }[]).find(item => item.id === 'students.grades.query')!
+  // Contract-change boundary: reuse another actual catalog purpose, not business data.
+  const replacement = (backendCatalog() as { id: string; purpose: string }[]).find(item => item.id === 'students.query')!.purpose
+  await page.route(`**/admin/v1/apis/${api.id}`, route => route.fulfill({ json: { code: 'ok', data: { ...api, purpose: replacement } } }))
+  await page.goto(`/console/apis/${api.id}`)
+  const panel = page.getByRole('tabpanel')
+  await expect(panel.locator('.purpose')).toHaveText(replacement)
+  await expect(panel.getByRole('heading', { name: '适用场景', exact: true })).toHaveCount(0)
 })
