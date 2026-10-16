@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { test, expect, type Page } from '@playwright/test'
 import { backendCapture, backendCatalog, managementCapture } from '../fixtures/backend'
 import { recordedLogPage } from '../fixtures/logTests'
@@ -645,4 +646,38 @@ test('V05 timeline continuation validates cursor scope and retains confirmed eve
   await expect(timeline).toContainText('已读 2 批')
   await expect(timeline).toContainText('不能据此确认完整执行链')
   await expect(timeline.getByRole('button', { name: '继续读取时序', exact: true })).toHaveCount(0)
+})
+
+test('V07 timeline names recorded work and physical copies without per-row detail requests', async ({ page }, info) => {
+  await setup(page)
+  const captured = JSON.parse(readFileSync(new URL('../fixtures/log-context.json', import.meta.url), 'utf8'))
+  const d = captured.details[0]
+  let reads = 0
+  await page.route('**/admin/v1/logs/platform/events/' + d.event_id, route => {
+    reads++
+    return route.fulfill({ json: { code: 'ok', data: d } })
+  })
+  await page.route('**/admin/v1/logs/platform/events?*', route => {
+    const url = new URL(route.request().url()), response = recordedLogPage()
+    Object.assign(response.data, { source: d.source, epoch: d.epoch, high_water: '4', retained_through: '0', items: captured.items, next_cursor: null })
+    response.data.filter = { ...response.data.filter, ...Object.fromEntries(url.searchParams), page_size: 50 }
+    return route.fulfill({ json: response })
+  })
+  await page.goto('/console/logs/platform/events/' + d.event_id)
+  const timeline = page.getByRole('region', { name: '执行时序', exact: true })
+  await timeline.getByRole('button', { name: '读取关联时序', exact: true }).click()
+  await expect(timeline.locator('li')).toHaveCount(4)
+  // M's end and S's start share a backend timestamp; do not invent an order between them.
+  await expect(timeline.locator('strong').filter({ hasText: '写入表数据 · 开始' })).toHaveCount(2)
+  await expect(timeline.locator('strong').filter({ hasText: '写入表数据 · 结束' })).toHaveCount(2)
+  await expect(timeline.locator('li').nth(0)).toContainText('副本：M')
+  await expect(timeline.locator('li').filter({ hasText: '副本：S' })).toHaveCount(2)
+  await expect(timeline).toContainText('数据表：dwd_bzkscjzlb')
+  await expect(timeline).not.toContainText('结果未记录')
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: info.outputPath('timeline-' + width + '.png'), fullPage: true })
+  }
+  expect(reads).toBe(1)
 })

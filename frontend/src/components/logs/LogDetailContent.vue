@@ -9,11 +9,13 @@ import RequestDiagnostics from '../RequestDiagnostics.vue'
 import StatusBadge from '../StatusBadge.vue'
 import DetailTabs from '../DetailTabs.vue'
 import LogTimeline from './LogTimeline.vue'
+import { logActivity } from '../../app/logActivity'
 import LogRelations from './LogRelations.vue'
 import LogAttempts from './LogAttempts.vue'
 const props = defineProps<{ data: LogDetail; raw: string; busy: boolean }>()
 defineEmits<{ refresh: [] }>()
 const tab = ref(0), tabs = ['概览', '脱敏详情', '关联记录']
+const activity = computed(() => logActivity(props.data))
 const sourceName = computed(() => props.data.source === 'platform' ? '本地日志库' : '上游调用日志库')
 const outcome = computed(() => props.data.outcome ? logOutcomes[props.data.outcome] : '结果未记录')
 const failure = computed(() => ['failed', 'interrupted'].includes(props.data.outcome ?? ''))
@@ -26,7 +28,7 @@ const businessCode = computed(() => props.data.business_code === null ? '未记�
 <section v-show="tab === 0" role="tabpanel" id="log-details-panel-0" aria-labelledby="log-details-tab-0">
 <div v-if="failure" class="failure-banner"><span aria-hidden="true">!</span><div><strong>{{ logKinds[data.kind] }}{{ outcome }}<template v-if="data.http_status !== null"> · HTTP {{ data.http_status }}</template></strong><p>本事件记录了{{ outcome }}结果，请结合下方诊断和关联记录查看具体原因。</p></div></div>
 <div class="overview-grid"><LogTimeline :event="data" /><section class="panel basic-info" aria-label="基本信息"><h2>基本信息</h2><dl>
-<div><dt>操作</dt><dd>{{ data.operation ?? '未提供' }}</dd></div><div><dt>请求号</dt><dd><CopyId v-if="data.request_id" :value="data.request_id" label="请求关联号" /><span v-else>未提供关联</span></dd></div><div><dt>日志事件</dt><dd><CopyId :value="data.event_id" label="日志事件号" /></dd></div><div><dt>耗时（ms）</dt><dd>{{ milliseconds(data.duration_ns) }}</dd></div><div><dt>状态</dt><dd>{{ data.outcome ? logOutcomes[data.outcome] : '当前事件未记录结果' }}</dd></div><div><dt>事件类型 / 阶段</dt><dd>{{ logKinds[data.kind] }} / {{ logPhases[data.phase] }}</dd></div><div><dt>来源</dt><dd>{{ sourceName }}</dd></div><div><dt>发生时间</dt><dd><Timestamp precise :value="data.occurred_at" empty="未提供" /></dd></div><div><dt>入库时间</dt><dd><Timestamp precise :value="data.received_at" empty="未提供" /></dd></div></dl></section></div>
+<div><dt>操作</dt><dd>{{ activity.subject }}</dd></div><div v-if="activity.details"><dt>操作对象</dt><dd>{{ activity.details }}</dd></div><div><dt>请求号</dt><dd><CopyId v-if="data.request_id" :value="data.request_id" label="请求关联号" /><span v-else>未提供关联</span></dd></div><div><dt>日志事件</dt><dd><CopyId :value="data.event_id" label="日志事件号" /></dd></div><div><dt>耗时（ms）</dt><dd>{{ milliseconds(data.duration_ns) }}</dd></div><div><dt>状态</dt><dd>{{ data.outcome ? logOutcomes[data.outcome] : '当前事件未记录结果' }}</dd></div><div><dt>事件类型 / 阶段</dt><dd>{{ logKinds[data.kind] }} / {{ logPhases[data.phase] }}</dd></div><div><dt>来源</dt><dd>{{ sourceName }}</dd></div><div><dt>发生时间</dt><dd><Timestamp precise :value="data.occurred_at" empty="未提供" /></dd></div><div><dt>入库时间</dt><dd><Timestamp precise :value="data.received_at" empty="未提供" /></dd></div></dl></section></div>
 <p v-if="data.phase !== 'finished'" class="hint phase-note">当前事件没有结束边界，不能据此推断调用已成功或仍在运行；结束记录可能另行入库。</p>
 <details v-if="data.diagnostics !== undefined || data.metadata.authentication || data.response" class="panel diagnostics"><summary>错误诊断（展开查看上游响应）</summary><RequestDiagnostics :evidence="{ diagnostics: data.diagnostics, authentication: data.metadata.authentication, response: data.response, http_status: data.http_status, business_code: data.business_code, path: data.metadata.path }" /></details>
 </section>

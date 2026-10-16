@@ -88,6 +88,7 @@ func (a AuditIdentity) Validate() error {
 // EventItem is a whitelisted summary. Optional facts remain null, including
 // unknown duration/status and missing relationships. All IDs are correlations.
 type EventItem struct {
+	Context      *EventContext       `json:"context,omitempty"`
 	Source       Source              `json:"source"`
 	Epoch        string              `json:"epoch"`
 	EventID      string              `json:"event_id"`
@@ -109,6 +110,19 @@ type EventItem struct {
 	DurationNS   *int64              `json:"duration_ns,string"`
 	Test         *TestIdentity       `json:"test"`
 	Audit        *AuditIdentity      `json:"audit"`
+}
+
+// EventContext names measured work using only already-sanitized, typed facts.
+// It excludes response bodies, diagnostics, raw identities and build metrics.
+type EventContext struct {
+	Stage     string             `json:"stage,omitempty"`
+	Table     string             `json:"table,omitempty"`
+	Instance  string             `json:"instance,omitempty"`
+	Slot      *int               `json:"slot,omitempty"`
+	Attempt   int                `json:"attempt,omitempty"`
+	Page      int                `json:"page,omitempty"`
+	Mode      string             `json:"mode,omitempty"`
+	Operation contract.Operation `json:"operation,omitempty"`
 }
 
 type Redaction struct {

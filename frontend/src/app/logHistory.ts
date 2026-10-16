@@ -1,3 +1,4 @@
+import { validLogContext, type LogContext } from './logContext'
 import { timestampMicros } from '../shared/timestamp'
 import { operations } from '../queryOperations'
 export type LogSource = 'platform' | 'upstream'
@@ -37,10 +38,11 @@ export function logHistoryPath(f: LogFilters, cursor = '') {
   }
   return `/admin/v1/logs/${f.source}/events?${q}`
 }
-export interface LogEvent { source: LogSource; epoch: string; event_id: string; sequence: string; kind: string; phase: string; occurred_at: string | null; received_at: string | null; outcome: string | null; operation: string | null; request_id: string | null; task_id: string | null; step_id: string | null; call_id: string | null; attempt_id: string | null; attempt_no: number | null; business_code: number | null; audit: { actor_id: string; action: string; object_id: string } | null; http_status: number | null; duration_ns: string | null; test: { purpose: string; test_run_id: string } | null }
+export interface LogEvent { context?: LogContext | null; source: LogSource; epoch: string; event_id: string; sequence: string; kind: string; phase: string; occurred_at: string | null; received_at: string | null; outcome: string | null; operation: string | null; request_id: string | null; task_id: string | null; step_id: string | null; call_id: string | null; attempt_id: string | null; attempt_no: number | null; business_code: number | null; audit: { actor_id: string; action: string; object_id: string } | null; http_status: number | null; duration_ns: string | null; test: { purpose: string; test_run_id: string } | null }
 export function readLogEvent(value: unknown, source: LogSource, epoch?: string): LogEvent | null {
   if (!object(value)) return null
   const item = value as unknown as LogEvent
+  if (item.context != null && !validLogContext(item.context)) return null
   if (item.source !== source || !['platform', 'upstream'].includes(source) || typeof item.epoch !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(item.epoch) || epoch && item.epoch !== epoch || !logID(item.event_id) || !decimal(item.sequence)) return null
   if (!['request', 'task', 'step', 'call', 'attempt', 'audit'].includes(item.kind) || !(source === 'upstream' ? ['call', 'attempt'] : ['request', 'task', 'step', 'audit', 'call', 'attempt']).includes(item.kind) || !['started', 'finished', 'transport'].includes(item.phase) || item.outcome !== null && !['succeeded', 'failed', 'interrupted'].includes(item.outcome) || item.occurred_at !== null && !time(item.occurred_at) || item.received_at !== null && !time(item.received_at) || item.http_status !== null && (!Number.isInteger(item.http_status) || item.http_status < 100 || item.http_status > 599) || item.duration_ns !== null && !decimal(item.duration_ns)) return null
   if (item.operation !== null && (typeof item.operation !== 'string' || item.operation.length > 128) || item.attempt_no !== null && (!Number.isSafeInteger(item.attempt_no) || item.attempt_no < 1) || item.business_code !== null && !Number.isInteger(item.business_code)) return null

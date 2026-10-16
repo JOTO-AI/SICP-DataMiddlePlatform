@@ -327,6 +327,15 @@ func project(source Source, epoch string, r Record) Detail {
 		out.Audit = &AuditIdentity{ActorID: a.ActorID, Action: a.Action, ObjectID: a.ObjectID}
 	}
 	d := r.Event.Redaction()
+	if b := e.Metadata.Build; b != nil {
+		out.Context = &EventContext{Stage: b.Stage, Table: b.Table, Instance: i.Instance, Attempt: b.Attempt, Operation: b.Operation}
+		// Zero is a real slot, but only a recorded generation identifies a slot.
+		if b.Generation > 0 {
+			out.Context.Slot = &b.Slot
+		}
+	} else if m := e.Metadata; m.Source != "" {
+		out.Context = &EventContext{Table: m.Source, Page: m.Page, Mode: m.Mode}
+	}
 	out.Redaction = Redaction{Redacted: d.Redacted, Truncated: d.Truncated, OriginalBytes: d.OriginalBytes, FieldCount: d.FieldCount}
 	return out
 }
