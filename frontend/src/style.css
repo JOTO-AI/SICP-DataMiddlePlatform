@@ -131,7 +131,8 @@ footer { border-top: 1px solid var(--line); margin: 0 var(--layout-content-paddi
 .tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 10px 0 12px; background: transparent; color: var(--muted); }
 .tabs button.active { color: var(--brand); border-bottom-color: var(--brand); }
 .endpoint { display: flex; align-items: baseline; gap: 12px; padding: 18px 0; }
-.method { color: var(--green); font: 600 12px ui-monospace, monospace; }
+.method { display: inline-flex; align-items: center; color: var(--green); font: 700 13px ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; }
+.method[data-method="POST"] { color: var(--color-success-text); background: var(--color-success-soft); padding: 2px 8px; border-radius: 4px; }
 .form-grid { display: grid; grid-template-columns: 1.2fr 1fr .8fr 1fr; gap: 16px; }
 .advanced { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 20px; }
 .advanced p { margin: 10px 0; }

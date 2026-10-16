@@ -3297,3 +3297,31 @@ test('V11 changed backend purpose remains visible without stale explanatory copy
   await expect(panel.locator('.purpose')).toHaveText(replacement)
   await expect(panel.getByRole('heading', { name: '适用场景', exact: true })).toHaveCount(0)
 })
+
+test('V12 implementation check and green POST label appear in catalog and detail', async ({ page }, testInfo) => {
+  await setup(page)
+  await page.goto('/console/apis')
+  const table = page.getByRole('region', { name: '接口目录表格', exact: true })
+  await expect(table.locator('.status-check')).toHaveCount(9)
+  const method = table.locator('.method').first()
+  await expect(method).toHaveText('POST')
+  await expect(method).toHaveCSS('color', 'rgb(18, 110, 51)')
+  await expect(method).toHaveCSS('background-color', 'rgb(234, 247, 239)')
+  await page.screenshot({ path: testInfo.outputPath('catalog-status.png'), fullPage: true })
+  await page.getByRole('link', { name: '查看 学生成绩 文档', exact: true }).click()
+  const info = page.getByRole('region', { name: '接口信息', exact: true })
+  await expect(info.locator('.status-check')).toHaveCount(1)
+  await expect(info.locator('.status-check')).toHaveCSS('color', 'rgb(18, 110, 51)')
+  await expect(info.locator('.method')).toHaveCSS('background-color', 'rgb(234, 247, 239)')
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('detail-status-mobile.png'), fullPage: true })
+  const api = (backendCatalog() as { id: string }[]).find(item => item.id === 'students.grades.query')!
+  for (const implemented of [false, null]) {
+    // Implementation-state boundary only; retain all recorded catalog fields.
+    await page.route('**/admin/v1/apis/students.grades.query', route => route.fulfill({ json: { code: 'ok', data: { ...api, implemented } } }))
+    await page.getByRole('button', { name: '刷新详情', exact: true }).click()
+    await expect(info).toContainText(implemented === false ? '未实现' : '实现状态未知')
+    await expect(info.locator('.status-check')).toHaveCount(0)
+  }
+})

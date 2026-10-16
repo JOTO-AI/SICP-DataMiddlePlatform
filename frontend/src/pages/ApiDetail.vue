@@ -88,8 +88,8 @@ onUnmounted(stop)
     <p v-if="error && api" class="warning">当前详情未确认，以下为上次成功读取的目录快照。</p>
     <template v-if="api">
       <section class="panel api-identity" aria-label="接口信息">
-        <div class="endpoint"><span class="method">{{ api.method }}</span><CopyId :value="api.path" label="接口地址" /></div>
-        <div class="api-states"><StatusBadge :label="api.implemented === true ? '已实现' : api.implemented === false ? '未实现' : '实现状态未知'" tone="neutral" /><span class="hint">目录就绪：{{ api.readiness === 'unknown' ? '未观测' : api.readiness || '未提供' }}</span><StatusBadge v-if="api.kind === 'business'" :label="error ? '当前就绪状态未确认' : healthLabel" :tone="!error && !healthError && ready === true ? 'success' : 'neutral'" /><StatusBadge v-else label="上游就绪未探测" tone="neutral" /></div>
+        <div class="endpoint"><span class="method" :data-method="api.method">{{ api.method }}</span><CopyId :value="api.path" label="接口地址" /></div>
+        <div class="api-states"><StatusBadge :icon="api.implemented === true ? 'check' : undefined" :label="api.implemented === true ? '已实现' : api.implemented === false ? '未实现' : '实现状态未知'" tone="neutral" /><span class="hint">目录就绪：{{ api.readiness === 'unknown' ? '未观测' : api.readiness || '未提供' }}</span><StatusBadge v-if="api.kind === 'business'" :label="error ? '当前就绪状态未确认' : healthLabel" :tone="!error && !healthError && ready === true ? 'success' : 'neutral'" /><StatusBadge v-else label="上游就绪未探测" tone="neutral" /></div>
         <p v-if="healthError" class="warning">查询健康读取失败：{{ healthError }}。上次读取 <Timestamp :value="healthReadAt" />，当前状态未确认。</p>
         <p class="hint">目录版本 <code>{{ api.version }}</code> · 读取时间 <Timestamp :value="readAt" /></p>
         <p v-if="api.kind === 'source'" class="hint">实现状态不代表上游可用；单次源测试只能证明该次调用结果。</p><p v-else class="hint">健康检查表示查询服务状态，不代表当前参数一定能查询成功。</p>
